@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "Obecné",
-    "appearance": "Appearance",
+    "appearance": "Vzhled",
     "models": "Modely",
     "advanced": "Pokročilé",
     "postProcessing": "Následné zpracování",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "Aplikace",
+        "overlay": "Překryv",
+        "preview": "Náhled",
+        "color": "Barva překryvu",
+        "material": "Materiál překryvu",
+        "size": "Velikost a rozestupy překryvu",
+        "themeFile": "Soubor motivu"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "Příprava",
+          "recording": "Nahrávání",
+          "listening": "Naslouchání",
+          "transcribing": "Přepis",
+          "processing": "Zpracování"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "Přehrát náhled",
+        "pause": "Pozastavit náhled",
+        "showOnScreen": "Zobrazit na obrazovce",
+        "showOnScreenBusy": "Zobrazuji…",
+        "showOnScreenBlocked": "Nedostupné, když Handy nahrává",
+        "sampleText": "Příliš žluťoučký kůň úpěl ďábelské ódy, a Handy to zapíše.",
+        "glassNote": "Sklo rozostřuje to, co je za překryvem. Tento náhled to přibližuje na náhradním pozadí — skutečný efekt uvidíte přes Zobrazit na obrazovce.",
+        "glassUnavailable": "Sklo je dostupné jen na macOS. Na tomto systému zůstává překryv plochý.",
+        "noneNote": "Překryv je vypnutý, takže není co zobrazit v náhledu. Zvolte výše Minimální nebo Živě.",
+        "scaledNote": "Náhled zobrazen na {{percent}}%"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "Obnovit motiv překryvu",
+        "title": "Obnovit motiv překryvu?",
+        "description": "Vrátí všechny barvy, velikosti a rozestupy překryvu na výchozí hodnoty Handy. Styl ani pozice překryvu se nezmění.",
+        "descriptionWithThemeFile": "Vrátí na výchozí hodnoty Handy všechny barvy, velikosti a rozestupy překryvu, které nenastavuje soubor motivu. Styl ani pozice překryvu se nezmění a hodnoty ze souboru motivu zůstávají v platnosti.",
+        "confirm": "Obnovit",
+        "cancel": "Zrušit"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "Materiál",
+        "description": "Jak se vykresluje povrch překryvu. Plochý je neprůhledný povrch; Sklo je průsvitné a rozostřuje to, co je za ním.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "Plochý",
+          "glass": "Sklo",
+          "glassMacOnly": "Sklo (jen macOS)"
         },
         "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "Vyberte barvu",
+        "hexLabel": "Hexadecimální hodnota barvy",
+        "resetLabel": "Obnovit výchozí"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "Akcent",
+          "description": "Barva zvýraznění: křivka zvuku, tečka nahrávání, kurzor a indikátor načítání."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "Povrch",
+          "description": "Barva pozadí karty překryvu."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "Krytí povrchu",
+          "description": "Jak moc pozadí karty prosvítá."
         },
         "text": {
           "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "description": "Barva popředí karty a základ, ze kterého se míchají všechny neutrální odstíny."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "Měřítko velikosti",
+          "description": "Zvětší všechny rozměry karty najednou — šířky, výšky, vnitřní okraje i písmo. Jediná hodnota, která mění, kolik místa překryv na obrazovce potřebuje."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "Zaoblení rohů",
+          "description": "Zaoblení rohů karty."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "Vnitřní okraj",
+          "description": "Vodorovný vnitřní okraj řádku s ovládacími prvky."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "Rozestup křivky",
+          "description": "Mezera mezi sloupci zvukové křivky."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "Soubor motivu",
+        "description": "Volitelný soubor JSON, který přepisuje hodnoty motivu překryvu, takže překryv mohou řídit externí nástroje pro motivy.",
+        "notFound": "Žádný soubor motivu. Vytvořte ho na této cestě, chcete-li přepsat hodnoty motivu překryvu.",
+        "active": "Aktivní — tento soubor nastavuje {{count}} z 9 hodnot.",
+        "reload": "Načíst znovu",
+        "copy": "Kopírovat motiv jako JSON",
+        "copied": "Zkopírováno",
+        "lockedDescription": "Nastaveno souborem motivu. Upravte overlay_theme.json nebo tento klíč odeberte, chcete-li hodnotu měnit zde.",
+        "problemsTitle": "Problémy v souboru motivu:",
+        "moreDiagnostics": "…a {{count}} dalších.",
+        "newerVersion": "Tento soubor motivu zapsala novější verze Handy. Hodnoty, kterým tato verze nerozumí, byly ignorovány.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "Soubor motivu není platný JSON.",
+          "unknownKey": "Neznámý klíč ignorován: {{key}}",
+          "wrongType": "\"{{key}}\" má nesprávný typ a byl ignorován.",
+          "invalidColor": "\"{{key}}\" není platná barva a byl ignorován.",
+          "outOfBounds": "\"{{key}}\" byl mimo povolený rozsah a byl omezen.",
+          "unreadable": "Soubor motivu se nepodařilo přečíst."
         }
       }
     },

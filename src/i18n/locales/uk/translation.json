@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "Загальні",
-    "appearance": "Appearance",
+    "appearance": "Вигляд",
     "models": "Моделі",
     "advanced": "Розширені",
     "postProcessing": "Постобробка",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "Застосунок",
+        "overlay": "Накладка",
+        "preview": "Перегляд",
+        "color": "Колір накладки",
+        "material": "Матеріал накладки",
+        "size": "Розмір і відступи накладки",
+        "themeFile": "Файл теми"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "Підготовка",
+          "recording": "Запис",
+          "listening": "Прослуховування",
+          "transcribing": "Транскрипція",
+          "processing": "Обробка"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "Відтворити перегляд",
+        "pause": "Призупинити перегляд",
+        "showOnScreen": "Показати на екрані",
+        "showOnScreenBusy": "Показується…",
+        "showOnScreenBlocked": "Недоступно, поки Handy записує",
+        "sampleText": "Жебракують філософи при ґанку церкви в Гадячі, а Handy це записує.",
+        "glassNote": "Скло розмиває те, що за накладкою. Цей перегляд наближено показує ефект на тимчасовому тлі — натисніть Показати на екрані, щоб побачити справжній результат.",
+        "glassUnavailable": "Скло доступне лише в macOS. У цій системі накладка залишається плоскою.",
+        "noneNote": "Накладку вимкнено, тож переглядати нічого. Виберіть вище Мінімальну або У реальному часі.",
+        "scaledNote": "Перегляд показано в масштабі {{percent}}%"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "Скинути тему накладки",
+        "title": "Скинути тему накладки?",
+        "description": "Усі кольори, розміри та відступи накладки повернуться до типових значень Handy. Стиль і позиція накладки не зміняться.",
+        "descriptionWithThemeFile": "Усі кольори, розміри та відступи накладки, які не задані файлом теми, повернуться до типових значень Handy. Стиль і позиція накладки не зміняться, а значення з файлу теми продовжать діяти.",
+        "confirm": "Скинути",
+        "cancel": "Скасувати"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "Матеріал",
+        "description": "Як промальовується поверхня накладки. Плоский — непрозора поверхня; Скло — напівпрозоре й розмиває те, що за ним.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "Плоский",
+          "glass": "Скло",
+          "glassMacOnly": "Скло (лише macOS)"
         },
         "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "Вибрати колір",
+        "hexLabel": "Шістнадцяткове значення кольору",
+        "resetLabel": "Скинути до типового значення"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "Акцент",
+          "description": "Колір виділення: осцилограма, крапка запису, курсор та індикатор завантаження."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "Поверхня",
+          "description": "Колір тла картки накладки."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "Непрозорість поверхні",
+          "description": "Наскільки тло картки просвічує."
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "Текст",
+          "description": "Колір тексту картки та основа, з якої змішуються всі нейтральні відтінки."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "Масштаб розміру",
+          "description": "Масштабує всі розміри картки одразу — ширину, висоту, внутрішні відступи та шрифт. Єдине значення, що змінює, скільки місця накладка займає на екрані."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "Радіус заокруглення",
+          "description": "Радіус заокруглення кутів картки."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "Внутрішній відступ",
+          "description": "Горизонтальний внутрішній відступ рядка керування."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "Проміжок осцилограми",
+          "description": "Проміжок між смужками осцилограми."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "Файл теми",
+        "description": "Необов'язковий файл JSON, який перевизначає значення теми накладки, щоб зовнішні інструменти оформлення могли керувати накладкою.",
+        "notFound": "Файлу теми немає. Створіть його за цим шляхом, щоб перевизначити значення теми накладки.",
+        "active": "Активний — цей файл задає {{count}} з 9 значень.",
+        "reload": "Перезавантажити",
+        "copy": "Скопіювати тему як JSON",
+        "copied": "Скопійовано",
+        "lockedDescription": "Задано файлом теми. Змініть overlay_theme.json або вилучіть цей ключ, щоб редагувати значення тут.",
+        "problemsTitle": "Проблеми у файлі теми:",
+        "moreDiagnostics": "…і ще {{count}}.",
+        "newerVersion": "Цей файл теми створено новішою версією Handy. Значення, яких ця версія не розуміє, було проігноровано.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "Файл теми не є коректним JSON.",
+          "unknownKey": "Невідомий ключ пропущено: {{key}}",
+          "wrongType": "\"{{key}}\" має неправильний тип і був пропущений.",
+          "invalidColor": "\"{{key}}\" не є коректним кольором і був пропущений.",
+          "outOfBounds": "\"{{key}}\" вийшов за дозволений діапазон і був обмежений.",
+          "unreadable": "Не вдалося прочитати файл теми."
         }
       }
     },

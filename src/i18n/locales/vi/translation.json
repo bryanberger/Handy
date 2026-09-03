@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "Chung",
-    "appearance": "Appearance",
+    "appearance": "Giao diện",
     "models": "Mô hình",
     "advanced": "Nâng cao",
     "postProcessing": "Xử lý sau",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "Ứng dụng",
+        "overlay": "Lớp phủ",
+        "preview": "Xem trước",
+        "color": "Màu lớp phủ",
+        "material": "Chất liệu lớp phủ",
+        "size": "Kích thước và khoảng cách lớp phủ",
+        "themeFile": "Tệp giao diện"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "Đang chuẩn bị",
+          "recording": "Đang ghi âm",
+          "listening": "Đang lắng nghe",
+          "transcribing": "Đang chuyển đổi",
+          "processing": "Đang xử lý"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "Phát bản xem trước",
+        "pause": "Tạm dừng bản xem trước",
+        "showOnScreen": "Hiện trên màn hình",
+        "showOnScreenBusy": "Đang hiện…",
+        "showOnScreenBlocked": "Không khả dụng khi Handy đang ghi âm",
+        "sampleText": "Con cáo nâu nhanh nhẹn nhảy qua con chó lười, và Handy ghi lại điều đó.",
+        "glassNote": "Kính làm mờ mọi thứ phía sau lớp phủ. Bản xem trước này mô phỏng hiệu ứng đó trên một nền thay thế — hãy dùng Hiện trên màn hình để thấy hiệu ứng thật.",
+        "glassUnavailable": "Kính chỉ có trên macOS. Trên hệ thống này lớp phủ vẫn ở dạng Phẳng.",
+        "noneNote": "Lớp phủ đang tắt nên không có gì để xem trước. Hãy chọn Tối giản hoặc Trực tiếp ở trên.",
+        "scaledNote": "Bản xem trước hiển thị ở {{percent}}%"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "Đặt lại giao diện lớp phủ",
+        "title": "Đặt lại giao diện lớp phủ?",
+        "description": "Thao tác này khôi phục mọi màu sắc, kích thước và khoảng cách của lớp phủ về mặc định của Handy. Kiểu và vị trí lớp phủ của bạn không thay đổi.",
+        "descriptionWithThemeFile": "Thao tác này khôi phục về mặc định của Handy mọi màu sắc, kích thước và khoảng cách của lớp phủ không do tệp giao diện đặt. Kiểu và vị trí lớp phủ của bạn không thay đổi, và các giá trị do tệp giao diện đặt vẫn có hiệu lực.",
+        "confirm": "Đặt lại",
+        "cancel": "Hủy"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "Chất liệu",
+        "description": "Cách bề mặt lớp phủ được vẽ. Phẳng là bề mặt đục; Kính trong mờ và làm mờ mọi thứ phía sau.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "Phẳng",
+          "glass": "Kính",
+          "glassMacOnly": "Kính (chỉ macOS)"
         },
         "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "Chọn một màu",
+        "hexLabel": "Giá trị màu hex",
+        "resetLabel": "Đặt lại về mặc định"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "Màu nhấn",
+          "description": "Màu làm nổi bật: dạng sóng, chấm ghi âm, con trỏ và vòng quay xử lý."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "Bề mặt",
+          "description": "Màu nền của thẻ lớp phủ."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "Độ mờ đục của bề mặt",
+          "description": "Mức độ nhìn xuyên qua nền của thẻ."
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "Văn bản",
+          "description": "Màu chữ của thẻ, và màu gốc để pha mọi tông trung tính."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "Tỷ lệ kích thước",
+          "description": "Phóng to mọi kích thước trong thẻ cùng lúc — chiều rộng, chiều cao, đệm trong và cỡ chữ. Giá trị duy nhất làm thay đổi khoảng không mà lớp phủ chiếm trên màn hình."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "Bo góc",
+          "description": "Độ bo góc của thẻ."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "Đệm trong",
+          "description": "Đệm ngang của hàng điều khiển."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "Khoảng cách dạng sóng",
+          "description": "Khoảng cách giữa các thanh dạng sóng."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "Tệp giao diện",
+        "description": "Một tệp JSON tùy chọn ghi đè các giá trị giao diện lớp phủ, để các công cụ tạo giao diện bên ngoài có thể điều khiển lớp phủ.",
+        "notFound": "Không có tệp giao diện. Hãy tạo một tệp tại đường dẫn này để ghi đè các giá trị giao diện lớp phủ.",
+        "active": "Đang hoạt động — tệp này đặt {{count}} trong 9 giá trị.",
+        "reload": "Tải lại",
+        "copy": "Sao chép giao diện dạng JSON",
+        "copied": "Đã sao chép",
+        "lockedDescription": "Được đặt bởi tệp giao diện. Hãy sửa overlay_theme.json hoặc xóa khóa này để thay đổi tại đây.",
+        "problemsTitle": "Sự cố trong tệp giao diện:",
+        "moreDiagnostics": "…và {{count}} mục nữa.",
+        "newerVersion": "Tệp giao diện này được ghi bởi một phiên bản Handy mới hơn. Các giá trị mà phiên bản này không hiểu đã bị bỏ qua.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "Tệp giao diện không phải JSON hợp lệ.",
+          "unknownKey": "Đã bỏ qua khóa không xác định: {{key}}",
+          "wrongType": "\"{{key}}\" sai kiểu dữ liệu nên đã bị bỏ qua.",
+          "invalidColor": "\"{{key}}\" không phải là màu hợp lệ nên đã bị bỏ qua.",
+          "outOfBounds": "\"{{key}}\" nằm ngoài phạm vi cho phép nên đã được giới hạn lại.",
+          "unreadable": "Không thể đọc tệp giao diện."
         }
       }
     },

@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "Ogólne",
-    "appearance": "Appearance",
+    "appearance": "Wygląd",
     "models": "Modele",
     "advanced": "Zaawansowane",
     "postProcessing": "Postproces",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "Aplikacja",
+        "overlay": "Nakładka",
+        "preview": "Podgląd",
+        "color": "Kolor nakładki",
+        "material": "Materiał nakładki",
+        "size": "Rozmiar i odstępy nakładki",
+        "themeFile": "Plik motywu"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "Przygotowanie",
+          "recording": "Nagrywanie",
+          "listening": "Nasłuchiwanie",
+          "transcribing": "Transkrypcja",
+          "processing": "Przetwarzanie"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "Odtwórz podgląd",
+        "pause": "Wstrzymaj podgląd",
+        "showOnScreen": "Pokaż na ekranie",
+        "showOnScreenBusy": "Pokazywanie…",
+        "showOnScreenBlocked": "Niedostępne, gdy Handy nagrywa",
+        "sampleText": "Pchnąć w tę łódź jeża lub ośm skrzyń fig, a Handy to zapisze.",
+        "glassNote": "Szkło rozmywa to, co znajduje się za nakładką. Ten podgląd przybliża efekt na zastępczym tle — użyj opcji Pokaż na ekranie, aby zobaczyć prawdziwy efekt.",
+        "glassUnavailable": "Szkło jest dostępne tylko w macOS. W tym systemie nakładka pozostaje płaska.",
+        "noneNote": "Nakładka jest wyłączona, więc nie ma czego podglądać. Wybierz powyżej Minimalną lub Na żywo.",
+        "scaledNote": "Podgląd wyświetlany w {{percent}}%"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "Zresetuj motyw nakładki",
+        "title": "Zresetować motyw nakładki?",
+        "description": "Przywraca wszystkie kolory, rozmiary i odstępy nakładki do wartości domyślnych Handy. Styl i pozycja nakładki nie zmieniają się.",
+        "descriptionWithThemeFile": "Przywraca do wartości domyślnych Handy wszystkie kolory, rozmiary i odstępy nakładki, które nie są ustawione przez plik motywu. Styl i pozycja nakładki nie zmieniają się, a wartości z pliku motywu nadal obowiązują.",
+        "confirm": "Zresetuj",
+        "cancel": "Anuluj"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "Materiał",
+        "description": "Sposób renderowania powierzchni nakładki. Płaski to powierzchnia nieprzezroczysta; Szkło jest półprzezroczyste i rozmywa to, co znajduje się za nim.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "Płaski",
+          "glass": "Szkło",
+          "glassMacOnly": "Szkło (tylko macOS)"
         },
         "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "Wybierz kolor",
+        "hexLabel": "Szesnastkowa wartość koloru",
+        "resetLabel": "Przywróć wartość domyślną"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "Akcent",
+          "description": "Kolor wyróżnienia: fala dźwiękowa, kropka nagrywania, kursor i wskaźnik ładowania."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "Powierzchnia",
+          "description": "Kolor tła karty nakładki."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "Krycie powierzchni",
+          "description": "Jak bardzo prześwituje tło karty."
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "Tekst",
+          "description": "Kolor pierwszego planu karty i baza, z której mieszane są wszystkie neutralne odcienie."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "Skala rozmiaru",
+          "description": "Skaluje wszystkie wymiary karty naraz — szerokości, wysokości, odstępy wewnętrzne i tekst. Jedyna wartość, która zmienia ilość miejsca zajmowanego przez nakładkę na ekranie."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "Zaokrąglenie rogów",
+          "description": "Promień zaokrąglenia rogów karty."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "Odstęp wewnętrzny",
+          "description": "Poziomy odstęp wewnętrzny wiersza kontrolek."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "Odstęp fali",
+          "description": "Odstęp między słupkami fali dźwiękowej."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "Plik motywu",
+        "description": "Opcjonalny plik JSON, który nadpisuje wartości motywu nakładki, dzięki czemu zewnętrzne narzędzia do motywów mogą sterować nakładką.",
+        "notFound": "Brak pliku motywu. Utwórz go w tej lokalizacji, aby nadpisać wartości motywu nakładki.",
+        "active": "Aktywny — ten plik ustawia {{count}} z 9 wartości.",
+        "reload": "Wczytaj ponownie",
+        "copy": "Kopiuj motyw jako JSON",
+        "copied": "Skopiowano",
+        "lockedDescription": "Ustawione przez plik motywu. Edytuj overlay_theme.json lub usuń ten klucz, aby zmienić wartość tutaj.",
+        "problemsTitle": "Problemy w pliku motywu:",
+        "moreDiagnostics": "…i {{count}} więcej.",
+        "newerVersion": "Ten plik motywu został zapisany przez nowszą wersję Handy. Wartości, których ta wersja nie rozpoznaje, zostały zignorowane.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "Plik motywu nie jest prawidłowym plikiem JSON.",
+          "unknownKey": "Zignorowano nieznany klucz: {{key}}",
+          "wrongType": "\"{{key}}\" ma nieprawidłowy typ i został zignorowany.",
+          "invalidColor": "\"{{key}}\" nie jest prawidłowym kolorem i został zignorowany.",
+          "outOfBounds": "\"{{key}}\" był poza dozwolonym zakresem i został ograniczony.",
+          "unreadable": "Nie udało się odczytać pliku motywu."
         }
       }
     },

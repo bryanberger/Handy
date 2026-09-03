@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "सामान्य",
-    "appearance": "Appearance",
+    "appearance": "दिखावट",
     "models": "मॉडल",
     "advanced": "ऐडवांस",
     "postProcessing": "पोस्ट प्रोसेस",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "ऐप्लिकेशन",
+        "overlay": "ओवरले",
+        "preview": "झलक",
+        "color": "ओवरले का रंग",
+        "material": "ओवरले का मटीरियल",
+        "size": "ओवरले का आकार और स्पेसिंग",
+        "themeFile": "थीम फ़ाइल"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "तैयार हो रहा है",
+          "recording": "रिकॉर्ड हो रहा है",
+          "listening": "सुन रहे हैं",
+          "transcribing": "ट्रांसक्राइब हो रहा है",
+          "processing": "प्रोसेस हो रहा है"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "झलक चलाएँ",
+        "pause": "झलक रोकें",
+        "showOnScreen": "स्क्रीन पर दिखाएँ",
+        "showOnScreenBusy": "दिखा रहे हैं…",
+        "showOnScreenBlocked": "Handy के रिकॉर्ड करते समय उपलब्ध नहीं",
+        "sampleText": "फुर्तीली भूरी लोमड़ी आलसी कुत्ते के ऊपर से कूदती है, और Handy उसे लिख लेता है।",
+        "glassNote": "ग्लास ओवरले के पीछे जो कुछ भी है उसे धुंधला कर देता है। यह झलक उसे एक नमूना पृष्ठभूमि पर लगभग दिखाती है — असली असर देखने के लिए स्क्रीन पर दिखाएँ का इस्तेमाल करें।",
+        "glassUnavailable": "ग्लास सिर्फ़ macOS पर उपलब्ध है। इस सिस्टम पर ओवरले फ्लैट ही रहेगा।",
+        "noneNote": "ओवरले बंद है, इसलिए दिखाने के लिए कुछ नहीं है। ऊपर मिनिमल या लाइव चुनें।",
+        "scaledNote": "झलक {{percent}}% पर दिखाई गई है"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "ओवरले थीम रीसेट करें",
+        "title": "ओवरले थीम रीसेट करें?",
+        "description": "इससे ओवरले के सभी रंग, आकार और स्पेसिंग Handy के डिफ़ॉल्ट पर लौट आते हैं। आपका ओवरले स्टाइल और जगह नहीं बदलती।",
+        "descriptionWithThemeFile": "इससे ओवरले के वे सभी रंग, आकार और स्पेसिंग Handy के डिफ़ॉल्ट पर लौट आते हैं जो थीम फ़ाइल से सेट नहीं हैं। आपका ओवरले स्टाइल और जगह नहीं बदलती, और थीम फ़ाइल से सेट किए गए मान लागू रहते हैं।",
+        "confirm": "रीसेट करें",
+        "cancel": "रद्द करें"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "मटीरियल",
+        "description": "ओवरले की सतह कैसे दिखाई जाती है। फ्लैट एक अपारदर्शी सतह है; ग्लास पारभासी है और अपने पीछे की चीज़ों को धुंधला करता है।",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "फ्लैट",
+          "glass": "ग्लास",
+          "glassMacOnly": "ग्लास (सिर्फ़ macOS)"
         },
         "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "रंग चुनें",
+        "hexLabel": "हेक्स रंग मान",
+        "resetLabel": "डिफ़ॉल्ट पर रीसेट करें"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "एक्सेंट",
+          "description": "हाइलाइट रंग: वेवफ़ॉर्म, रिकॉर्डिंग डॉट, कर्सर और स्पिनर।"
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "सरफ़ेस",
+          "description": "ओवरले कार्ड की पृष्ठभूमि का रंग।"
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "सरफ़ेस ओपेसिटी",
+          "description": "कार्ड की पृष्ठभूमि कितनी आर-पार दिखती है।"
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "टेक्स्ट",
+          "description": "कार्ड का अग्रभूमि रंग, और वह आधार जिससे हर न्यूट्रल शेड मिलाया जाता है।"
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "साइज़ स्केल",
+          "description": "कार्ड की सभी लंबाइयों को एक साथ बढ़ाता-घटाता है — चौड़ाई, ऊँचाई, पैडिंग और टेक्स्ट। यही एकमात्र मान है जो बदलता है कि ओवरले को स्क्रीन पर कितनी जगह चाहिए।"
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "कॉर्नर रेडियस",
+          "description": "कार्ड के कोनों की गोलाई।"
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "पैडिंग",
+          "description": "कंट्रोल पंक्ति की क्षैतिज पैडिंग।"
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "वेवफ़ॉर्म गैप",
+          "description": "वेवफ़ॉर्म की पट्टियों के बीच का अंतर।"
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "थीम फ़ाइल",
+        "description": "एक वैकल्पिक JSON फ़ाइल जो ओवरले थीम के मान बदल देती है, ताकि बाहरी थीम टूल ओवरले को चला सकें।",
+        "notFound": "कोई थीम फ़ाइल नहीं है। ओवरले थीम के मान बदलने के लिए इस पथ पर एक बनाएँ।",
+        "active": "सक्रिय — यह फ़ाइल 9 में से {{count}} मान सेट करती है।",
+        "reload": "फिर से लोड करें",
+        "copy": "थीम को JSON के रूप में कॉपी करें",
+        "copied": "कॉपी हो गया",
+        "lockedDescription": "थीम फ़ाइल से सेट है। यहाँ बदलने के लिए overlay_theme.json में बदलाव करें या इस कुंजी को हटाएँ।",
+        "problemsTitle": "थीम फ़ाइल में समस्याएँ:",
+        "moreDiagnostics": "…और {{count}} अन्य।",
+        "newerVersion": "यह थीम फ़ाइल Handy के किसी नए वर्शन ने लिखी है। जिन मानों को यह वर्शन नहीं समझता, उन्हें छोड़ दिया गया।",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "थीम फ़ाइल मान्य JSON नहीं है।",
+          "unknownKey": "अनजान कुंजी को छोड़ा गया: {{key}}",
+          "wrongType": "\"{{key}}\" का टाइप गलत है, इसलिए इसे छोड़ दिया गया।",
+          "invalidColor": "\"{{key}}\" मान्य रंग नहीं है, इसलिए इसे छोड़ दिया गया।",
+          "outOfBounds": "\"{{key}}\" अनुमत सीमा से बाहर था, इसलिए इसे सीमा तक लाया गया।",
+          "unreadable": "थीम फ़ाइल पढ़ी नहीं जा सकी।"
         }
       }
     },

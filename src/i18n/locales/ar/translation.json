@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "عام",
-    "appearance": "Appearance",
+    "appearance": "المظهر",
     "advanced": "متقدم",
     "postProcessing": "معالجة لاحقة",
     "history": "السجل",
@@ -238,109 +238,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "التطبيق",
+        "overlay": "التراكب",
+        "preview": "المعاينة",
+        "color": "لون التراكب",
+        "material": "خامة التراكب",
+        "size": "حجم التراكب وتباعده",
+        "themeFile": "ملف السمة"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "التحضير",
+          "recording": "التسجيل",
+          "listening": "الاستماع",
+          "transcribing": "التفريغ",
+          "processing": "المعالجة"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "تشغيل المعاينة",
+        "pause": "إيقاف المعاينة مؤقتاً",
+        "showOnScreen": "عرض على الشاشة",
+        "showOnScreenBusy": "جارٍ العرض…",
+        "showOnScreenBlocked": "غير متاح أثناء تسجيل Handy",
+        "sampleText": "الثعلب البني السريع يقفز فوق الكلب الكسول، و Handy يكتب ذلك.",
+        "glassNote": "الزجاج يشوّش ما خلف التراكب. تعرض هذه المعاينة تقريباً لذلك فوق خلفية بديلة — استخدم عرض على الشاشة لرؤية التأثير الحقيقي.",
+        "glassUnavailable": "الزجاج متاح على macOS فقط. يبقى التراكب مسطّحاً على هذا النظام.",
+        "noneNote": "التراكب مغلق، لذا لا يوجد ما يمكن معاينته. اختر مبسط أو مباشر بالأعلى.",
+        "scaledNote": "المعاينة معروضة بنسبة {{percent}}%"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "إعادة تعيين سمة التراكب",
+        "title": "إعادة تعيين سمة التراكب؟",
+        "description": "يعيد هذا كل ألوان التراكب وأحجامه وتباعده إلى قيم Handy الافتراضية. لن يتغير نمط التراكب ولا موضعه.",
+        "descriptionWithThemeFile": "يعيد هذا كل ألوان التراكب وأحجامه وتباعده التي لم يحددها ملف السمة إلى قيم Handy الافتراضية. لن يتغير نمط التراكب ولا موضعه، وتبقى القيم التي حددها ملف السمة سارية.",
+        "confirm": "إعادة تعيين",
+        "cancel": "إلغاء"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "الخامة",
+        "description": "كيفية عرض سطح التراكب. المسطّح سطح معتم؛ والزجاج شبه شفاف ويشوّش ما خلفه.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "مسطّح",
+          "glass": "زجاج",
+          "glassMacOnly": "زجاج (على macOS فقط)"
         },
         "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "اختيار لون",
+        "hexLabel": "قيمة اللون السداسية عشرية",
+        "resetLabel": "إعادة التعيين إلى الافتراضي"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "لون التمييز",
+          "description": "لون الإبراز: الموجة الصوتية، ونقطة التسجيل، ومؤشر الكتابة، ومؤشر الانتظار."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "السطح",
+          "description": "لون خلفية بطاقة التراكب."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "عتامة السطح",
+          "description": "مدى شفافية خلفية البطاقة."
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "النص",
+          "description": "لون مقدمة البطاقة، والأساس الذي تُمزج منه كل الدرجات المحايدة."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "مقياس الحجم",
+          "description": "يكبّر كل أبعاد البطاقة دفعة واحدة — العروض والارتفاعات والتباعد الداخلي والخط. القيمة الوحيدة التي تغيّر مساحة التراكب على الشاشة."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "استدارة الزوايا",
+          "description": "استدارة زوايا البطاقة."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "التباعد الداخلي",
+          "description": "التباعد الداخلي الأفقي لصف عناصر التحكم."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "تباعد الموجة",
+          "description": "المسافة بين أعمدة الموجة الصوتية."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "ملف السمة",
+        "description": "ملف JSON اختياري يتجاوز قيم سمة التراكب، بحيث تستطيع أدوات التنسيق الخارجية التحكم في التراكب.",
+        "notFound": "لا يوجد ملف سمة. أنشئ ملفاً في هذا المسار لتجاوز قيم سمة التراكب.",
+        "active": "نشط — يحدد هذا الملف {{count}} من 9 قيم.",
+        "reload": "إعادة التحميل",
+        "copy": "نسخ السمة بصيغة JSON",
+        "copied": "تم النسخ",
+        "lockedDescription": "محدد من ملف السمة. عدّل overlay_theme.json أو احذف هذا المفتاح لتغييره من هنا.",
+        "problemsTitle": "مشكلات في ملف السمة:",
+        "moreDiagnostics": "…و{{count}} أخرى.",
+        "newerVersion": "كُتب ملف السمة هذا بإصدار أحدث من Handy. تم تجاهل القيم التي لا يفهمها هذا الإصدار.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "ملف السمة ليس JSON صالحاً.",
+          "unknownKey": "تم تجاهل مفتاح غير معروف: {{key}}",
+          "wrongType": "\"{{key}}\" من نوع غير صحيح وتم تجاهله.",
+          "invalidColor": "\"{{key}}\" ليس لوناً صالحاً وتم تجاهله.",
+          "outOfBounds": "\"{{key}}\" كان خارج النطاق المسموح وتم حصره ضمنه.",
+          "unreadable": "تعذّرت قراءة ملف السمة."
         }
       }
     },

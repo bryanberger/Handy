@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "Genel",
-    "appearance": "Appearance",
+    "appearance": "Görünüm",
     "models": "Modeller",
     "advanced": "Gelişmiş",
     "postProcessing": "Son İşlem",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "Uygulama",
+        "overlay": "Ekran Katmanı",
+        "preview": "Önizleme",
+        "color": "Ekran Katmanı Rengi",
+        "material": "Ekran Katmanı Malzemesi",
+        "size": "Ekran Katmanı Boyutu ve Boşlukları",
+        "themeFile": "Tema Dosyası"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "Hazırlanıyor",
+          "recording": "Kaydediliyor",
+          "listening": "Dinleniyor",
+          "transcribing": "Transkribe ediliyor",
+          "processing": "İşleniyor"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "Önizlemeyi oynat",
+        "pause": "Önizlemeyi duraklat",
+        "showOnScreen": "Ekranda göster",
+        "showOnScreenBusy": "Gösteriliyor…",
+        "showOnScreenBlocked": "Handy kayıt yaparken kullanılamaz",
+        "sampleText": "Pijamalı hasta yağız şoföre çabucak güvendi, Handy de bunu yazıya döküyor.",
+        "glassNote": "Cam, ekran katmanının arkasındaki her şeyi bulanıklaştırır. Bu önizleme etkiyi temsili bir arka plan üzerinde yaklaşık olarak gösterir — gerçek etkiyi görmek için Ekranda göster'i kullanın.",
+        "glassUnavailable": "Cam yalnızca macOS'te kullanılabilir. Bu sistemde ekran katmanı Düz kalır.",
+        "noneNote": "Ekran katmanı kapalı, bu yüzden önizlenecek bir şey yok. Yukarıdan Sade veya Canlı seçin.",
+        "scaledNote": "Önizleme %{{percent}} boyutunda gösteriliyor"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "Ekran katmanı temasını sıfırla",
+        "title": "Ekran katmanı teması sıfırlansın mı?",
+        "description": "Bu işlem ekran katmanının tüm renklerini, boyutlarını ve boşluklarını Handy'nin varsayılan değerlerine döndürür. Ekran katmanı stiliniz ve konumunuz değişmez.",
+        "descriptionWithThemeFile": "Bu işlem, ekran katmanının tema dosyası tarafından ayarlanmayan tüm renklerini, boyutlarını ve boşluklarını Handy'nin varsayılan değerlerine döndürür. Ekran katmanı stiliniz ve konumunuz değişmez, tema dosyasındaki değerler geçerli kalır.",
+        "confirm": "Sıfırla",
+        "cancel": "İptal"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "Malzeme",
+        "description": "Ekran katmanı yüzeyinin nasıl çizileceği. Düz opak bir yüzeydir; Cam yarı saydamdır ve arkasındaki her şeyi bulanıklaştırır.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "Düz",
+          "glass": "Cam",
+          "glassMacOnly": "Cam (yalnızca macOS)"
         },
         "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "Bir renk seçin",
+        "hexLabel": "Onaltılık renk değeri",
+        "resetLabel": "Varsayılana sıfırla"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "Vurgu",
+          "description": "Vurgu rengi: dalga formu, kayıt noktası, imleç ve yükleme göstergesi."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "Yüzey",
+          "description": "Ekran katmanı kartının arka plan rengi."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "Yüzey Opaklığı",
+          "description": "Kartın arka planının ne kadar saydam olduğu."
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "Metin",
+          "description": "Kartın ön plan rengi ve tüm nötr tonların karıştırıldığı temel renk."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "Boyut Ölçeği",
+          "description": "Karttaki tüm uzunlukları aynı anda ölçekler — genişlikler, yükseklikler, iç boşluklar ve yazı. Ekran katmanının ekranda ne kadar yer kapladığını değiştiren tek değer."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "Köşe Yarıçapı",
+          "description": "Kartın köşe yarıçapı."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "İç Boşluk",
+          "description": "Denetim satırının yatay iç boşluğu."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "Dalga Formu Aralığı",
+          "description": "Dalga formu çubukları arasındaki boşluk."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "Tema dosyası",
+        "description": "Ekran katmanı temasının değerlerini geçersiz kılan isteğe bağlı bir JSON dosyası; böylece harici tema araçları ekran katmanını yönetebilir.",
+        "notFound": "Tema dosyası yok. Ekran katmanı teması değerlerini geçersiz kılmak için bu yolda bir dosya oluşturun.",
+        "active": "Etkin — bu dosya 9 değerden {{count}} tanesini ayarlıyor.",
+        "reload": "Yeniden yükle",
+        "copy": "Temayı JSON olarak kopyala",
+        "copied": "Kopyalandı",
+        "lockedDescription": "Tema dosyası tarafından ayarlandı. Burada değiştirmek için overlay_theme.json dosyasını düzenleyin veya bu anahtarı kaldırın.",
+        "problemsTitle": "Tema dosyasındaki sorunlar:",
+        "moreDiagnostics": "…ve {{count}} tane daha.",
+        "newerVersion": "Bu tema dosyası Handy'nin daha yeni bir sürümü tarafından yazılmış. Bu sürümün anlamadığı değerler yok sayıldı.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "Tema dosyası geçerli bir JSON değil.",
+          "unknownKey": "Bilinmeyen anahtar yok sayıldı: {{key}}",
+          "wrongType": "\"{{key}}\" yanlış türde ve yok sayıldı.",
+          "invalidColor": "\"{{key}}\" geçerli bir renk değil ve yok sayıldı.",
+          "outOfBounds": "\"{{key}}\" izin verilen aralığın dışındaydı ve sınıra çekildi.",
+          "unreadable": "Tema dosyası okunamadı."
         }
       }
     },

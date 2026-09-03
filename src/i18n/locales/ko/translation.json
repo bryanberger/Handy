@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "일반",
-    "appearance": "Appearance",
+    "appearance": "모양",
     "models": "모델",
     "advanced": "고급",
     "postProcessing": "후처리",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "애플리케이션",
+        "overlay": "오버레이",
+        "preview": "미리보기",
+        "color": "오버레이 색상",
+        "material": "오버레이 재질",
+        "size": "오버레이 크기 및 간격",
+        "themeFile": "테마 파일"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "준비 중",
+          "recording": "녹음 중",
+          "listening": "듣는 중",
+          "transcribing": "변환 중",
+          "processing": "처리 중"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "미리보기 재생",
+        "pause": "미리보기 일시정지",
+        "showOnScreen": "화면에 표시",
+        "showOnScreenBusy": "표시 중…",
+        "showOnScreenBlocked": "Handy가 녹음 중일 때는 사용할 수 없습니다",
+        "sampleText": "재빠른 갈색 여우가 게으른 개를 뛰어넘고, Handy가 그것을 받아씁니다.",
+        "glassNote": "유리는 오버레이 뒤에 있는 것을 흐리게 만듭니다. 이 미리보기는 대체 배경 위에서 근사적으로 보여주므로, 실제 효과는 '화면에 표시'로 확인하세요.",
+        "glassUnavailable": "유리는 macOS에서만 사용할 수 있습니다. 이 시스템에서는 오버레이가 플랫으로 유지됩니다.",
+        "noneNote": "오버레이가 꺼져 있어 미리볼 것이 없습니다. 위에서 '간단' 또는 '실시간'을 선택하세요.",
+        "scaledNote": "미리보기를 {{percent}}% 크기로 표시 중"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "오버레이 테마 재설정",
+        "title": "오버레이 테마를 재설정할까요?",
+        "description": "오버레이의 모든 색상, 크기, 간격을 Handy 기본값으로 되돌립니다. 오버레이 스타일과 위치는 변경되지 않습니다.",
+        "descriptionWithThemeFile": "테마 파일에서 설정하지 않은 오버레이의 모든 색상, 크기, 간격을 Handy 기본값으로 되돌립니다. 오버레이 스타일과 위치는 변경되지 않으며, 테마 파일에서 설정한 값은 그대로 적용됩니다.",
+        "confirm": "재설정",
+        "cancel": "취소"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "재질",
+        "description": "오버레이 표면을 그리는 방식입니다. 플랫은 불투명한 표면이고, 유리는 반투명하며 뒤에 있는 것을 흐리게 만듭니다.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "플랫",
+          "glass": "유리",
+          "glassMacOnly": "유리 (macOS 전용)"
         },
         "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "색상 선택",
+        "hexLabel": "16진수 색상 값",
+        "resetLabel": "기본값으로 재설정"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "강조",
+          "description": "강조 색상: 파형, 녹음 점, 커서, 로딩 표시."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "표면",
+          "description": "오버레이 카드의 배경색입니다."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "표면 불투명도",
+          "description": "카드 배경이 얼마나 비쳐 보이는지입니다."
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "텍스트",
+          "description": "카드의 전경색이며, 모든 중간 톤을 섞는 기준이 됩니다."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "크기 배율",
+          "description": "카드의 모든 길이를 한 번에 조절합니다 — 너비, 높이, 여백, 글자 크기. 오버레이가 화면에서 차지하는 공간을 바꾸는 유일한 값입니다."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "모서리 반경",
+          "description": "카드의 모서리 반경입니다."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "안쪽 여백",
+          "description": "컨트롤 행의 좌우 안쪽 여백입니다."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "파형 간격",
+          "description": "파형 막대 사이의 간격입니다."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "테마 파일",
+        "description": "외부 테마 도구가 오버레이를 제어할 수 있도록 오버레이 테마 값을 덮어쓰는 선택적 JSON 파일입니다.",
+        "notFound": "테마 파일이 없습니다. 오버레이 테마 값을 덮어쓰려면 이 경로에 파일을 만드세요.",
+        "active": "활성 — 이 파일이 9개 값 중 {{count}}개를 설정합니다.",
+        "reload": "다시 불러오기",
+        "copy": "테마를 JSON으로 복사",
+        "copied": "복사됨",
+        "lockedDescription": "테마 파일에서 설정되었습니다. 여기서 변경하려면 overlay_theme.json을 편집하거나 이 키를 제거하세요.",
+        "problemsTitle": "테마 파일의 문제:",
+        "moreDiagnostics": "…외 {{count}}개.",
+        "newerVersion": "이 테마 파일은 더 새로운 버전의 Handy에서 작성되었습니다. 이 버전이 이해하지 못하는 값은 무시되었습니다.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "테마 파일이 올바른 JSON이 아닙니다.",
+          "unknownKey": "알 수 없는 키를 무시했습니다: {{key}}",
+          "wrongType": "\"{{key}}\"의 형식이 잘못되어 무시되었습니다.",
+          "invalidColor": "\"{{key}}\"은(는) 올바른 색상이 아니어서 무시되었습니다.",
+          "outOfBounds": "\"{{key}}\"이(가) 허용 범위를 벗어나 범위 내로 조정되었습니다.",
+          "unreadable": "테마 파일을 읽을 수 없습니다."
         }
       }
     },

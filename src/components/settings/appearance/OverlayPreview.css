@@ -2,7 +2,7 @@
    / `.scard` / … rules) so the preview renders the exact classes OverlayCard
    emits. `RecordingOverlay.css`'s `@import "../styles/theme.css"` is already
    pulled into the main bundle by `App.css`, so this duplicates those `:root`
-   blocks — identical declarations, later wins, harmless (ticket 03 §3d). */
+   blocks — identical declarations, later wins, harmless. */
 @import "../../../overlay/RecordingOverlay.css";
 
 /* Reuse hazard 1: `.ov-stage` is `position: fixed; inset: 0` in the real
@@ -28,7 +28,7 @@
 
 /* The stand-in backdrop Glass renders over: a 45°, two-tone, ~28px-pitch band
    pattern at ~18% opacity, honest about being a stand-in rather than a lie
-   about the desktop behind the real overlay (ticket 03 §3b). */
+   about the desktop behind the real overlay. */
 .ov-preview-stage[data-material="glass"] {
   background-image: repeating-linear-gradient(
     45deg,

@@ -4,10 +4,10 @@ import { INHERIT_ALL } from "@/lib/overlayTheme";
 import { mergeDraft, parseComputedColor } from "./useOverlayThemeVars";
 
 /**
- * Unit tests for `mergeDraft`, which implements the file-owned locking rule
- * from ticket 08 §3d: `owned_keys.includes(key) ? resolved.theme[key] :
- * (draft[key] ?? resolved.theme[key])`. A settings-level draft must never
- * outrank a token the theme file owns.
+ * Unit tests for `mergeDraft`, which implements the file-owned locking rule:
+ * `owned_keys.includes(key) ? resolved.theme[key] : (draft[key] ??
+ * resolved.theme[key])`. A settings-level draft must never outrank a token
+ * the theme file owns.
  */
 
 describe("mergeDraft", () => {

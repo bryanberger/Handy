@@ -86,10 +86,11 @@ pub fn show_glass(app: &AppHandle, radius: f64) {
 #[cfg(not(target_os = "macos"))]
 pub fn show_glass(_app: &AppHandle, _radius: f64) {}
 
-/// Animate the panel frame to `size`, keeping the anchored screen edge and
-/// the horizontal centre fixed, set the radius, and reveal the glass view.
-/// `duration_ms == 0` — and macOS "Reduce motion", and `HANDY_GLASS_SNAP=1`
-/// — snap instead of animating.
+/// Move the panel frame to `size`, keeping the anchored screen edge and the
+/// horizontal centre fixed, set the radius, and reveal the glass view.
+///
+/// Snaps by default; `duration_ms` only animates when `HANDY_GLASS_MORPH=1`
+/// opts the native animation in. See `morph_duration_ms`.
 #[cfg(target_os = "macos")]
 pub fn morph_frame(app: &AppHandle, size: (f64, f64), radius: f64, duration_ms: u32) {
     native::morph_frame(app, size, radius, duration_ms);
@@ -239,7 +240,11 @@ mod native {
     pub(super) fn morph_frame(app: &AppHandle, size: (f64, f64), radius: f64, duration_ms: u32) {
         let overlay_position = crate::settings::get_settings(app).overlay_position;
         on_window(app, move |window, _mtm| {
-            let duration_ms = if reduce_motion() { 0 } else { duration_ms };
+            let duration_ms = morph_duration_ms(
+                duration_ms,
+                morph_opted_in(),
+                NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceMotion(),
+            );
             let (width, height) = size;
             let old = window.frame();
             // Horizontal centre fixed; the anchored screen edge (bottom for a
@@ -326,14 +331,29 @@ mod native {
         NSAnimationContext::endGrouping();
     }
 
-    /// Whether the frame morph should snap instead of animate: macOS
-    /// "Reduce motion", or the `HANDY_GLASS_SNAP=1` escape hatch for A/B
-    /// testing whether WebKit keeps up with the native animation. A native
-    /// *window* animation did not exist before Glass, so a user who has asked
-    /// for less motion should not get one from it.
-    fn reduce_motion() -> bool {
-        crate::utils::env_flag_enabled("HANDY_GLASS_SNAP")
-            || NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceMotion()
+    /// How long the frame morph may actually take.
+    ///
+    /// It snaps by default. The native window and its blur reach the new
+    /// shape a frame or two before WebKit repaints the card into it, which
+    /// shows as a bare blurred rim along the growing edge — measured at up to
+    /// 17 pt for about 200 ms of the 460 ms Live open. Snapping has no rim in
+    /// any frame.
+    ///
+    /// `HANDY_GLASS_MORPH=1` opts the animation back in, so the two can be
+    /// compared on real hardware. macOS "Reduce motion" snaps either way: a
+    /// native *window* animation did not exist before Glass, so a user who
+    /// has asked for less motion should not get one from it.
+    fn morph_duration_ms(requested_ms: u32, morph_opted_in: bool, reduce_motion: bool) -> u32 {
+        if morph_opted_in && !reduce_motion {
+            requested_ms
+        } else {
+            0
+        }
+    }
+
+    /// Whether this run has opted into the native frame animation.
+    fn morph_opted_in() -> bool {
+        crate::utils::env_flag_enabled("HANDY_GLASS_MORPH")
     }
 
     fn store_glass_view(ptr: usize) {
@@ -406,5 +426,34 @@ mod native {
             let window: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
             f(window, mtm);
         });
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::morph_duration_ms;
+        use crate::overlay::CARD_MORPH_MS;
+
+        /// The default the visual sign-off settled on: the window and its blur
+        /// reach the new shape in the same frame the card does, with no bare
+        /// frosted rim along the growing edge.
+        #[test]
+        fn the_frame_snaps_unless_the_animation_is_opted_into() {
+            assert_eq!(morph_duration_ms(CARD_MORPH_MS, false, false), 0);
+            assert_eq!(morph_duration_ms(2000, false, false), 0);
+        }
+
+        #[test]
+        fn opting_in_uses_the_duration_the_card_reported() {
+            assert_eq!(morph_duration_ms(CARD_MORPH_MS, true, false), CARD_MORPH_MS);
+            // A report asking for a snap still snaps.
+            assert_eq!(morph_duration_ms(0, true, false), 0);
+        }
+
+        /// A native window animation did not exist before Glass, so Reduce
+        /// motion outranks the opt-in rather than being overridden by it.
+        #[test]
+        fn reduce_motion_snaps_even_when_the_animation_is_opted_into() {
+            assert_eq!(morph_duration_ms(CARD_MORPH_MS, true, true), 0);
+        }
     }
 }

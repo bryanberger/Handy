@@ -1,9 +1,9 @@
 //! Tauri commands for the overlay theme.
 //!
 //! These deliberately live here rather than in `shortcut/mod.rs`, where the
-//! other `change_*_setting` commands are: that file is upstream's busiest
-//! command file and this fork keeps new code in new files so it rebases
-//! cleanly. Anyone tidying this up should read that note first.
+//! other `change_*_setting` commands are: that file is the busiest command
+//! file in the tree, and new code kept in new files does not collide when
+//! this branch is rebased on upstream. Folding them in would trade that away.
 //!
 //! Whether a command is `async` is load-bearing, not stylistic: Tauri runs a
 //! non-`async` command inline on the IPC (main) thread and spawns an `async fn`

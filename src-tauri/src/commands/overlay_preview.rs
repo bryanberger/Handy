@@ -58,7 +58,7 @@ const STREAM_CHUNK_FRAMES: u32 = 6;
 
 /// Why a preview cannot start.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PreviewRefusal {
+enum PreviewRefusal {
     /// Handy is recording. The preview drives the same overlay a real session
     /// uses, so it must never interrupt one.
     Recording,
@@ -71,7 +71,7 @@ pub enum PreviewRefusal {
 impl PreviewRefusal {
     /// The message returned to the caller. English: it reaches the CLI and the
     /// log; the tab disables its button rather than rendering this.
-    pub fn message(self) -> &'static str {
+    fn message(self) -> &'static str {
         match self {
             PreviewRefusal::Recording => "Cannot preview the overlay while recording",
             PreviewRefusal::OverlayOff => "The overlay is turned off (Overlay Style: None)",
@@ -84,7 +84,7 @@ impl PreviewRefusal {
 ///
 /// Recording outranks everything — refusing for the right reason matters more
 /// than reporting the first problem found.
-pub fn preview_refusal(
+fn preview_refusal(
     is_recording: bool,
     style: OverlayStyle,
     preview_active: bool,
@@ -179,7 +179,7 @@ fn claim_preview(app: &AppHandle, style: OverlayStyle) -> Result<PreviewGuard, P
 ///
 /// A travelling wave under a fixed per-bar envelope: it reads as speech rather
 /// than as a test pattern, and every bar moves, so the accent is easy to judge.
-pub fn synthetic_levels(frame: u32) -> Vec<f32> {
+fn synthetic_levels(frame: u32) -> Vec<f32> {
     (0..16)
         .map(|bucket| {
             let bar = bucket as f32;
@@ -194,7 +194,7 @@ pub fn synthetic_levels(frame: u32) -> Vec<f32> {
 ///
 /// The Live panel is meant to look like a transcript arriving, so the preview
 /// reveals the sample sentence a few words at a time rather than all at once.
-pub fn stream_chunks(text: &str, count: usize) -> Vec<String> {
+fn stream_chunks(text: &str, count: usize) -> Vec<String> {
     let words: Vec<&str> = text.split_whitespace().collect();
     if count == 0 || words.is_empty() {
         return Vec::new();
@@ -220,7 +220,7 @@ pub async fn run_overlay_preview(app: AppHandle, sample_text: String) -> Result<
         refusal.message().to_string()
     })?;
 
-    debug!("Overlay preview starting ({:?})", style);
+    debug!("Overlay preview starting ({style:?})");
     let live = style == OverlayStyle::Live;
     if live {
         overlay::show_streaming_overlay(&app);
@@ -300,7 +300,7 @@ async fn drive_preview(app: &AppHandle, sample_text: &str, live: bool) -> Previe
 
 /// Show the real overlay for a few seconds, driven by synthetic audio.
 ///
-/// `sample_text` is the Live panel's transcript, passed in already translated so
+/// `sampleText` is the Live panel's transcript, passed in already translated so
 /// i18n stays entirely on the frontend. Resolves when the overlay is hidden
 /// again, so the caller can disable its button for the duration.
 #[tauri::command]
@@ -394,7 +394,7 @@ mod tests {
         assert_eq!(first.len(), 16);
         assert!(first.iter().all(|level| (0.0..=1.0).contains(level)));
         assert_ne!(
-            format!("{:?}", first),
+            format!("{first:?}"),
             format!("{:?}", synthetic_levels(4)),
             "the waveform must animate between frames"
         );

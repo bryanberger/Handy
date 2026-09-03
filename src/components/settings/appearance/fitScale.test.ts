@@ -2,10 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { cardFootprint, computeFit, type CardBaseMetrics } from "./fitScale";
 
 /**
- * Unit tests for the preview's fit-to-stage math (orchestrator reconciliation
- * to ticket 03 §4). `cardFootprint`'s base numbers are the contract's card
- * dimensions at scale 1 (ticket 02 §7 / 06 §2): compact 216×40 content
- * (`--ov-work-w` / `--ov-base-h`), Live open 392×(40+64+12) content
+ * Unit tests for the preview's fit-to-stage math. `cardFootprint`'s base
+ * numbers are the token contract's card dimensions at scale 1: compact 216×40
+ * content (`--ov-work-w` / `--ov-base-h`), Live open 392×(40+64+12) content
  * (`--ov-open-w` / `--ov-base-h` + `--ov-cap-max-h` + `--ov-cap-pad-y`), each
  * plus a scaled 1px border per side.
  */
@@ -31,7 +30,7 @@ describe("cardFootprint", () => {
     expect(height).toBe(42);
   });
 
-  test("Live at scale 1.5 matches 591x177 (02 §7's worked bound)", () => {
+  test("Live at scale 1.5 matches the contract's 591x177 bound", () => {
     const { width, height } = cardFootprint("live", 1.5, BASE);
     expect(width).toBeCloseTo(591, 5);
     expect(height).toBeCloseTo(177, 5);

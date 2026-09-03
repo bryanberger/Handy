@@ -13,8 +13,8 @@ import {
 
 /**
  * Unit tests for the preview driver's pure state machine. Every duration is
- * transcribed from ticket 03 §3a: Minimal totals 8.1s (0.8 + 3.7 + 1.6 + 1.4
- * + 0.6 gap), Live totals 7.7s (0.8 + 4.4 + 1.9 + 0.6 gap).
+ * the one the preview's own step tables declare: Minimal totals 8.1s (0.8 +
+ * 3.7 + 1.6 + 1.4 + 0.6 gap), Live totals 7.7s (0.8 + 4.4 + 1.9 + 0.6 gap).
  */
 
 describe("sequence durations", () => {

@@ -154,7 +154,8 @@ pub struct OverlayTheme {
     /// The card's foreground colour, and the base every neutral derives from.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub text: Option<HexColor>,
-    /// Flat or Glass. See [`effective_material`] for what is actually rendered.
+    /// Flat or Glass. Glass renders as Flat wherever it is unavailable, so
+    /// what is actually painted is the resolved theme's effective material.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub material: Option<Material>,
     /// One factor multiplying every length in the card, 0.80–1.50.
@@ -269,9 +270,9 @@ pub fn glass_support(app: &AppHandle) -> GlassSupport {
 /// What kind of thing the theme file got wrong.
 ///
 /// A stable, translatable identity for a diagnostic: the Appearance tab looks
-/// up an i18n string by code and passes [`ThemeFileDiagnostic::key`] as a
-/// parameter, so the user reads their own language while
-/// [`ThemeFileDiagnostic::message`] keeps the English detail for the log.
+/// up an i18n string by code and passes the diagnostic's `key` as a
+/// parameter, so the user reads their own language while `message` keeps the
+/// English detail for the log.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ThemeFileDiagnosticCode {
@@ -310,14 +311,13 @@ pub struct ThemeFileDiagnostic {
 
 /// What the theme file currently contributes.
 ///
-/// Populated by [`crate::overlay_theme_file`], which is the only thing that
-/// reads the file; everything downstream consumes this state instead of the
-/// document.
+/// Populated by the theme-file reader, which is the only thing that reads the
+/// file; everything downstream consumes this state instead of the document.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Type)]
 pub struct ThemeFileState {
     /// The file in effect, or the path Handy would read if one appeared.
     pub path: String,
-    /// Whether a theme file was actually found and read at [`Self::path`].
+    /// Whether a theme file was actually found and read at `path`.
     pub present: bool,
     /// The document's declared `version`, or `None` when it is absent or the
     /// file is not present. A missing version means 1.
@@ -331,10 +331,10 @@ pub struct ThemeFileState {
     /// token table's order, not the document's own key order — `serde_json`
     /// sorts an object's keys unless `preserve_order` is enabled, so document
     /// order is not recoverable here). Capped at a handful of entries for the
-    /// payload; see [`Self::diagnostics_total`] for the count before the cap.
+    /// payload; `diagnostics_total` is the count before the cap.
     /// Every diagnostic also reaches the log, uncapped.
     pub diagnostics: Vec<ThemeFileDiagnostic>,
-    /// How many diagnostics the reader found before [`Self::diagnostics`] was
+    /// How many diagnostics the reader found before `diagnostics` was
     /// capped. Equal to `diagnostics.len()` when nothing was capped, larger
     /// when the tab needs to say "…and N more", and `0` when the file is
     /// absent.
@@ -498,9 +498,9 @@ pub fn deliver(app: &AppHandle, resolved: &ResolvedOverlayTheme) {
         warn!("Failed to emit the resolved overlay theme: {error}");
     }
 
-    // The Material's native window effect is applied between these two steps
-    // once the Glass module exists: window slack, and therefore the window
-    // size, depends on it.
+    // One hop that both applies the Material's native window effect and
+    // resizes the window. They cannot be separated: window slack — and so the
+    // window size — is what the Material sets to zero under Glass.
     crate::utils::update_overlay_position_with_scale(app, resolved.theme.size_scale());
 }
 

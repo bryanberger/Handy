@@ -34,18 +34,31 @@ export function cardMorphMs(): number {
 }
 
 /**
+ * The Live card's two shape flags, from the two facts that decide them.
+ *
+ * The single derivation `OverlayCard` renders from and `cardShape` reports
+ * from, so the card on screen and the window behind it can never disagree:
+ * text always wins over the working spinner, so the panel never squishes a
+ * transcript while finalizing, and only a working stream with nothing to
+ * preserve collapses to the small pill.
+ */
+export function liveCardState(
+  hasText: boolean,
+  working: boolean,
+): { open: boolean; collapsed: boolean } {
+  return { open: hasText, collapsed: working && !hasText };
+}
+
+/**
  * Which of the five card shapes the overlay is currently drawing, from the
- * same primitive state `RecordingOverlay.tsx` renders from.
+ * same primitive state `OverlayCard` renders from.
  *
  * Must agree with `initial_card_shape` / `OverlayCardShape` in
  * `src-tauri/src/overlay.rs`; pinned there by
  * `initial_card_shape_matches_card_shape_ts`.
  *
- * Streaming mirrors `RecordingOverlay.tsx`'s own `open`/`collapsed`
- * derivation exactly (`open = hasText`, `collapsed = working && !hasText`):
- * text always wins over the working spinner, so the panel never squishes
- * while finalizing; an empty working stream is the collapsed working pill;
- * an idle stream (nothing captured yet) is the resting Live pill.
+ * An idle stream — nothing captured yet, no work running — is the resting
+ * Live pill.
  */
 export function cardShape(
   state: OverlayState,
@@ -55,8 +68,9 @@ export function cardShape(
   if (state === "streaming") {
     const hasText =
       streamText.committed.length > 0 || streamText.tentative.length > 0;
-    if (hasText) return "live_open";
-    if (phase === "working") return "live_working";
+    const { open, collapsed } = liveCardState(hasText, phase === "working");
+    if (open) return "live_open";
+    if (collapsed) return "live_working";
     return "live_pill";
   }
   if (state === "transcribing" || state === "processing") {

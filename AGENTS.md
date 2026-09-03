@@ -60,6 +60,8 @@ For detailed platform-specific build setup, see [BUILD.md](BUILD.md).
 
 Handy is a cross-platform desktop speech-to-text application built with Tauri 2.x (Rust backend + React/TypeScript frontend).
 
+[CONTEXT.md](CONTEXT.md) is the glossary: the agreed name for each thing in the app's appearance and its recording overlay, and the words to avoid for it. Use those names in code, comments, commits and UI strings.
+
 ### Backend Structure (src-tauri/src/)
 
 - `lib.rs` - Main entry point, Tauri setup, manager initialization
@@ -75,7 +77,13 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `cli.rs` - CLI argument definitions (clap derive)
 - `shortcut.rs` - Global keyboard shortcut handling
 - `settings.rs` - Application settings management
-- `overlay.rs` - Recording overlay window (platform-specific)
+- `overlay.rs` - Recording overlay window (platform-specific), including its native geometry
+- `overlay_theme.rs` - Overlay theme tokens, the file/settings/inherit resolver, and delivery
+- `overlay_theme_file.rs` - Reads `overlay_theme.json` (see the README's Overlay Theme File section)
+- `overlay_glass.rs` - The macOS Glass material: one `NSVisualEffectView` and the native frame morph
+- `commands/overlay_theme.rs` - Persist, read and reload the overlay theme
+- `commands/overlay_preview.rs` - Drive the real overlay from synthetic audio (`--preview-overlay`)
+- `commands/overlay_card.rs` - Receives the overlay page's card-shape reports
 - `signal_handle.rs` - `send_transcription_input()` reusable function
 - `utils.rs` - Platform detection helpers
 
@@ -84,15 +92,21 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `App.tsx` - Main component with onboarding flow
 - `components/` - React UI components:
   - `settings/` - Settings UI
+  - `settings/appearance/` - Appearance tab: app theme, overlay theme tokens, preview, theme file
   - `model-selector/` - Model management interface
   - `onboarding/` - First-run experience
   - `overlay/` - Recording overlay UI
   - `update-checker/` - App update notifications
   - `shared/`, `ui/`, `icons/`, `footer/` - Shared components
 - `hooks/useSettings.ts` - Settings state management hook
+- `hooks/useResolvedOverlayTheme.ts` - Subscribes the settings window to the resolved overlay theme
 - `stores/settingsStore.ts` - Zustand store for settings
 - `bindings.ts` - Auto-generated Tauri type bindings (via tauri-specta)
 - `overlay/` - Recording overlay window entry point
+  - `OverlayCard.tsx` - The card's markup, rendered by both the overlay and the preview
+  - `cardShape.ts` - Which of the five card shapes is on screen, and the Live open/collapsed rule
+  - `useCardShapeReporter.ts` - Reports that shape to the backend (Glass only)
+- `lib/overlayTheme.ts` - The apply layer: a resolved overlay theme to CSS custom properties, shared by the overlay and the preview
 - `lib/types.ts` - Shared TypeScript type definitions
 
 ### Key Architecture Patterns
@@ -208,6 +222,8 @@ Access debug features: `Cmd+Shift+D` (macOS) or `Ctrl+Shift+D` (Windows/Linux)
 - **Windows**: Vulkan acceleration, code signing
 - **Linux**: OpenBLAS + Vulkan, limited Wayland support, overlay uses GTK layer shell (disable with `HANDY_NO_GTK_LAYER_SHELL=1`)
 - **Nix/NixOS**: the Nix package sets `HANDY_DISABLE_UPDATER=1` to force-disable the self-updater at runtime without touching the persisted setting (self-update can't work against an immutable `/nix/store`)
+- **macOS Glass**: the overlay window snaps between card shapes, because the native frame animation leads WebKit's repaint and briefly shows a bare blurred rim. `HANDY_GLASS_MORPH=1` opts the animation back in for comparison on real hardware; macOS "Reduce motion" snaps either way
+- **Overlay theme file**: `HANDY_OVERLAY_THEME_FILE=<path>` names the `overlay_theme.json` Handy reads. It takes a path, not a flag, and it is exclusive — when set, no other location is tried, and a missing target is a warning rather than a silent fallback
 
 ## Troubleshooting
 

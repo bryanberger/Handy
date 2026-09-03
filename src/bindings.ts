@@ -967,7 +967,7 @@ async reloadOverlayThemeFile() : Promise<Result<ResolvedOverlayTheme, string>> {
 /**
  * Show the real overlay for a few seconds, driven by synthetic audio.
  * 
- * `sample_text` is the Live panel's transcript, passed in already translated so
+ * `sampleText` is the Live panel's transcript, passed in already translated so
  * i18n stays entirely on the frontend. Resolves when the overlay is hidden
  * again, so the caller can disable its button for the duration.
  */
@@ -987,7 +987,7 @@ async previewOverlayOnScreen(sampleText: string) : Promise<Result<null, string>>
  * size scale. Reports are coalesced by shape identity, not debounced by
  * time, so a repeated report costs nothing and a real change never waits.
  * 
- * `duration_ms` is how long the window is allowed to take to reach the new
+ * `durationMs` is how long the window is allowed to take to reach the new
  * shape, and must be between 0 (snap) and 2000 milliseconds; anything longer
  * is rejected rather than clamped, because it would leave a native window
  * animation running long after the card had settled.
@@ -1283,7 +1283,8 @@ surface_opacity?: number | null;
  */
 text?: HexColor | null; 
 /**
- * Flat or Glass. See [`effective_material`] for what is actually rendered.
+ * Flat or Glass. Glass renders as Flat wherever it is unavailable, so
+ * what is actually painted is the resolved theme's effective material.
  */
 material?: Material | null; 
 /**
@@ -1450,9 +1451,9 @@ message: string }
  * What kind of thing the theme file got wrong.
  * 
  * A stable, translatable identity for a diagnostic: the Appearance tab looks
- * up an i18n string by code and passes [`ThemeFileDiagnostic::key`] as a
- * parameter, so the user reads their own language while
- * [`ThemeFileDiagnostic::message`] keeps the English detail for the log.
+ * up an i18n string by code and passes the diagnostic's `key` as a
+ * parameter, so the user reads their own language while `message` keeps the
+ * English detail for the log.
  */
 export type ThemeFileDiagnosticCode = 
 /**
@@ -1487,9 +1488,8 @@ export type ThemeFileDiagnosticCode =
 /**
  * What the theme file currently contributes.
  * 
- * Populated by [`crate::overlay_theme_file`], which is the only thing that
- * reads the file; everything downstream consumes this state instead of the
- * document.
+ * Populated by the theme-file reader, which is the only thing that reads the
+ * file; everything downstream consumes this state instead of the document.
  */
 export type ThemeFileState = { 
 /**
@@ -1497,7 +1497,7 @@ export type ThemeFileState = {
  */
 path: string; 
 /**
- * Whether a theme file was actually found and read at [`Self::path`].
+ * Whether a theme file was actually found and read at `path`.
  */
 present: boolean; 
 /**
@@ -1519,12 +1519,12 @@ owned_keys: string[];
  * token table's order, not the document's own key order — `serde_json`
  * sorts an object's keys unless `preserve_order` is enabled, so document
  * order is not recoverable here). Capped at a handful of entries for the
- * payload; see [`Self::diagnostics_total`] for the count before the cap.
+ * payload; `diagnostics_total` is the count before the cap.
  * Every diagnostic also reaches the log, uncapped.
  */
 diagnostics: ThemeFileDiagnostic[]; 
 /**
- * How many diagnostics the reader found before [`Self::diagnostics`] was
+ * How many diagnostics the reader found before `diagnostics` was
  * capped. Equal to `diagnostics.len()` when nothing was capped, larger
  * when the tab needs to say "…and N more", and `0` when the file is
  * absent.

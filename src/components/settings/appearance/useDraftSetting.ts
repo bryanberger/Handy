@@ -85,7 +85,7 @@ export class DraftDebouncer<Key extends string, Value> {
  * clobbering the other; then sends the whole nine-token object through the
  * one `change_overlay_theme_setting` command, which is what keeps the
  * store's optimistic write and rollback (keyed on the single `overlay_theme`
- * `AppSettings` field) working unchanged. Ticket 08 §2b.
+ * `AppSettings` field) working unchanged.
  */
 export async function setOverlayThemeToken<K extends keyof OverlayTheme>(
   key: K,

@@ -16,7 +16,7 @@ import {
 /**
  * Unit tests for the apply layer. Run with `bun test src`.
  *
- * Every expected value is transcribed from the ticket tables — the token
+ * Every expected value is transcribed from the specification — the token
  * contract's derivation rules and worked example, and the Material model's
  * Glass neutrals — never from the implementation.
  */
@@ -37,7 +37,7 @@ function resolved(
       tokens: INHERIT_ALL,
       owned_keys: [],
       diagnostics: [],
-      // Added by slice 4's review, after this fixture was first written.
+      // Added with the theme file, after this fixture was first written.
       diagnostics_total: 0,
       stale: false,
     },

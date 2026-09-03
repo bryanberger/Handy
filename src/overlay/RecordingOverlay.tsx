@@ -1,4 +1,4 @@
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import React, { useEffect, useRef, useState } from "react";
 import "./RecordingOverlay.css";
 import { commands, events } from "@/bindings";
@@ -142,6 +142,12 @@ const RecordingOverlay: React.FC = () => {
         setPhase(payload.phase);
         if (payload.kind) setWorkKind(payload.kind);
       });
+
+      // Tauri delivers an event only to webviews already listening for it, so
+      // every show emitted before this point was dropped. Saying so lets the
+      // backend re-run one it missed — without this the first preview after a
+      // launch maps an empty overlay window.
+      void emit("overlay-webview-ready");
 
       return () => {
         unlistenShow();

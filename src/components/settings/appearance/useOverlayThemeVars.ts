@@ -23,8 +23,10 @@ export const EMPTY_FILE_STATE: ResolvedOverlayTheme["file"] = {
 /**
  * Merge a draft on top of a resolved theme, per key, skipping any key the
  * theme file owns — a settings-level edit must never outrank a file-owned
- * token (ticket 08 §3d). File-owned controls are disabled, so no draft can
- * exist for them in practice; this makes the rule true even if one did.
+ * token. File-owned controls are disabled, so no draft can exist for them in
+ * practice; this makes the rule true even if one did.
+ *
+ * Exported for the unit tests; nothing outside this file imports it.
  */
 export function mergeDraft(
   theme: OverlayTheme,
@@ -81,6 +83,8 @@ const RGB_FUNCTION = new RegExp(
  * opacity). Anything else — a percentage-channel form, a named color, a
  * `lab()` — returns `null`, and the caller shows a neutral placeholder rather
  * than a made-up hex.
+ *
+ * Exported for the unit tests; nothing outside this file imports it.
  */
 export function parseComputedColor(value: string): string | null {
   const colorFn = value.match(COLOR_SRGB);
@@ -118,9 +122,8 @@ export interface UseOverlayThemeVarsResult {
 
 /**
  * Turns (draft ∪ resolved) overlay-theme tokens into the preview's inline
- * style, plus the theme-aware "resolved default" readback ticket 03 §4 asks
- * for so an unset color field shows what it will actually inherit rather than
- * a hardcoded guess.
+ * style, plus the theme-aware "resolved default" readback, so an unset color
+ * field shows what it will actually inherit rather than a hardcoded guess.
  *
  * `remeasureSignal` should be a value that changes whenever something outside
  * `resolved`/`draft` could change what a custom property resolves to — the

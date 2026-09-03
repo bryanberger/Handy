@@ -4,8 +4,9 @@ use crate::settings;
 use crate::settings::{OverlayPosition, OverlayStyle};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
+use tauri::{AppHandle, Emitter, Listener, Manager, PhysicalPosition, PhysicalSize};
 
 #[cfg(not(target_os = "macos"))]
 use log::debug;
@@ -83,7 +84,9 @@ const CARD_LIVE_H: f64 = 40.0 + 64.0 + 12.0 + CARD_BORDER;
 /// `--ov-morph-ms`, the duration of `.scard`'s width and border-radius
 /// transitions. The overlay webview reads the same custom property and sends
 /// it with every card-shape report, so the native window-frame animation
-/// under Glass runs for exactly as long as the CSS morph would have.
+/// under Glass would run for exactly as long as the CSS morph does under
+/// Flat — it is opt-in (`HANDY_GLASS_MORPH=1`), because the window leads
+/// WebKit's repaint by a frame or two and the blur shows through.
 pub(crate) const CARD_MORPH_MS: u32 = 460;
 /// How long the card fades, in milliseconds: `--ov-fade-ms`, the duration of
 /// `.ov-fade`'s opacity transition. Under Glass the native blur has to fade
@@ -338,8 +341,8 @@ fn overlay_dimensions(shape: OverlayCardShape, scale: f64, material: Material) -
 /// The resolved `radius` token in px at `size_scale` 1: the persisted or
 /// inherited value, defaulting to the CSS token's own default (`--ov-radius:
 /// 24px`, `RecordingOverlay.css`) when unset. Read from the public field
-/// directly — `OverlayTheme` does not carry this as a method, which is out of
-/// this module's edit scope.
+/// directly, because `OverlayTheme` carries no accessor for it — unlike
+/// `size_scale`, whose clamp has to be shared.
 fn radius_token_px(theme: &crate::overlay_theme::OverlayTheme) -> f64 {
     const DEFAULT_RADIUS_PX: f64 = 24.0;
     theme.radius.map(f64::from).unwrap_or(DEFAULT_RADIUS_PX)
@@ -849,7 +852,7 @@ fn show_overlay_state_on_main(
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
         // Invalidate any delayed hide still in flight from a previous session
         // (see `hide_recording_overlay`).
-        OVERLAY_SHOW_GENERATION.fetch_add(1, Ordering::SeqCst);
+        let generation = OVERLAY_SHOW_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
         OVERLAY_SESSION_ACTIVE.store(true, Ordering::SeqCst);
 
         #[cfg(target_os = "linux")]
@@ -924,7 +927,20 @@ fn show_overlay_state_on_main(
             );
         }
 
-        let _ = overlay_window.emit("show-overlay", state);
+        {
+            // The emit and the record of it are one step, under the lock the
+            // readiness signal also takes: a signal landing between them would
+            // find an empty slot and leave this show unreplayed forever.
+            let mut pending = pending_show_slot();
+            if let Err(error) = overlay_window.emit("show-overlay", state) {
+                log::warn!("Failed to hand the '{state}' overlay state to the webview: {error}");
+            }
+            // The emit reaches the overlay page only if the page is already
+            // listening, so remember a show the page was too young to hear.
+            // Once it has ever been ready this stores nothing.
+            let webview_ready = OVERLAY_WEBVIEW_READY.load(Ordering::SeqCst);
+            *pending = pending_show_for(webview_ready, state, generation);
+        }
 
         // The glass view is revealed by the webview's first card-shape report
         // for this session, not here: at this point the webview has only just
@@ -936,7 +952,108 @@ fn show_overlay_state_on_main(
             let radius = shape_radius(shape, radius_token_px(&resolved.theme), scale);
             schedule_glass_fallback_reveal(app_handle, radius);
         }
+    } else {
+        log::warn!("Cannot show the '{state}' overlay: the overlay window does not exist");
     }
+}
+
+/// The event the overlay page emits once its listeners are registered.
+const OVERLAY_WEBVIEW_READY_EVENT: &str = "overlay-webview-ready";
+
+/// Whether the overlay page is listening yet.
+///
+/// Tauri hands an event only to webviews that already registered a listener
+/// for it, and the overlay page registers its own after its bundle has loaded
+/// — well after the window itself exists. A `show-overlay` emitted before
+/// that is dropped, which is what made the first `--preview-overlay` after a
+/// launch map a window with nothing painted in it.
+///
+/// Latched and never cleared: the page loads once, at startup, and lives as
+/// long as the process.
+static OVERLAY_WEBVIEW_READY: AtomicBool = AtomicBool::new(false);
+
+/// A show that reached the overlay window before its page was listening.
+#[derive(Debug, PartialEq, Eq)]
+struct PendingShow {
+    /// The state the show carried, verbatim: `"recording"`, `"streaming"`,
+    /// `"transcribing"` or `"processing"`.
+    state: String,
+    /// The [`OVERLAY_SHOW_GENERATION`] this show belongs to.
+    generation: u64,
+}
+
+/// The one show waiting on the overlay page, if any.
+static PENDING_SHOW: Mutex<Option<PendingShow>> = Mutex::new(None);
+
+/// What a show has to leave behind for the readiness signal.
+///
+/// A show the page actually received needs no replay — and clears whatever an
+/// earlier one left, so at most one show is ever pending.
+fn pending_show_for(webview_ready: bool, state: &str, generation: u64) -> Option<PendingShow> {
+    (!webview_ready).then(|| PendingShow {
+        state: state.to_string(),
+        generation,
+    })
+}
+
+/// Which show the readiness signal replays: the remembered one, unless the
+/// overlay has moved on since.
+///
+/// A hide clears the pending show outright; the generation catches the rest —
+/// a show that raced the readiness signal bumped the counter and reached the
+/// page on its own, so replaying the older state would put the wrong card on
+/// screen.
+fn show_to_replay(pending: Option<PendingShow>, generation: u64) -> Option<String> {
+    pending
+        .filter(|pending| pending.generation == generation)
+        .map(|pending| pending.state)
+}
+
+/// The pending-show slot, recovered from a poisoned lock: it holds a plain
+/// record with no invariant a panic could have left broken.
+fn pending_show_slot() -> std::sync::MutexGuard<'static, Option<PendingShow>> {
+    PENDING_SHOW
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+}
+
+/// Remember — or, with `None`, forget — the show waiting on the overlay page.
+fn set_pending_show(pending: Option<PendingShow>) {
+    *pending_show_slot() = pending;
+}
+
+/// Start listening for the overlay page's readiness signal.
+///
+/// Registered before the overlay window is built, so the signal cannot arrive
+/// before there is anything to catch it.
+pub fn listen_for_overlay_webview_ready(app_handle: &AppHandle) {
+    let handle = app_handle.clone();
+    app_handle.listen(OVERLAY_WEBVIEW_READY_EVENT, move |_| {
+        note_overlay_webview_ready(&handle);
+    });
+}
+
+/// The overlay page has registered its listeners: latch that, and re-run the
+/// show it was too young to hear, if there was one.
+fn note_overlay_webview_ready(app_handle: &AppHandle) {
+    // Latched and read out under one lock, so a show running concurrently
+    // either records itself before this take or sees the page as ready.
+    let pending = {
+        let mut slot = pending_show_slot();
+        OVERLAY_WEBVIEW_READY.store(true, Ordering::SeqCst);
+        slot.take()
+    };
+
+    let generation = OVERLAY_SHOW_GENERATION.load(Ordering::SeqCst);
+    let Some(state) = show_to_replay(pending, generation) else {
+        return;
+    };
+
+    log::debug!("Overlay page ready; re-running the '{state}' show it missed");
+    // Off the event's own thread: a show re-reads the theme file, which must
+    // not happen on the main thread.
+    let handle = app_handle.clone();
+    std::thread::spawn(move || show_overlay_state(&handle, &state));
 }
 
 /// True from the moment a show maps the overlay window until the hide that
@@ -1110,7 +1227,7 @@ fn update_overlay_position_on_main(app_handle: &AppHandle, scale: Option<f64>) {
 }
 
 /// Record a card-shape report from the overlay webview and, under Glass,
-/// animate or reveal the native blur to match.
+/// move and reveal the native blur to match.
 ///
 /// This is also where a Glass session's blur is first revealed: the report
 /// that arrives on the first frame of a session repeats the shape the show
@@ -1185,6 +1302,9 @@ pub fn hide_recording_overlay(app_handle: &AppHandle) {
         // This session is over as far as the Glass reveal is concerned, even
         // though the window stays mapped for the fade below.
         OVERLAY_SESSION_ACTIVE.store(false, Ordering::SeqCst);
+        // A show still waiting on the overlay page belongs to the session that
+        // is ending here, so it must never be replayed.
+        set_pending_show(None);
         // Emit event to trigger fade-out animation
         let _ = overlay_window.emit("hide-overlay", ());
         // Under Glass the blur is a native layer that takes no part in the
@@ -1204,9 +1324,9 @@ pub fn hide_recording_overlay(app_handle: &AppHandle) {
             // Nothing is on screen any more, so the window has no shape to
             // keep. Cleared here rather than when the hide is scheduled, so a
             // show that lands inside the 300 ms delay keeps the shape it just
-            // set (ticket 13's slice 3 review note: under zero slack, a stale
-            // shape left over from a finished Live session must not be what
-            // the next reposition sizes the window from).
+            // set. Under zero slack a stale shape left over from a finished
+            // Live session must not be what the next reposition sizes the
+            // window from.
             set_current_card_shape(OverlayCardShape::CompactRest);
             let _ = window_clone.hide();
         });
@@ -1365,8 +1485,8 @@ mod tests {
 
     /// The invariant Glass must not break when it sets the slack to zero: a
     /// Flat window covers the card at every scale. The card footprints are
-    /// the token contract's own numbers (02 §7, 06 §4), not a repeat of the
-    /// arithmetic under test.
+    /// the token contract's own numbers, not a repeat of the arithmetic under
+    /// test.
     #[test]
     fn overlay_window_always_covers_the_card() {
         for (shape, scale, card_width, card_height) in [
@@ -1499,6 +1619,36 @@ mod tests {
             OverlayCardShape::CompactWorking
         );
         assert_eq!(initial_card_shape("streaming"), OverlayCardShape::LivePill);
+    }
+
+    /// The race the first `--preview-overlay` after a launch used to lose: the
+    /// show reaches the window before the overlay page is listening, so it has
+    /// to be remembered rather than emitted and forgotten.
+    #[test]
+    fn a_show_the_overlay_page_cannot_hear_yet_is_remembered() {
+        assert_eq!(
+            pending_show_for(false, "recording", 7),
+            Some(PendingShow {
+                state: "recording".to_string(),
+                generation: 7,
+            })
+        );
+        assert_eq!(pending_show_for(true, "recording", 7), None);
+    }
+
+    #[test]
+    fn readiness_re_runs_the_show_that_was_missed() {
+        let pending = pending_show_for(false, "streaming", 3);
+        assert_eq!(show_to_replay(pending, 3), Some("streaming".to_string()));
+    }
+
+    /// Nothing pending, and a pending show the overlay has moved past, both
+    /// leave the screen alone.
+    #[test]
+    fn readiness_never_re_runs_a_stale_show() {
+        assert_eq!(show_to_replay(None, 3), None);
+        let pending = pending_show_for(false, "streaming", 3);
+        assert_eq!(show_to_replay(pending, 4), None);
     }
 
     /// The card constants above and the `--ov-*` block in RecordingOverlay.css

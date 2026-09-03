@@ -18,7 +18,7 @@ use tauri::AppHandle;
 /// size scale. Reports are coalesced by shape identity, not debounced by
 /// time, so a repeated report costs nothing and a real change never waits.
 ///
-/// `duration_ms` is how long the window is allowed to take to reach the new
+/// `durationMs` is how long the window is allowed to take to reach the new
 /// shape, and must be between 0 (snap) and 2000 milliseconds; anything longer
 /// is rejected rather than clamped, because it would leave a native window
 /// animation running long after the card had settled.

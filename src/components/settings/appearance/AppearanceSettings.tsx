@@ -30,12 +30,12 @@ import { ThemeFileGroup } from "./ThemeFileGroup";
 import { setOverlayThemeToken, useDraftSetting } from "./useDraftSetting";
 import { EMPTY_FILE_STATE, useOverlayThemeVars } from "./useOverlayThemeVars";
 
-/** Token contract defaults that do not vary with the app theme (ticket 02
- *  §2); mirrors `RecordingOverlay.css`'s `:root` block, which is the actual
- *  source of truth these must be kept in step with by hand. `surface_opacity`
- *  is excluded — its default depends on the effective Material and is read
- *  from the apply layer's own `SURFACE_OPACITY_INHERIT` instead, so it can
- *  never drift from what is actually painted. */
+/** Token contract defaults that do not vary with the app theme; mirrors
+ *  `RecordingOverlay.css`'s `:root` block, which is the actual source of
+ *  truth these must be kept in step with by hand. `surface_opacity` is
+ *  excluded — its default depends on the effective Material and is read from
+ *  the apply layer's own `SURFACE_OPACITY_INHERIT` instead, so it can never
+ *  drift from what is actually painted. */
 const STATIC_NUMERIC_DEFAULTS: Partial<Record<OverlayNumericKey, number>> = {
   size_scale: 1,
   radius: 24,
@@ -63,8 +63,8 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
  * (both reused unchanged from About/Advanced), a live preview, and the nine
  * overlay-theme tokens grouped as Color / Material / Size & Spacing, plus the
  * Theme File group. Groups 4 onward are driven by `OVERLAY_TOKEN_FIELDS`
- * rather than hardcoded, so ticket 02's token table is the only place a
- * token's shape is declared.
+ * rather than hardcoded, so that table is the only place a token's shape is
+ * declared.
  */
 export const AppearanceSettings: React.FC = () => (
   <ErrorBoundary context="Appearance tab">

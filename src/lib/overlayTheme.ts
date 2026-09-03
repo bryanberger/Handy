@@ -74,8 +74,8 @@ export const INHERIT_ALL: OverlayTheme = {
 /**
  * The surface alpha an unset `surface_opacity` resolves to, per Material.
  *
- * Flat's 0.98 is today's near-opaque card. Glass's 0.70 is the spike's
- * recommendation: enough tint to keep text legible, thin enough for the blur to
+ * Flat's 0.98 is today's near-opaque card. Glass's 0.70 was measured on the
+ * real blur: enough tint to keep text legible, thin enough for the blur to
  * read as blur.
  */
 export const SURFACE_OPACITY_INHERIT: Record<Material, number> = {

@@ -368,6 +368,10 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     // tauri-plugin-autostart elsewhere)
     autostart::apply_autostart(app_handle, settings.autostart_enabled);
 
+    // Before the overlay window exists, so the page's readiness signal cannot
+    // arrive with nothing listening for it.
+    utils::listen_for_overlay_webview_ready(app_handle);
+
     // Create the recording overlay window (hidden by default)
     utils::create_recording_overlay(app_handle);
 }
@@ -868,16 +872,28 @@ pub fn run(cli_args: CliArgs) {
                 // Runtime-only, like the flags above: it changes nothing that is
                 // persisted. The sample text cannot come from the frontend here,
                 // so the CLI's fixed English sentence is used.
+                //
+                // On its own OS thread, never `async_runtime::spawn`: this
+                // callback runs on the runtime worker the single-instance
+                // plugin has parked in its blocking accept loop, so a task
+                // spawned from here lands in that worker's LIFO slot, which no
+                // other worker may steal. It would then sit there until the
+                // next forwarded launch displaced it — every preview showing
+                // the previous invocation's, and the first one never showing
+                // at all. `block_on` from a plain thread enters the runtime
+                // itself, so the driver still gets its timer.
                 let handle = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(error) = commands::overlay_preview::run_overlay_preview(
-                        handle,
-                        commands::overlay_preview::CLI_PREVIEW_SAMPLE_TEXT.to_string(),
-                    )
-                    .await
-                    {
-                        log::warn!("--preview-overlay: {error}");
-                    }
+                std::thread::spawn(move || {
+                    tauri::async_runtime::block_on(async move {
+                        if let Err(error) = commands::overlay_preview::run_overlay_preview(
+                            handle,
+                            commands::overlay_preview::CLI_PREVIEW_SAMPLE_TEXT.to_string(),
+                        )
+                        .await
+                        {
+                            log::warn!("--preview-overlay: {error}");
+                        }
+                    });
                 });
             } else {
                 // A second process was launched without remote-control flags

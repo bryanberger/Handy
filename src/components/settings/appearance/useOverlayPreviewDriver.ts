@@ -1,3 +1,13 @@
+/**
+ * The Appearance tab's preview driver: a pure state machine over a fixed step
+ * sequence, plus the hook that runs it on an animation frame loop.
+ *
+ * The pure pieces — `MINIMAL_SEQUENCE`, `LIVE_SEQUENCE`, `pinnableStatesFor`,
+ * `totalDurationMs`, `stepAt`, `offsetFor`, `syntheticLevels`, `revealedText`
+ * and `cardPropsAt` — are exported for `useOverlayPreviewDriver.test.ts`;
+ * nothing outside this file imports them.
+ */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   OverlayStyle,
@@ -46,9 +56,7 @@ export const LIVE_SEQUENCE: readonly PreviewStep[] = [
   { name: "gap", durationMs: 600 },
 ];
 
-export function sequenceFor(
-  style: OverlayPreviewStyle,
-): readonly PreviewStep[] {
+function sequenceFor(style: OverlayPreviewStyle): readonly PreviewStep[] {
   return style === "live" ? LIVE_SEQUENCE : MINIMAL_SEQUENCE;
 }
 

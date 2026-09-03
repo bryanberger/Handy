@@ -19,7 +19,10 @@ const UNRESOLVED_PICKER_VALUE = "#808080";
 
 /** Accepts `#rrggbb`, `rrggbb` (missing `#`), and any case; anything else —
  *  including the 3/4/8-digit forms `<input type="color">` cannot express —
- *  fails to parse (ticket 02 §1: colors are `#RRGGBB` only, no alpha). */
+ *  fails to parse, because the token contract's colors are `#RRGGBB` only,
+ *  with no alpha.
+ *
+ *  Exported for the unit tests; nothing outside this file imports it. */
 export function normalizeHexInput(raw: string): string | null {
   const trimmed = raw.trim();
   const withHash = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;

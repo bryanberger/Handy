@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { StreamPhase, StreamTextEvent, StreamWorkKind } from "@/bindings";
+import { liveCardState } from "./cardShape";
 
 /**
  * `inert` is a standard HTML boolean attribute, but this project's pinned
@@ -176,12 +177,10 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
     const hasText =
       streamText.committed.length > 0 || streamText.tentative.length > 0;
     const working = phase === "working";
-    // Keep the panel open whenever there's text — even while finalizing — so the
-    // transcript stays put under a working spinner instead of collapsing and
-    // squishing the text mid-stream. Only fall back to the small working pill
-    // when there was no text to preserve.
-    const open = hasText;
-    const collapsed = working && !hasText;
+    // Shared with `cardShape`, which reports the same two flags to the backend
+    // so the native window under Glass morphs with the card rather than
+    // alongside it.
+    const { open, collapsed } = liveCardState(hasText, working);
 
     return (
       <div

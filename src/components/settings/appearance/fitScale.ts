@@ -1,11 +1,10 @@
 /**
  * The preview scales the card to fit its stage rather than tightening the
- * token contract's bounds (orchestrator reconciliation, ticket 03): at
- * `size_scale` 1.50 a Live card is 591×177 px, comfortably past the stage's
- * ~456×148 px box at the settings window's minimum width. Both numbers here
- * are computed, never hardcoded, from `getComputedStyle` of the stage
- * (`--ov-open-w`, `--ov-work-w`, `--ov-base-h`, `--ov-cap-max-h`) so they can
- * never drift from the CSS.
+ * token contract's bounds: at `size_scale` 1.50 a Live card is 591×177 px,
+ * comfortably past the stage's ~456×148 px box at the settings window's
+ * minimum width. Both numbers here are computed, never hardcoded, from
+ * `getComputedStyle` of the stage (`--ov-open-w`, `--ov-work-w`,
+ * `--ov-base-h`, `--ov-cap-max-h`) so they can never drift from the CSS.
  */
 
 import type { OverlayPreviewStyle } from "./useOverlayPreviewDriver";

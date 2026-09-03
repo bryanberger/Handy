@@ -15,9 +15,9 @@ import type {
 
 /** The settings-window theme as the v1 document a theming tool would read:
  *  only set tokens are emitted, so an all-inherit theme copies as
- *  `{"version": 1}` (ticket 07 §3). Keys are emitted in the contract's own
- *  order (`INHERIT_ALL` declares it) rather than whatever order the runtime
- *  object happens to carry, so the copied document is byte-identical to the
+ *  `{"version": 1}`. Keys are emitted in the contract's own order
+ *  (`INHERIT_ALL` declares it) rather than whatever order the runtime object
+ *  happens to carry, so the copied document is byte-identical to the
  *  contract's examples. Used by `OverlayPreview`'s "Copy theme as JSON"
  *  button; it lives here, beside the rest of the theme-file contract, rather
  *  than in a component file that imports CSS. */

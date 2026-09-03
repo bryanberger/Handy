@@ -29,7 +29,7 @@ The small floating window shown on screen while Handy records, transcribes, or p
 _Avoid_: HUD, widget, popup, indicator
 
 **Card**:
-The visible rounded rectangle the overlay draws inside its window — the pill in Minimal, the panel in Live. It is always smaller than the overlay window, which is transparent around it.
+The visible rounded rectangle the overlay draws inside its window — the pill in Minimal, the panel in Live. How much of the window it fills depends on the material: Flat leaves transparent slack around it, Glass makes the window the card exactly.
 _Avoid_: overlay window, box, container, bubble
 
 **Overlay style**:

@@ -37,9 +37,9 @@ export interface OverlayPreviewProps {
   direction: "ltr" | "rtl";
   previewTheme: ResolvedOverlayTheme;
   /** The settings-window theme on its own — what "Copy theme as JSON" puts on
-   *  the clipboard (ticket 07 §3), which is deliberately *not* `previewTheme`:
-   *  that one has the theme file's own values folded in, and copying those
-   *  back out would hand a tool author a document echoing its own input. */
+   *  the clipboard, which is deliberately *not* `previewTheme`: that one has
+   *  the theme file's own values folded in, and copying those back out would
+   *  hand a tool author a document echoing its own input. */
   settingsTheme: OverlayTheme;
   previewVars: CSSProperties;
   colorProbeRefs: Record<OverlayColorKey, React.RefObject<HTMLSpanElement>>;
@@ -53,8 +53,8 @@ export interface OverlayPreviewProps {
 
 /**
  * The preview card: a chip row that doubles as a scrubber, the play/pause and
- * "Show on screen" controls, the in-page mock stage, and the footer actions
- * (whole-theme reset, copy-as-JSON).
+ * "Show on screen" controls, the in-page stage the overlay is drawn on, and
+ * the footer actions (whole-theme reset, copy-as-JSON).
  */
 export const OverlayPreview: React.FC<OverlayPreviewProps> = ({
   style,

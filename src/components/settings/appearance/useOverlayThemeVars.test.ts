@@ -138,9 +138,9 @@ describe("parseComputedColor", () => {
 });
 
 /**
- * `sameStringMap` is the guard that keeps the preview's two layout effects —
- * the colour probes here and `OverlayPreview`'s fit measurement — from
- * re-firing (and setting state) on a render where nothing actually changed.
+ * `sameStringMap` is the guard that keeps the tab's colour readback — the
+ * probes here, and the theme vars they are read through — from re-firing (and
+ * setting state) on a render where nothing actually changed.
  *
  * Regression coverage for a real crash: dragging a Size & Spacing slider blanked
  * the Appearance tab with React's "Maximum update depth exceeded". The cause was

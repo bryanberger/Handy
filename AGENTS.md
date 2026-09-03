@@ -82,7 +82,7 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `overlay_theme_file.rs` - Reads `overlay_theme.json` (see the README's Overlay Theme File section)
 - `overlay_glass.rs` - The macOS Glass material: one `NSVisualEffectView` (which blur it draws is the `glass_material` token, a live setter on that same view) and the native frame morph
 - `commands/overlay_theme.rs` - Persist, read and reload the overlay theme
-- `commands/overlay_preview.rs` - Drive the real overlay from synthetic audio (`--preview-overlay`)
+- `commands/overlay_preview.rs` - Preview mode: drives the real overlay from synthetic audio, cycling or pinned to one state, until the Appearance tab stops it (also backs `--preview-overlay`, which stops itself)
 - `commands/overlay_card.rs` - Receives the overlay page's card-shape reports
 - `signal_handle.rs` - `send_transcription_input()` reusable function
 - `utils.rs` - Platform detection helpers
@@ -92,7 +92,7 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `App.tsx` - Main component with onboarding flow
 - `components/` - React UI components:
   - `settings/` - Settings UI
-  - `settings/appearance/` - Appearance tab: app theme, overlay theme tokens, preview, theme file
+  - `settings/appearance/` - Appearance tab: app theme, overlay theme tokens, on-screen preview, theme file
   - `model-selector/` - Model management interface
   - `onboarding/` - First-run experience
   - `overlay/` - Recording overlay UI
@@ -103,10 +103,10 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `stores/settingsStore.ts` - Zustand store for settings
 - `bindings.ts` - Auto-generated Tauri type bindings (via tauri-specta)
 - `overlay/` - Recording overlay window entry point
-  - `OverlayCard.tsx` - The card's markup, rendered by both the overlay and the preview
+  - `OverlayCard.tsx` - The card's markup, rendered by the overlay window
   - `cardShape.ts` - Which of the five card shapes is on screen, and the Live open/collapsed rule
   - `useCardShapeReporter.ts` - Reports that shape to the backend (Glass only)
-- `lib/overlayTheme.ts` - The apply layer: a resolved overlay theme to CSS custom properties, shared by the overlay and the preview
+- `lib/overlayTheme.ts` - The apply layer: a resolved overlay theme to CSS custom properties
 - `lib/types.ts` - Shared TypeScript type definitions
 
 ### Key Architecture Patterns

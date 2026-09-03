@@ -263,7 +263,7 @@
       "groups": {
         "app": "Applicazione",
         "overlay": "Overlay",
-        "preview": "Anteprima",
+        "preview": "Anteprima sullo schermo",
         "color": "Colore dell'overlay",
         "material": "Materiale dell'overlay",
         "size": "Dimensioni e spaziatura dell'overlay",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Ciclo",
           "arming": "Preparazione",
           "recording": "Registrazione",
           "listening": "In ascolto",
           "transcribing": "Trascrizione",
           "processing": "Elaborazione"
         },
-        "play": "Riproduci anteprima",
-        "pause": "Metti in pausa l'anteprima",
-        "showOnScreen": "Mostra sullo schermo",
-        "showOnScreenBusy": "Visualizzazione…",
-        "showOnScreenBlocked": "Non disponibile mentre Handy sta registrando",
+        "start": "Avvia anteprima",
+        "stop": "Arresta anteprima",
+        "hint": "L'overlay resta sullo schermo mentre modifichi, così ogni cambiamento vi compare subito.",
         "sampleText": "Ma la volpe, col suo balzo, ha raggiunto il quieto Fido, e Handy lo scrive.",
-        "glassNote": "Il vetro sfoca ciò che si trova dietro l'overlay. Questa anteprima lo approssima su uno sfondo di prova — usa Mostra sullo schermo per vedere l'effetto reale.",
-        "glassUnavailable": "Il vetro è disponibile solo su macOS. Su questo sistema l'overlay resta piatto.",
-        "noneNote": "L'overlay è disattivato, quindi non c'è nulla da vedere in anteprima. Scegli Minimo o In tempo reale qui sopra.",
-        "scaledNote": "Anteprima mostrata al {{percent}}%"
+        "blockedRecording": "Non disponibile mentre Handy sta registrando",
+        "noneNote": "L'overlay è disattivato, quindi non c'è nulla da vedere in anteprima. Scegli Minimo o In tempo reale qui sopra."
       },
       "reset": {
         "button": "Reimposta il tema dell'overlay",

@@ -263,7 +263,7 @@
       "groups": {
         "app": "Application",
         "overlay": "Overlay",
-        "preview": "Aperçu",
+        "preview": "Aperçu à l'écran",
         "color": "Couleur de l'overlay",
         "material": "Matériau de l'overlay",
         "size": "Taille et espacements de l'overlay",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Cycle",
           "arming": "Préparation",
           "recording": "Enregistrement",
           "listening": "Écoute",
           "transcribing": "Transcription",
           "processing": "Traitement"
         },
-        "play": "Lire l'aperçu",
-        "pause": "Mettre l'aperçu en pause",
-        "showOnScreen": "Afficher à l'écran",
-        "showOnScreenBusy": "Affichage…",
-        "showOnScreenBlocked": "Indisponible pendant que Handy enregistre",
+        "start": "Démarrer l'aperçu",
+        "stop": "Arrêter l'aperçu",
+        "hint": "L'overlay reste à l'écran pendant que vous modifiez les réglages, chaque changement s'y affiche donc immédiatement.",
         "sampleText": "Portez ce vieux whisky au juge blond qui fume, et Handy l'écrit pour vous.",
-        "glassNote": "Le verre floute ce qui se trouve derrière l'overlay. Cet aperçu l'approxime sur un fond de substitution — utilisez Afficher à l'écran pour voir le véritable effet.",
-        "glassUnavailable": "Le verre n'est disponible que sur macOS. Sur ce système, l'overlay reste plat.",
-        "noneNote": "L'overlay est désactivé, il n'y a donc rien à prévisualiser. Choisissez Minimal ou Live ci-dessus.",
-        "scaledNote": "Aperçu affiché à {{percent}}%"
+        "blockedRecording": "Indisponible pendant que Handy enregistre",
+        "noneNote": "L'overlay est désactivé, il n'y a donc rien à prévisualiser. Choisissez Minimal ou Live ci-dessus."
       },
       "reset": {
         "button": "Réinitialiser le thème de l'overlay",

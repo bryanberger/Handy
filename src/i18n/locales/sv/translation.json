@@ -263,7 +263,7 @@
       "groups": {
         "app": "Applikation",
         "overlay": "Overlay",
-        "preview": "Förhandsvisning",
+        "preview": "Förhandsvisning på skärmen",
         "color": "Overlayfärg",
         "material": "Overlaymaterial",
         "size": "Overlaystorlek och avstånd",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Cykel",
           "arming": "Förbereder",
           "recording": "Spelar in",
           "listening": "Lyssnar",
           "transcribing": "Transkriberar",
           "processing": "Bearbetar"
         },
-        "play": "Spela upp förhandsvisning",
-        "pause": "Pausa förhandsvisning",
-        "showOnScreen": "Visa på skärmen",
-        "showOnScreenBusy": "Visar…",
-        "showOnScreenBlocked": "Inte tillgängligt medan Handy spelar in",
+        "start": "Starta förhandsvisning",
+        "stop": "Stoppa förhandsvisning",
+        "hint": "Overlayen ligger kvar på skärmen medan du ändrar, så varje ändring syns direkt på den.",
         "sampleText": "Flygande bäckasiner söka hwila på mjuka tuvor, och Handy skriver ner det.",
-        "glassNote": "Glas gör det som finns bakom overlayen suddigt. Den här förhandsvisningen efterliknar det mot en ersättningsbakgrund — använd Visa på skärmen för att se den riktiga effekten.",
-        "glassUnavailable": "Glas finns bara på macOS. På det här systemet förblir overlayen platt.",
-        "noneNote": "Overlayen är avstängd, så det finns inget att förhandsvisa. Välj Minimal eller Live ovan.",
-        "scaledNote": "Förhandsvisning i {{percent}}%"
+        "blockedRecording": "Inte tillgängligt medan Handy spelar in",
+        "noneNote": "Overlayen är avstängd, så det finns inget att förhandsvisa. Välj Minimal eller Live ovan."
       },
       "reset": {
         "button": "Återställ overlaytemat",

@@ -1116,6 +1116,13 @@ const GLASS_FALLBACK_REVEAL_MS: u64 = CARD_FADE_MS as u64 * 2;
 /// has a blur faded in on its way out. Revealing twice is harmless:
 /// [`crate::overlay_glass::show_glass`] only updates the radius when the view
 /// is already fully visible.
+///
+/// The Material is resolved *here*, when the timer fires, and never taken
+/// from the show that armed it: a switch to Flat inside the delay hides the
+/// blur and gives the window its slack back, and a reveal carrying the show's
+/// stale Glass would put a translucent capsule around the Flat card — the
+/// shape of this exact bug. Resolving is a settings read, so it happens on
+/// this thread rather than the main one.
 fn schedule_glass_fallback_reveal(app_handle: &AppHandle, radius: f64) {
     let scheduled_at = OVERLAY_SHOW_GENERATION.load(Ordering::SeqCst);
     let app_handle = app_handle.clone();
@@ -1127,7 +1134,8 @@ fn schedule_glass_fallback_reveal(app_handle: &AppHandle, radius: f64) {
             log::debug!("Skipping stale Glass reveal: this session is no longer on screen");
             return;
         }
-        crate::overlay_glass::show_glass(&app_handle, radius);
+        let material = crate::overlay_theme::resolve(&app_handle).effective_material;
+        crate::overlay_glass::show_glass(&app_handle, material, radius);
     });
 }
 
@@ -1251,12 +1259,15 @@ fn update_overlay_position_on_main(app_handle: &AppHandle, scale: Option<f64>) {
         // full alpha for the next show to flash before the card paints, and a
         // reposition is common while the overlay is down (every theme, style
         // and position change makes one). The radius is recomputed by the
-        // first card-shape report of the next session anyway. This whole
-        // block is a no-op under Flat and off macOS; `is_visible` is an
-        // AppKit read, and this function already runs on the main thread.
-        if material == Material::Glass && overlay_window.is_visible().unwrap_or(false) {
+        // first card-shape report of the next session anyway. Whether this
+        // reveals or hides is `material`'s call, not this function's — under
+        // Flat it takes the blur off screen a second time, which is the whole
+        // point of routing every reveal through the same door. `is_visible`
+        // is an AppKit read, and this function already runs on the main
+        // thread.
+        if overlay_window.is_visible().unwrap_or(false) {
             let radius = shape_radius(shape, radius_token_px(&resolved.theme), scale);
-            crate::overlay_glass::show_glass(app_handle, radius);
+            crate::overlay_glass::show_glass(app_handle, material, radius);
         }
     }
 }
@@ -1275,23 +1286,15 @@ fn update_overlay_position_on_main(app_handle: &AppHandle, scale: Option<f64>) {
 /// `animator()` to retarget rather than cancelled by hand. Under Flat — and
 /// off macOS, where the effective Material is never Glass — this only updates
 /// the stored shape, which `update_overlay_position_on_main` reads back on
-/// the next reposition.
+/// the next reposition, and makes sure the blur is off screen.
+///
+/// The theme is resolved inside the main-thread hop, not before it: the
+/// Material decides both the window size and whether the blur may be lit, and
+/// a switch landing between the two would size the window for one Material
+/// and light the blur for the other. Resolving is cache-only, so it is safe
+/// there.
 pub fn set_card_shape(app_handle: &AppHandle, shape: OverlayCardShape, duration_ms: u32) {
     let previous = set_current_card_shape(shape);
-
-    let resolved = crate::overlay_theme::resolve(app_handle);
-    if resolved.effective_material != Material::Glass {
-        return;
-    }
-
-    let scale = resolved.theme.size_scale();
-    let size = overlay_dimensions(
-        shape,
-        scale,
-        resolved.effective_material,
-        resolved.theme.border_width(),
-    );
-    let radius = shape_radius(shape, radius_token_px(&resolved.theme), scale);
 
     // Whether the window is mapped decides between animating the frame and
     // snapping it, and `is_visible()` is an AppKit read on macOS — so it is
@@ -1299,14 +1302,22 @@ pub fn set_card_shape(app_handle: &AppHandle, shape: OverlayCardShape, duration_
     // on whichever thread the command handler landed on.
     let handle = app_handle.clone();
     let _ = app_handle.run_on_main_thread(move || {
+        let resolved = crate::overlay_theme::resolve(&handle);
+        let material = resolved.effective_material;
+        let scale = resolved.theme.size_scale();
+        let size = overlay_dimensions(shape, scale, material, resolved.theme.border_width());
+        let radius = shape_radius(shape, radius_token_px(&resolved.theme), scale);
+
         let visible = handle
             .get_webview_window("recording_overlay")
             .and_then(|window| window.is_visible().ok())
             .unwrap_or(false);
-        if previous != shape && visible {
-            crate::overlay_glass::morph_frame(&handle, size, radius, duration_ms);
+        if material == Material::Glass && previous != shape && visible {
+            crate::overlay_glass::morph_frame(&handle, material, size, radius, duration_ms);
         } else {
-            crate::overlay_glass::show_glass(&handle, radius);
+            // Reveals under Glass; under Flat this is what takes a blur left
+            // over from a Glass session off screen.
+            crate::overlay_glass::show_glass(&handle, material, radius);
         }
     });
 }

@@ -263,7 +263,7 @@
       "groups": {
         "app": "Ứng dụng",
         "overlay": "Lớp phủ",
-        "preview": "Xem trước",
+        "preview": "Xem trước trên màn hình",
         "color": "Màu lớp phủ",
         "material": "Chất liệu lớp phủ",
         "size": "Kích thước và khoảng cách lớp phủ",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Vòng lặp",
           "arming": "Đang chuẩn bị",
           "recording": "Đang ghi âm",
           "listening": "Đang lắng nghe",
           "transcribing": "Đang chuyển đổi",
           "processing": "Đang xử lý"
         },
-        "play": "Phát bản xem trước",
-        "pause": "Tạm dừng bản xem trước",
-        "showOnScreen": "Hiện trên màn hình",
-        "showOnScreenBusy": "Đang hiện…",
-        "showOnScreenBlocked": "Không khả dụng khi Handy đang ghi âm",
+        "start": "Bắt đầu xem trước",
+        "stop": "Dừng xem trước",
+        "hint": "Lớp phủ vẫn hiển thị trên màn hình trong lúc bạn chỉnh sửa, nên mọi thay đổi đều hiện ra ngay trên đó.",
         "sampleText": "Con cáo nâu nhanh nhẹn nhảy qua con chó lười, và Handy ghi lại điều đó.",
-        "glassNote": "Kính làm mờ mọi thứ phía sau lớp phủ. Bản xem trước này mô phỏng hiệu ứng đó trên một nền thay thế — hãy dùng Hiện trên màn hình để thấy hiệu ứng thật.",
-        "glassUnavailable": "Kính chỉ có trên macOS. Trên hệ thống này lớp phủ vẫn ở dạng Phẳng.",
-        "noneNote": "Lớp phủ đang tắt nên không có gì để xem trước. Hãy chọn Tối giản hoặc Trực tiếp ở trên.",
-        "scaledNote": "Bản xem trước hiển thị ở {{percent}}%"
+        "blockedRecording": "Không khả dụng khi Handy đang ghi âm",
+        "noneNote": "Lớp phủ đang tắt nên không có gì để xem trước. Hãy chọn Tối giản hoặc Trực tiếp ở trên."
       },
       "reset": {
         "button": "Đặt lại giao diện lớp phủ",

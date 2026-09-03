@@ -263,7 +263,7 @@
       "groups": {
         "app": "應用程式",
         "overlay": "懸浮窗",
-        "preview": "預覽",
+        "preview": "螢幕上的預覽",
         "color": "懸浮窗顏色",
         "material": "懸浮窗材質",
         "size": "懸浮窗尺寸與間距",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "循環",
           "arming": "準備中",
           "recording": "錄製中",
           "listening": "聆聽中",
           "transcribing": "轉錄中",
           "processing": "處理中"
         },
-        "play": "播放預覽",
-        "pause": "暫停預覽",
-        "showOnScreen": "在螢幕上顯示",
-        "showOnScreenBusy": "正在顯示…",
-        "showOnScreenBlocked": "Handy 錄製期間無法使用",
+        "start": "開始預覽",
+        "stop": "停止預覽",
+        "hint": "編輯時懸浮窗會一直留在螢幕上，因此每項變更都會立即顯示在上面。",
         "sampleText": "敏捷的棕色狐狸跳過了那隻懶狗，Handy 把它記錄了下來。",
-        "glassNote": "玻璃會模糊懸浮窗背後的內容。此預覽只是在替代背景上做近似呈現，請用「在螢幕上顯示」查看真實效果。",
-        "glassUnavailable": "玻璃僅在 macOS 上可用。在此系統上懸浮窗會維持平面。",
-        "noneNote": "懸浮窗已關閉，因此沒有可預覽的內容。請在上方選擇「精簡」或「即時」。",
-        "scaledNote": "預覽以 {{percent}}% 顯示"
+        "blockedRecording": "Handy 錄製期間無法使用",
+        "noneNote": "懸浮窗已關閉，因此沒有可預覽的內容。請在上方選擇「精簡」或「即時」。"
       },
       "reset": {
         "button": "重設懸浮窗主題",

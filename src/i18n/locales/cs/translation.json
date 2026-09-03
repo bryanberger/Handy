@@ -263,7 +263,7 @@
       "groups": {
         "app": "Aplikace",
         "overlay": "Překryv",
-        "preview": "Náhled",
+        "preview": "Náhled na obrazovce",
         "color": "Barva překryvu",
         "material": "Materiál překryvu",
         "size": "Velikost a rozestupy překryvu",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Cyklus",
           "arming": "Příprava",
           "recording": "Nahrávání",
           "listening": "Naslouchání",
           "transcribing": "Přepis",
           "processing": "Zpracování"
         },
-        "play": "Přehrát náhled",
-        "pause": "Pozastavit náhled",
-        "showOnScreen": "Zobrazit na obrazovce",
-        "showOnScreenBusy": "Zobrazuji…",
-        "showOnScreenBlocked": "Nedostupné, když Handy nahrává",
+        "start": "Spustit náhled",
+        "stop": "Zastavit náhled",
+        "hint": "Překryv zůstává během úprav na obrazovce, takže se na něm každá změna projeví hned.",
         "sampleText": "Příliš žluťoučký kůň úpěl ďábelské ódy, a Handy to zapíše.",
-        "glassNote": "Sklo rozostřuje to, co je za překryvem. Tento náhled to přibližuje na náhradním pozadí — skutečný efekt uvidíte přes Zobrazit na obrazovce.",
-        "glassUnavailable": "Sklo je dostupné jen na macOS. Na tomto systému zůstává překryv plochý.",
-        "noneNote": "Překryv je vypnutý, takže není co zobrazit v náhledu. Zvolte výše Minimální nebo Živě.",
-        "scaledNote": "Náhled zobrazen na {{percent}}%"
+        "blockedRecording": "Nedostupné, když Handy nahrává",
+        "noneNote": "Překryv je vypnutý, takže není co zobrazit v náhledu. Zvolte výše Minimální nebo Živě."
       },
       "reset": {
         "button": "Obnovit motiv překryvu",

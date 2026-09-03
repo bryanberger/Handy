@@ -263,7 +263,7 @@
       "groups": {
         "app": "Uygulama",
         "overlay": "Ekran Katmanı",
-        "preview": "Önizleme",
+        "preview": "Ekranda Önizleme",
         "color": "Ekran Katmanı Rengi",
         "material": "Ekran Katmanı Malzemesi",
         "size": "Ekran Katmanı Boyutu ve Boşlukları",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Döngü",
           "arming": "Hazırlanıyor",
           "recording": "Kaydediliyor",
           "listening": "Dinleniyor",
           "transcribing": "Transkribe ediliyor",
           "processing": "İşleniyor"
         },
-        "play": "Önizlemeyi oynat",
-        "pause": "Önizlemeyi duraklat",
-        "showOnScreen": "Ekranda göster",
-        "showOnScreenBusy": "Gösteriliyor…",
-        "showOnScreenBlocked": "Handy kayıt yaparken kullanılamaz",
+        "start": "Önizlemeyi başlat",
+        "stop": "Önizlemeyi durdur",
+        "hint": "Ekran katmanı siz düzenleme yaparken ekranda kalır, böylece her değişiklik anında üzerinde görünür.",
         "sampleText": "Pijamalı hasta yağız şoföre çabucak güvendi, Handy de bunu yazıya döküyor.",
-        "glassNote": "Cam, ekran katmanının arkasındaki her şeyi bulanıklaştırır. Bu önizleme etkiyi temsili bir arka plan üzerinde yaklaşık olarak gösterir — gerçek etkiyi görmek için Ekranda göster'i kullanın.",
-        "glassUnavailable": "Cam yalnızca macOS'te kullanılabilir. Bu sistemde ekran katmanı Düz kalır.",
-        "noneNote": "Ekran katmanı kapalı, bu yüzden önizlenecek bir şey yok. Yukarıdan Sade veya Canlı seçin.",
-        "scaledNote": "Önizleme %{{percent}} boyutunda gösteriliyor"
+        "blockedRecording": "Handy kayıt yaparken kullanılamaz",
+        "noneNote": "Ekran katmanı kapalı, bu yüzden önizlenecek bir şey yok. Yukarıdan Sade veya Canlı seçin."
       },
       "reset": {
         "button": "Ekran katmanı temasını sıfırla",

@@ -133,15 +133,12 @@ function useStableMap<T extends Record<string, string | null>>(next: T): T {
 }
 
 export interface UseOverlayThemeVarsResult {
-  /** The resolved theme with the in-flight draft merged in — what the
-   *  preview and its "Show on screen" counterpart should agree on. */
-  previewTheme: ResolvedOverlayTheme;
-  /** `resolveOverlayThemeVars(previewTheme)`, ready to spread as inline style
-   *  on `.ov-preview`. */
-  previewVars: CSSProperties;
+  /** `resolveOverlayThemeVars(theme ∪ draft)`, ready to spread as inline
+   *  style on the probe host. */
+  themeVars: CSSProperties;
   effectiveMaterial: Material;
-  /** Attach one to a 0×0 `aria-hidden` span inside `.ov-preview` per color
-   *  token, `style={{ color: "var(--s-accent)" }}` etc. — the only reliable
+  /** Attach one to a 0×0 `aria-hidden` span per color token inside the probe
+   *  host, `style={{ color: "var(--s-accent)" }}` etc. — the only reliable
    *  way to resolve a `color-mix()` custom property down to a hex. */
   colorProbeRefs: Record<OverlayColorKey, React.RefObject<HTMLSpanElement>>;
   /** The probed, theme-aware default for each color token — what a ColorField
@@ -157,7 +154,7 @@ export interface UseOverlayThemeVarsResult {
 }
 
 /**
- * Turns (draft ∪ resolved) overlay-theme tokens into the preview's inline
+ * Turns (draft ∪ resolved) overlay-theme tokens into the probe host's inline
  * style, plus the theme-aware "resolved default" readback, so an unset color
  * field shows what it will actually inherit rather than a hardcoded guess.
  *
@@ -176,7 +173,7 @@ export function useOverlayThemeVars(
   // what the layout effect below keys off: `draft` can be re-derived into a
   // fresh-but-equal object, which would give this a new identity too (see
   // `sameStringMap`).
-  const previewTheme: ResolvedOverlayTheme = useMemo(() => {
+  const mergedTheme: ResolvedOverlayTheme = useMemo(() => {
     return resolved
       ? {
           ...resolved,
@@ -190,11 +187,10 @@ export function useOverlayThemeVars(
         };
   }, [resolved, draft]);
 
-  // The one value the preview's layout effects (here and `OverlayPreview`'s
-  // fit measurement) depend on, so its reference must change if and only if a
-  // custom property actually changed.
-  const previewVars = useStableMap(
-    useMemo(() => resolveOverlayThemeVars(previewTheme), [previewTheme]),
+  // What the readback layout effect below depends on, so its reference must
+  // change if and only if a custom property actually changed.
+  const themeVars = useStableMap(
+    useMemo(() => resolveOverlayThemeVars(mergedTheme), [mergedTheme]),
   ) as unknown as CSSProperties;
 
   const accentRef = useRef<HTMLSpanElement>(null);
@@ -244,11 +240,11 @@ export function useOverlayThemeVars(
     }
     lastMeasured.current = measured;
     setResolvedDefaults(measured);
-    // `previewVars` only gets a new identity when a custom property actually
+    // `themeVars` only gets a new identity when a custom property actually
     // changed (`useStableMap`, above), which is exactly the "on any token
-    // change" trigger this effect wants; the three refs are stable for the
+    // change" trigger this effect wants; the four refs are stable for the
     // component's lifetime and do not need to be listed.
-  }, [previewVars, remeasureSignal]);
+  }, [themeVars, remeasureSignal]);
 
   const ownedKeys = useMemo(() => resolved?.file.owned_keys ?? [], [resolved]);
   const isLocked = useCallback(
@@ -271,9 +267,8 @@ export function useOverlayThemeVars(
   );
 
   return {
-    previewTheme,
-    previewVars,
-    effectiveMaterial: previewTheme.effective_material,
+    themeVars,
+    effectiveMaterial: mergedTheme.effective_material,
     colorProbeRefs,
     resolvedDefaults,
     isLocked,

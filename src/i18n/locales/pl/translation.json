@@ -263,7 +263,7 @@
       "groups": {
         "app": "Aplikacja",
         "overlay": "Nakładka",
-        "preview": "Podgląd",
+        "preview": "Podgląd na ekranie",
         "color": "Kolor nakładki",
         "material": "Materiał nakładki",
         "size": "Rozmiar i odstępy nakładki",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Cykl",
           "arming": "Przygotowanie",
           "recording": "Nagrywanie",
           "listening": "Nasłuchiwanie",
           "transcribing": "Transkrypcja",
           "processing": "Przetwarzanie"
         },
-        "play": "Odtwórz podgląd",
-        "pause": "Wstrzymaj podgląd",
-        "showOnScreen": "Pokaż na ekranie",
-        "showOnScreenBusy": "Pokazywanie…",
-        "showOnScreenBlocked": "Niedostępne, gdy Handy nagrywa",
+        "start": "Uruchom podgląd",
+        "stop": "Zatrzymaj podgląd",
+        "hint": "Nakładka pozostaje na ekranie podczas edycji, więc każda zmiana jest na niej widoczna od razu.",
         "sampleText": "Pchnąć w tę łódź jeża lub ośm skrzyń fig, a Handy to zapisze.",
-        "glassNote": "Szkło rozmywa to, co znajduje się za nakładką. Ten podgląd przybliża efekt na zastępczym tle — użyj opcji Pokaż na ekranie, aby zobaczyć prawdziwy efekt.",
-        "glassUnavailable": "Szkło jest dostępne tylko w macOS. W tym systemie nakładka pozostaje płaska.",
-        "noneNote": "Nakładka jest wyłączona, więc nie ma czego podglądać. Wybierz powyżej Minimalną lub Na żywo.",
-        "scaledNote": "Podgląd wyświetlany w {{percent}}%"
+        "blockedRecording": "Niedostępne, gdy Handy nagrywa",
+        "noneNote": "Nakładka jest wyłączona, więc nie ma czego podglądać. Wybierz powyżej Minimalną lub Na żywo."
       },
       "reset": {
         "button": "Zresetuj motyw nakładki",

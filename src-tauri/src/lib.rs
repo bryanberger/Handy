@@ -772,7 +772,9 @@ pub fn run(cli_args: CliArgs) {
             commands::overlay_theme::change_overlay_theme_setting,
             commands::overlay_theme::get_resolved_overlay_theme,
             commands::overlay_theme::reload_overlay_theme_file,
-            commands::overlay_preview::preview_overlay_on_screen,
+            commands::overlay_preview::start_overlay_preview,
+            commands::overlay_preview::set_overlay_preview_state,
+            commands::overlay_preview::stop_overlay_preview,
             commands::overlay_card::set_overlay_card_shape,
             helpers::clamshell::is_laptop,
         ])
@@ -870,8 +872,7 @@ pub fn run(cli_args: CliArgs) {
                 crate::utils::cancel_current_operation(app);
             } else if args.iter().any(|a| a == "--preview-overlay") {
                 // Runtime-only, like the flags above: it changes nothing that is
-                // persisted. The sample text cannot come from the frontend here,
-                // so the CLI's fixed English sentence is used.
+                // persisted.
                 //
                 // On its own OS thread, never `async_runtime::spawn`: this
                 // callback runs on the runtime worker the single-instance
@@ -880,20 +881,13 @@ pub fn run(cli_args: CliArgs) {
                 // other worker may steal. It would then sit there until the
                 // next forwarded launch displaced it — every preview showing
                 // the previous invocation's, and the first one never showing
-                // at all. `block_on` from a plain thread enters the runtime
-                // itself, so the driver still gets its timer.
+                // at all. The preview driver is a plain thread throughout, so
+                // there is no runtime to enter at all.
                 let handle = app.clone();
                 std::thread::spawn(move || {
-                    tauri::async_runtime::block_on(async move {
-                        if let Err(error) = commands::overlay_preview::run_overlay_preview(
-                            handle,
-                            commands::overlay_preview::CLI_PREVIEW_SAMPLE_TEXT.to_string(),
-                        )
-                        .await
-                        {
-                            log::warn!("--preview-overlay: {error}");
-                        }
-                    });
+                    if let Err(error) = commands::overlay_preview::run_cli_preview(handle) {
+                        log::warn!("--preview-overlay: {error}");
+                    }
                 });
             } else {
                 // A second process was launched without remote-control flags
@@ -1072,6 +1066,15 @@ pub fn run(cli_args: CliArgs) {
                 api.prevent_close();
                 let _res = window.hide();
 
+                // An overlay preview belongs to the Appearance tab, and the tab
+                // just went away with the window. Handled here rather than in
+                // the frontend because closing to the tray hides the window
+                // without unmounting anything: the webview keeps running, so
+                // React never learns it is off screen. The driver watches the
+                // window itself as well, for the hides that never reach this
+                // handler; this is the immediate half.
+                commands::overlay_preview::stop_preview();
+
                 #[cfg(target_os = "macos")]
                 {
                     let settings = get_settings(window.app_handle());
@@ -1124,6 +1127,9 @@ pub fn run(cli_args: CliArgs) {
         }
         // Teardown transcribe.cpp before exit
         tauri::RunEvent::Exit => {
+            // Let the preview driver's thread fall out of its loop rather than
+            // leaving it emitting into a webview that is going away.
+            commands::overlay_preview::stop_preview();
             if let Some(tm) = app.try_state::<Arc<TranscriptionManager>>() {
                 let _ = tm.unload_model();
             }

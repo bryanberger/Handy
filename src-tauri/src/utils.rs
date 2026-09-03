@@ -104,12 +104,12 @@ pub fn cancel_current_operation(app: &AppHandle) {
     ) {
         overlay_preview::CancelDisposition::CancelOperation => {}
         overlay_preview::CancelDisposition::EndPreviewOnly => {
-            overlay_preview::cancel_preview();
+            overlay_preview::stop_preview();
             info!("Cancellation handled by the overlay preview; nothing else was running");
             return;
         }
         overlay_preview::CancelDisposition::EndPreviewAndCancel => {
-            overlay_preview::cancel_preview();
+            overlay_preview::stop_preview();
         }
     }
 

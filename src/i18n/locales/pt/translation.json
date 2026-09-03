@@ -263,7 +263,7 @@
       "groups": {
         "app": "Aplicativo",
         "overlay": "Sobreposição",
-        "preview": "Pré-visualização",
+        "preview": "Pré-visualização na tela",
         "color": "Cor da sobreposição",
         "material": "Material da sobreposição",
         "size": "Tamanho e espaçamento da sobreposição",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Ciclo",
           "arming": "Preparando",
           "recording": "Gravando",
           "listening": "Ouvindo",
           "transcribing": "Transcrevendo",
           "processing": "Processando"
         },
-        "play": "Reproduzir pré-visualização",
-        "pause": "Pausar pré-visualização",
-        "showOnScreen": "Mostrar na tela",
-        "showOnScreenBusy": "Mostrando…",
-        "showOnScreenBlocked": "Indisponível enquanto o Handy está gravando",
+        "start": "Iniciar pré-visualização",
+        "stop": "Parar pré-visualização",
+        "hint": "A sobreposição fica na tela enquanto você edita, então cada mudança aparece nela na hora.",
         "sampleText": "Um pequeno jabuti xereta viu dez cegonhas felizes, e o Handy escreve tudo.",
-        "glassNote": "O vidro desfoca o que estiver atrás da sobreposição. Esta pré-visualização aproxima o efeito sobre um fundo de exemplo — use Mostrar na tela para ver o efeito real.",
-        "glassUnavailable": "O vidro está disponível apenas no macOS. Neste sistema a sobreposição continua plana.",
-        "noneNote": "A sobreposição está desativada, então não há nada para pré-visualizar. Escolha Minimalista ou Ao vivo acima.",
-        "scaledNote": "Pré-visualização exibida a {{percent}}%"
+        "blockedRecording": "Indisponível enquanto o Handy está gravando",
+        "noneNote": "A sobreposição está desativada, então não há nada para pré-visualizar. Escolha Minimalista ou Ao vivo acima."
       },
       "reset": {
         "button": "Redefinir o tema da sobreposição",

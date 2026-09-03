@@ -263,7 +263,7 @@
       "groups": {
         "app": "Anwendung",
         "overlay": "Overlay",
-        "preview": "Vorschau",
+        "preview": "Vorschau auf dem Bildschirm",
         "color": "Overlay-Farbe",
         "material": "Overlay-Material",
         "size": "Overlay-Größe & Abstände",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Durchlauf",
           "arming": "Vorbereiten",
           "recording": "Aufnahme",
           "listening": "Zuhören",
           "transcribing": "Transkription",
           "processing": "Verarbeitung"
         },
-        "play": "Vorschau abspielen",
-        "pause": "Vorschau pausieren",
-        "showOnScreen": "Auf dem Bildschirm zeigen",
-        "showOnScreenBusy": "Wird angezeigt…",
-        "showOnScreenBlocked": "Nicht verfügbar, während Handy aufnimmt",
+        "start": "Vorschau starten",
+        "stop": "Vorschau beenden",
+        "hint": "Das Overlay bleibt beim Bearbeiten auf dem Bildschirm, sodass jede Änderung sofort darauf zu sehen ist.",
         "sampleText": "Franz jagt im komplett verwahrlosten Taxi quer durch Bayern, und Handy schreibt es mit.",
-        "glassNote": "Glas macht unscharf, was hinter dem Overlay liegt. Diese Vorschau nähert das über einem Ersatzhintergrund an — nutze Auf dem Bildschirm zeigen, um den echten Effekt zu sehen.",
-        "glassUnavailable": "Glas ist nur unter macOS verfügbar. Auf diesem System bleibt das Overlay flach.",
-        "noneNote": "Das Overlay ist ausgeschaltet, es gibt also nichts in der Vorschau. Wähle oben Minimal oder Live.",
-        "scaledNote": "Vorschau bei {{percent}}%"
+        "blockedRecording": "Nicht verfügbar, während Handy aufnimmt",
+        "noneNote": "Das Overlay ist ausgeschaltet, es gibt also nichts in der Vorschau. Wähle oben Minimal oder Live."
       },
       "reset": {
         "button": "Overlay-Design zurücksetzen",

@@ -263,7 +263,7 @@
       "groups": {
         "app": "Applicatie",
         "overlay": "Overlay",
-        "preview": "Voorbeeld",
+        "preview": "Voorbeeld op het scherm",
         "color": "Overlaykleur",
         "material": "Overlaymateriaal",
         "size": "Overlaygrootte & afstanden",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Cyclus",
           "arming": "Voorbereiden",
           "recording": "Opnemen",
           "listening": "Luisteren",
           "transcribing": "Transcriberen",
           "processing": "Verwerken"
         },
-        "play": "Voorbeeld afspelen",
-        "pause": "Voorbeeld pauzeren",
-        "showOnScreen": "Op het scherm tonen",
-        "showOnScreenBusy": "Wordt getoond…",
-        "showOnScreenBlocked": "Niet beschikbaar terwijl Handy opneemt",
+        "start": "Voorbeeld starten",
+        "stop": "Voorbeeld stoppen",
+        "hint": "De overlay blijft op het scherm terwijl je aanpassingen maakt, zodat elke wijziging er meteen op te zien is.",
         "sampleText": "Pa's wijze lynx bezag vroom het fikse aquaduct, en Handy schrijft het op.",
-        "glassNote": "Glas maakt onscherp wat achter de overlay zit. Dit voorbeeld benadert dat op een vervangende achtergrond — gebruik Op het scherm tonen om het echte effect te zien.",
-        "glassUnavailable": "Glas is alleen beschikbaar op macOS. Op dit systeem blijft de overlay vlak.",
-        "noneNote": "De overlay staat uit, dus er is niets om te bekijken. Kies hierboven Minimaal of Live.",
-        "scaledNote": "Voorbeeld weergegeven op {{percent}}%"
+        "blockedRecording": "Niet beschikbaar terwijl Handy opneemt",
+        "noneNote": "De overlay staat uit, dus er is niets om te bekijken. Kies hierboven Minimaal of Live."
       },
       "reset": {
         "button": "Overlaythema herstellen",

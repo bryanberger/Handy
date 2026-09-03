@@ -263,7 +263,7 @@
       "groups": {
         "app": "Applikation",
         "overlay": "Overlay",
-        "preview": "Forhåndsvisning",
+        "preview": "Forhåndsvisning på skærmen",
         "color": "Overlayfarve",
         "material": "Overlaymateriale",
         "size": "Overlaystørrelse og afstande",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Cyklus",
           "arming": "Forbereder",
           "recording": "Optager",
           "listening": "Lytter",
           "transcribing": "Transskriberer",
           "processing": "Behandler"
         },
-        "play": "Afspil forhåndsvisning",
-        "pause": "Sæt forhåndsvisning på pause",
-        "showOnScreen": "Vis på skærmen",
-        "showOnScreenBusy": "Viser…",
-        "showOnScreenBlocked": "Ikke tilgængelig, mens Handy optager",
+        "start": "Start forhåndsvisning",
+        "stop": "Stop forhåndsvisning",
+        "hint": "Overlayet bliver på skærmen, mens du redigerer, så hver ændring vises på det med det samme.",
         "sampleText": "Quizdeltagerne spiste jordbær med fløde, og Handy skriver det ned.",
-        "glassNote": "Glas slører det, der er bag overlayet. Denne forhåndsvisning efterligner det på en erstatningsbaggrund — brug Vis på skærmen for at se den rigtige effekt.",
-        "glassUnavailable": "Glas findes kun på macOS. På dette system forbliver overlayet fladt.",
-        "noneNote": "Overlayet er slået fra, så der er intet at forhåndsvise. Vælg Minimal eller Live ovenfor.",
-        "scaledNote": "Forhåndsvisning vist ved {{percent}}%"
+        "blockedRecording": "Ikke tilgængelig, mens Handy optager",
+        "noneNote": "Overlayet er slået fra, så der er intet at forhåndsvise. Vælg Minimal eller Live ovenfor."
       },
       "reset": {
         "button": "Nulstil overlaytemaet",

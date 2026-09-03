@@ -263,7 +263,7 @@
       "groups": {
         "app": "Application",
         "overlay": "Overlay",
-        "preview": "Preview",
+        "preview": "On-Screen Preview",
         "color": "Overlay Color",
         "material": "Overlay Material",
         "size": "Overlay Size & Spacing",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Cycle",
           "arming": "Arming",
           "recording": "Recording",
           "listening": "Listening",
           "transcribing": "Transcribing",
           "processing": "Processing"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
+        "start": "Start preview",
+        "stop": "Stop preview",
+        "hint": "The overlay stays on screen while you edit, so every change shows on it right away.",
         "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "blockedRecording": "Not available while Handy is recording",
+        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above."
       },
       "reset": {
         "button": "Reset overlay theme",

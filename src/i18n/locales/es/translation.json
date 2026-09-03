@@ -263,7 +263,7 @@
       "groups": {
         "app": "Aplicación",
         "overlay": "Superposición",
-        "preview": "Vista previa",
+        "preview": "Vista previa en pantalla",
         "color": "Color de la superposición",
         "material": "Material de la superposición",
         "size": "Tamaño y espaciado de la superposición",
@@ -271,22 +271,19 @@
       },
       "preview": {
         "states": {
+          "cycle": "Ciclo",
           "arming": "Preparando",
           "recording": "Grabando",
           "listening": "Escuchando",
           "transcribing": "Transcribiendo",
           "processing": "Procesando"
         },
-        "play": "Reproducir vista previa",
-        "pause": "Pausar vista previa",
-        "showOnScreen": "Mostrar en pantalla",
-        "showOnScreenBusy": "Mostrando…",
-        "showOnScreenBlocked": "No disponible mientras Handy está grabando",
+        "start": "Iniciar vista previa",
+        "stop": "Detener vista previa",
+        "hint": "La superposición se queda en pantalla mientras editas, así que cada cambio se ve en ella al instante.",
         "sampleText": "El veloz murciélago hindú comía feliz cardillo y kiwi, y Handy lo escribe.",
-        "glassNote": "El cristal desenfoca lo que hay detrás de la superposición. Esta vista previa lo aproxima sobre un fondo de muestra — usa Mostrar en pantalla para ver el efecto real.",
-        "glassUnavailable": "El cristal solo está disponible en macOS. En este sistema la superposición se mantiene plana.",
-        "noneNote": "La superposición está desactivada, así que no hay nada que previsualizar. Elige Minimalista o En vivo arriba.",
-        "scaledNote": "Vista previa mostrada al {{percent}}%"
+        "blockedRecording": "No disponible mientras Handy está grabando",
+        "noneNote": "La superposición está desactivada, así que no hay nada que previsualizar. Elige Minimalista o En vivo arriba."
       },
       "reset": {
         "button": "Restablecer tema de superposición",

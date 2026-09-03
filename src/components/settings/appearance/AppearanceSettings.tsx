@@ -11,23 +11,18 @@ import {
   SURFACE_OPACITY_INHERIT,
   type OverlayNumericKey,
 } from "@/lib/overlayTheme";
-import { getLanguageDirection } from "@/lib/utils/rtl";
-import type {
-  Material,
-  OverlayPosition,
-  OverlayStyle,
-  OverlayTheme,
-} from "@/bindings";
+import type { Material, OverlayStyle, OverlayTheme } from "@/bindings";
 import { ShowOverlay } from "../ShowOverlay";
 import { ThemeSelector } from "../ThemeSelector";
 import { ColorField } from "./ColorField";
 import { GlassMaterialSelector } from "./GlassMaterialSelector";
 import { MaterialSelector } from "./MaterialSelector";
+import { OnScreenPreview } from "./OnScreenPreview";
 import {
   OVERLAY_TOKEN_FIELDS,
   type OverlayTokenField,
 } from "./overlayTokenFields";
-import { OverlayPreview } from "./OverlayPreview";
+import { OverlayThemeProbes } from "./OverlayThemeProbes";
 import { ThemeFileGroup } from "./ThemeFileGroup";
 import { setOverlayThemeToken, useDraftSetting } from "./useDraftSetting";
 import { EMPTY_FILE_STATE, useOverlayThemeVars } from "./useOverlayThemeVars";
@@ -66,11 +61,11 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
 
 /**
  * The Appearance tab: the app theme picker and the overlay style/position
- * (both reused unchanged from About/Advanced), a live preview, and the fourteen
- * overlay-theme tokens grouped as Color / Material / Size & Spacing, plus the
- * Theme File group. Groups 4 onward are driven by `OVERLAY_TOKEN_FIELDS`
- * rather than hardcoded, so that table is the only place a token's shape is
- * declared.
+ * (both reused unchanged from About/Advanced), the on-screen preview, and the
+ * fourteen overlay-theme tokens grouped as Color / Material / Size & Spacing,
+ * plus the Theme File group. Groups 4 onward are driven by
+ * `OVERLAY_TOKEN_FIELDS` rather than hardcoded, so that table is the only
+ * place a token's shape is declared.
  */
 export const AppearanceSettings: React.FC = () => (
   <ErrorBoundary context="Appearance tab">
@@ -79,15 +74,12 @@ export const AppearanceSettings: React.FC = () => (
 );
 
 const AppearanceSettingsInner: React.FC = () => {
-  const { t, i18n } = useTranslation();
-  const direction = getLanguageDirection(i18n.language);
+  const { t } = useTranslation();
   const { settings, isUpdating, resetSetting } = useSettings();
   const { resolved, isReloading, reload } = useResolvedOverlayTheme();
   const { draft, setDraft, flush, flushAll, reset } = useDraftSetting();
 
   const style: OverlayStyle = settings?.overlay_style ?? "live";
-  const position: OverlayPosition =
-    settings?.overlay_position === "top" ? "top" : "bottom";
 
   const vars = useOverlayThemeVars(resolved, draft, settings?.theme);
 
@@ -203,26 +195,25 @@ const AppearanceSettingsInner: React.FC = () => {
       </SettingsGroup>
 
       <SettingsGroup title={t("settings.appearance.groups.preview")}>
-        {style === "none" ? (
-          <div className="p-4 text-sm text-mid-gray">
-            {t("settings.appearance.preview.noneNote")}
-          </div>
-        ) : (
-          <OverlayPreview
-            style={style}
-            position={position}
-            direction={direction}
-            previewTheme={vars.previewTheme}
-            settingsTheme={overlayTheme}
-            previewVars={vars.previewVars}
-            colorProbeRefs={vars.colorProbeRefs}
-            resetDisabled={resetDisabled}
-            hasThemeFileOwnership={hasThemeFileOwnership}
-            onResetConfirm={() => void resetSetting("overlay_theme")}
-            onFlushDrafts={flushAll}
-          />
-        )}
+        <OnScreenPreview
+          style={style}
+          settingsTheme={overlayTheme}
+          resetDisabled={resetDisabled}
+          hasThemeFileOwnership={hasThemeFileOwnership}
+          onResetConfirm={() => void resetSetting("overlay_theme")}
+          onFlushDrafts={flushAll}
+        />
       </SettingsGroup>
+
+      {/* Not a preview: an off-screen measuring device the colour fields read
+          their "resolved default" back off. Mounted whenever the tab is, so
+          the refs are attached before the fields below ask for a reading —
+          and it costs nothing while the overlay is off and they are hidden. */}
+      <OverlayThemeProbes
+        themeVars={vars.themeVars}
+        effectiveMaterial={vars.effectiveMaterial}
+        probeRefs={vars.colorProbeRefs}
+      />
 
       {style !== "none" && (
         <>

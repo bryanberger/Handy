@@ -93,5 +93,5 @@ A file on disk that supplies overlay-theme tokens, so external theming tools can
 _Avoid_: config file, user stylesheet, custom CSS
 
 **Preview**:
-A rendering of the overlay inside the settings window that reflects the current overlay theme before it is shown for real.
-_Avoid_: mock, sample, demo, thumbnail
+The real overlay held on screen with synthetic activity while the user edits the overlay theme, so every change is judged on the actual card. Started and stopped from the Appearance tab.
+_Avoid_: mock, sample, demo, thumbnail, in-page preview

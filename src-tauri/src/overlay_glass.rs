@@ -17,9 +17,61 @@
 //! Every function that touches AppKit hops to the main thread itself via
 //! `AppHandle::run_on_main_thread` (a no-op hop when already on it), so
 //! callers in `overlay.rs` never need to.
+//!
+//! Whether the view is on screen at all is not decided by its callers but by
+//! [`glass_action`], the one rule this module enforces: the blur exists only
+//! while the effective Material is Glass. Every entry point that could change
+//! its visibility takes that Material as an argument and routes through that
+//! function, so a caller cannot forget the check — it can only pass a stale
+//! answer, which is why each call site in `overlay.rs` resolves the Material
+//! on the thread that is about to act rather than earlier.
 
 use crate::overlay_theme::{GlassMaterial, GlassSupport, Material};
 use tauri::AppHandle;
+
+/// What a caller wants from the glass view, before the Material has a say.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GlassRequest {
+    /// Bring the view in line with the theme a show or a reposition is about
+    /// to render in. Never reveals: the blur may only come up once the card
+    /// has painted into the window.
+    ApplyMaterial,
+    /// Put the blur on screen — the card has painted, or the window has just
+    /// been resized under it.
+    Reveal,
+}
+
+/// What the glass view must actually do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GlassAction {
+    /// Off screen in this frame, with any fade still running cancelled.
+    HideNow,
+    /// Write the macOS material onto the view; leave its visibility alone.
+    SetMaterialOnly,
+    /// Set the corner radius and fade the view in.
+    RevealNow,
+}
+
+/// The one rule for whether the native blur may be on screen: only while the
+/// **effective** Material is Glass.
+///
+/// It is a single rule because the blur is not a decoration on the card, it is
+/// the window: `overlay_dimensions` sizes the window to the card exactly under
+/// Glass and gives it slack again under Flat, so a blur left visible after a
+/// switch to Flat shows as a lighter translucent capsule at window size with
+/// the Flat card sitting inside it. Every path that could put the view on
+/// screen — a first card-shape report, the delayed fallback reveal, a
+/// reposition of an already-mapped window — hands its Material to
+/// [`show_glass`] or [`morph_frame`], and both come back through here, so
+/// there is no reveal that skips the check. Under Flat a *reveal* request is
+/// therefore not ignored but inverted: it hides.
+pub fn glass_action(material: Material, request: GlassRequest) -> GlassAction {
+    match (material, request) {
+        (Material::Flat, _) => GlassAction::HideNow,
+        (Material::Glass, GlassRequest::ApplyMaterial) => GlassAction::SetMaterialOnly,
+        (Material::Glass, GlassRequest::Reveal) => GlassAction::RevealNow,
+    }
+}
 
 /// Install the single `NSVisualEffectView` behind the webview, hidden.
 ///
@@ -59,14 +111,14 @@ pub fn support(_app: &AppHandle) -> GlassSupport {
 /// Bring the glass view's visibility and its macOS material in line with the
 /// theme a show is about to render in.
 ///
-/// Under Flat it hides the view outright — unconditionally, in case a
-/// previous Glass session left it visible; a stale translucent margin around
-/// a Flat card (which has slack again) would otherwise show through. Under
-/// Glass it writes `glass_material` onto the one installed view and changes
-/// nothing else: the view stays exactly as visible as it was, so a first show
-/// cannot reveal it before the card paints. [`show_glass`] and
-/// [`morph_frame`] are the only functions that reveal it, once the window is
-/// sized and positioned for the card.
+/// Under Flat it hides the view outright and at once, cancelling any fade
+/// still running — unconditionally, in case a previous Glass session left it
+/// visible; a stale translucent margin around a Flat card (which has slack
+/// again) would otherwise show through. Under Glass it writes `glass_material`
+/// onto the one installed view and changes nothing else: the view stays
+/// exactly as visible as it was, so a first show cannot reveal it before the
+/// card paints. [`show_glass`] and [`morph_frame`] are the only functions that
+/// reveal it, once the window is sized and positioned for the card.
 ///
 /// `NSVisualEffectView`'s `material` is a live setter, so switching materials
 /// is a property write on the existing view — the view is never re-created,
@@ -80,32 +132,58 @@ pub fn apply_material(app: &AppHandle, material: Material, glass_material: Glass
 #[cfg(not(target_os = "macos"))]
 pub fn apply_material(_app: &AppHandle, _material: Material, _glass_material: GlassMaterial) {}
 
-/// Set the glass view's corner radius and reveal it, fading alpha 0 -> 1 over
-/// the card's own fade duration (`--ov-fade-ms`) if it was not already fully
-/// visible. Idempotent: calling it again while already visible only updates
-/// the radius. A no-op when Glass is not installed.
+/// Reveal the glass view under `material`: set its corner radius and fade
+/// alpha 0 -> 1 over the card's own fade duration (`--ov-fade-ms`) if it was
+/// not already fully visible.
+///
+/// `material` is the Material in effect **now**, not when the reveal was
+/// decided on, and it is what actually happens: under Flat this hides the view
+/// instead of revealing it (see [`glass_action`]). Callers whose reveal can
+/// land late — the delayed fallback reveal, a card-shape report crossing to
+/// the main thread — therefore resolve it as late as they can.
+///
+/// Idempotent: calling it again while already visible only updates the radius.
+/// A no-op when Glass is not installed.
 #[cfg(target_os = "macos")]
-pub fn show_glass(app: &AppHandle, radius: f64) {
-    native::show_glass(app, radius);
+pub fn show_glass(app: &AppHandle, material: Material, radius: f64) {
+    native::show_glass(app, material, radius);
 }
 
 /// Off macOS there is no glass view to reveal.
 #[cfg(not(target_os = "macos"))]
-pub fn show_glass(_app: &AppHandle, _radius: f64) {}
+pub fn show_glass(_app: &AppHandle, _material: Material, _radius: f64) {}
 
 /// Move the panel frame to `size`, keeping the anchored screen edge and the
 /// horizontal centre fixed, set the radius, and reveal the glass view.
 ///
+/// `size` is a Glass window — the card exactly, with no slack — so this only
+/// moves the frame while `material` is still Glass. Under Flat it neither
+/// resizes nor reveals: the window belongs to `update_overlay_position` then,
+/// and the view goes off screen (see [`glass_action`]).
+///
 /// Snaps by default; `duration_ms` only animates when `HANDY_GLASS_MORPH=1`
 /// opts the native animation in. See `morph_duration_ms`.
 #[cfg(target_os = "macos")]
-pub fn morph_frame(app: &AppHandle, size: (f64, f64), radius: f64, duration_ms: u32) {
-    native::morph_frame(app, size, radius, duration_ms);
+pub fn morph_frame(
+    app: &AppHandle,
+    material: Material,
+    size: (f64, f64),
+    radius: f64,
+    duration_ms: u32,
+) {
+    native::morph_frame(app, material, size, radius, duration_ms);
 }
 
 /// Off macOS there is no native frame to animate.
 #[cfg(not(target_os = "macos"))]
-pub fn morph_frame(_app: &AppHandle, _size: (f64, f64), _radius: f64, _duration_ms: u32) {}
+pub fn morph_frame(
+    _app: &AppHandle,
+    _material: Material,
+    _size: (f64, f64),
+    _radius: f64,
+    _duration_ms: u32,
+) {
+}
 
 /// Fade the glass view out over `duration_ms` so it does not outlive the
 /// card, or hide it at once when `duration_ms` is 0 (the Live card is
@@ -142,6 +220,7 @@ mod native {
     use objc2_quartz_core::CAMediaTimingFunction;
     use tauri::{AppHandle, Manager};
 
+    use super::{glass_action, GlassAction, GlassRequest};
     use crate::overlay::CARD_FADE_MS;
     use crate::overlay_theme::{GlassMaterial, GlassSupport, Material};
     use crate::settings::OverlayPosition;
@@ -235,14 +314,15 @@ mod native {
             let Some(view) = glass_view() else {
                 return;
             };
-            match material {
-                // Hidden unconditionally, in case a previous Glass session
+            match glass_action(material, GlassRequest::ApplyMaterial) {
+                // Off screen unconditionally, in case a previous Glass session
                 // left the view visible behind a card that now has slack.
-                Material::Flat => view.setHidden(true),
+                GlassAction::HideNow => hide_now(&view),
                 // A live property write on the installed view; visibility is
                 // deliberately untouched, so the blur cannot appear before
-                // the card has painted.
-                Material::Glass => view.setMaterial(native_material(glass_material)),
+                // the card has painted. `ApplyMaterial` never asks for a
+                // reveal, so `RevealNow` cannot reach this arm.
+                _ => view.setMaterial(native_material(glass_material)),
             }
         });
     }
@@ -262,17 +342,40 @@ mod native {
         }
     }
 
-    pub(super) fn show_glass(app: &AppHandle, radius: f64) {
+    pub(super) fn show_glass(app: &AppHandle, material: Material, radius: f64) {
         on_window(app, move |_window, _mtm| {
-            if let Some(view) = glass_view() {
-                reveal(&view, radius);
+            let Some(view) = glass_view() else {
+                return;
+            };
+            match glass_action(material, GlassRequest::Reveal) {
+                // A reveal that finds Flat in effect is a reveal that was
+                // decided under Glass and landed late. It must not be merely
+                // ignored: whatever hid the view may itself have run before
+                // this one was queued, so the safe answer is to hide again.
+                GlassAction::HideNow => hide_now(&view),
+                _ => reveal(&view, radius),
             }
         });
     }
 
-    pub(super) fn morph_frame(app: &AppHandle, size: (f64, f64), radius: f64, duration_ms: u32) {
+    pub(super) fn morph_frame(
+        app: &AppHandle,
+        material: Material,
+        size: (f64, f64),
+        radius: f64,
+        duration_ms: u32,
+    ) {
         let overlay_position = crate::settings::get_settings(app).overlay_position;
         on_window(app, move |window, _mtm| {
+            // A Glass-sized frame must not be applied to a window the Material
+            // has already handed back to Flat, so the whole morph — frame and
+            // reveal alike — is dropped and the view goes off screen instead.
+            if glass_action(material, GlassRequest::Reveal) == GlassAction::HideNow {
+                if let Some(view) = glass_view() {
+                    hide_now(&view);
+                }
+                return;
+            }
             let duration_ms = morph_duration_ms(
                 duration_ms,
                 morph_opted_in(),
@@ -331,6 +434,18 @@ mod native {
                 animate_alpha(&view, 0.0, duration_ms);
             }
         });
+    }
+
+    /// Take the blur off screen in this frame, cancelling any fade still
+    /// running.
+    ///
+    /// A zero-duration animation rather than a bare `setAlphaValue`, because a
+    /// `fade_out` may still be driving the alpha through the same `animator()`
+    /// proxy and would otherwise keep writing over it; landing at 0 also means
+    /// the next [`reveal`] fades up from clear instead of popping in.
+    fn hide_now(view: &NSVisualEffectView) {
+        animate_alpha(view, 0.0, 0);
+        view.setHidden(true);
     }
 
     /// Set the glass view's corner radius and make sure it ends up fully
@@ -515,6 +630,60 @@ mod native {
         #[test]
         fn reduce_motion_snaps_even_when_the_animation_is_opted_into() {
             assert_eq!(morph_duration_ms(CARD_MORPH_MS, true, true), 0);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{glass_action, GlassAction, GlassRequest};
+    use crate::overlay_theme::Material;
+
+    /// The bug this table was written for: a Glass session's reveal landing
+    /// after the user switched to Flat put the blur back on screen at window
+    /// size, and the window had its Flat slack again — a lighter translucent
+    /// capsule around the card. So under Flat a reveal does not merely do
+    /// nothing, it hides.
+    #[test]
+    fn flat_takes_the_glass_view_off_screen_whatever_was_asked_for() {
+        assert_eq!(
+            glass_action(Material::Flat, GlassRequest::ApplyMaterial),
+            GlassAction::HideNow
+        );
+        assert_eq!(
+            glass_action(Material::Flat, GlassRequest::Reveal),
+            GlassAction::HideNow
+        );
+    }
+
+    /// Under Glass, only an explicit reveal reveals: applying the Material on
+    /// a show must leave the view as hidden as it was, or the blur appears
+    /// before the card has painted into it.
+    #[test]
+    fn glass_reveals_only_when_a_reveal_was_asked_for() {
+        assert_eq!(
+            glass_action(Material::Glass, GlassRequest::ApplyMaterial),
+            GlassAction::SetMaterialOnly
+        );
+        assert_eq!(
+            glass_action(Material::Glass, GlassRequest::Reveal),
+            GlassAction::RevealNow
+        );
+    }
+
+    /// Nothing but Glass ever leaves the view on screen — stated once over the
+    /// whole input space, so a Material added later has to answer this too.
+    #[test]
+    fn the_view_is_on_screen_only_under_glass() {
+        for material in [Material::Flat, Material::Glass] {
+            for request in [GlassRequest::ApplyMaterial, GlassRequest::Reveal] {
+                let stays_visible = glass_action(material, request) != GlassAction::HideNow;
+                assert_eq!(
+                    stays_visible,
+                    material == Material::Glass,
+                    "{material:?} + {request:?} must only keep the blur when the Material is Glass"
+                );
+            }
         }
     }
 }

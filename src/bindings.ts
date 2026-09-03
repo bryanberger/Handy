@@ -965,19 +965,41 @@ async reloadOverlayThemeFile() : Promise<Result<ResolvedOverlayTheme, string>> {
 }
 },
 /**
- * Show the real overlay for a few seconds, driven by synthetic audio.
+ * Show the real overlay and keep it there, cycling or pinned, until something
+ * stops it.
  * 
- * `sampleText` is the Live panel's transcript, passed in already translated so
- * i18n stays entirely on the frontend. Resolves when the overlay is hidden
- * again, so the caller can disable its button for the duration.
+ * `sample_text` is the Live panel's transcript, passed in already translated so
+ * i18n stays entirely on the frontend; `None` falls back to the built-in
+ * English sentence. Returns as soon as the overlay is up; the tab keeps editing
+ * tokens while it runs and every change repaints the overlay live.
+ * 
+ * Async so the claim below — which waits briefly for a previous driver to let
+ * go — never runs on the main thread.
  */
-async previewOverlayOnScreen(sampleText: string) : Promise<Result<null, string>> {
+async startOverlayPreview(state: PreviewState, sampleText: string | null) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("preview_overlay_on_screen", { sampleText }) };
+    return { status: "ok", data: await TAURI_INVOKE("start_overlay_preview", { state, sampleText }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Set which state the preview shows, without restarting the driver.
+ * 
+ * Always writes the target, whether or not a preview is running: the tab can
+ * race a preview the backend already ended (a real recording took the
+ * overlay), and remembering the pin costs nothing — the next start reads it
+ * anyway, and no driver reads it while none is running.
+ */
+async setOverlayPreviewState(state: PreviewState) : Promise<void> {
+    await TAURI_INVOKE("set_overlay_preview_state", { state });
+},
+/**
+ * Stop the running preview and hide the overlay. A no-op when none is running.
+ */
+async stopOverlayPreview() : Promise<void> {
+    await TAURI_INVOKE("stop_overlay_preview");
 },
 /**
  * Reported by the overlay webview whenever the card's shape changes.
@@ -1388,6 +1410,39 @@ export type PaginatedHistory = { entries: HistoryEntry[]; has_more: boolean }
 export type PasteMethod = "ctrl_v" | "direct" | "none" | "shift_insert" | "ctrl_shift_v" | "external_script"
 export type PermissionAccess = "allowed" | "denied" | "unknown"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
+/**
+ * A state the preview can show, or `Cycle` to loop through all of them.
+ * 
+ * These are the overlay's own states under both names it uses for capture:
+ * `Recording` is the Minimal pill's, `Listening` is the Live panel's. Asking
+ * for the other style's name is not an error — the driver maps it onto the one
+ * the current style actually has.
+ */
+export type PreviewState = 
+/**
+ * Loop the whole sequence a real session visits.
+ */
+"cycle" | 
+/**
+ * Shown, but no microphone samples yet (the muted pill).
+ */
+"arming" | 
+/**
+ * Capturing, Minimal's name for it.
+ */
+"recording" | 
+/**
+ * Capturing, Live's name for it (the panel is open, text arriving).
+ */
+"listening" | 
+/**
+ * Finalizing the transcript.
+ */
+"transcribing" | 
+/**
+ * Post-processing the transcript.
+ */
+"processing"
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
 /**
  * The whole answer to "how does the overlay look right now".

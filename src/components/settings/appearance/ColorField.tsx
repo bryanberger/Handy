@@ -37,8 +37,8 @@ export interface ColorFieldProps {
   resolvedDefault: string | null;
   /** A new value was picked or typed; schedules/updates the draft. */
   onChange: (hex: string) => void;
-  /** Flush the draft immediately — the OS picker closing, or Enter/blur on
-   *  the hex field, both need no further debounce. */
+  /** Flush the draft immediately: focus leaving the swatch, or Enter/blur on
+   *  the hex field, both mean the edit is settled and needs no more waiting. */
   onCommitNow: () => void;
   onReset: () => void;
   locked?: boolean;
@@ -111,11 +111,11 @@ export const ColorField: React.FC<ColorFieldProps> = ({
           <input
             type="color"
             aria-label={t("settings.appearance.color.swatchLabel")}
-            // Draft only — never a commit. The OS colour panel is continuous,
-            // and WebKit turns *every* update it sends into a form-control
-            // change event (measured in the VM: eight panel updates in 275 ms
-            // produced eight events), which React surfaces as `onChange`.
-            // Committing here therefore issued one
+            // Draft only — never a commit. macOS's color panel is
+            // continuous, and WebKit turns *every* update it sends into a
+            // form-control change event (measured: eight panel updates in
+            // 255 ms produced eight events), which React surfaces as
+            // `onChange`. Committing here therefore issued one
             // `change_overlay_theme_setting` per frame of a drag. The commit
             // belongs to the 120 ms trailing debounce this draft feeds, which
             // collapses a whole drag into one write; `onBlur` flushes it early

@@ -42,11 +42,12 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
     },
   ];
 
-  // Glass is selectable on macOS even with Reduce Transparency on — disabling
-  // it would strand the user's preference for when they turn the
-  // accessibility setting back off. The note explains why Flat renders instead.
-  const showReduceTransparencyNote =
-    glassSupport.supported && !glassSupport.available;
+  // Glass stays selectable on a Mac that can't render it right now —
+  // disabling it would strand the user's preference for when the machine can
+  // again. The note explains why Flat renders instead, without naming a
+  // cause: the payload carries `supported`/`available` and nothing else, so
+  // asserting *why* (Reduce Transparency, say) would be a guess.
+  const showUnavailableNote = glassSupport.supported && !glassSupport.available;
 
   return (
     <div>
@@ -67,9 +68,9 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
           disabled={locked}
         />
       </SettingContainer>
-      {showReduceTransparencyNote && (
+      {showUnavailableNote && (
         <p className="-mt-1 px-4 pb-2 text-xs text-mid-gray">
-          {t("settings.appearance.material.reduceTransparencyNote")}
+          {t("settings.appearance.material.unavailableNote")}
         </p>
       )}
     </div>

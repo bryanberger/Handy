@@ -115,8 +115,19 @@ describe("parseComputedColor", () => {
     );
   });
 
+  test("returns null for percentage channels rather than mis-reading them", () => {
+    // The dangerous case: reading the digits and dropping the "%" turns
+    // white into near-black. Not a format WebKit has been seen to emit for
+    // `.color`, but it is legal CSS, and a wrong color here is invisible —
+    // it just shows as the token's "resolved default".
+    expect(parseComputedColor("rgb(100%, 50%, 25%)")).toBeNull();
+    expect(parseComputedColor("rgb(100% 50% 25% / 0.5)")).toBeNull();
+    expect(parseComputedColor("color(srgb 100% 50% 25%)")).toBeNull();
+  });
+
   test("returns null for an unparseable value", () => {
     expect(parseComputedColor("transparent")).toBeNull();
     expect(parseComputedColor("")).toBeNull();
+    expect(parseComputedColor("lab(52% 40 59)")).toBeNull();
   });
 });

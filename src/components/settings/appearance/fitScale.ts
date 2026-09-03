@@ -8,6 +8,8 @@
  * never drift from the CSS.
  */
 
+import type { OverlayPreviewStyle } from "./useOverlayPreviewDriver";
+
 export interface CardBaseMetrics {
   /** `--ov-open-w`: the Live panel's width at scale 1. */
   openW: number;
@@ -29,7 +31,7 @@ export interface CardBaseMetrics {
  * compact form's widest pill, since those are the shapes that must fit.
  */
 export function cardFootprint(
-  style: "minimal" | "live",
+  style: OverlayPreviewStyle,
   scale: number,
   base: CardBaseMetrics,
 ): { width: number; height: number } {

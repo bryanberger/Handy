@@ -304,7 +304,7 @@
           "glass": "Glass",
           "glassMacOnly": "Glass (macOS only)"
         },
-        "reduceTransparencyNote": "macOS Reduce Transparency is on, so the overlay renders Flat even though Glass is selected."
+        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
       "color": {
         "swatchLabel": "Pick a color",
@@ -799,6 +799,7 @@
     }
   },
   "overlay": {
+    "cancel": "Cancel",
     "transcribing": "Обробка...",
     "processing": "Постобробка..."
   },

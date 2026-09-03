@@ -1,9 +1,10 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Material, OverlayTheme, ResolvedOverlayTheme } from "@/bindings";
 import {
   INHERIT_ALL,
   resolveOverlayThemeVars,
+  type OverlayColorKey,
   type OverlayThemeKey,
 } from "@/lib/overlayTheme";
 
@@ -50,6 +51,21 @@ function clampedHex(n: number): string {
 }
 
 /**
+ * One numeric channel, which must **not** be followed by another digit, a dot
+ * or a `%`. The `%` guard is the whole point: without it `rgb(100% 50% 25%)`
+ * would match as `rgb(100, 50, 25)` and paint a plausible-looking but entirely
+ * wrong color. A percentage form is a shape this parser does not handle, so it
+ * must fail to match and let the caller fall back, not guess.
+ */
+const CHANNEL = String.raw`([\d.]+)(?![\d.%])`;
+const COLOR_SRGB = new RegExp(
+  String.raw`color\(srgb\s+${CHANNEL}\s+${CHANNEL}\s+${CHANNEL}`,
+);
+const RGB_FUNCTION = new RegExp(
+  String.raw`rgba?\(\s*${CHANNEL}[,\s]+${CHANNEL}[,\s]+${CHANNEL}`,
+);
+
+/**
  * `getComputedStyle(...).color` resolves a `color-mix()` custom property down
  * to a plain color, but the serialization format varies with the browser and
  * with whether alpha is present. Current WebKit has been observed to use all
@@ -62,19 +78,19 @@ function clampedHex(n: number): string {
  *    not 0-255 integers.
  * All three are accepted so the same probe works for a plain color token
  * (`accent`, `text`) and a translucent one (`surface`, mixed with its
- * opacity).
+ * opacity). Anything else — a percentage-channel form, a named color, a
+ * `lab()` — returns `null`, and the caller shows a neutral placeholder rather
+ * than a made-up hex.
  */
 export function parseComputedColor(value: string): string | null {
-  const colorFn = value.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+  const colorFn = value.match(COLOR_SRGB);
   if (colorFn) {
     return `#${clampedHex(Number(colorFn[1]) * 255)}${clampedHex(Number(colorFn[2]) * 255)}${clampedHex(Number(colorFn[3]) * 255)}`;
   }
-  const rgbFn = value.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+  const rgbFn = value.match(RGB_FUNCTION);
   if (!rgbFn) return null;
   return `#${clampedHex(Number(rgbFn[1]))}${clampedHex(Number(rgbFn[2]))}${clampedHex(Number(rgbFn[3]))}`;
 }
-
-export type OverlayColorTokenKey = "accent" | "surface" | "text";
 
 export interface UseOverlayThemeVarsResult {
   /** The resolved theme with the in-flight draft merged in — what the
@@ -87,18 +103,17 @@ export interface UseOverlayThemeVarsResult {
   /** Attach one to a 0×0 `aria-hidden` span inside `.ov-preview` per color
    *  token, `style={{ color: "var(--s-accent)" }}` etc. — the only reliable
    *  way to resolve a `color-mix()` custom property down to a hex. */
-  colorProbeRefs: Record<
-    OverlayColorTokenKey,
-    React.RefObject<HTMLSpanElement>
-  >;
+  colorProbeRefs: Record<OverlayColorKey, React.RefObject<HTMLSpanElement>>;
   /** The probed, theme-aware default for each color token — what a ColorField
    *  shows (muted, italic) while that token is unset. `null` until the first
    *  measurement. */
-  resolvedDefaults: Record<OverlayColorTokenKey, string | null>;
+  resolvedDefaults: Record<OverlayColorKey, string | null>;
   isLocked: (key: OverlayThemeKey) => boolean;
   /** The value a control should show: the file's value when locked, else the
    *  draft, else the persisted (resolved, pre-draft) value. */
-  effectiveValue: <K extends OverlayThemeKey>(key: K) => OverlayTheme[K] | null;
+  effectiveValue: <K extends OverlayThemeKey>(
+    key: K,
+  ) => NonNullable<OverlayTheme[K]> | null;
 }
 
 /**
@@ -146,8 +161,16 @@ export function useOverlayThemeVars(
   const accentRef = useRef<HTMLSpanElement>(null);
   const surfaceRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
+  // The three refs are stable for the hook's lifetime, but the object holding
+  // them would be a fresh identity every render — and it is passed straight
+  // into a child's props, so memoizing it keeps that child out of the same
+  // "new object every render" trap that caused the render loop above.
+  const colorProbeRefs = useMemo(
+    () => ({ accent: accentRef, surface: surfaceRef, text: textRef }),
+    [],
+  );
   const [resolvedDefaults, setResolvedDefaults] = useState<
-    Record<OverlayColorTokenKey, string | null>
+    Record<OverlayColorKey, string | null>
   >({ accent: null, surface: null, text: null });
 
   // Runs before paint, so the first frame already shows a measured value —
@@ -169,24 +192,31 @@ export function useOverlayThemeVars(
     // component's lifetime and do not need to be listed.
   }, [previewVars, remeasureSignal]);
 
-  const ownedKeys = resolved?.file.owned_keys ?? [];
-  const isLocked = (key: OverlayThemeKey) => ownedKeys.includes(key);
+  const ownedKeys = useMemo(() => resolved?.file.owned_keys ?? [], [resolved]);
+  const isLocked = useCallback(
+    (key: OverlayThemeKey) => ownedKeys.includes(key),
+    [ownedKeys],
+  );
 
-  const effectiveValue = <K extends OverlayThemeKey>(
-    key: K,
-  ): OverlayTheme[K] | null => {
-    if (isLocked(key))
-      return (baseTheme[key] ?? null) as OverlayTheme[K] | null;
-    const draftValue = draft[key];
-    if (draftValue !== undefined) return draftValue as OverlayTheme[K];
-    return (baseTheme[key] ?? null) as OverlayTheme[K] | null;
-  };
+  const effectiveValue = useCallback(
+    <K extends OverlayThemeKey>(
+      key: K,
+    ): NonNullable<OverlayTheme[K]> | null => {
+      if (isLocked(key))
+        return (baseTheme[key] ?? null) as NonNullable<OverlayTheme[K]> | null;
+      const draftValue = draft[key];
+      if (draftValue !== undefined)
+        return (draftValue ?? null) as NonNullable<OverlayTheme[K]> | null;
+      return (baseTheme[key] ?? null) as NonNullable<OverlayTheme[K]> | null;
+    },
+    [baseTheme, draft, isLocked],
+  );
 
   return {
     previewTheme,
     previewVars,
     effectiveMaterial: previewTheme.effective_material,
-    colorProbeRefs: { accent: accentRef, surface: surfaceRef, text: textRef },
+    colorProbeRefs,
     resolvedDefaults,
     isLocked,
     effectiveValue,

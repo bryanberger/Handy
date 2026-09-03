@@ -38,13 +38,20 @@ describe("stepAt", () => {
   });
 
   test("wraps to the next cycle after the total duration", () => {
-    const total = totalDurationMs(MINIMAL_SEQUENCE);
-    const first = stepAt(MINIMAL_SEQUENCE, 100);
-    const secondCycle = stepAt(MINIMAL_SEQUENCE, total + 100);
-    expect(secondCycle.name).toBe(first.name);
-    expect(secondCycle.elapsedInStepMs).toBe(first.elapsedInStepMs);
-    expect(first.cycle).toBe(0);
-    expect(secondCycle.cycle).toBe(1);
+    // 8100 ms is one whole Minimal loop, so 8200 ms is 100 ms into the second
+    // one: the same step at the same offset, one cycle on.
+    expect(stepAt(MINIMAL_SEQUENCE, 100)).toEqual({
+      index: 0,
+      name: "arming",
+      elapsedInStepMs: 100,
+      cycle: 0,
+    });
+    expect(stepAt(MINIMAL_SEQUENCE, 8200)).toEqual({
+      index: 0,
+      name: "arming",
+      elapsedInStepMs: 100,
+      cycle: 1,
+    });
   });
 
   test("elapsedInStepMs resets at each step boundary", () => {
@@ -156,31 +163,29 @@ describe("cardPropsAt", () => {
   });
 
   test("Live: listening streams text; the working step holds it", () => {
-    const midListening = 800 + 2000; // 1200ms into the 4400ms listening step
-    const listening = cardPropsAt(
-      "live",
-      midListening,
-      "sample text here",
-      true,
-    );
+    const sample = "one two three four five six seven eight nine ten";
+
+    const midListening = 800 + 2000; // 2000ms into the 4400ms listening step
+    const listening = cardPropsAt("live", midListening, sample, true);
     expect(listening.activeState).toBe("listening");
     expect(listening.props.state).toBe("streaming");
     expect(listening.props.phase).toBe("listening");
-    expect(listening.props.streamText.committed.length).toBeGreaterThan(0);
+    // 2000ms at 260ms/word: seven words committed, the eighth tentative.
+    expect(listening.props.streamText).toEqual({
+      committed: "one two three four five six seven",
+      tentative: "eight",
+    });
 
-    const working = cardPropsAt(
-      "live",
-      800 + 4400 + 100,
-      "sample text here",
-      true,
-    );
+    const working = cardPropsAt("live", 800 + 4400 + 100, sample, true);
     expect(working.activeState).toBe("transcribing");
     expect(working.props.phase).toBe("working");
-    // Held at exactly what the full 4400ms listening step revealed, not
-    // restarted from the working step's own (100ms) clock.
-    expect(working.props.streamText).toEqual(
-      revealedText("sample text here", 4400, 260),
-    );
+    // Held at what the *full* 4400ms listening step revealed — all ten words,
+    // nothing tentative — not restarted from the working step's own 100ms
+    // clock, which would show a single tentative word instead.
+    expect(working.props.streamText).toEqual({
+      committed: sample,
+      tentative: "",
+    });
   });
 
   test("animated=false yields a static, flat mid-height waveform", () => {

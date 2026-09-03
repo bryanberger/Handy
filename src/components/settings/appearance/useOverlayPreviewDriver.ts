@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { StreamPhase, StreamTextEvent, StreamWorkKind } from "@/bindings";
+import type {
+  OverlayStyle,
+  StreamPhase,
+  StreamTextEvent,
+  StreamWorkKind,
+} from "@/bindings";
 import type { OverlayCardProps, OverlayState } from "@/overlay/OverlayCard";
 
-export type OverlayPreviewStyle = "minimal" | "live";
+/** The two overlay styles the preview can render; `none` has nothing to show.
+ *  Derived from the binding rather than respelled, so the preview, the fit
+ *  math and the tab all narrow the same setting and cannot drift from it. */
+export type OverlayPreviewStyle = Exclude<OverlayStyle, "none">;
 
 /** The named states the preview cycles through — the chip row's labels. */
 export type PreviewStateName =
@@ -181,6 +189,42 @@ const LISTENING_PHASE: StreamPhase = "listening";
 const TRANSCRIBING_KIND: StreamWorkKind = "transcribing";
 
 /**
+ * Every frame the preview can show differs in at most five fields; the rest
+ * (the work kind, the empty transcript, a zero timer) is the same every time.
+ * One builder with those defaults keeps each state below a single line and
+ * stops a seventh near-identical object literal from drifting from the other
+ * six.
+ */
+function frame(
+  active: ActiveStep,
+  activeState: PreviewStateName,
+  levels: number[],
+  props: {
+    state: OverlayState;
+    captureReady: boolean;
+    streamText?: StreamTextEvent;
+    phase?: StreamPhase;
+    elapsed?: number;
+    mounted?: boolean;
+  },
+): CardPropsResult {
+  return {
+    mounted: props.mounted ?? true,
+    session: active.cycle,
+    activeState,
+    props: {
+      state: props.state,
+      captureReady: props.captureReady,
+      levels,
+      streamText: props.streamText ?? EMPTY_STREAM_TEXT,
+      phase: props.phase ?? LISTENING_PHASE,
+      workKind: TRANSCRIBING_KIND,
+      elapsed: props.elapsed ?? 0,
+    },
+  };
+}
+
+/**
  * Pure: the OverlayCard props for `style` at `cycleElapsedMs` into the loop.
  * `animated` selects between the synthetic waveform (playing) and a static
  * mid-height one (paused, pinned, or `prefers-reduced-motion: reduce`).
@@ -196,140 +240,69 @@ export function cardPropsAt(
   const levels = animated
     ? syntheticLevels(cycleElapsedMs)
     : [...MID_HEIGHT_LEVELS];
-  const elapsedSeconds = Math.floor(active.elapsedInStepMs / 1000);
+  const elapsed = Math.floor(active.elapsedInStepMs / 1000);
   const cardState: OverlayState = style === "live" ? "streaming" : "recording";
 
   if (active.name === "gap") {
-    return {
+    return frame(active, "arming", levels, {
+      state: cardState,
+      captureReady: false,
       mounted: false,
-      session: active.cycle,
-      activeState: "arming",
-      props: {
-        state: cardState,
-        captureReady: false,
-        levels,
-        streamText: EMPTY_STREAM_TEXT,
-        phase: LISTENING_PHASE,
-        workKind: TRANSCRIBING_KIND,
-        elapsed: 0,
-      },
-    };
+    });
   }
 
   if (style === "live") {
     if (active.name === "arming") {
-      return {
-        mounted: true,
-        session: active.cycle,
-        activeState: "arming",
-        props: {
-          state: "streaming",
-          captureReady: false,
-          levels,
-          streamText: EMPTY_STREAM_TEXT,
-          phase: LISTENING_PHASE,
-          workKind: TRANSCRIBING_KIND,
-          elapsed: 0,
-        },
-      };
+      return frame(active, "arming", levels, {
+        state: "streaming",
+        captureReady: false,
+      });
     }
     if (active.name === "listening") {
-      return {
-        mounted: true,
-        session: active.cycle,
-        activeState: "listening",
-        props: {
-          state: "streaming",
-          captureReady: true,
-          levels,
-          streamText: revealedText(sampleText, active.elapsedInStepMs),
-          phase: LISTENING_PHASE,
-          workKind: TRANSCRIBING_KIND,
-          elapsed: elapsedSeconds,
-        },
-      };
+      return frame(active, "listening", levels, {
+        state: "streaming",
+        captureReady: true,
+        streamText: revealedText(sampleText, active.elapsedInStepMs),
+        elapsed,
+      });
     }
     // "transcribing" (working): hold the text exactly where listening left
     // it, rather than restarting the reveal from this step's own clock.
     const listeningDuration = sequence[active.index - 1]?.durationMs ?? 0;
-    return {
-      mounted: true,
-      session: active.cycle,
-      activeState: "transcribing",
-      props: {
-        state: "streaming",
-        captureReady: true,
-        levels,
-        streamText: revealedText(sampleText, listeningDuration),
-        phase: WORKING_PHASE,
-        workKind: TRANSCRIBING_KIND,
-        elapsed: elapsedSeconds,
-      },
-    };
+    return frame(active, "transcribing", levels, {
+      state: "streaming",
+      captureReady: true,
+      streamText: revealedText(sampleText, listeningDuration),
+      phase: WORKING_PHASE,
+      elapsed,
+    });
   }
 
   // Minimal.
   switch (active.name) {
     case "arming":
-      return {
-        mounted: true,
-        session: active.cycle,
-        activeState: "arming",
-        props: {
-          state: "recording",
-          captureReady: false,
-          levels,
-          streamText: EMPTY_STREAM_TEXT,
-          phase: LISTENING_PHASE,
-          workKind: TRANSCRIBING_KIND,
-          elapsed: 0,
-        },
-      };
+      return frame(active, "arming", levels, {
+        state: "recording",
+        captureReady: false,
+      });
     case "transcribing":
-      return {
-        mounted: true,
-        session: active.cycle,
-        activeState: "transcribing",
-        props: {
-          state: "transcribing",
-          captureReady: true,
-          levels,
-          streamText: EMPTY_STREAM_TEXT,
-          phase: WORKING_PHASE,
-          workKind: TRANSCRIBING_KIND,
-          elapsed: 0,
-        },
-      };
+      return frame(active, "transcribing", levels, {
+        state: "transcribing",
+        captureReady: true,
+        phase: WORKING_PHASE,
+      });
     case "processing":
-      return {
-        mounted: true,
-        session: active.cycle,
-        activeState: "processing",
-        props: {
-          state: "processing",
-          captureReady: true,
-          levels,
-          streamText: EMPTY_STREAM_TEXT,
-          phase: WORKING_PHASE,
-          workKind: TRANSCRIBING_KIND,
-          elapsed: 0,
-        },
-      };
+      return frame(active, "processing", levels, {
+        state: "processing",
+        captureReady: true,
+        phase: WORKING_PHASE,
+      });
     default: // "recording"
-      return {
-        mounted: true,
-        session: active.cycle,
-        activeState: "recording",
-        props: {
-          state: "recording",
-          captureReady: true,
-          levels,
-          streamText: EMPTY_STREAM_TEXT,
-          phase: LISTENING_PHASE,
-          workKind: TRANSCRIBING_KIND,
-          elapsed: elapsedSeconds,
-        },
-      };
+      return frame(active, "recording", levels, {
+        state: "recording",
+        captureReady: true,
+        elapsed,
+      });
   }
 }
 
@@ -406,6 +379,23 @@ export function useOverlayPreviewDriver(
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, [playing]);
+
+  // Reduce Motion is a live setting, not just a starting condition: turning it
+  // on mid-session parks the cycle on a settled frame, turning it off resumes
+  // it. Compared against the previous value so this only ever reacts to an
+  // actual transition and never overrides the user's own play/pause.
+  const wasReducedRef = useRef(prefersReducedMotion);
+  useEffect(() => {
+    if (wasReducedRef.current === prefersReducedMotion) return;
+    wasReducedRef.current = prefersReducedMotion;
+    if (prefersReducedMotion) {
+      setPlaying(false);
+      setPinnedState((pinned) => pinned ?? "arming");
+    } else {
+      setPinnedState(null);
+      setPlaying(true);
+    }
+  }, [prefersReducedMotion]);
 
   const togglePlay = useCallback(() => {
     setPinnedState(null);

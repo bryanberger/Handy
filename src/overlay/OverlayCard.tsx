@@ -45,12 +45,21 @@ export interface OverlayCardProps {
 
 /**
  * The overlay's presentational half: the `.ov-stage` / `.scard` tree for every
- * state. Extracted verbatim from `RecordingOverlay.tsx` (which keeps every
- * Tauri listener, the elapsed timer and the position fetch) so the Appearance
- * tab's preview can render the exact markup a real dictation does — a preview
- * that could drift from the overlay would be worse than none. Owns the DOM
+ * state. Extracted from `RecordingOverlay.tsx` (which keeps every Tauri
+ * listener, the elapsed timer and the position fetch) so the Appearance tab's
+ * preview can render the exact markup a real dictation does — a preview that
+ * could drift from the overlay would be worse than none. Owns the DOM
  * concerns that belong to the card itself: the live-text scroll pin and the
  * top-edge overflow fade.
+ *
+ * The markup is verbatim except for the three class names that read
+ * `isVisible`, which is state `RecordingOverlay` keeps and this component
+ * never receives. All three were already constant at the point they ran,
+ * because `RecordingOverlay` returns `null` before rendering the card when
+ * `!isVisible`: `isVisible ? "" : "leaving"` was always `""` (the `.leaving`
+ * rule was dead CSS and is deleted), and both `isVisible ? "show" : ""` and
+ * `working && isVisible` were always their true branch. They are inlined at
+ * those values here.
  */
 const OverlayCard: React.FC<OverlayCardProps> = ({
   state,
@@ -119,7 +128,11 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
   );
 
   const cancelBtn = (
-    <button className="sx" aria-label="cancel" onClick={() => onCancel?.()}>
+    <button
+      className="sx"
+      aria-label={t("overlay.cancel")}
+      onClick={() => onCancel?.()}
+    >
       <svg viewBox="0 0 16 16" aria-hidden="true">
         <path
           d="M4 4 L12 12 M12 4 L4 12"

@@ -38,12 +38,12 @@ describe("cardFootprint", () => {
   });
 
   test("the border scales with the card, not a flat 2px", () => {
-    const atOne = cardFootprint("minimal", 1, BASE);
-    const atHalf = cardFootprint("minimal", 0.5, BASE);
-    // Content halves exactly; the border (2 * scale) halves too, so the
-    // footprint is not simply half of the scale-1 footprint plus a constant.
-    expect(atHalf.width).toBeCloseTo(atOne.width / 2, 5);
-    expect(atHalf.height).toBeCloseTo(atOne.height / 2, 5);
+    // 216 * 0.5 + (2 * 0.5) = 109, not 216 * 0.5 + 2 = 110; likewise
+    // 40 * 0.5 + 1 = 21, not 22. A flat 2 px border would give the larger
+    // pair, and the preview would then shrink a card that already fits.
+    const { width, height } = cardFootprint("minimal", 0.5, BASE);
+    expect(width).toBe(109);
+    expect(height).toBe(21);
   });
 });
 
@@ -53,10 +53,15 @@ describe("computeFit", () => {
   });
 
   test("shrinks to the tighter of width/height when the card overflows", () => {
-    // A 1.5x Live card (591x177) in a 456x148 stage.
-    const fit = computeFit(456, 148, 591, 177);
-    expect(fit).toBeCloseTo(Math.min(456 / 591, 148 / 177), 10);
-    expect(fit).toBeLessThan(1);
+    // A 1.5x Live card (591x177) in a 456x148 stage: width needs 0.7716,
+    // height only 0.8362, so width is the binding axis.
+    expect(computeFit(456, 148, 591, 177)).toBeCloseTo(0.7715736, 6);
+  });
+
+  test("takes the height axis when that is the tighter one", () => {
+    // The same card in a stage that is wide but short: 300/177 = 1.695 would
+    // upscale, so height's 0.5650 binds instead.
+    expect(computeFit(900, 100, 591, 177)).toBeCloseTo(0.564972, 6);
   });
 
   test("never upscales past 1 for a small card in a big stage", () => {

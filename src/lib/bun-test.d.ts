@@ -14,6 +14,13 @@ declare module "bun:test" {
     toBeNull(): void;
     toBeUndefined(): void;
     toContain(expected: unknown): void;
+    toBeGreaterThan(expected: number): void;
+    toBeGreaterThanOrEqual(expected: number): void;
+    toBeLessThan(expected: number): void;
+    toBeLessThanOrEqual(expected: number): void;
+    toBeCloseTo(expected: number, numDigits?: number): void;
+    toThrow(expected?: unknown): void;
+    readonly not: Matchers;
   }
 
   export function describe(label: string, body: () => void): void;

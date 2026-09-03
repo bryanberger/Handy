@@ -29,6 +29,9 @@ import type { Material, OverlayTheme, ResolvedOverlayTheme } from "@/bindings";
 /** A token name: simultaneously an `OverlayTheme` field and a theme-file key. */
 export type OverlayThemeKey = keyof OverlayTheme;
 
+/** The three tokens whose value is a colour. */
+export type OverlayColorKey = "accent" | "surface" | "text";
+
 /** The five tokens whose value is a number. */
 export type OverlayNumericKey =
   | "surface_opacity"

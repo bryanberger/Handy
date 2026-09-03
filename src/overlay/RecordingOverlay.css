@@ -223,13 +223,6 @@
     transform: none;
   }
 }
-.scard.leaving {
-  opacity: 0;
-  transform: scale(0.96);
-  transition:
-    opacity 240ms ease,
-    transform 300ms ease;
-}
 .scard.open {
   width: calc(var(--ov-open-w) * var(--ov-scale));
   /* Derived from the card radius: 2/3 of it, i.e. today's 16px at the default

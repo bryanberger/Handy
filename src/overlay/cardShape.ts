@@ -4,16 +4,9 @@ import type {
   StreamTextEvent,
 } from "@/bindings";
 
-/**
- * Mirrors `RecordingOverlay.tsx`'s own private `OverlayState` type — the two
- * copies stay separate until the card moves out of that file, at which point
- * one of them is exported and the other goes.
- */
-export type OverlayState =
-  | "recording"
-  | "streaming"
-  | "transcribing"
-  | "processing";
+import type { OverlayState } from "./OverlayCard";
+
+export type { OverlayState };
 
 /**
  * The card morph duration to fall back on when the stylesheet cannot be read

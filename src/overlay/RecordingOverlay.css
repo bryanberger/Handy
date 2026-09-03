@@ -65,6 +65,15 @@
   --ov-cap-pad-y: 12px; /* .stext-cap breathing room; the Live card's only
                            non-variable length */
 
+  /* Card timings, in ms — the single source for all three sides of them.
+     The transitions below read them; the overlay page reads --ov-morph-ms at
+     runtime (src/overlay/cardShape.ts) and sends it with every card-shape
+     report, so the native window morph under Glass runs exactly as long as the
+     CSS morph would have; overlay.rs pins both to its own CARD_MORPH_MS /
+     CARD_FADE_MS with overlay_window_constants_match_overlay_css. */
+  --ov-morph-ms: 460ms; /* .scard width + radius morph, and the pop-in */
+  --ov-fade-ms: 200ms; /* .ov-fade in and out, and the native blur's own fade */
+
   /* Overlay-theme length tokens. These are the inherit values the apply layer
      overrides (src/lib/overlayTheme.ts) when the user sets a token; every value
      here is today's literal, so unset tokens reproduce today's card exactly.
@@ -135,7 +144,7 @@
    morphs). */
 .ov-fade {
   opacity: 0;
-  transition: opacity 200ms ease-out;
+  transition: opacity var(--ov-fade-ms) ease-out;
 }
 .ov-fade.show {
   opacity: 1;
@@ -197,10 +206,10 @@
   border: calc(1px * var(--ov-scale)) solid var(--s-border);
   /* Flat: no drop shadow, no backdrop blur/saturate (was a glassy gradient look). */
   /* pop-in plays on mount; morph (width/radius) is a transition */
-  animation: scard-pop 460ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: scard-pop var(--ov-morph-ms) cubic-bezier(0.22, 1, 0.36, 1);
   transition:
-    width 460ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius 460ms cubic-bezier(0.22, 1, 0.36, 1);
+    width var(--ov-morph-ms) cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius var(--ov-morph-ms) cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform, width, opacity;
 }
 @keyframes scard-pop {
@@ -499,4 +508,64 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ============================================================
+   Glass Material (macOS). The native NSVisualEffectView fills the whole overlay
+   window and overlay.rs sizes that window to the card exactly (window slack 0),
+   so under Glass the card is the window: no CSS width/height morph and no radius
+   transition — the native window frame animates instead and the card follows it.
+   Colour work is done by the apply layer (it writes --s-surface and the neutrals
+   at their Glass strengths), so only structure lives here.
+   `:root[...]` scopes the geometry to the real overlay document; the settings
+   window's preview puts data-material on a wrapper element, which these
+   root-scoped selectors deliberately never match — the preview keeps the CSS
+   morph, because it has no native window to animate.
+   ============================================================ */
+:root[data-material="glass"] .scard,
+:root[data-material="glass"] .scard.compact,
+:root[data-material="glass"] .scard.compact.cworking,
+:root[data-material="glass"] .scard.working,
+:root[data-material="glass"] .scard.open {
+  width: 100%;
+  height: 100%;
+  /* .scard is content-box (the only other box-sizing in this file is .sdot),
+     so without this the 1px border pushes the card 2px past the window and
+     body{overflow:hidden} clips it. */
+  box-sizing: border-box;
+  /* The window frame is the animation: only the card's own morph is killed,
+     so its border and the blur's edge stay on one rectangle. Named properties
+     rather than a blanket `transition: none`, which would also take out any
+     fade the card grows later; the compact pill's fade lives on .ov-fade
+     above and is deliberately left untouched. */
+  transition:
+    width 0s,
+    border-radius 0s;
+  /* scard-pop scales the card from 0.92; the blur cannot scale with it, so
+     the pop would show a blurred halo around a smaller card. Both forms fade
+     instead — .ov-fade for compact, the native alpha fade for the blur. */
+  animation: none;
+  will-change: opacity;
+}
+
+/* The control row holds its height while the window grows; the text region
+   takes the slack and clips — which is what the grid-rows transition above
+   did under Flat. */
+:root[data-material="glass"] .sbase {
+  flex: none;
+}
+:root[data-material="glass"] .stext {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-rows: 1fr;
+  /* Same rule as the card: the row morph goes, the opacity fade stays. */
+  transition:
+    grid-template-rows 0s,
+    opacity 260ms ease;
+}
+
+/* A blurred surface, not a near-opaque one: drop the 10% dimming the flat card
+   could afford. Unscoped, so the preview's stand-in gets it too. */
+[data-material="glass"] .stext-cap {
+  color: var(--s-text);
 }

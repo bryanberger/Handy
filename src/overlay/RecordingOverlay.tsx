@@ -13,7 +13,10 @@ import type {
 import i18n, { syncLanguageFromSettings } from "@/i18n";
 import { applyOverlayTheme, storeOverlayTheme } from "@/lib/overlayTheme";
 import { getLanguageDirection } from "@/lib/utils/rtl";
+import { useCardShapeReporter } from "./useCardShapeReporter";
 
+// Mirrored by `OverlayState` in ./cardShape.ts until the card moves out of
+// this file and one of the two copies can be exported.
 type OverlayState = "recording" | "streaming" | "transcribing" | "processing";
 
 // Number of reactive bars in the waveform (the simple, smoothed style shared by
@@ -21,10 +24,13 @@ type OverlayState = "recording" | "streaming" | "transcribing" | "processing";
 const WAVE_BARS = 9;
 
 // Paint a resolved overlay theme and remember it for the next boot. Both the
-// pull on show and the push on change do exactly this.
-const paintOverlayTheme = (resolved: ResolvedOverlayTheme) => {
+// pull on show and the push on change do exactly this. Returns whether the
+// effective Material is Glass, the one thing about the theme this component
+// has to keep in state.
+const paintOverlayTheme = (resolved: ResolvedOverlayTheme): boolean => {
   applyOverlayTheme(document.documentElement, resolved);
   storeOverlayTheme(resolved);
+  return resolved.effective_material === "glass";
 };
 
 const RecordingOverlay: React.FC = () => {
@@ -52,6 +58,9 @@ const RecordingOverlay: React.FC = () => {
   // True once live text overflows the cap. A top overlay fades its top edge only
   // while overflowing, so the resting first line stays crisp flush under the pill.
   const [overflowing, setOverflowing] = useState(false);
+  // Whether the effective Material is Glass, from the resolved theme painted
+  // below. Gates the card-shape reports, which only Glass needs.
+  const [glassActive, setGlassActive] = useState(false);
 
   const smoothedLevelsRef = useRef<number[]>(Array(16).fill(0));
   // Live-text scroll-back: the text region "sticks" to the newest line while the
@@ -94,7 +103,7 @@ const RecordingOverlay: React.FC = () => {
             // Imperative, not an effect: the custom properties and
             // `data-material` must be on the root before the first painted
             // frame, which an effect would leave to React's batching.
-            paintOverlayTheme(resolved.data);
+            setGlassActive(paintOverlayTheme(resolved.data));
           }
         } catch {
           // Keep the previous/default placement and theme if either read fails.
@@ -138,7 +147,7 @@ const RecordingOverlay: React.FC = () => {
       // The theme can change while the overlay is visible (a slider drag in the
       // Appearance tab), so repaint on every push as well.
       const unlistenTheme = await events.resolvedOverlayTheme.listen((event) =>
-        paintOverlayTheme(event.payload),
+        setGlassActive(paintOverlayTheme(event.payload)),
       );
 
       const unlistenPhase = await events.streamPhaseEvent.listen((event) => {
@@ -183,6 +192,8 @@ const RecordingOverlay: React.FC = () => {
     pinnedRef.current = true;
     setOverflowing(false);
   }, [session]);
+
+  useCardShapeReporter({ isVisible, glassActive, state, streamText, phase });
 
   if (!isVisible) return null;
 

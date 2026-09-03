@@ -14,6 +14,7 @@ mod llm_client;
 mod managers;
 mod memory;
 mod overlay;
+mod overlay_glass;
 mod overlay_theme;
 mod overlay_theme_file;
 mod paste_tx;
@@ -768,6 +769,7 @@ pub fn run(cli_args: CliArgs) {
             commands::overlay_theme::get_resolved_overlay_theme,
             commands::overlay_theme::reload_overlay_theme_file,
             commands::overlay_preview::preview_overlay_on_screen,
+            commands::overlay_card::set_overlay_card_shape,
             helpers::clamshell::is_laptop,
         ])
         .events(collect_events![

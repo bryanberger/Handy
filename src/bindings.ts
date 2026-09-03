@@ -980,6 +980,27 @@ async previewOverlayOnScreen(sampleText: string) : Promise<Result<null, string>>
 }
 },
 /**
+ * Reported by the overlay webview whenever the card's shape changes.
+ * 
+ * The payload is a symbolic shape plus a duration, never pixels: the backend
+ * recomputes the window size itself from its own constants and the resolved
+ * size scale. Reports are coalesced by shape identity, not debounced by
+ * time, so a repeated report costs nothing and a real change never waits.
+ * 
+ * `duration_ms` is how long the window is allowed to take to reach the new
+ * shape, and must be between 0 (snap) and 2000 milliseconds; anything longer
+ * is rejected rather than clamped, because it would leave a native window
+ * animation running long after the card had settled.
+ */
+async setOverlayCardShape(shape: OverlayCardShape, durationMs: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_overlay_card_shape", { shape, durationMs }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Checks if the Mac is a laptop by detecting battery presence
  * 
  * This uses pmset to check for battery information.
@@ -1186,6 +1207,45 @@ sha256: string | null } } |
 "Local"
 export type ModelUnloadTimeout = "never" | "immediately" | "min_2" | "min_5" | "min_10" | "min_15" | "hour_1" | "sec_15"
 export type OrtAcceleratorSetting = "auto" | "cpu" | "cuda" | "directml" | "rocm"
+/**
+ * Which of the five card shapes the overlay is currently drawing.
+ * 
+ * Under Flat this is bookkeeping only: the window is sized for the widest
+ * card the overlay style can reach, and the CSS morph happens inside it.
+ * Under Glass it is the unit the native window is sized from, because the
+ * window slack is zero and the window rectangle is the card — and because
+ * the Live panel's open/collapsed morph is a pure webview decision (driven
+ * by streamed text and phase) that Rust cannot see any other way.
+ * 
+ * One variant per distinct `.scard` class combination in
+ * `RecordingOverlay.tsx`; the footprints mirror the `--ov-*` block in
+ * `RecordingOverlay.css` and are pinned to it by
+ * `overlay_window_constants_match_overlay_css`. Must agree with
+ * `cardShape()` in `src/overlay/cardShape.ts`; pinned by
+ * `initial_card_shape_matches_card_shape_ts`.
+ */
+export type OverlayCardShape = 
+/**
+ * `.scard.compact` — the resting Minimal pill.
+ */
+"compact_rest" | 
+/**
+ * `.scard.compact.cworking` — the Minimal working pill, at the same
+ * footprint as Live's own collapsed working pill.
+ */
+"compact_working" | 
+/**
+ * `.scard` — the Live pill before it opens or collapses.
+ */
+"live_pill" | 
+/**
+ * `.scard.working` — the Live panel collapsed to its working pill.
+ */
+"live_working" | 
+/**
+ * `.scard.open` — the Live panel, expanded.
+ */
+"live_open"
 export type OverlayPosition = "top" | "bottom"
 /**
  * Which recording overlay to display. `Minimal` and `Live` share one base

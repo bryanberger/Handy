@@ -37,6 +37,7 @@ function resolved(
       tokens: INHERIT_ALL,
       owned_keys: [],
       diagnostics: [],
+      diagnostics_total: 0,
       stale: false,
     },
   };

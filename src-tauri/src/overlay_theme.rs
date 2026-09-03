@@ -255,17 +255,15 @@ pub fn effective_material(requested: Material, support: GlassSupport) -> Materia
     }
 }
 
-/// Whether Glass can render on this machine.
+/// Whether Glass can render on this machine, and whether it can render right
+/// now.
 ///
-/// A stub until the native Glass module lands: `supported` is the compile-time
-/// platform fact, `available` is false because no effect view is installed yet.
-/// A persisted or file-driven `material: "glass"` therefore round-trips intact
-/// and renders Flat.
-pub fn glass_support(_app: &AppHandle) -> GlassSupport {
-    GlassSupport {
-        supported: cfg!(target_os = "macos"),
-        available: false,
-    }
+/// Delegates to [`crate::overlay_glass::support`], the module that owns the
+/// installed effect view and the live macOS "Reduce transparency" read. This
+/// indirection exists so every caller in this module keeps one name
+/// regardless of which module answers it.
+pub fn glass_support(app: &AppHandle) -> GlassSupport {
+    crate::overlay_glass::support(app)
 }
 
 /// What kind of thing the theme file got wrong.

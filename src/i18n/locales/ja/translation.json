@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "一般",
-    "appearance": "Appearance",
+    "appearance": "外観",
     "models": "モデル",
     "advanced": "詳細設定",
     "postProcessing": "後処理",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "アプリケーション",
+        "overlay": "オーバーレイ",
+        "preview": "プレビュー",
+        "color": "オーバーレイの色",
+        "material": "オーバーレイのマテリアル",
+        "size": "オーバーレイのサイズと余白",
+        "themeFile": "テーマファイル"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "準備中",
+          "recording": "録音中",
+          "listening": "聞き取り中",
+          "transcribing": "文字起こし中",
+          "processing": "処理中"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "プレビューを再生",
+        "pause": "プレビューを一時停止",
+        "showOnScreen": "画面に表示",
+        "showOnScreenBusy": "表示中…",
+        "showOnScreenBlocked": "Handy の録音中は利用できません",
+        "sampleText": "素早い茶色のキツネがのんびりした犬を飛び越え、Handy がそれを書き取ります。",
+        "glassNote": "ガラスはオーバーレイの背後にあるものをぼかします。このプレビューは代用の背景で近似的に表示しているだけなので、実際の効果は「画面に表示」で確認してください。",
+        "glassUnavailable": "ガラスは macOS でのみ利用できます。このシステムではオーバーレイはフラットのままです。",
+        "noneNote": "オーバーレイがオフになっているため、プレビューするものがありません。上で「ミニマル」または「ライブ」を選択してください。",
+        "scaledNote": "プレビューは {{percent}}% で表示中"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "オーバーレイのテーマをリセット",
+        "title": "オーバーレイのテーマをリセットしますか？",
+        "description": "オーバーレイのすべての色、サイズ、余白を Handy の既定値に戻します。オーバーレイのスタイルと位置は変更されません。",
+        "descriptionWithThemeFile": "テーマファイルで設定されていないオーバーレイのすべての色、サイズ、余白を Handy の既定値に戻します。オーバーレイのスタイルと位置は変更されず、テーマファイルで設定された値もそのまま有効です。",
+        "confirm": "リセット",
+        "cancel": "キャンセル"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "マテリアル",
+        "description": "オーバーレイのサーフェスの描画方法です。フラットは不透明なサーフェス、ガラスは半透明で背後にあるものをぼかします。",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "フラット",
+          "glass": "ガラス",
+          "glassMacOnly": "ガラス (macOS のみ)"
         },
-        "reduceTransparencyNote": "macOS Reduce Transparency is on, so the overlay renders Flat even though Glass is selected."
+        "reduceTransparencyNote": "macOS の「透明度を下げる」がオンのため、ガラスを選択していてもオーバーレイはフラットで描画されます。"
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "色を選択",
+        "hexLabel": "16 進数の色の値",
+        "resetLabel": "既定値に戻す"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "アクセント",
+          "description": "強調表示の色：波形、録音ドット、キャレット、スピナーに使われます。"
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "サーフェス",
+          "description": "オーバーレイカードの背景色です。"
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "サーフェスの不透明度",
+          "description": "カードの背景がどれだけ透けるかです。"
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "テキスト",
+          "description": "カードの前景色で、すべてのニュートラルな色調を混ぜる基準にもなります。"
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "サイズ倍率",
+          "description": "カード内のすべての長さを一度に拡大縮小します（幅、高さ、余白、文字サイズ）。オーバーレイが画面上で必要とする領域を変える唯一の項目です。"
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "角の丸み",
+          "description": "カードの角の丸みです。"
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "余白",
+          "description": "コントロール行の左右の余白です。"
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "波形の間隔",
+          "description": "波形バーどうしの間隔です。"
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "テーマファイル",
+        "description": "外部のテーマ作成ツールからオーバーレイを制御できるように、オーバーレイのテーマ値を上書きする任意の JSON ファイルです。",
+        "notFound": "テーマファイルはありません。このパスに作成すると、オーバーレイのテーマ値を上書きできます。",
+        "active": "有効：このファイルは 9 個中 {{count}} 個の値を設定しています。",
+        "reload": "再読み込み",
+        "copy": "テーマを JSON としてコピー",
+        "copied": "コピーしました",
+        "lockedDescription": "テーマファイルで設定されています。ここで変更するには overlay_theme.json を編集するか、このキーを削除してください。",
+        "problemsTitle": "テーマファイルの問題:",
+        "moreDiagnostics": "…他 {{count}} 件。",
+        "newerVersion": "このテーマファイルは新しいバージョンの Handy で書かれています。このバージョンが解釈できない値は無視されました。",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "テーマファイルが有効な JSON ではありません。",
+          "unknownKey": "不明なキーを無視しました: {{key}}",
+          "wrongType": "\"{{key}}\" は型が正しくないため無視されました。",
+          "invalidColor": "\"{{key}}\" は有効な色ではないため無視されました。",
+          "outOfBounds": "\"{{key}}\" は許容範囲を超えていたため、範囲内に丸められました。",
+          "unreadable": "テーマファイルを読み取れませんでした。"
         }
       }
     },

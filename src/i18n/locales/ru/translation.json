@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "Общие",
-    "appearance": "Appearance",
+    "appearance": "Внешний вид",
     "models": "Модели",
     "advanced": "Продвинутые",
     "postProcessing": "Постобработка",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "Приложение",
+        "overlay": "Наложение",
+        "preview": "Предпросмотр",
+        "color": "Цвет наложения",
+        "material": "Материал наложения",
+        "size": "Размер и отступы наложения",
+        "themeFile": "Файл темы"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "Подготовка",
+          "recording": "Запись",
+          "listening": "Прослушивание",
+          "transcribing": "Расшифровка",
+          "processing": "Обработка"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "Воспроизвести предпросмотр",
+        "pause": "Приостановить предпросмотр",
+        "showOnScreen": "Показать на экране",
+        "showOnScreenBusy": "Показывается…",
+        "showOnScreenBlocked": "Недоступно, пока Handy ведёт запись",
+        "sampleText": "Съешь же ещё этих мягких французских булок да выпей чаю, а Handy это запишет.",
+        "glassNote": "Стекло размывает то, что находится за наложением. Этот предпросмотр приближённо показывает эффект на подставном фоне — нажмите Показать на экране, чтобы увидеть настоящий результат.",
+        "glassUnavailable": "Стекло доступно только в macOS. В этой системе наложение остаётся плоским.",
+        "noneNote": "Наложение выключено, поэтому показывать нечего. Выберите выше Минимальное или В реальном времени.",
+        "scaledNote": "Предпросмотр показан в масштабе {{percent}}%"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "Сбросить тему наложения",
+        "title": "Сбросить тему наложения?",
+        "description": "Все цвета, размеры и отступы наложения вернутся к значениям Handy по умолчанию. Стиль и позиция наложения не изменятся.",
+        "descriptionWithThemeFile": "Все цвета, размеры и отступы наложения, которые не заданы файлом темы, вернутся к значениям Handy по умолчанию. Стиль и позиция наложения не изменятся, а значения из файла темы продолжат действовать.",
+        "confirm": "Сбросить",
+        "cancel": "Отмена"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "Материал",
+        "description": "Как отрисовывается поверхность наложения. Плоский — непрозрачная поверхность; Стекло — полупрозрачное и размывает то, что за ним.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "Плоский",
+          "glass": "Стекло",
+          "glassMacOnly": "Стекло (только macOS)"
         },
-        "reduceTransparencyNote": "macOS Reduce Transparency is on, so the overlay renders Flat even though Glass is selected."
+        "reduceTransparencyNote": "В macOS включено «Уменьшение прозрачности», поэтому наложение отрисовывается как Плоское, даже если выбрано Стекло."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "Выбрать цвет",
+        "hexLabel": "Шестнадцатеричное значение цвета",
+        "resetLabel": "Сбросить к значению по умолчанию"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "Акцент",
+          "description": "Цвет выделения: осциллограмма, точка записи, курсор и индикатор загрузки."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "Поверхность",
+          "description": "Цвет фона карточки наложения."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "Непрозрачность поверхности",
+          "description": "Насколько фон карточки просвечивает."
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "Текст",
+          "description": "Цвет текста карточки и основа, из которой смешиваются все нейтральные оттенки."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "Масштаб размера",
+          "description": "Масштабирует все размеры карточки сразу — ширину, высоту, отступы и шрифт. Единственное значение, меняющее, сколько места наложение занимает на экране."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "Радиус скругления",
+          "description": "Радиус скругления углов карточки."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "Внутренний отступ",
+          "description": "Горизонтальный внутренний отступ строки элементов управления."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "Промежуток осциллограммы",
+          "description": "Промежуток между полосками осциллограммы."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "Файл темы",
+        "description": "Необязательный файл JSON, который переопределяет значения темы наложения, чтобы внешние инструменты оформления могли управлять наложением.",
+        "notFound": "Файла темы нет. Создайте его по этому пути, чтобы переопределить значения темы наложения.",
+        "active": "Активен — этот файл задаёт {{count}} из 9 значений.",
+        "reload": "Перезагрузить",
+        "copy": "Скопировать тему как JSON",
+        "copied": "Скопировано",
+        "lockedDescription": "Задано файлом темы. Измените overlay_theme.json или удалите этот ключ, чтобы менять значение здесь.",
+        "problemsTitle": "Проблемы в файле темы:",
+        "moreDiagnostics": "…и ещё {{count}}.",
+        "newerVersion": "Этот файл темы создан более новой версией Handy. Значения, которые эта версия не понимает, были проигнорированы.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "Файл темы не является корректным JSON.",
+          "unknownKey": "Неизвестный ключ пропущен: {{key}}",
+          "wrongType": "\"{{key}}\" имеет неверный тип и был пропущен.",
+          "invalidColor": "\"{{key}}\" не является корректным цветом и был пропущен.",
+          "outOfBounds": "\"{{key}}\" вышел за допустимый диапазон и был ограничен.",
+          "unreadable": "Не удалось прочитать файл темы."
         }
       }
     },

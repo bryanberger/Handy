@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "Allmänt",
-    "appearance": "Appearance",
+    "appearance": "Utseende",
     "models": "Modeller",
     "advanced": "Avancerat",
     "postProcessing": "Efterbearbetning",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
+        "app": "Applikation",
         "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "preview": "Förhandsvisning",
+        "color": "Overlayfärg",
+        "material": "Overlaymaterial",
+        "size": "Overlaystorlek och avstånd",
+        "themeFile": "Temafil"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "Förbereder",
+          "recording": "Spelar in",
+          "listening": "Lyssnar",
+          "transcribing": "Transkriberar",
+          "processing": "Bearbetar"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "Spela upp förhandsvisning",
+        "pause": "Pausa förhandsvisning",
+        "showOnScreen": "Visa på skärmen",
+        "showOnScreenBusy": "Visar…",
+        "showOnScreenBlocked": "Inte tillgängligt medan Handy spelar in",
+        "sampleText": "Flygande bäckasiner söka hwila på mjuka tuvor, och Handy skriver ner det.",
+        "glassNote": "Glas gör det som finns bakom overlayen suddigt. Den här förhandsvisningen efterliknar det mot en ersättningsbakgrund — använd Visa på skärmen för att se den riktiga effekten.",
+        "glassUnavailable": "Glas finns bara på macOS. På det här systemet förblir overlayen platt.",
+        "noneNote": "Overlayen är avstängd, så det finns inget att förhandsvisa. Välj Minimal eller Live ovan.",
+        "scaledNote": "Förhandsvisning i {{percent}}%"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "Återställ overlaytemat",
+        "title": "Återställa overlaytemat?",
+        "description": "Detta återställer alla färger, storlekar och avstånd i overlayen till Handys standardvärden. Din overlaystil och -position ändras inte.",
+        "descriptionWithThemeFile": "Detta återställer alla färger, storlekar och avstånd i overlayen som inte anges av temafilen till Handys standardvärden. Din overlaystil och -position ändras inte, och värden från temafilen fortsätter att gälla.",
+        "confirm": "Återställ",
+        "cancel": "Avbryt"
       },
       "material": {
         "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "description": "Hur overlayens yta ritas upp. Platt är en ogenomskinlig yta; Glas är genomskinligt och gör det som finns bakom suddigt.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "Platt",
+          "glass": "Glas",
+          "glassMacOnly": "Glas (endast macOS)"
         },
-        "reduceTransparencyNote": "macOS Reduce Transparency is on, so the overlay renders Flat even though Glass is selected."
+        "reduceTransparencyNote": "Reducera transparens är på i macOS, så overlayen visas som Platt trots att Glas är valt."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "Välj en färg",
+        "hexLabel": "Hexadecimalt färgvärde",
+        "resetLabel": "Återställ till standard"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "Accentfärg",
+          "description": "Färgen som framhäver: vågformen, inspelningspunkten, markören och förloppssnurran."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "Yta",
+          "description": "Bakgrundsfärgen på overlayens kort."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "Ytans opacitet",
+          "description": "Hur genomskinlig kortets bakgrund är."
         },
         "text": {
           "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "description": "Kortets förgrundsfärg, och basen som varje neutral ton blandas från."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "Storleksskala",
+          "description": "Skalar alla mått i kortet på en gång — bredder, höjder, innermarginaler och text. Det enda värdet som ändrar hur mycket plats overlayen behöver på skärmen."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "Hörnradie",
+          "description": "Kortets hörnradie."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "Innermarginal",
+          "description": "Kontrollradens vågräta innermarginal."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "Vågformsavstånd",
+          "description": "Avståndet mellan vågformens staplar."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "Temafil",
+        "description": "En valfri JSON-fil som åsidosätter värden i overlaytemat, så att externa temaverktyg kan styra overlayen.",
+        "notFound": "Ingen temafil. Skapa en på den här sökvägen för att åsidosätta värden i overlaytemat.",
+        "active": "Aktiv — den här filen anger {{count}} av 9 värden.",
+        "reload": "Läs om",
+        "copy": "Kopiera temat som JSON",
+        "copied": "Kopierad",
+        "lockedDescription": "Anges av temafilen. Redigera overlay_theme.json eller ta bort nyckeln för att ändra värdet här.",
+        "problemsTitle": "Problem i temafilen:",
+        "moreDiagnostics": "…och {{count}} till.",
+        "newerVersion": "Den här temafilen skrevs av en nyare version av Handy. Värden som den här versionen inte förstår ignorerades.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "Temafilen är inte giltig JSON.",
+          "unknownKey": "Okänd nyckel ignorerades: {{key}}",
+          "wrongType": "\"{{key}}\" har fel typ och ignorerades.",
+          "invalidColor": "\"{{key}}\" är inte en giltig färg och ignorerades.",
+          "outOfBounds": "\"{{key}}\" låg utanför det tillåtna intervallet och begränsades.",
+          "unreadable": "Temafilen kunde inte läsas."
         }
       }
     },

@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "כללי",
-    "appearance": "Appearance",
+    "appearance": "מראה",
     "models": "מודלים",
     "advanced": "מתקדם",
     "postProcessing": "עיבוד משלים",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "אפליקציה",
+        "overlay": "שכבת-על",
+        "preview": "תצוגה מקדימה",
+        "color": "צבע שכבת-העל",
+        "material": "חומר שכבת-העל",
+        "size": "גודל וריווח של שכבת-העל",
+        "themeFile": "קובץ ערכת נושא"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "מתכונן",
+          "recording": "מקליט",
+          "listening": "מאזין",
+          "transcribing": "מתמלל",
+          "processing": "מעבד"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "הפעל תצוגה מקדימה",
+        "pause": "השהה תצוגה מקדימה",
+        "showOnScreen": "הצג על המסך",
+        "showOnScreenBusy": "מציג…",
+        "showOnScreenBlocked": "לא זמין בזמן ש-Handy מקליט",
+        "sampleText": "השועל החום והזריז קופץ מעל הכלב העצלן, ו-Handy מתמלל את זה.",
+        "glassNote": "זכוכית מטשטשת את מה שנמצא מאחורי שכבת-העל. התצוגה המקדימה מדמה זאת על רקע חלופי — השתמש ב'הצג על המסך' כדי לראות את האפקט האמיתי.",
+        "glassUnavailable": "זכוכית זמינה ב-macOS בלבד. במערכת הזו שכבת-העל נשארת שטוחה.",
+        "noneNote": "שכבת-העל כבויה, ולכן אין מה להציג. בחר למעלה מינימלי או בזמן אמת.",
+        "scaledNote": "התצוגה המקדימה מוצגת ב-{{percent}}%"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "אפס את ערכת הנושא של שכבת-העל",
+        "title": "לאפס את ערכת הנושא של שכבת-העל?",
+        "description": "פעולה זו מחזירה את כל הצבעים, הגדלים והריווח של שכבת-העל לברירות המחדל של Handy. סגנון שכבת-העל והמיקום שלה לא משתנים.",
+        "descriptionWithThemeFile": "פעולה זו מחזירה לברירות המחדל של Handy את כל הצבעים, הגדלים והריווח של שכבת-העל שאינם נקבעים בקובץ ערכת הנושא. סגנון שכבת-העל והמיקום שלה לא משתנים, וערכים שנקבעו בקובץ ערכת הנושא ממשיכים לחול.",
+        "confirm": "אפס",
+        "cancel": "ביטול"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "חומר",
+        "description": "כיצד משטח שכבת-העל מוצג. שטוח הוא משטח אטום; זכוכית היא שקופה למחצה ומטשטשת את מה שמאחוריה.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "שטוח",
+          "glass": "זכוכית",
+          "glassMacOnly": "זכוכית (ב-macOS בלבד)"
         },
-        "reduceTransparencyNote": "macOS Reduce Transparency is on, so the overlay renders Flat even though Glass is selected."
+        "reduceTransparencyNote": "האפשרות 'הפחתת שקיפות' של macOS פעילה, ולכן שכבת-העל מוצגת שטוחה גם כשנבחרה זכוכית."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "בחר צבע",
+        "hexLabel": "ערך צבע הקסדצימלי",
+        "resetLabel": "אפס לברירת המחדל"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "הדגשה",
+          "description": "צבע ההדגשה: צורת הגל, נקודת ההקלטה, הסמן והמחוון המסתובב."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "משטח",
+          "description": "צבע הרקע של כרטיס שכבת-העל."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "אטימות המשטח",
+          "description": "עד כמה רקע הכרטיס שקוף."
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "טקסט",
+          "description": "צבע החזית של הכרטיס, והבסיס שממנו נמזג כל גוון נייטרלי."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "קנה מידה",
+          "description": "משנה את כל המידות בכרטיס בבת אחת — רוחב, גובה, ריווח פנימי וגודל הטקסט. הערך היחיד שמשנה כמה מקום שכבת-העל תופסת על המסך."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "רדיוס פינות",
+          "description": "רדיוס הפינות של הכרטיס."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "ריווח פנימי",
+          "description": "הריווח הפנימי האופקי של שורת הפקדים."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "מרווח צורת הגל",
+          "description": "המרווח בין עמודות צורת הגל."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "קובץ ערכת נושא",
+        "description": "קובץ JSON אופציונלי שדורס ערכים של ערכת הנושא של שכבת-העל, כדי שכלי עיצוב חיצוניים יוכלו לשלוט בה.",
+        "notFound": "אין קובץ ערכת נושא. צור אחד בנתיב הזה כדי לדרוס ערכים של ערכת הנושא של שכבת-העל.",
+        "active": "פעיל — הקובץ הזה קובע {{count}} מתוך 9 ערכים.",
+        "reload": "טען מחדש",
+        "copy": "העתק את ערכת הנושא כ-JSON",
+        "copied": "הועתק",
+        "lockedDescription": "נקבע על ידי קובץ ערכת הנושא. ערוך את overlay_theme.json או הסר את המפתח הזה כדי לשנות אותו כאן.",
+        "problemsTitle": "בעיות בקובץ ערכת הנושא:",
+        "moreDiagnostics": "…ועוד {{count}}.",
+        "newerVersion": "קובץ ערכת הנושא הזה נכתב בגרסה חדשה יותר של Handy. ערכים שהגרסה הזו אינה מבינה לא נלקחו בחשבון.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "קובץ ערכת הנושא אינו JSON תקין.",
+          "unknownKey": "מפתח לא מוכר לא נלקח בחשבון: {{key}}",
+          "wrongType": "\"{{key}}\" מסוג שגוי ולכן לא נלקח בחשבון.",
+          "invalidColor": "\"{{key}}\" אינו צבע תקין ולכן לא נלקח בחשבון.",
+          "outOfBounds": "\"{{key}}\" חרג מהטווח המותר ולכן הוגבל אליו.",
+          "unreadable": "לא ניתן לקרוא את קובץ ערכת הנושא."
         }
       }
     },

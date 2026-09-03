@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "Общи",
-    "appearance": "Appearance",
+    "appearance": "Външен вид",
     "models": "Модели",
     "advanced": "Разширени",
     "postProcessing": "Постобработка",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "Приложение",
+        "overlay": "Наслагване",
+        "preview": "Преглед",
+        "color": "Цвят на наслагването",
+        "material": "Материал на наслагването",
+        "size": "Размер и отстояния на наслагването",
+        "themeFile": "Файл с тема"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "Подготовка",
+          "recording": "Записване",
+          "listening": "Слушане",
+          "transcribing": "Транскрибиране",
+          "processing": "Обработка"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "Пускане на прегледа",
+        "pause": "Пауза на прегледа",
+        "showOnScreen": "Показване на екрана",
+        "showOnScreenBusy": "Показва се…",
+        "showOnScreenBlocked": "Недостъпно, докато Handy записва",
+        "sampleText": "Ах, чудна българска земьо, полюшвай цъфтящи жита! А Handy го записва.",
+        "glassNote": "Стъклото размива това, което е зад наслагването. Този преглед го наподобява върху заместващ фон — използвайте Показване на екрана, за да видите истинския ефект.",
+        "glassUnavailable": "Стъклото е налично само на macOS. На тази система наслагването остава плоско.",
+        "noneNote": "Наслагването е изключено, така че няма какво да се прегледа. Изберете по-горе Минимално или На живо.",
+        "scaledNote": "Прегледът е показан на {{percent}}%"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "Нулиране на темата на наслагването",
+        "title": "Нулиране на темата на наслагването?",
+        "description": "Това връща всички цветове, размери и отстояния на наслагването към стойностите по подразбиране на Handy. Стилът и позицията на наслагването не се променят.",
+        "descriptionWithThemeFile": "Това връща към стойностите по подразбиране на Handy всички цветове, размери и отстояния на наслагването, които не са зададени от файла с тема. Стилът и позицията на наслагването не се променят, а стойностите от файла с тема остават в сила.",
+        "confirm": "Нулиране",
+        "cancel": "Отказ"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "Материал",
+        "description": "Как се изчертава повърхността на наслагването. Плоско е непрозрачна повърхност; Стъкло е полупрозрачно и размива това, което е зад него.",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "Плоско",
+          "glass": "Стъкло",
+          "glassMacOnly": "Стъкло (само macOS)"
         },
-        "reduceTransparencyNote": "macOS Reduce Transparency is on, so the overlay renders Flat even though Glass is selected."
+        "reduceTransparencyNote": "В macOS е включено „Намаляване на прозрачността“, затова наслагването се изчертава като Плоско, въпреки че е избрано Стъкло."
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "Изберете цвят",
+        "hexLabel": "Шестнадесетична стойност на цвета",
+        "resetLabel": "Връщане към стойността по подразбиране"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "Акцент",
+          "description": "Цветът за открояване: вълновата форма, точката за запис, курсорът и индикаторът за зареждане."
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "Повърхност",
+          "description": "Цветът на фона на картата на наслагването."
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "Непрозрачност на повърхността",
+          "description": "Колко прозрачен е фонът на картата."
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "Текст",
+          "description": "Цветът на текста на картата и основата, от която се смесва всеки неутрален тон."
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "Мащаб на размера",
+          "description": "Мащабира всички размери на картата наведнъж — ширини, височини, вътрешни отстояния и шрифт. Единствената стойност, която променя колко място заема наслагването на екрана."
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "Радиус на ъглите",
+          "description": "Радиусът на ъглите на картата."
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "Вътрешно отстояние",
+          "description": "Хоризонталното вътрешно отстояние на реда с бутони."
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "Разстояние във вълната",
+          "description": "Разстоянието между лентите на вълновата форма."
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "Файл с тема",
+        "description": "Незадължителен JSON файл, който заменя стойностите на темата на наслагването, за да могат външни инструменти за теми да го управляват.",
+        "notFound": "Няма файл с тема. Създайте такъв на този път, за да замените стойностите на темата на наслагването.",
+        "active": "Активен — този файл задава {{count}} от 9 стойности.",
+        "reload": "Презареждане",
+        "copy": "Копиране на темата като JSON",
+        "copied": "Копирано",
+        "lockedDescription": "Зададено от файла с тема. Редактирайте overlay_theme.json или премахнете този ключ, за да го променяте оттук.",
+        "problemsTitle": "Проблеми във файла с тема:",
+        "moreDiagnostics": "…и още {{count}}.",
+        "newerVersion": "Този файл с тема е записан от по-нова версия на Handy. Стойностите, които тази версия не разбира, бяха пренебрегнати.",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "Файлът с тема не е валиден JSON.",
+          "unknownKey": "Пренебрегнат непознат ключ: {{key}}",
+          "wrongType": "\"{{key}}\" е от грешен тип и беше пренебрегнат.",
+          "invalidColor": "\"{{key}}\" не е валиден цвят и беше пренебрегнат.",
+          "outOfBounds": "\"{{key}}\" беше извън позволения диапазон и беше ограничен.",
+          "unreadable": "Файлът с тема не можа да бъде прочетен."
         }
       }
     },

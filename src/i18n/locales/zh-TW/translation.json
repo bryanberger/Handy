@@ -11,7 +11,7 @@
   },
   "sidebar": {
     "general": "一般",
-    "appearance": "Appearance",
+    "appearance": "外觀",
     "models": "模型",
     "advanced": "進階",
     "postProcessing": "後處理",
@@ -261,109 +261,109 @@
     },
     "appearance": {
       "groups": {
-        "app": "Application",
-        "overlay": "Overlay",
-        "preview": "Preview",
-        "color": "Overlay Color",
-        "material": "Overlay Material",
-        "size": "Overlay Size & Spacing",
-        "themeFile": "Theme File"
+        "app": "應用程式",
+        "overlay": "懸浮窗",
+        "preview": "預覽",
+        "color": "懸浮窗顏色",
+        "material": "懸浮窗材質",
+        "size": "懸浮窗尺寸與間距",
+        "themeFile": "主題檔案"
       },
       "preview": {
         "states": {
-          "arming": "Arming",
-          "recording": "Recording",
-          "listening": "Listening",
-          "transcribing": "Transcribing",
-          "processing": "Processing"
+          "arming": "準備中",
+          "recording": "錄製中",
+          "listening": "聆聽中",
+          "transcribing": "轉錄中",
+          "processing": "處理中"
         },
-        "play": "Play preview",
-        "pause": "Pause preview",
-        "showOnScreen": "Show on screen",
-        "showOnScreenBusy": "Showing…",
-        "showOnScreenBlocked": "Not available while Handy is recording",
-        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
-        "glassNote": "Glass blurs whatever is behind the overlay. This preview approximates it over a stand-in background — use Show on screen to see the real effect.",
-        "glassUnavailable": "Glass is available on macOS only. The overlay stays Flat on this system.",
-        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above.",
-        "scaledNote": "Preview shown at {{percent}}%"
+        "play": "播放預覽",
+        "pause": "暫停預覽",
+        "showOnScreen": "在螢幕上顯示",
+        "showOnScreenBusy": "正在顯示…",
+        "showOnScreenBlocked": "Handy 錄製期間無法使用",
+        "sampleText": "敏捷的棕色狐狸跳過了那隻懶狗，Handy 把它記錄了下來。",
+        "glassNote": "玻璃會模糊懸浮窗背後的內容。此預覽只是在替代背景上做近似呈現，請用「在螢幕上顯示」查看真實效果。",
+        "glassUnavailable": "玻璃僅在 macOS 上可用。在此系統上懸浮窗會維持平面。",
+        "noneNote": "懸浮窗已關閉，因此沒有可預覽的內容。請在上方選擇「精簡」或「即時」。",
+        "scaledNote": "預覽以 {{percent}}% 顯示"
       },
       "reset": {
-        "button": "Reset overlay theme",
-        "title": "Reset overlay theme?",
-        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
-        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
-        "confirm": "Reset",
-        "cancel": "Cancel"
+        "button": "重設懸浮窗主題",
+        "title": "重設懸浮窗主題？",
+        "description": "這會將懸浮窗的所有顏色、尺寸與間距還原為 Handy 的預設值。懸浮窗樣式與位置不會變更。",
+        "descriptionWithThemeFile": "這會將懸浮窗中未由主題檔案設定的所有顏色、尺寸與間距還原為 Handy 的預設值。懸浮窗樣式與位置不會變更，主題檔案設定的值仍然有效。",
+        "confirm": "重設",
+        "cancel": "取消"
       },
       "material": {
-        "title": "Material",
-        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "title": "材質",
+        "description": "懸浮窗表面的呈現方式。平面是不透明的表面；玻璃是半透明的，會模糊其背後的內容。",
         "options": {
-          "flat": "Flat",
-          "glass": "Glass",
-          "glassMacOnly": "Glass (macOS only)"
+          "flat": "平面",
+          "glass": "玻璃",
+          "glassMacOnly": "玻璃（僅 macOS）"
         },
-        "reduceTransparencyNote": "macOS Reduce Transparency is on, so the overlay renders Flat even though Glass is selected."
+        "reduceTransparencyNote": "macOS 的「降低透明度」已開啟，因此即使選擇了玻璃，懸浮窗仍會以平面呈現。"
       },
       "color": {
-        "swatchLabel": "Pick a color",
-        "hexLabel": "Hex color value",
-        "resetLabel": "Reset to default"
+        "swatchLabel": "選擇顏色",
+        "hexLabel": "十六進位顏色值",
+        "resetLabel": "重設為預設值"
       },
       "tokens": {
         "accent": {
-          "title": "Accent",
-          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+          "title": "強調色",
+          "description": "醒目提示的顏色：波形、錄製圓點、游標與載入圖示。"
         },
         "surface": {
-          "title": "Surface",
-          "description": "The overlay card's background color."
+          "title": "表面",
+          "description": "懸浮窗卡片的背景色。"
         },
         "surfaceOpacity": {
-          "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "title": "表面不透明度",
+          "description": "卡片背景的透視程度。"
         },
         "text": {
-          "title": "Text",
-          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+          "title": "文字",
+          "description": "卡片的前景色，也是所有中性色調的混合基準色。"
         },
         "sizeScale": {
-          "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "title": "尺寸縮放",
+          "description": "一次縮放卡片中的所有尺寸——寬度、高度、內邊距與文字。這是唯一會改變懸浮窗在螢幕上所佔空間的項目。"
         },
         "radius": {
-          "title": "Corner Radius",
-          "description": "The card's corner radius."
+          "title": "圓角半徑",
+          "description": "卡片的圓角半徑。"
         },
         "padding": {
-          "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "title": "內邊距",
+          "description": "控制項列的水平內邊距。"
         },
         "waveformGap": {
-          "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "title": "波形間距",
+          "description": "波形長條之間的間距。"
         }
       },
       "themeFile": {
-        "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
-        "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
-        "reload": "Reload",
-        "copy": "Copy theme as JSON",
-        "copied": "Copied",
-        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
-        "problemsTitle": "Problems in the theme file:",
-        "moreDiagnostics": "…and {{count}} more.",
-        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "title": "主題檔案",
+        "description": "選用的 JSON 檔案，可覆寫懸浮窗主題的值，讓外部主題工具能夠控制懸浮窗。",
+        "notFound": "沒有主題檔案。在此路徑建立一個即可覆寫懸浮窗主題的值。",
+        "active": "已啟用——此檔案設定了 9 個值中的 {{count}} 個。",
+        "reload": "重新載入",
+        "copy": "以 JSON 複製主題",
+        "copied": "已複製",
+        "lockedDescription": "由主題檔案設定。若要在此處變更，請編輯 overlay_theme.json 或移除該鍵。",
+        "problemsTitle": "主題檔案中的問題：",
+        "moreDiagnostics": "…還有 {{count}} 項。",
+        "newerVersion": "此主題檔案由較新版本的 Handy 寫入。目前版本無法識別的值已被忽略。",
         "diagnostics": {
-          "malformedDocument": "The theme file isn't valid JSON.",
-          "unknownKey": "Unknown key ignored: {{key}}",
-          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
-          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
-          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
-          "unreadable": "The theme file couldn't be read."
+          "malformedDocument": "主題檔案不是有效的 JSON。",
+          "unknownKey": "已忽略未知的鍵：{{key}}",
+          "wrongType": "\"{{key}}\" 的類型錯誤，已被忽略。",
+          "invalidColor": "\"{{key}}\" 不是有效的顏色，已被忽略。",
+          "outOfBounds": "\"{{key}}\" 超出允許範圍，已限制在邊界值。",
+          "unreadable": "無法讀取主題檔案。"
         }
       }
     },

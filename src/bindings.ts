@@ -930,9 +930,11 @@ async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<null, stri
 /**
  * The current resolved overlay theme, from the theme-file cache.
  * 
- * A pure pull: it does no filesystem IO, emits nothing and touches no native
- * window, which is why the overlay can call it inside the settings read it
- * already awaits when it is about to become visible.
+ * A pure pull: it reads the cache the show path has just refreshed, emits
+ * nothing and touches no native window, which is why the overlay can call it
+ * inside the settings read it already awaits when it is about to become
+ * visible. That is also what keeps a show to exactly one file read: the
+ * backend re-reads, the webview only pulls.
  */
 async getResolvedOverlayTheme() : Promise<Result<ResolvedOverlayTheme, string>> {
     try {
@@ -943,14 +945,16 @@ async getResolvedOverlayTheme() : Promise<Result<ResolvedOverlayTheme, string>> 
 }
 },
 /**
- * Resolve the overlay theme, deliver it, and return it.
+ * Re-read the theme file, resolve, deliver, and return the result.
  * 
- * **There is no theme file yet**, so today this only re-resolves: it is the
- * seam the Appearance tab already calls on mount and from its Reload button.
- * It is `async` from the start because the theme-file slice adds a filesystem
- * read here, and `async` is what keeps that read off the main thread — Tauri
- * runs a sync command inline on the IPC thread and spawns an `async fn` on the
- * runtime, so changing this later would change where the read lands.
+ * What the Appearance tab calls on mount and from its Reload button, and the
+ * only way a user gets a hand-edited theme file onto the screen without
+ * recording — there is no file watcher.
+ * 
+ * `async` is load-bearing twice over: Tauri runs a sync command inline on the
+ * IPC thread and spawns an `async fn` on the runtime, and the read itself then
+ * goes to a blocking thread, so neither the main thread nor an async worker
+ * ever waits on the filesystem.
  */
 async reloadOverlayThemeFile() : Promise<Result<ResolvedOverlayTheme, string>> {
     try {
@@ -1423,9 +1427,9 @@ export type ThemeFileDiagnosticCode =
 /**
  * What the theme file currently contributes.
  * 
- * Populated by the theme-file reader; until that lands every resolve uses
- * [`ThemeFileState::absent`], so the payload shape — and therefore the
- * generated TypeScript bindings — is already final.
+ * Populated by [`crate::overlay_theme_file`], which is the only thing that
+ * reads the file; everything downstream consumes this state instead of the
+ * document.
  */
 export type ThemeFileState = { 
 /**
@@ -1451,10 +1455,21 @@ tokens: OverlayTheme;
  */
 owned_keys: string[]; 
 /**
- * Everything the reader had to ignore or clamp, in document order. The tab
- * renders a capped list of these; all of them also go to the log.
+ * Everything the reader had to ignore or clamp, in contract order (the
+ * token table's order, not the document's own key order — `serde_json`
+ * sorts an object's keys unless `preserve_order` is enabled, so document
+ * order is not recoverable here). Capped at a handful of entries for the
+ * payload; see [`Self::diagnostics_total`] for the count before the cap.
+ * Every diagnostic also reaches the log, uncapped.
  */
 diagnostics: ThemeFileDiagnostic[]; 
+/**
+ * How many diagnostics the reader found before [`Self::diagnostics`] was
+ * capped. Equal to `diagnostics.len()` when nothing was capped, larger
+ * when the tab needs to say "…and N more", and `0` when the file is
+ * absent.
+ */
+diagnostics_total: number; 
 /**
  * True when a failed read kept the previous, good document.
  */

@@ -312,9 +312,9 @@ pub struct ThemeFileDiagnostic {
 
 /// What the theme file currently contributes.
 ///
-/// Populated by the theme-file reader; until that lands every resolve uses
-/// [`ThemeFileState::absent`], so the payload shape — and therefore the
-/// generated TypeScript bindings — is already final.
+/// Populated by [`crate::overlay_theme_file`], which is the only thing that
+/// reads the file; everything downstream consumes this state instead of the
+/// document.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Type)]
 pub struct ThemeFileState {
     /// The file in effect, or the path Handy would read if one appeared.
@@ -329,24 +329,37 @@ pub struct ThemeFileState {
     /// The keys the file actually sets. These are the tab's lock markers: a
     /// file-owned token cannot be edited from the settings window.
     pub owned_keys: Vec<String>,
-    /// Everything the reader had to ignore or clamp, in document order. The tab
-    /// renders a capped list of these; all of them also go to the log.
+    /// Everything the reader had to ignore or clamp, in contract order (the
+    /// token table's order, not the document's own key order — `serde_json`
+    /// sorts an object's keys unless `preserve_order` is enabled, so document
+    /// order is not recoverable here). Capped at a handful of entries for the
+    /// payload; see [`Self::diagnostics_total`] for the count before the cap.
+    /// Every diagnostic also reaches the log, uncapped.
     pub diagnostics: Vec<ThemeFileDiagnostic>,
+    /// How many diagnostics the reader found before [`Self::diagnostics`] was
+    /// capped. Equal to `diagnostics.len()` when nothing was capped, larger
+    /// when the tab needs to say "…and N more", and `0` when the file is
+    /// absent.
+    pub diagnostics_total: u32,
     /// True when a failed read kept the previous, good document.
     pub stale: bool,
 }
 
 impl ThemeFileState {
-    /// No theme file: contributes nothing, so the merge falls through to the
-    /// settings and then to inherit.
-    pub fn absent() -> Self {
+    /// No theme file at `path`: contributes nothing, so the merge falls
+    /// through to the settings and then to inherit.
+    ///
+    /// The path is still carried, because "no file" is the state the tab shows
+    /// a path for — it is where to create one.
+    pub fn absent_at(path: impl Into<String>) -> Self {
         ThemeFileState {
-            path: String::new(),
+            path: path.into(),
             present: false,
             version: None,
             tokens: OverlayTheme::default(),
             owned_keys: Vec::new(),
             diagnostics: Vec::new(),
+            diagnostics_total: 0,
             stale: false,
         }
     }
@@ -393,19 +406,24 @@ pub fn merge(file: &OverlayTheme, settings: &OverlayTheme) -> OverlayTheme {
 
 /// Merge `theme file ?? settings ?? inherit` per key and clamp.
 ///
-/// Uses the theme-file cache — no filesystem IO — so it is safe on the main
-/// thread. Until the theme file exists there is no cache to read and the file
-/// contributes nothing.
+/// Uses the theme-file cache, which the launch-time read warms before any
+/// window exists, so this does no filesystem IO and is safe on the main
+/// thread. (The one cold-cache read inside
+/// [`crate::overlay_theme_file::cached`] can only happen before that.)
 pub fn resolve(app: &AppHandle) -> ResolvedOverlayTheme {
-    resolve_reloading_for(app, settings_theme(app))
+    resolve_from(
+        settings_theme(app),
+        crate::overlay_theme_file::cached(app),
+        glass_support(app),
+    )
 }
 
 /// [`resolve`], preceded by a fresh read of the theme file.
 ///
-/// **Today this is byte-identical to [`resolve`]**: it is a placeholder seam so
-/// the callers that must re-read (the overlay show path, the Reload button) are
-/// already calling the right function. The theme-file slice adds the read here,
-/// at which point this must only ever be called off the main thread.
+/// The authoritative resolve: whatever the file says right now is what the
+/// overlay shows. It touches the filesystem, so it must only ever be called off
+/// the main thread — the overlay show path and the Reload command are its two
+/// callers, and both are.
 pub fn resolve_reloading(app: &AppHandle) -> ResolvedOverlayTheme {
     resolve_reloading_for(app, settings_theme(app))
 }
@@ -421,9 +439,11 @@ pub fn resolve_reloading_for(
     app: &AppHandle,
     settings_theme: OverlayTheme,
 ) -> ResolvedOverlayTheme {
-    // The theme file's read lands here in the theme-file slice, which is what
-    // makes this and `resolve_reloading` off-main-thread-only from then on.
-    resolve_from(settings_theme, ThemeFileState::absent(), glass_support(app))
+    resolve_from(
+        settings_theme,
+        crate::overlay_theme_file::read(app),
+        glass_support(app),
+    )
 }
 
 /// The overlay theme as persisted, before the theme file and the clamping.
@@ -722,7 +742,7 @@ mod tests {
     /// exactly the state this build ships in, before the native Glass module.
     #[test]
     fn resolve_clamps_once_and_downgrades_glass_when_unavailable() {
-        let mut file = ThemeFileState::absent();
+        let mut file = ThemeFileState::absent_at("");
         file.present = true;
         file.owned_keys = vec!["size_scale".to_string()];
         file.tokens = OverlayTheme {
@@ -768,7 +788,7 @@ mod tests {
             supported: true,
             available: true,
         };
-        let rendered = resolve_from(settings_theme, ThemeFileState::absent(), available);
+        let rendered = resolve_from(settings_theme, ThemeFileState::absent_at(""), available);
         assert_eq!(rendered.effective_material, Material::Glass);
         // With no file, the settings' own scale survives.
         assert_eq!(rendered.theme.size_scale, Some(1.0));

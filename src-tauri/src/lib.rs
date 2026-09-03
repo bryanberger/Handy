@@ -15,6 +15,7 @@ mod managers;
 mod memory;
 mod overlay;
 mod overlay_theme;
+mod overlay_theme_file;
 mod paste_tx;
 pub mod portable;
 mod secure_input;
@@ -969,6 +970,15 @@ pub fn run(cli_args: CliArgs) {
             win_builder.build()?;
 
             let mut settings = get_settings(app.handle());
+
+            // Warm the theme-file cache before anything reads the overlay
+            // theme. The overlay window is created further down with the
+            // resolved size scale, so a file-supplied scale must already be
+            // known here or the first show would resize a window that was
+            // built for the settings' scale. Also puts the file's diagnostics
+            // in the log at startup, where a user looking for "why is my theme
+            // ignored" will find them.
+            overlay_theme_file::read(app.handle());
 
             // Apply the persisted appearance theme to the native title bar before
             // the window is shown, so it matches the in-app palette without a flash

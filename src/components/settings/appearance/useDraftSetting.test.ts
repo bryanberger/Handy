@@ -38,6 +38,33 @@ describe("DraftDebouncer", () => {
     expect(debouncer.isPending("radius")).toBe(false);
   });
 
+  test("a whole colour-picker drag collapses to one commit", async () => {
+    // The colour swatch's rule, pinned here because this is where it lives.
+    // macOS's colour panel is continuous and WebKit raises a form-control
+    // change event for every update it sends, so the swatch feeds the draft
+    // ~60 times a second and must never commit from that event itself. Sixty
+    // frames of a one-second drag have to reach the backend as one write.
+    const commits: Array<[string, string]> = [];
+    const debouncer = new DraftDebouncer<string, string>(
+      (key, value) => {
+        commits.push([key, value]);
+      },
+      () => {},
+      30,
+    );
+
+    for (let frame = 0; frame < 60; frame++) {
+      debouncer.schedule(
+        "accent",
+        `#0000${frame.toString(16).padStart(2, "0")}`,
+      );
+      await sleep(1);
+    }
+    await sleep(60);
+
+    expect(commits).toEqual([["accent", "#00003b"]]);
+  });
+
   test("flush() commits immediately without waiting for the debounce", async () => {
     const commits: Array<[string, number]> = [];
     const debouncer = new DraftDebouncer<string, number>(

@@ -26,33 +26,6 @@ export function normalizeHexInput(raw: string): string | null {
   return HEX_PATTERN.test(withHash) ? withHash.toLowerCase() : null;
 }
 
-/** The little of a native color input this module needs, so the commit rule
- *  below can be exercised without a DOM. */
-export interface ColorCommitTarget {
-  value: string;
-  addEventListener(type: string, listener: () => void): void;
-  removeEventListener(type: string, listener: () => void): void;
-}
-
-/**
- * Commit on the **native `change` event only**, and return the unsubscribe.
- *
- * React maps `onChange` for `<input type="color">` onto the native `input`
- * event, which the OS picker fires continuously while the user drags inside
- * it. Committing there would issue one `change_overlay_theme_setting` command
- * per frame of the drag. The native `change` event fires once, when the picker
- * closes — that is the commit point, and it can only be reached by attaching
- * the listener directly to the element.
- */
-export function subscribeColorCommit(
-  target: ColorCommitTarget,
-  onCommit: (value: string) => void,
-): () => void {
-  const listener = () => onCommit(target.value);
-  target.addEventListener("change", listener);
-  return () => target.removeEventListener("change", listener);
-}
-
 export interface ColorFieldProps {
   label: string;
   description: string;
@@ -99,7 +72,6 @@ export const ColorField: React.FC<ColorFieldProps> = ({
   const displayText = displayHex ?? UNRESOLVED_PLACEHOLDER;
   const [text, setText] = useState(displayText);
   const focusedRef = useRef(false);
-  const pickerRef = useRef<HTMLInputElement>(null);
 
   // Follow external changes (a swatch pick, a reset, a theme-file lock
   // landing) while the field isn't being edited. A focused field keeps
@@ -108,23 +80,6 @@ export const ColorField: React.FC<ColorFieldProps> = ({
   useEffect(() => {
     if (!focusedRef.current) setText(displayText);
   }, [displayText]);
-
-  // The picker's live drag updates the draft (React's `onChange`, i.e. the
-  // native `input` event); this is the one place that commits it. The
-  // handlers go through a ref so the listener is attached once, on mount,
-  // instead of being torn down and re-added on every render.
-  const commitRef = useRef({ onChange, onCommitNow });
-  useEffect(() => {
-    commitRef.current = { onChange, onCommitNow };
-  });
-  useEffect(() => {
-    const picker = pickerRef.current;
-    if (!picker) return;
-    return subscribeColorCommit(picker, (picked) => {
-      commitRef.current.onChange(picked);
-      commitRef.current.onCommitNow();
-    });
-  }, []);
 
   const commitText = () => {
     const parsed = normalizeHexInput(text);
@@ -154,12 +109,17 @@ export const ColorField: React.FC<ColorFieldProps> = ({
             style={{ backgroundColor: displayHex ?? "transparent" }}
           />
           <input
-            ref={pickerRef}
             type="color"
             aria-label={t("settings.appearance.color.swatchLabel")}
-            // React routes `onChange` for a color input through the native
-            // `input` event, so this is the per-frame *draft*, not a commit;
-            // the commit is the native `change` listener attached above.
+            // Draft only — never a commit. The OS colour panel is continuous,
+            // and WebKit turns *every* update it sends into a form-control
+            // change event (measured in the VM: eight panel updates in 275 ms
+            // produced eight events), which React surfaces as `onChange`.
+            // Committing here therefore issued one
+            // `change_overlay_theme_setting` per frame of a drag. The commit
+            // belongs to the 120 ms trailing debounce this draft feeds, which
+            // collapses a whole drag into one write; `onBlur` flushes it early
+            // when focus leaves.
             value={
               displayHex && HEX_PATTERN.test(displayHex)
                 ? displayHex

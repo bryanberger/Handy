@@ -304,7 +304,7 @@
           "glass": "Sklo",
           "glassMacOnly": "Sklo (jen macOS)"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "Sklo na tomto Macu právě není dostupné — například když je v macOS zapnuté Omezit průhlednost — takže se překryv vykresluje jako Plochý."
       },
       "color": {
         "swatchLabel": "Vyberte barvu",
@@ -799,7 +799,7 @@
     }
   },
   "overlay": {
-    "cancel": "Cancel",
+    "cancel": "Zrušit",
     "transcribing": "Přepisuji...",
     "processing": "Zpracovávám..."
   },

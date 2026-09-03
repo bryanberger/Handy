@@ -304,7 +304,7 @@
           "glass": "Vidro",
           "glassMacOnly": "Vidro (apenas macOS)"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "O vidro não está disponível neste Mac no momento — por exemplo quando Reduzir transparência está ativado no macOS — então a sobreposição é exibida como Plana."
       },
       "color": {
         "swatchLabel": "Escolher uma cor",
@@ -799,7 +799,7 @@
     }
   },
   "overlay": {
-    "cancel": "Cancel",
+    "cancel": "Cancelar",
     "transcribing": "Transcrevendo...",
     "processing": "Processando..."
   },

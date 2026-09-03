@@ -304,7 +304,7 @@
           "glass": "ガラス",
           "glassMacOnly": "ガラス (macOS のみ)"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "この Mac では現在ガラスを利用できないため（macOS の「透明度を下げる」がオンのときなど）、オーバーレイはフラットで描画されます。"
       },
       "color": {
         "swatchLabel": "色を選択",
@@ -799,7 +799,7 @@
     }
   },
   "overlay": {
-    "cancel": "Cancel",
+    "cancel": "キャンセル",
     "transcribing": "文字起こし中…",
     "processing": "処理中…"
   },

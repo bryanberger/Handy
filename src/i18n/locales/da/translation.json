@@ -304,7 +304,7 @@
           "glass": "Glas",
           "glassMacOnly": "Glas (kun macOS)"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "Glas er ikke tilgængeligt på denne Mac lige nu — for eksempel når Reducér gennemsigtighed er slået til i macOS — så overlayet vises Fladt."
       },
       "color": {
         "swatchLabel": "Vælg en farve",
@@ -802,7 +802,7 @@
     }
   },
   "overlay": {
-    "cancel": "Cancel",
+    "cancel": "Annuller",
     "transcribing": "Transskriberer...",
     "processing": "Behandler..."
   },

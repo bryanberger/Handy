@@ -304,7 +304,7 @@
           "glass": "ग्लास",
           "glassMacOnly": "ग्लास (macOS मा मात्र)"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "यो Mac मा अहिले ग्लास उपलब्ध छैन — जस्तै macOS मा पारदर्शिता घटाउने विकल्प खुला हुँदा — त्यसैले ओभरले फ्ल्याट देखिन्छ।"
       },
       "color": {
         "swatchLabel": "रङ छान्नुहोस्",
@@ -802,7 +802,7 @@
     }
   },
   "overlay": {
-    "cancel": "Cancel",
+    "cancel": "रद्द गर्नुहोस्",
     "transcribing": "ट्रान्सक्राइब गरिँदैछ...",
     "processing": "प्रशोधन गरिँदैछ..."
   },

@@ -304,7 +304,7 @@
           "glass": "玻璃",
           "glassMacOnly": "玻璃（仅 macOS）"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "此 Mac 目前无法使用玻璃（例如 macOS 的「降低透明度」已开启时），因此悬浮窗以平面呈现。"
       },
       "color": {
         "swatchLabel": "选择颜色",
@@ -799,7 +799,7 @@
     }
   },
   "overlay": {
-    "cancel": "Cancel",
+    "cancel": "取消",
     "transcribing": "正在转录...",
     "processing": "处理中..."
   },

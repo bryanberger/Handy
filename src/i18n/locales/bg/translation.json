@@ -304,7 +304,7 @@
           "glass": "Стъкло",
           "glassMacOnly": "Стъкло (само macOS)"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "Стъклото в момента не е налично на този Mac — например когато в macOS е включено „Намаляване на прозрачността“ — затова наслагването се изчертава като Плоско."
       },
       "color": {
         "swatchLabel": "Изберете цвят",
@@ -799,7 +799,7 @@
     }
   },
   "overlay": {
-    "cancel": "Cancel",
+    "cancel": "Отказ",
     "transcribing": "Транскрибиране...",
     "processing": "Обработка..."
   },

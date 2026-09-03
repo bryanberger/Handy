@@ -281,7 +281,7 @@
           "glass": "زجاج",
           "glassMacOnly": "زجاج (على macOS فقط)"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "الزجاج غير متاح على جهاز Mac هذا حالياً — مثلاً عندما يكون خيار تقليل الشفافية في macOS مفعّلاً — لذا يُعرض التراكب مسطّحاً."
       },
       "color": {
         "swatchLabel": "اختيار لون",
@@ -799,7 +799,7 @@
     }
   },
   "overlay": {
-    "cancel": "Cancel",
+    "cancel": "إلغاء",
     "transcribing": "...جاري التفريغ",
     "processing": "...جاري المعالجة"
   },

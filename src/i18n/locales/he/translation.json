@@ -304,7 +304,7 @@
           "glass": "זכוכית",
           "glassMacOnly": "זכוכית (ב-macOS בלבד)"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "זכוכית אינה זמינה כרגע ב-Mac הזה — למשל כשהאפשרות 'הפחתת שקיפות' של macOS פעילה — ולכן שכבת-העל מוצגת שטוחה."
       },
       "color": {
         "swatchLabel": "בחר צבע",
@@ -799,7 +799,7 @@
     }
   },
   "overlay": {
-    "cancel": "Cancel",
+    "cancel": "ביטול",
     "transcribing": "מתמלל...",
     "processing": "מעבד..."
   },

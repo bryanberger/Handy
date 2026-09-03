@@ -304,7 +304,7 @@
           "glass": "Kính",
           "glassMacOnly": "Kính (chỉ macOS)"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "Kính hiện không khả dụng trên máy Mac này — ví dụ khi Giảm độ trong suốt của macOS đang bật — nên lớp phủ được vẽ dạng Phẳng."
       },
       "color": {
         "swatchLabel": "Chọn một màu",
@@ -799,7 +799,7 @@
     }
   },
   "overlay": {
-    "cancel": "Cancel",
+    "cancel": "Hủy",
     "transcribing": "Đang chuyển đổi...",
     "processing": "Đang xử lý..."
   },

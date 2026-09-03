@@ -306,6 +306,44 @@
         },
         "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
+      "glassMaterial": {
+        "title": "Glass Material",
+        "description": "Which macOS blur the Glass surface is drawn with. Only applies while Material is Glass.",
+        "options": {
+          "hudWindow": {
+            "title": "HUD Window",
+            "description": "Lets the most of the background through. Always dark, whatever the app theme."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Follows the app theme, about two thirds as see-through as HUD Window."
+          },
+          "menu": {
+            "title": "Menu",
+            "description": "Follows the app theme, denser again."
+          },
+          "sidebar": {
+            "title": "Sidebar",
+            "description": "Follows the app theme, soft and only slightly see-through."
+          },
+          "underWindowBackground": {
+            "title": "Under Window",
+            "description": "The widest blur, with little of the background left."
+          },
+          "sheet": {
+            "title": "Sheet",
+            "description": "Opaque on recent macOS — no background shows through."
+          },
+          "tooltip": {
+            "title": "Tooltip",
+            "description": "Follows the app theme, only slightly see-through."
+          },
+          "contentBackground": {
+            "title": "Content Background",
+            "description": "Opaque on recent macOS — no background shows through."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Pick a color",
         "hexLabel": "Hex color value",
@@ -328,13 +366,25 @@
           "title": "Text",
           "description": "The card's foreground color, and the base every neutral tone is mixed from."
         },
+        "border": {
+          "title": "Border",
+          "description": "The color of the card's edge."
+        },
+        "borderOpacity": {
+          "title": "Border Opacity",
+          "description": "How visible the card's edge is."
+        },
         "sizeScale": {
           "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. The only token that changes how much room the overlay needs on screen."
+          "description": "Zooms every length in the card at once — widths, heights, padding and type. One of the two tokens that change how much room the overlay needs on screen; border width is the other."
         },
         "radius": {
           "title": "Corner Radius",
           "description": "The card's corner radius."
+        },
+        "borderWidth": {
+          "title": "Border Width",
+          "description": "How thick the card's edge is. The overlay window grows with it."
         },
         "padding": {
           "title": "Padding",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Waveform Gap",
           "description": "The gap between waveform bars."
+        },
+        "waveformWidth": {
+          "title": "Waveform Width",
+          "description": "The width of each waveform bar."
         }
       },
       "themeFile": {
         "title": "Theme file",
         "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
         "notFound": "No theme file. Create one at this path to override overlay theme values.",
-        "active": "Active — this file sets {{count}} of 9 values.",
+        "active": "Active — this file sets {{count}} of {{total}} values.",
         "reload": "Reload",
         "copy": "Copy theme as JSON",
         "copied": "Copied",

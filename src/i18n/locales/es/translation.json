@@ -306,6 +306,44 @@
         },
         "unavailableNote": "El cristal no está disponible ahora mismo en este Mac — por ejemplo cuando Reducir transparencia está activado en macOS — así que la superposición se muestra Plana."
       },
+      "glassMaterial": {
+        "title": "Material del cristal",
+        "description": "Con qué desenfoque de macOS se dibuja la superficie de Cristal. Solo se aplica mientras Material sea Cristal.",
+        "options": {
+          "hudWindow": {
+            "title": "Ventana HUD",
+            "description": "Deja pasar la mayor parte del fondo. Siempre oscuro, sea cual sea el tema de la aplicación."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Sigue el tema de la aplicación, deja pasar unos dos tercios de lo que deja Ventana HUD."
+          },
+          "menu": {
+            "title": "Menú",
+            "description": "Sigue el tema de la aplicación, aún más denso."
+          },
+          "sidebar": {
+            "title": "Barra lateral",
+            "description": "Sigue el tema de la aplicación, suave y apenas transparente."
+          },
+          "underWindowBackground": {
+            "title": "Bajo la ventana",
+            "description": "El desenfoque más amplio, apenas queda nada del fondo."
+          },
+          "sheet": {
+            "title": "Hoja",
+            "description": "Opaco en las versiones recientes de macOS — no se transparenta nada del fondo."
+          },
+          "tooltip": {
+            "title": "Tooltip",
+            "description": "Sigue el tema de la aplicación, apenas transparente."
+          },
+          "contentBackground": {
+            "title": "Fondo de contenido",
+            "description": "Opaco en las versiones recientes de macOS — no se transparenta nada del fondo."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Elegir un color",
         "hexLabel": "Valor de color hexadecimal",
@@ -328,13 +366,25 @@
           "title": "Texto",
           "description": "El color de primer plano de la tarjeta y la base con la que se mezcla cada tono neutro."
         },
+        "border": {
+          "title": "Borde",
+          "description": "El color del borde de la tarjeta."
+        },
+        "borderOpacity": {
+          "title": "Opacidad del borde",
+          "description": "Cuánto se ve el borde de la tarjeta."
+        },
         "sizeScale": {
           "title": "Escala de tamaño",
-          "description": "Escala todas las longitudes de la tarjeta a la vez — anchos, altos, espaciado interior y texto. El único valor que cambia cuánto espacio necesita la superposición en pantalla."
+          "description": "Escala todas las longitudes de la tarjeta a la vez — anchos, altos, espaciado interior y texto. Uno de los dos valores que cambian cuánto espacio necesita la superposición en pantalla; el otro es el grosor del borde."
         },
         "radius": {
           "title": "Radio de las esquinas",
           "description": "El radio de las esquinas de la tarjeta."
+        },
+        "borderWidth": {
+          "title": "Grosor del borde",
+          "description": "El grosor del borde de la tarjeta. La ventana de la superposición crece con él."
         },
         "padding": {
           "title": "Espaciado interior",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Separación de la onda",
           "description": "La separación entre las barras de la forma de onda."
+        },
+        "waveformWidth": {
+          "title": "Ancho de la onda",
+          "description": "El ancho de cada barra de la forma de onda."
         }
       },
       "themeFile": {
         "title": "Archivo de tema",
         "description": "Un archivo JSON opcional que sustituye los valores del tema de la superposición, para que herramientas de temas externas puedan controlarla.",
         "notFound": "No hay archivo de tema. Crea uno en esta ruta para sustituir los valores del tema de la superposición.",
-        "active": "Activo — este archivo define {{count}} de 9 valores.",
+        "active": "Activo — este archivo define {{count}} de {{total}} valores.",
         "reload": "Recargar",
         "copy": "Copiar el tema como JSON",
         "copied": "Copiado",

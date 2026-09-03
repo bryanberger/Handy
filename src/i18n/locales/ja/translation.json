@@ -306,6 +306,44 @@
         },
         "unavailableNote": "この Mac では現在ガラスを利用できないため（macOS の「透明度を下げる」がオンのときなど）、オーバーレイはフラットで描画されます。"
       },
+      "glassMaterial": {
+        "title": "ガラスのマテリアル",
+        "description": "ガラスのサーフェスを描画する macOS のぼかしの種類です。マテリアルがガラスのときだけ適用されます。",
+        "options": {
+          "hudWindow": {
+            "title": "HUD ウインドウ",
+            "description": "背景を最もよく透かします。アプリのテーマにかかわらず常に暗くなります。"
+          },
+          "popover": {
+            "title": "ポップオーバー",
+            "description": "アプリのテーマに従い、透け具合は HUD ウインドウの約 3 分の 2 です。"
+          },
+          "menu": {
+            "title": "メニュー",
+            "description": "アプリのテーマに従い、さらに濃くなります。"
+          },
+          "sidebar": {
+            "title": "サイドバー",
+            "description": "アプリのテーマに従い、柔らかくわずかに透ける程度です。"
+          },
+          "underWindowBackground": {
+            "title": "ウインドウの背面",
+            "description": "最も広くぼかし、背景はほとんど残りません。"
+          },
+          "sheet": {
+            "title": "シート",
+            "description": "最近の macOS では不透明で、背景はまったく透けません。"
+          },
+          "tooltip": {
+            "title": "ツールチップ",
+            "description": "アプリのテーマに従い、わずかに透ける程度です。"
+          },
+          "contentBackground": {
+            "title": "コンテンツ背景",
+            "description": "最近の macOS では不透明で、背景はまったく透けません。"
+          }
+        }
+      },
       "color": {
         "swatchLabel": "色を選択",
         "hexLabel": "16 進数の色の値",
@@ -328,13 +366,25 @@
           "title": "テキスト",
           "description": "カードの前景色で、すべてのニュートラルな色調を混ぜる基準にもなります。"
         },
+        "border": {
+          "title": "境界線",
+          "description": "カードの縁の色です。"
+        },
+        "borderOpacity": {
+          "title": "境界線の不透明度",
+          "description": "カードの縁がどれだけはっきり見えるかです。"
+        },
         "sizeScale": {
           "title": "サイズ倍率",
-          "description": "カード内のすべての長さを一度に拡大縮小します（幅、高さ、余白、文字サイズ）。オーバーレイが画面上で必要とする領域を変える唯一の項目です。"
+          "description": "カード内のすべての長さを一度に拡大縮小します（幅、高さ、余白、文字サイズ）。オーバーレイが画面上で必要とする領域を変える 2 つの項目のうちの 1 つで、もう 1 つは境界線の太さです。"
         },
         "radius": {
           "title": "角の丸み",
           "description": "カードの角の丸みです。"
+        },
+        "borderWidth": {
+          "title": "境界線の太さ",
+          "description": "カードの縁の太さです。オーバーレイのウインドウもそれに合わせて大きくなります。"
         },
         "padding": {
           "title": "余白",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "波形の間隔",
           "description": "波形バーどうしの間隔です。"
+        },
+        "waveformWidth": {
+          "title": "波形の幅",
+          "description": "波形バー 1 本ごとの幅です。"
         }
       },
       "themeFile": {
         "title": "テーマファイル",
         "description": "外部のテーマ作成ツールからオーバーレイを制御できるように、オーバーレイのテーマ値を上書きする任意の JSON ファイルです。",
         "notFound": "テーマファイルはありません。このパスに作成すると、オーバーレイのテーマ値を上書きできます。",
-        "active": "有効：このファイルは 9 個中 {{count}} 個の値を設定しています。",
+        "active": "有効：このファイルは {{total}} 個中 {{count}} 個の値を設定しています。",
         "reload": "再読み込み",
         "copy": "テーマを JSON としてコピー",
         "copied": "コピーしました",

@@ -306,6 +306,44 @@
         },
         "unavailableNote": "Glas is op deze Mac op dit moment niet beschikbaar — bijvoorbeeld wanneer Transparantie verminderen aanstaat in macOS — dus de overlay wordt Vlak weergegeven."
       },
+      "glassMaterial": {
+        "title": "Glasmateriaal",
+        "description": "Met welke macOS-vervaging het glasoppervlak wordt getekend. Geldt alleen zolang Materiaal op Glas staat.",
+        "options": {
+          "hudWindow": {
+            "title": "HUD-venster",
+            "description": "Laat het meeste van de achtergrond door. Altijd donker, ongeacht het app-thema."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Volgt het app-thema, ongeveer twee derde zo doorzichtig als HUD-venster."
+          },
+          "menu": {
+            "title": "Menu",
+            "description": "Volgt het app-thema, nog wat dichter."
+          },
+          "sidebar": {
+            "title": "Zijbalk",
+            "description": "Volgt het app-thema, zacht en maar een beetje doorzichtig."
+          },
+          "underWindowBackground": {
+            "title": "Onder het venster",
+            "description": "De breedste vervaging, er blijft weinig van de achtergrond over."
+          },
+          "sheet": {
+            "title": "Sheet",
+            "description": "Dekkend op recente macOS-versies — er schijnt geen achtergrond door."
+          },
+          "tooltip": {
+            "title": "Tooltip",
+            "description": "Volgt het app-thema, maar een beetje doorzichtig."
+          },
+          "contentBackground": {
+            "title": "Inhoudsachtergrond",
+            "description": "Dekkend op recente macOS-versies — er schijnt geen achtergrond door."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Kies een kleur",
         "hexLabel": "Hexadecimale kleurwaarde",
@@ -328,13 +366,25 @@
           "title": "Tekst",
           "description": "De voorgrondkleur van de kaart en de basis waaruit elke neutrale tint wordt gemengd."
         },
+        "border": {
+          "title": "Rand",
+          "description": "De kleur van de rand van de kaart."
+        },
+        "borderOpacity": {
+          "title": "Dekking van rand",
+          "description": "Hoe zichtbaar de rand van de kaart is."
+        },
         "sizeScale": {
           "title": "Schaal",
-          "description": "Schaalt alle afmetingen van de kaart tegelijk — breedtes, hoogtes, binnenmarges en tekst. De enige waarde die verandert hoeveel ruimte de overlay op het scherm nodig heeft."
+          "description": "Schaalt alle afmetingen van de kaart tegelijk — breedtes, hoogtes, binnenmarges en tekst. Een van de twee waarden die veranderen hoeveel ruimte de overlay op het scherm nodig heeft; de andere is de randdikte."
         },
         "radius": {
           "title": "Hoekradius",
           "description": "De hoekradius van de kaart."
+        },
+        "borderWidth": {
+          "title": "Randdikte",
+          "description": "Hoe dik de rand van de kaart is. Het overlayvenster groeit mee."
         },
         "padding": {
           "title": "Binnenmarge",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Golfvormafstand",
           "description": "De afstand tussen de golfvormbalkjes."
+        },
+        "waveformWidth": {
+          "title": "Golfvormbreedte",
+          "description": "De breedte van elk golfvormbalkje."
         }
       },
       "themeFile": {
         "title": "Themabestand",
         "description": "Een optioneel JSON-bestand dat waarden van het overlaythema overschrijft, zodat externe thematools de overlay kunnen aansturen.",
         "notFound": "Geen themabestand. Maak er een aan op dit pad om waarden van het overlaythema te overschrijven.",
-        "active": "Actief — dit bestand stelt {{count}} van 9 waarden in.",
+        "active": "Actief — dit bestand stelt {{count}} van {{total}} waarden in.",
         "reload": "Herladen",
         "copy": "Thema als JSON kopiëren",
         "copied": "Gekopieerd",

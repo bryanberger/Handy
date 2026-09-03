@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/Slider";
 import { useResolvedOverlayTheme } from "@/hooks/useResolvedOverlayTheme";
 import { useSettings } from "@/hooks/useSettings";
 import {
+  BORDER_OPACITY_INHERIT,
   INHERIT_ALL,
   SURFACE_OPACITY_INHERIT,
   type OverlayNumericKey,
@@ -20,6 +21,7 @@ import type {
 import { ShowOverlay } from "../ShowOverlay";
 import { ThemeSelector } from "../ThemeSelector";
 import { ColorField } from "./ColorField";
+import { GlassMaterialSelector } from "./GlassMaterialSelector";
 import { MaterialSelector } from "./MaterialSelector";
 import {
   OVERLAY_TOKEN_FIELDS,
@@ -32,15 +34,17 @@ import { EMPTY_FILE_STATE, useOverlayThemeVars } from "./useOverlayThemeVars";
 
 /** Token contract defaults that do not vary with the app theme; mirrors
  *  `RecordingOverlay.css`'s `:root` block, which is the actual source of
- *  truth these must be kept in step with by hand. `surface_opacity` is
- *  excluded — its default depends on the effective Material and is read from
- *  the apply layer's own `SURFACE_OPACITY_INHERIT` instead, so it can never
- *  drift from what is actually painted. */
+ *  truth these must be kept in step with by hand. The two opacities are
+ *  excluded — their defaults depend on the effective Material and are read
+ *  from the apply layer's own tables instead, so they can never drift from
+ *  what is actually painted. */
 const STATIC_NUMERIC_DEFAULTS: Partial<Record<OverlayNumericKey, number>> = {
   size_scale: 1,
   radius: 24,
+  border_width: 1,
   padding: 10,
   waveform_gap: 3,
+  waveform_width: 4,
 };
 
 function numericDefault(
@@ -49,6 +53,8 @@ function numericDefault(
 ): number {
   if (key === "surface_opacity")
     return SURFACE_OPACITY_INHERIT[effectiveMaterial];
+  if (key === "border_opacity")
+    return BORDER_OPACITY_INHERIT[effectiveMaterial];
   return STATIC_NUMERIC_DEFAULTS[key] ?? 0;
 }
 
@@ -60,7 +66,7 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
 
 /**
  * The Appearance tab: the app theme picker and the overlay style/position
- * (both reused unchanged from About/Advanced), a live preview, and the nine
+ * (both reused unchanged from About/Advanced), a live preview, and the fourteen
  * overlay-theme tokens grouped as Color / Material / Size & Spacing, plus the
  * Theme File group. Groups 4 onward are driven by `OVERLAY_TOKEN_FIELDS`
  * rather than hardcoded, so that table is the only place a token's shape is
@@ -150,16 +156,32 @@ const AppearanceSettingsInner: React.FC = () => {
         );
       }
 
-      // The one enum token, Material, gets its own selector (the Glass
-      // gating and the unavailable note) rather than a generic dropdown, but
-      // still lives in the descriptor table so the group is driven the same
-      // way as Color and Size & Spacing.
-      case "enum":
+      // The two enum tokens get their own selectors — Material for the Glass
+      // gating and the unavailable note, the Glass material for its eight
+      // option descriptions — rather than a generic dropdown, but both still
+      // live in the descriptor table so the group is driven the same way as
+      // Color and Size & Spacing.
+      case "material":
         return (
           <MaterialSelector
             key={field.key}
             value={vars.effectiveValue(field.key) ?? "flat"}
             onSelect={(next) => void setOverlayThemeToken(field.key, next)}
+            glassSupport={
+              resolved?.glass_support ?? { supported: false, available: false }
+            }
+            locked={locked}
+            lockedDescription={lockedDescription}
+          />
+        );
+
+      case "glassMaterial":
+        return (
+          <GlassMaterialSelector
+            key={field.key}
+            value={vars.effectiveValue(field.key) ?? "hud_window"}
+            onSelect={(next) => void setOverlayThemeToken(field.key, next)}
+            material={vars.effectiveValue("material") ?? "flat"}
             glassSupport={
               resolved?.glass_support ?? { supported: false, available: false }
             }

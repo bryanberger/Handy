@@ -80,7 +80,7 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `overlay.rs` - Recording overlay window (platform-specific), including its native geometry
 - `overlay_theme.rs` - Overlay theme tokens, the file/settings/inherit resolver, and delivery
 - `overlay_theme_file.rs` - Reads `overlay_theme.json` (see the README's Overlay Theme File section)
-- `overlay_glass.rs` - The macOS Glass material: one `NSVisualEffectView` and the native frame morph
+- `overlay_glass.rs` - The macOS Glass material: one `NSVisualEffectView` (which blur it draws is the `glass_material` token, a live setter on that same view) and the native frame morph
 - `commands/overlay_theme.rs` - Persist, read and reload the overlay theme
 - `commands/overlay_preview.rs` - Drive the real overlay from synthetic audio (`--preview-overlay`)
 - `commands/overlay_card.rs` - Receives the overlay page's card-shape reports
@@ -222,7 +222,7 @@ Access debug features: `Cmd+Shift+D` (macOS) or `Ctrl+Shift+D` (Windows/Linux)
 - **Windows**: Vulkan acceleration, code signing
 - **Linux**: OpenBLAS + Vulkan, limited Wayland support, overlay uses GTK layer shell (disable with `HANDY_NO_GTK_LAYER_SHELL=1`)
 - **Nix/NixOS**: the Nix package sets `HANDY_DISABLE_UPDATER=1` to force-disable the self-updater at runtime without touching the persisted setting (self-update can't work against an immutable `/nix/store`)
-- **macOS Glass**: the overlay window snaps between card shapes, because the native frame animation leads WebKit's repaint and briefly shows a bare blurred rim. `HANDY_GLASS_MORPH=1` opts the animation back in for comparison on real hardware; macOS "Reduce motion" snaps either way
+- **macOS Glass**: the overlay window snaps between card shapes, because the native frame animation leads WebKit's repaint and briefly shows a bare blurred rim. `HANDY_GLASS_MORPH=1` opts the animation back in for comparison on real hardware; macOS "Reduce motion" snaps either way. Which `NSVisualEffectMaterial` the blur uses is the `glass_material` overlay-theme token (Appearance tab, or the theme file) — deliberately a token and not an environment variable, so there is one source of truth
 - **Overlay theme file**: `HANDY_OVERLAY_THEME_FILE=<path>` names the `overlay_theme.json` Handy reads. It takes a path, not a flag, and it is exclusive — when set, no other location is tried, and a missing target is a warning rather than a silent fallback
 
 ## Troubleshooting

@@ -17,13 +17,13 @@ interface OverlayTokenFieldBase {
  * tab: one entry per token, published as data so `AppearanceSettings` can
  * render the Overlay Color / Overlay Material / Overlay Size & Spacing groups
  * as `fields.filter(f => f.group === …).map(renderField)` instead of
- * hardcoding nine rows by hand.
+ * hardcoding fourteen rows by hand.
  *
  * A discriminated union on `kind`, so the token's `key` narrows with it: a
- * color field's key is one of the three color tokens, a length/factor field's
- * is one of the five numeric ones, and the single enum field is Material.
- * That is what lets `renderField` read `effectiveValue(field.key)` at the
- * right type in each branch instead of asserting it back with a cast.
+ * color field's key is one of the four color tokens, a length/factor field's
+ * is one of the eight numeric ones, and the two enum fields carry their own
+ * kind each. That is what lets `renderField` read `effectiveValue(field.key)`
+ * at the right type in each branch instead of asserting it back with a cast.
  *
  * Numeric bounds are pulled from `OVERLAY_TOKEN_BOUNDS` (the apply layer's own
  * re-validation table, `src/lib/overlayTheme.ts`) rather than repeated here,
@@ -40,13 +40,17 @@ export type OverlayTokenField =
   | (OverlayTokenFieldBase & { kind: "color"; key: OverlayColorKey })
   | (NumericTokenFieldBase & { kind: "length" })
   | (NumericTokenFieldBase & { kind: "factor" })
-  | (OverlayTokenFieldBase & { kind: "enum"; key: "material" });
+  | (OverlayTokenFieldBase & { kind: "material"; key: "material" })
+  | (OverlayTokenFieldBase & { kind: "glassMaterial"; key: "glass_material" });
 
 const TOKENS = "settings.appearance.tokens";
 const MATERIAL = "settings.appearance.material";
+const GLASS_MATERIAL = "settings.appearance.glassMaterial";
 
-/** Token order matches the contract's table (accent, surface, surface_opacity,
- *  text, material, size_scale, radius, padding, waveform_gap). */
+/** Token order matches the contract's table, which is also the order the
+ *  theme file's `TOKEN_KEYS` lists them in: accent, surface, surface_opacity,
+ *  text, border, border_opacity, material, glass_material, size_scale,
+ *  radius, border_width, padding, waveform_gap, waveform_width. */
 export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
   {
     key: "accent",
@@ -77,6 +81,21 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
     labelKey: `${TOKENS}.text.title`,
     descriptionKey: `${TOKENS}.text.description`,
   },
+  {
+    key: "border",
+    group: "color",
+    kind: "color",
+    labelKey: `${TOKENS}.border.title`,
+    descriptionKey: `${TOKENS}.border.description`,
+  },
+  {
+    key: "border_opacity",
+    group: "color",
+    kind: "factor",
+    ...OVERLAY_TOKEN_BOUNDS.border_opacity,
+    labelKey: `${TOKENS}.borderOpacity.title`,
+    descriptionKey: `${TOKENS}.borderOpacity.description`,
+  },
   // Material is a single enum token, but — unlike the others — it is rendered
   // by a dedicated MaterialSelector, which owns the one declaration of the
   // Flat/Glass options (platform gating and the unavailable note need them
@@ -85,9 +104,18 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
   {
     key: "material",
     group: "material",
-    kind: "enum",
+    kind: "material",
     labelKey: `${MATERIAL}.title`,
     descriptionKey: `${MATERIAL}.description`,
+  },
+  // The Glass material only means anything while Material is Glass, so its
+  // own selector owns the enabling rule as well as the eight option labels.
+  {
+    key: "glass_material",
+    group: "material",
+    kind: "glassMaterial",
+    labelKey: `${GLASS_MATERIAL}.title`,
+    descriptionKey: `${GLASS_MATERIAL}.description`,
   },
   {
     key: "size_scale",
@@ -106,6 +134,14 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
     descriptionKey: `${TOKENS}.radius.description`,
   },
   {
+    key: "border_width",
+    group: "size",
+    kind: "length",
+    ...OVERLAY_TOKEN_BOUNDS.border_width,
+    labelKey: `${TOKENS}.borderWidth.title`,
+    descriptionKey: `${TOKENS}.borderWidth.description`,
+  },
+  {
     key: "padding",
     group: "size",
     kind: "length",
@@ -120,5 +156,13 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
     ...OVERLAY_TOKEN_BOUNDS.waveform_gap,
     labelKey: `${TOKENS}.waveformGap.title`,
     descriptionKey: `${TOKENS}.waveformGap.description`,
+  },
+  {
+    key: "waveform_width",
+    group: "size",
+    kind: "length",
+    ...OVERLAY_TOKEN_BOUNDS.waveform_width,
+    labelKey: `${TOKENS}.waveformWidth.title`,
+    descriptionKey: `${TOKENS}.waveformWidth.description`,
   },
 ] as const;

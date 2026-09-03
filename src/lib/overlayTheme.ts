@@ -29,16 +29,19 @@ import type { Material, OverlayTheme, ResolvedOverlayTheme } from "@/bindings";
 /** A token name: simultaneously an `OverlayTheme` field and a theme-file key. */
 export type OverlayThemeKey = keyof OverlayTheme;
 
-/** The three tokens whose value is a colour. */
-export type OverlayColorKey = "accent" | "surface" | "text";
+/** The four tokens whose value is a colour. */
+export type OverlayColorKey = "accent" | "surface" | "text" | "border";
 
-/** The five tokens whose value is a number. */
+/** The eight tokens whose value is a number. */
 export type OverlayNumericKey =
   | "surface_opacity"
+  | "border_opacity"
   | "size_scale"
   | "radius"
+  | "border_width"
   | "padding"
-  | "waveform_gap";
+  | "waveform_gap"
+  | "waveform_width";
 
 /**
  * The numeric tokens' bounds, straight from the token contract's table.
@@ -52,10 +55,13 @@ export const OVERLAY_TOKEN_BOUNDS: Record<
   { min: number; max: number; step: number }
 > = {
   surface_opacity: { min: 0.3, max: 1.0, step: 0.01 },
+  border_opacity: { min: 0.0, max: 1.0, step: 0.01 },
   size_scale: { min: 0.8, max: 1.5, step: 0.05 },
   radius: { min: 0, max: 32, step: 1 },
+  border_width: { min: 0, max: 4, step: 1 },
   padding: { min: 0, max: 20, step: 1 },
   waveform_gap: { min: 0, max: 5, step: 1 },
+  waveform_width: { min: 2, max: 6, step: 1 },
 };
 
 /** The theme that inherits every token — Handy's overlay as it ships. */
@@ -64,23 +70,60 @@ export const INHERIT_ALL: OverlayTheme = {
   surface: null,
   surface_opacity: null,
   text: null,
+  border: null,
+  border_opacity: null,
   material: null,
+  glass_material: null,
   size_scale: null,
   radius: null,
+  border_width: null,
   padding: null,
   waveform_gap: null,
+  waveform_width: null,
 };
 
 /**
  * The surface alpha an unset `surface_opacity` resolves to, per Material.
  *
- * Flat's 0.98 is today's near-opaque card. Glass's 0.70 was measured on the
- * real blur: enough tint to keep text legible, thin enough for the blur to
- * read as blur.
+ * Flat's 0.98 is today's near-opaque card. Glass's 0.45 is measured, not
+ * guessed: over a split light/dark striped desktop the card passes about 53
+ * levels of the backdrop through at 0.45 against 27 at the 0.70 this feature
+ * first shipped with, which is the difference between "a dark card" and
+ * "frosted glass" — while the worst-case contrast of the transcript over the
+ * brightest backdrop stays at 6.1:1, comfortably past WCAG AA. Going further
+ * to 0.30 buys another 10 levels but drops that worst case to 4.9:1, which a
+ * pure-white desktop would push under the line.
  */
 export const SURFACE_OPACITY_INHERIT: Record<Material, number> = {
   flat: 0.98,
-  glass: 0.7,
+  glass: 0.45,
+};
+
+/**
+ * What an unset `border` mixes from: the foreground, on both Materials.
+ *
+ * One value and not a per-Material pair, because the obvious Glass default —
+ * a white rim, the way an Apple HUD carries one — was measured and rejected.
+ * It only works under a Dark app theme: over a light card (Light theme, where
+ * the tint is near-white) a white edge at 30 % moves the pixels by 3 levels,
+ * which is no edge at all, against 27 for the foreground mix, and what the
+ * *default* has to do is be visible in all four combinations of app theme and
+ * backdrop. Only the alpha differs per Material — see
+ * [`BORDER_OPACITY_INHERIT`]. A theme that wants the Apple rim can still ask
+ * for it — `border: "#ffffff"`, `border_opacity: 0.35` — which is what the
+ * token is for.
+ */
+export const BORDER_INHERIT = "var(--s-text)";
+
+/**
+ * The alpha an unset `border_opacity` resolves to, per Material — the second
+ * half of [`BORDER_INHERIT`]. Flat's 0.12 is today's hairline strength;
+ * Glass's is stronger because the edge is the only hard line a translucent
+ * card has, and the thinner tint above leaves it more work to do.
+ */
+export const BORDER_OPACITY_INHERIT: Record<Material, number> = {
+  flat: 0.12,
+  glass: 0.25,
 };
 
 /**
@@ -93,10 +136,10 @@ export const SURFACE_OPACITY_INHERIT: Record<Material, number> = {
  */
 const NEUTRALS: Record<
   Material,
-  { muted: number; faint: number; border: number; hair: number }
+  { muted: number; faint: number; hair: number }
 > = {
-  flat: { muted: 60, faint: 38, border: 12, hair: 7 },
-  glass: { muted: 78, faint: 52, border: 20, hair: 12 },
+  flat: { muted: 60, faint: 38, hair: 7 },
+  glass: { muted: 78, faint: 52, hair: 12 },
 };
 
 /** The derived tint strength of `--s-accent-soft`, as a percentage. */
@@ -131,8 +174,10 @@ export const OVERLAY_THEME_CSS_PROPERTIES: readonly string[] = [
   "--s-hair",
   "--ov-scale",
   "--ov-radius",
+  "--ov-border-w",
   "--ov-pad-x",
   "--ov-wave-gap",
+  "--ov-wave-w",
 ];
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -261,8 +306,27 @@ export function resolveOverlayThemeVars(
     const neutrals = NEUTRALS[material];
     vars["--s-muted"] = alphaMix("var(--s-text)", neutrals.muted);
     vars["--s-faint"] = alphaMix("var(--s-text)", neutrals.faint);
-    vars["--s-border"] = alphaMix("var(--s-text)", neutrals.border);
     vars["--s-hair"] = alphaMix("var(--s-text)", neutrals.hair);
+  }
+
+  // The card's edge. Its own two tokens, but it also follows `text`/`surface`
+  // — an edge derived from a foreground the theme has replaced would be the
+  // one neutral left behind. Under Glass it is written unconditionally, and at
+  // a stronger alpha, because the edge is the only hard line a translucent
+  // card has against whatever it is blurring.
+  const border = validHex(theme.border);
+  const borderOpacity = validToken(theme, "border_opacity");
+  if (
+    border !== null ||
+    borderOpacity !== null ||
+    text !== null ||
+    surface !== null ||
+    glass
+  ) {
+    vars["--s-border"] = alphaMix(
+      border ?? BORDER_INHERIT,
+      (borderOpacity ?? BORDER_OPACITY_INHERIT[material]) * 100,
+    );
   }
 
   // Raw token values only: the CSS does every multiplication with
@@ -273,11 +337,20 @@ export function resolveOverlayThemeVars(
   const radius = validToken(theme, "radius");
   if (radius !== null) vars["--ov-radius"] = `${radius}px`;
 
+  // The one length the native window geometry also reads: `overlay.rs` adds
+  // two of these to the card's footprint, so the two sides must agree on the
+  // number, which is why it is a token and not a derived value.
+  const borderWidth = validToken(theme, "border_width");
+  if (borderWidth !== null) vars["--ov-border-w"] = `${borderWidth}px`;
+
   const padding = validToken(theme, "padding");
   if (padding !== null) vars["--ov-pad-x"] = `${padding}px`;
 
   const waveformGap = validToken(theme, "waveform_gap");
   if (waveformGap !== null) vars["--ov-wave-gap"] = `${waveformGap}px`;
+
+  const waveformWidth = validToken(theme, "waveform_width");
+  if (waveformWidth !== null) vars["--ov-wave-w"] = `${waveformWidth}px`;
 
   return vars;
 }
@@ -288,8 +361,9 @@ export function resolveOverlayThemeVars(
  *
  * The removal is the point: without it a token that goes back to inherit would
  * keep painting, because inline style beats the stylesheet the inherited value
- * lives in. `data-material` is always set; a `null` theme removes all twelve
- * properties and leaves `data-material="flat"`.
+ * lives in. `data-material` is always set; a `null` theme removes every
+ * property in [`OVERLAY_THEME_CSS_PROPERTIES`] and leaves
+ * `data-material="flat"`.
  */
 export function applyOverlayTheme(
   root: HTMLElement,

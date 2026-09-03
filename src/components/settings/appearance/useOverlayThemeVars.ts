@@ -200,17 +200,23 @@ export function useOverlayThemeVars(
   const accentRef = useRef<HTMLSpanElement>(null);
   const surfaceRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
-  // The three refs are stable for the hook's lifetime, but the object holding
+  const borderRef = useRef<HTMLSpanElement>(null);
+  // The four refs are stable for the hook's lifetime, but the object holding
   // them would be a fresh identity every render — and it is passed straight
   // into a child's props, so memoizing it keeps that child out of the same
   // "new object every render" trap that caused the render loop above.
   const colorProbeRefs = useMemo(
-    () => ({ accent: accentRef, surface: surfaceRef, text: textRef }),
+    () => ({
+      accent: accentRef,
+      surface: surfaceRef,
+      text: textRef,
+      border: borderRef,
+    }),
     [],
   );
   const [resolvedDefaults, setResolvedDefaults] = useState<
     Record<OverlayColorKey, string | null>
-  >({ accent: null, surface: null, text: null });
+  >({ accent: null, surface: null, text: null, border: null });
 
   const lastMeasured = useRef<Record<OverlayColorKey, string | null> | null>(
     null,
@@ -228,6 +234,7 @@ export function useOverlayThemeVars(
       accent: read(accentRef),
       surface: read(surfaceRef),
       text: read(textRef),
+      border: read(borderRef),
     };
     // Skipping the call, rather than relying on React to bail out of it, is
     // the point: a *scheduled* update inside a layout effect counts towards

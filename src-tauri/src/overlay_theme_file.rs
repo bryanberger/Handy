@@ -3,7 +3,8 @@
 //! A *theme file* lets an external theming tool drive the overlay without the
 //! settings window. Handy only ever **reads** it — nothing here writes, moves
 //! or rewrites the file — and nothing but typed tokens ever comes out of it:
-//! canonical `#rrggbb` colours, the closed enum `flat | glass`, and numbers
+//! canonical `#rrggbb` colours, the closed enums `flat | glass` and the eight
+//! macOS `glass_material` values, and numbers
 //! rounded and clamped to the token contract's bounds. No CSS, stylesheet,
 //! script, font, path, URL or command is ever read from this document, so a
 //! hostile file can at worst cost the overlay its styling for one session.
@@ -28,9 +29,10 @@
 //! valid. Readers should tolerate either shape.
 
 use crate::overlay_theme::{
-    HexColor, Material, OverlayTheme, ThemeFileDiagnostic, ThemeFileDiagnosticCode, ThemeFileState,
-    PADDING_MAX, RADIUS_MAX, SIZE_SCALE_MAX, SIZE_SCALE_MIN, SURFACE_OPACITY_MAX,
-    SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX,
+    GlassMaterial, HexColor, Material, OverlayTheme, ThemeFileDiagnostic, ThemeFileDiagnosticCode,
+    ThemeFileState, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN, BORDER_WIDTH_MAX, PADDING_MAX,
+    RADIUS_MAX, SIZE_SCALE_MAX, SIZE_SCALE_MIN, SURFACE_OPACITY_MAX, SURFACE_OPACITY_MIN,
+    WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
 };
 use log::{debug, warn};
 use serde_json::Value;
@@ -65,7 +67,7 @@ pub const THEME_FILE_ENV_VAR: &str = "HANDY_OVERLAY_THEME_FILE";
 /// Discussion #1802 asked for (`~/.config/handy/`).
 const LINUX_CONFIG_SUBDIR: &str = "handy";
 
-/// Anything larger than this is not a nine-key document; refused unread.
+/// Anything larger than this is not a fourteen-key document; refused unread.
 const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 
 /// How many diagnostics ride along in [`ThemeFileState`]. Every diagnostic
@@ -73,19 +75,25 @@ const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 /// unbounded in a hostile document.
 const MAX_DIAGNOSTICS: usize = 5;
 
-/// The nine token keys, in the token contract's order. This is also the order
+/// The fourteen token keys, in the token contract's order — which is also the
+/// order the Appearance tab lists them in. This is the order
 /// [`ThemeFileState::owned_keys`] and the per-key diagnostics come out in, so
 /// the payload does not depend on how `serde_json` orders an object's keys.
-const TOKEN_KEYS: [&str; 9] = [
+const TOKEN_KEYS: [&str; 14] = [
     "accent",
     "surface",
     "surface_opacity",
     "text",
+    "border",
+    "border_opacity",
     "material",
+    "glass_material",
     "size_scale",
     "radius",
+    "border_width",
     "padding",
     "waveform_gap",
+    "waveform_width",
 ];
 
 /// The one top-level key that is not a token.
@@ -615,6 +623,10 @@ fn parse_document(text: &str) -> Result<ParsedDocument, ThemeFileDiagnostic> {
                 tokens.text = parse_color(key, value, &mut diagnostics);
                 tokens.text.is_some()
             }
+            "border" => {
+                tokens.border = parse_color(key, value, &mut diagnostics);
+                tokens.border.is_some()
+            }
             "surface_opacity" => {
                 tokens.surface_opacity = parse_ratio(
                     key,
@@ -625,6 +637,16 @@ fn parse_document(text: &str) -> Result<ParsedDocument, ThemeFileDiagnostic> {
                 );
                 tokens.surface_opacity.is_some()
             }
+            "border_opacity" => {
+                tokens.border_opacity = parse_ratio(
+                    key,
+                    value,
+                    BORDER_OPACITY_MIN,
+                    BORDER_OPACITY_MAX,
+                    &mut diagnostics,
+                );
+                tokens.border_opacity.is_some()
+            }
             "size_scale" => {
                 tokens.size_scale =
                     parse_ratio(key, value, SIZE_SCALE_MIN, SIZE_SCALE_MAX, &mut diagnostics);
@@ -634,17 +656,35 @@ fn parse_document(text: &str) -> Result<ParsedDocument, ThemeFileDiagnostic> {
                 tokens.material = parse_material(key, value, &mut diagnostics);
                 tokens.material.is_some()
             }
+            "glass_material" => {
+                tokens.glass_material = parse_glass_material(key, value, &mut diagnostics);
+                tokens.glass_material.is_some()
+            }
             "radius" => {
-                tokens.radius = parse_px(key, value, RADIUS_MAX, &mut diagnostics);
+                tokens.radius = parse_px(key, value, 0, RADIUS_MAX, &mut diagnostics);
                 tokens.radius.is_some()
             }
+            "border_width" => {
+                tokens.border_width = parse_px(key, value, 0, BORDER_WIDTH_MAX, &mut diagnostics);
+                tokens.border_width.is_some()
+            }
             "padding" => {
-                tokens.padding = parse_px(key, value, PADDING_MAX, &mut diagnostics);
+                tokens.padding = parse_px(key, value, 0, PADDING_MAX, &mut diagnostics);
                 tokens.padding.is_some()
             }
             "waveform_gap" => {
-                tokens.waveform_gap = parse_px(key, value, WAVEFORM_GAP_MAX, &mut diagnostics);
+                tokens.waveform_gap = parse_px(key, value, 0, WAVEFORM_GAP_MAX, &mut diagnostics);
                 tokens.waveform_gap.is_some()
+            }
+            "waveform_width" => {
+                tokens.waveform_width = parse_px(
+                    key,
+                    value,
+                    WAVEFORM_WIDTH_MIN,
+                    WAVEFORM_WIDTH_MAX,
+                    &mut diagnostics,
+                );
+                tokens.waveform_width.is_some()
             }
             // TOKEN_KEYS is the list this match is written against; a key added
             // to one and not the other must not silently inherit.
@@ -765,8 +805,42 @@ fn parse_material(
     }
 }
 
-/// A 0–1 style token (`surface_opacity`, `size_scale`): a JSON number, clamped
-/// to the contract's bounds with a diagnostic when it had to move.
+/// `glass_material`: the closed enum of macOS materials, matched
+/// case-insensitively and ignoring `-`/` ` so `"HUD Window"`, `"hud-window"`
+/// and `"hud_window"` all land on the same value — this document is written
+/// by hand and by third-party tools.
+fn parse_glass_material(
+    key: &str,
+    value: &Value,
+    diagnostics: &mut Vec<ThemeFileDiagnostic>,
+) -> Option<GlassMaterial> {
+    let raw = expect_string(key, value, diagnostics)?;
+    let normalized: String = raw
+        .trim()
+        .to_ascii_lowercase()
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .collect();
+
+    GlassMaterial::ALL
+        .into_iter()
+        .find(|material| material.as_key().replace('_', "") == normalized)
+        .or_else(|| {
+            let expected = GlassMaterial::ALL
+                .map(|material| format!("\"{}\"", material.as_key()))
+                .join(", ");
+            diagnostics.push(diagnostic(
+                ThemeFileDiagnosticCode::WrongType,
+                Some(key.to_string()),
+                format!("'{key}' is {raw:?}; expected one of {expected}"),
+            ));
+            None
+        })
+}
+
+/// A 0–1 style token (`surface_opacity`, `border_opacity`, `size_scale`): a
+/// JSON number, clamped to the contract's bounds with a diagnostic when it
+/// had to move.
 fn parse_ratio(
     key: &str,
     value: &Value,
@@ -787,18 +861,22 @@ fn parse_ratio(
     Some(clamped)
 }
 
-/// A px token (`radius`, `padding`, `waveform_gap`): a JSON number, rounded
-/// half away from zero — a float is accepted, a numeric string is not — then
-/// clamped to `0..=max`.
+/// A px token (`radius`, `border_width`, `padding`, `waveform_gap`,
+/// `waveform_width`): a JSON number, rounded half away from zero — a float is
+/// accepted, a numeric string is not — then clamped to `min..=max`.
+///
+/// `min` is 0 for every token but `waveform_width`, whose bars disappear
+/// below 2 px.
 fn parse_px(
     key: &str,
     value: &Value,
+    min: u16,
     max: u16,
     diagnostics: &mut Vec<ThemeFileDiagnostic>,
 ) -> Option<u16> {
     let number = expect_number(key, value, diagnostics)?;
     let rounded = number.round();
-    let clamped = rounded.clamp(0.0, f64::from(max));
+    let clamped = rounded.clamp(f64::from(min), f64::from(max));
 
     if clamped != rounded {
         diagnostics.push(out_of_bounds(
@@ -949,11 +1027,16 @@ mod tests {
   "surface": null,
   "surface_opacity": null,
   "text": null,
+  "border": null,
+  "border_opacity": null,
   "material": null,
+  "glass_material": null,
   "size_scale": null,
   "radius": null,
+  "border_width": null,
   "padding": null,
-  "waveform_gap": null
+  "waveform_gap": null,
+  "waveform_width": null
 }"##;
 
     /// The contract's fully custom theme, byte-identical to the token
@@ -964,11 +1047,16 @@ mod tests {
   "surface": "#1a1b26",
   "surface_opacity": 0.92,
   "text": "#c0caf5",
+  "border": "#ffffff",
+  "border_opacity": 0.3,
   "material": "glass",
+  "glass_material": "popover",
   "size_scale": 1.1,
   "radius": 12,
+  "border_width": 1,
   "padding": 14,
-  "waveform_gap": 2
+  "waveform_gap": 2,
+  "waveform_width": 4
 }"##;
 
     /// The contract's theming-tool document: every leniency at once, plus a
@@ -1184,14 +1272,19 @@ mod tests {
                 surface: hex("#1a1b26"),
                 surface_opacity: Some(0.92),
                 text: hex("#c0caf5"),
+                border: hex("#ffffff"),
+                border_opacity: Some(0.3),
                 material: Some(Material::Glass),
+                glass_material: Some(GlassMaterial::Popover),
                 size_scale: Some(1.1),
                 radius: Some(12),
+                border_width: Some(1),
                 padding: Some(14),
                 waveform_gap: Some(2),
+                waveform_width: Some(4),
             }
         );
-        // Every key is owned, so the tab locks all nine.
+        // Every key is owned, so the tab locks all fourteen.
         assert_eq!(parsed.owned_keys, TOKEN_KEYS.to_vec());
         assert!(parsed.diagnostics.is_empty());
     }
@@ -1209,11 +1302,16 @@ mod tests {
         assert_eq!(parsed.tokens.surface_opacity, Some(1.0));
         assert_eq!(parsed.tokens.material, Some(Material::Flat));
 
-        // The five tokens it does not mention still inherit.
+        // The nine tokens it does not mention still inherit.
+        assert_eq!(parsed.tokens.border, None);
+        assert_eq!(parsed.tokens.border_opacity, None);
+        assert_eq!(parsed.tokens.glass_material, None);
         assert_eq!(parsed.tokens.size_scale, None);
         assert_eq!(parsed.tokens.radius, None);
+        assert_eq!(parsed.tokens.border_width, None);
         assert_eq!(parsed.tokens.padding, None);
         assert_eq!(parsed.tokens.waveform_gap, None);
+        assert_eq!(parsed.tokens.waveform_width, None);
 
         assert_eq!(
             parsed.owned_keys,
@@ -1344,6 +1442,93 @@ mod tests {
         assert_eq!(quiet.tokens.radius, Some(13));
         assert_eq!(quiet.tokens.surface_opacity, Some(0.3));
         assert!(quiet.diagnostics.is_empty());
+    }
+
+    /// The border and waveform tokens, with the bounds spelled out from the
+    /// token table rather than read from the module's constants.
+    #[test]
+    fn border_and_waveform_tokens_parse_and_clamp() {
+        let parsed = parse(
+            r##"{
+              "border": "FFF",
+              "border_opacity": 0.25,
+              "border_width": 2,
+              "waveform_width": 5
+            }"##,
+        );
+
+        assert_eq!(parsed.tokens.border, hex("#ffffff"));
+        assert_eq!(parsed.tokens.border_opacity, Some(0.25));
+        assert_eq!(parsed.tokens.border_width, Some(2));
+        assert_eq!(parsed.tokens.waveform_width, Some(5));
+        assert!(parsed.diagnostics.is_empty());
+        assert_eq!(
+            parsed.owned_keys,
+            vec!["border", "border_opacity", "border_width", "waveform_width"]
+        );
+
+        // Every one of them clamps to the table's bounds, and
+        // `waveform_width` is the only px token with a floor above zero.
+        let clamped = parse(
+            r##"{
+              "border_opacity": 4,
+              "border_width": 9,
+              "waveform_width": 1
+            }"##,
+        );
+        assert_eq!(clamped.tokens.border_opacity, Some(1.0));
+        assert_eq!(clamped.tokens.border_width, Some(4));
+        assert_eq!(clamped.tokens.waveform_width, Some(2));
+        assert_eq!(
+            codes(&clamped.diagnostics),
+            vec![
+                ThemeFileDiagnosticCode::OutOfBounds,
+                ThemeFileDiagnosticCode::OutOfBounds,
+                ThemeFileDiagnosticCode::OutOfBounds,
+            ]
+        );
+
+        // A fully transparent edge is in bounds, not clamped: it is how a
+        // theme asks for no visible border while keeping the width.
+        let invisible = parse(r##"{ "border_opacity": 0, "border_width": 0 }"##);
+        assert_eq!(invisible.tokens.border_opacity, Some(0.0));
+        assert_eq!(invisible.tokens.border_width, Some(0));
+        assert!(invisible.diagnostics.is_empty());
+    }
+
+    /// `glass_material` is spelled the way a human would write it in a config
+    /// file, so the reader accepts the separators a human reaches for.
+    #[test]
+    fn glass_material_spelling_is_lenient_but_closed() {
+        for spelling in ["hud_window", "HUD_WINDOW", "hud-window", "HUD Window"] {
+            let parsed = parse(&format!(r##"{{ "glass_material": "{spelling}" }}"##));
+            assert_eq!(
+                parsed.tokens.glass_material,
+                Some(GlassMaterial::HudWindow),
+                "{spelling}"
+            );
+            assert!(parsed.diagnostics.is_empty(), "{spelling}");
+        }
+
+        assert_eq!(
+            parse(r##"{ "glass_material": "under_window_background" }"##)
+                .tokens
+                .glass_material,
+            Some(GlassMaterial::UnderWindowBackground)
+        );
+
+        // A material this build does not have is one bad key, not a bad file,
+        // and the diagnostic lists what it could have been.
+        let unknown = parse(r##"{ "glass_material": "liquid_glass", "radius": 12 }"##);
+        assert_eq!(unknown.tokens.glass_material, None);
+        assert_eq!(unknown.tokens.radius, Some(12));
+        assert_eq!(unknown.owned_keys, vec!["radius"]);
+        assert_eq!(
+            codes(&unknown.diagnostics),
+            vec![ThemeFileDiagnosticCode::WrongType]
+        );
+        let message = messages(&unknown.diagnostics);
+        assert!(message.contains("\"popover\""), "{message}");
     }
 
     /// A typo and a key from a newer schema are indistinguishable here, and a

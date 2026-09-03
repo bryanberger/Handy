@@ -306,6 +306,44 @@
         },
         "unavailableNote": "Il vetro non è disponibile su questo Mac in questo momento — ad esempio quando Riduci trasparenza è attivo su macOS — quindi l'overlay viene reso Piatto."
       },
+      "glassMaterial": {
+        "title": "Materiale del vetro",
+        "description": "Con quale sfocatura di macOS viene disegnata la superficie Vetro. Vale solo quando Materiale è impostato su Vetro.",
+        "options": {
+          "hudWindow": {
+            "title": "Finestra HUD",
+            "description": "Lascia passare la maggior parte dello sfondo. Sempre scuro, qualunque sia il tema dell'applicazione."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Segue il tema dell'applicazione, trasparente circa due terzi rispetto a Finestra HUD."
+          },
+          "menu": {
+            "title": "Menu",
+            "description": "Segue il tema dell'applicazione, ancora più denso."
+          },
+          "sidebar": {
+            "title": "Barra laterale",
+            "description": "Segue il tema dell'applicazione, morbido e appena trasparente."
+          },
+          "underWindowBackground": {
+            "title": "Sotto la finestra",
+            "description": "La sfocatura più ampia, dello sfondo resta ben poco."
+          },
+          "sheet": {
+            "title": "Foglio",
+            "description": "Opaco nelle versioni recenti di macOS — non traspare alcuno sfondo."
+          },
+          "tooltip": {
+            "title": "Tooltip",
+            "description": "Segue il tema dell'applicazione, appena trasparente."
+          },
+          "contentBackground": {
+            "title": "Sfondo del contenuto",
+            "description": "Opaco nelle versioni recenti di macOS — non traspare alcuno sfondo."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Scegli un colore",
         "hexLabel": "Valore colore esadecimale",
@@ -328,13 +366,25 @@
           "title": "Testo",
           "description": "Il colore di primo piano della scheda e la base da cui viene miscelato ogni tono neutro."
         },
+        "border": {
+          "title": "Bordo",
+          "description": "Il colore del bordo della scheda."
+        },
+        "borderOpacity": {
+          "title": "Opacità del bordo",
+          "description": "Quanto è visibile il bordo della scheda."
+        },
         "sizeScale": {
           "title": "Scala delle dimensioni",
-          "description": "Ridimensiona tutte le lunghezze della scheda insieme — larghezze, altezze, spaziatura interna e testo. L'unico valore che cambia quanto spazio occupa l'overlay sullo schermo."
+          "description": "Ridimensiona tutte le lunghezze della scheda insieme — larghezze, altezze, spaziatura interna e testo. Uno dei due valori che cambiano quanto spazio occupa l'overlay sullo schermo; l'altro è lo spessore del bordo."
         },
         "radius": {
           "title": "Raggio degli angoli",
           "description": "Il raggio degli angoli della scheda."
+        },
+        "borderWidth": {
+          "title": "Spessore del bordo",
+          "description": "Quanto è spesso il bordo della scheda. La finestra dell'overlay cresce di conseguenza."
         },
         "padding": {
           "title": "Spaziatura interna",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Spaziatura della forma d'onda",
           "description": "Lo spazio tra le barre della forma d'onda."
+        },
+        "waveformWidth": {
+          "title": "Larghezza della forma d'onda",
+          "description": "La larghezza di ogni barra della forma d'onda."
         }
       },
       "themeFile": {
         "title": "File del tema",
         "description": "Un file JSON facoltativo che sostituisce i valori del tema dell'overlay, così strumenti di personalizzazione esterni possono pilotare l'overlay.",
         "notFound": "Nessun file del tema. Creane uno in questo percorso per sostituire i valori del tema dell'overlay.",
-        "active": "Attivo — questo file imposta {{count}} valori su 9.",
+        "active": "Attivo — questo file imposta {{count}} valori su {{total}}.",
         "reload": "Ricarica",
         "copy": "Copia il tema come JSON",
         "copied": "Copiato",

@@ -274,6 +274,11 @@ export const OverlayPreview: React.FC<OverlayPreviewProps> = ({
           style={PROBE_STYLE("--s-text")}
           ref={colorProbeRefs.text}
         />
+        <span
+          aria-hidden="true"
+          style={PROBE_STYLE("--s-border")}
+          ref={colorProbeRefs.border}
+        />
         <div
           ref={stageRef}
           className="ov-preview-stage relative h-[148px] w-full overflow-hidden rounded-lg"

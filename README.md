@@ -74,22 +74,29 @@ The app data directory is `~/Library/Application Support/com.pais.handy/` on mac
 
 The Appearance tab shows the path actually in effect, with a button that opens its folder.
 
-**What the file may contain.** A JSON object with an optional `version` plus any of the nine overlay-theme tokens:
+**What the file may contain.** A JSON object with an optional `version` plus any of the fourteen overlay-theme tokens:
 
-| Key               | Type       | Range                 |
-| ----------------- | ---------- | --------------------- |
-| `version`         | integer    | `1` (absent means 1)  |
-| `accent`          | string     | `"#RRGGBB"`           |
-| `surface`         | string     | `"#RRGGBB"`           |
-| `surface_opacity` | number     | 0.30 – 1.00           |
-| `text`            | string     | `"#RRGGBB"`           |
-| `material`        | string     | `"flat"` or `"glass"` |
-| `size_scale`      | number     | 0.80 – 1.50           |
-| `radius`          | integer px | 0 – 32                |
-| `padding`         | integer px | 0 – 20                |
-| `waveform_gap`    | integer px | 0 – 5                 |
+| Key               | Type       | Range                                                                                                                           |
+| ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `version`         | integer    | `1` (absent means 1)                                                                                                            |
+| `accent`          | string     | `"#RRGGBB"`                                                                                                                     |
+| `surface`         | string     | `"#RRGGBB"`                                                                                                                     |
+| `surface_opacity` | number     | 0.30 – 1.00                                                                                                                     |
+| `text`            | string     | `"#RRGGBB"`                                                                                                                     |
+| `border`          | string     | `"#RRGGBB"`                                                                                                                     |
+| `border_opacity`  | number     | 0.00 – 1.00                                                                                                                     |
+| `material`        | string     | `"flat"` or `"glass"`                                                                                                           |
+| `glass_material`  | string     | `"hud_window"`, `"popover"`, `"menu"`, `"sidebar"`, `"under_window_background"`, `"sheet"`, `"tooltip"`, `"content_background"` |
+| `size_scale`      | number     | 0.80 – 1.50                                                                                                                     |
+| `radius`          | integer px | 0 – 32                                                                                                                          |
+| `border_width`    | integer px | 0 – 4                                                                                                                           |
+| `padding`         | integer px | 0 – 20                                                                                                                          |
+| `waveform_gap`    | integer px | 0 – 5                                                                                                                           |
+| `waveform_width`  | integer px | 2 – 6                                                                                                                           |
 
-**Inherit.** Every token is optional, and an absent key means exactly what an explicit `null` means: inherit Handy's own theme-aware value for it. The merge is per key — `file, else settings window, else built-in` — so a file that sets only `surface` leaves the other eight tokens under the Appearance tab's control. Tokens the file does set are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are therefore valid documents that change nothing at all, and deleting the file is the way to stop overriding.
+`glass_material` picks which macOS blur the Glass surface is drawn with; it does nothing while `material` is `"flat"` or off macOS. `border`, `border_opacity` and `border_width` are the card's edge — `border_width` is, with `size_scale`, one of the only two tokens that change how much room the overlay needs on screen.
+
+**Inherit.** Every token is optional, and an absent key means exactly what an explicit `null` means: inherit Handy's own theme-aware value for it. The merge is per key — `file, else settings window, else built-in` — so a file that sets only `surface` leaves the other thirteen tokens under the Appearance tab's control. Tokens the file does set are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are therefore valid documents that change nothing at all, and deleting the file is the way to stop overriding.
 
 **A full theme:**
 
@@ -100,15 +107,20 @@ The Appearance tab shows the path actually in effect, with a button that opens i
   "surface": "#1a1b26",
   "surface_opacity": 0.92,
   "text": "#c0caf5",
+  "border": "#ffffff",
+  "border_opacity": 0.3,
   "material": "glass",
+  "glass_material": "popover",
   "size_scale": 1.1,
   "radius": 12,
+  "border_width": 1,
   "padding": 14,
-  "waveform_gap": 2
+  "waveform_gap": 2,
+  "waveform_width": 4
 }
 ```
 
-**What a theming tool might emit.** Color parsing is lenient — `#RGB` shorthand, a missing `#`, any case, surrounding whitespace, a UTF-8 BOM — and so is the `material` enum's case. Everything else must be a correctly typed JSON value. Unknown keys are ignored, so `"_comment"` is the supported way to annotate a document:
+**What a theming tool might emit.** Color parsing is lenient — `#RGB` shorthand, a missing `#`, any case, surrounding whitespace, a UTF-8 BOM — and so are the two enums' spelling (`material` ignores case; `glass_material` also ignores `-` and spaces, so `"HUD Window"` reads as `"hud_window"`). Everything else must be a correctly typed JSON value. Unknown keys are ignored, so `"_comment"` is the supported way to annotate a document:
 
 ```json
 {
@@ -123,7 +135,7 @@ The Appearance tab shows the path actually in effect, with a button that opens i
 }
 ```
 
-That resolves to accent `#8aadf4`, surface `#24273a`, text `#ccaadd`, surface opacity 1.0 and material Flat; `app_theme` is ignored with a warning, and the five unmentioned tokens inherit.
+That resolves to accent `#8aadf4`, surface `#24273a`, text `#ccaadd`, surface opacity 1.0 and material Flat; `app_theme` is ignored with a warning, and the nine unmentioned tokens inherit.
 
 **When it is re-read.** At launch, every time the overlay is shown, when the Appearance tab is opened, and from the tab's Reload button. There is no file watcher, so a theme switch takes effect on the next dictation rather than instantly — no restart needed.
 

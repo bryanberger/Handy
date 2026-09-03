@@ -1273,7 +1273,7 @@ mod tests {
 
     /// Salvage tier two: an `overlay_theme` that is not an object at all fails
     /// `OverlayTheme::deserialize`, so the existing per-key salvage drops that
-    /// one key and leaves the other settings — and all nine tokens — intact.
+    /// one key and leaves the other settings — and every token — intact.
     #[test]
     fn non_object_overlay_theme_is_salvaged_to_default() {
         let stored = serde_json::json!({

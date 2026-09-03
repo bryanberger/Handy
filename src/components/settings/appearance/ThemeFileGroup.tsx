@@ -137,6 +137,7 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
           {file.present
             ? t("settings.appearance.themeFile.active", {
                 count: file.owned_keys.length,
+                total: Object.keys(INHERIT_ALL).length,
               })
             : t("settings.appearance.themeFile.notFound")}
         </p>

@@ -306,6 +306,44 @@
         },
         "unavailableNote": "此 Mac 目前無法使用玻璃（例如 macOS 的「降低透明度」已開啟時），因此懸浮窗以平面呈現。"
       },
+      "glassMaterial": {
+        "title": "玻璃材質",
+        "description": "玻璃表面要以哪種 macOS 模糊效果繪製。僅在材質為玻璃時生效。",
+        "options": {
+          "hudWindow": {
+            "title": "HUD 視窗",
+            "description": "透出的背景最多。無論應用程式主題為何，一律為深色。"
+          },
+          "popover": {
+            "title": "彈出視窗",
+            "description": "跟隨應用程式主題，通透度約為 HUD 視窗的三分之二。"
+          },
+          "menu": {
+            "title": "選單",
+            "description": "跟隨應用程式主題，更為厚實。"
+          },
+          "sidebar": {
+            "title": "側邊欄",
+            "description": "跟隨應用程式主題，柔和且僅略微透出背景。"
+          },
+          "underWindowBackground": {
+            "title": "視窗下方",
+            "description": "模糊範圍最廣，幾乎看不到背景。"
+          },
+          "sheet": {
+            "title": "面板",
+            "description": "在較新的 macOS 上不透明——完全不會透出背景。"
+          },
+          "tooltip": {
+            "title": "工具提示",
+            "description": "跟隨應用程式主題，僅略微透出背景。"
+          },
+          "contentBackground": {
+            "title": "內容背景",
+            "description": "在較新的 macOS 上不透明——完全不會透出背景。"
+          }
+        }
+      },
       "color": {
         "swatchLabel": "選擇顏色",
         "hexLabel": "十六進位顏色值",
@@ -328,13 +366,25 @@
           "title": "文字",
           "description": "卡片的前景色，也是所有中性色調的混合基準色。"
         },
+        "border": {
+          "title": "邊框",
+          "description": "卡片邊緣的顏色。"
+        },
+        "borderOpacity": {
+          "title": "邊框不透明度",
+          "description": "卡片邊緣的明顯程度。"
+        },
         "sizeScale": {
           "title": "尺寸縮放",
-          "description": "一次縮放卡片中的所有尺寸——寬度、高度、內邊距與文字。這是唯一會改變懸浮窗在螢幕上所佔空間的項目。"
+          "description": "一次縮放卡片中的所有尺寸——寬度、高度、內邊距與文字。這是會改變懸浮窗在螢幕上所佔空間的兩個項目之一，另一個是邊框寬度。"
         },
         "radius": {
           "title": "圓角半徑",
           "description": "卡片的圓角半徑。"
+        },
+        "borderWidth": {
+          "title": "邊框寬度",
+          "description": "卡片邊緣的粗細。懸浮窗視窗也會隨之變大。"
         },
         "padding": {
           "title": "內邊距",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "波形間距",
           "description": "波形長條之間的間距。"
+        },
+        "waveformWidth": {
+          "title": "波形寬度",
+          "description": "每根波形長條的寬度。"
         }
       },
       "themeFile": {
         "title": "主題檔案",
         "description": "選用的 JSON 檔案，可覆寫懸浮窗主題的值，讓外部主題工具能夠控制懸浮窗。",
         "notFound": "沒有主題檔案。在此路徑建立一個即可覆寫懸浮窗主題的值。",
-        "active": "已啟用——此檔案設定了 9 個值中的 {{count}} 個。",
+        "active": "已啟用——此檔案設定了 {{total}} 個值中的 {{count}} 個。",
         "reload": "重新載入",
         "copy": "以 JSON 複製主題",
         "copied": "已複製",

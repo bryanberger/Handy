@@ -306,6 +306,44 @@
         },
         "unavailableNote": "Kính hiện không khả dụng trên máy Mac này — ví dụ khi Giảm độ trong suốt của macOS đang bật — nên lớp phủ được vẽ dạng Phẳng."
       },
+      "glassMaterial": {
+        "title": "Chất liệu kính",
+        "description": "Bề mặt Kính được vẽ bằng hiệu ứng làm mờ nào của macOS. Chỉ áp dụng khi Chất liệu là Kính.",
+        "options": {
+          "hudWindow": {
+            "title": "Cửa sổ HUD",
+            "description": "Để lộ nền nhiều nhất. Luôn tối màu, bất kể giao diện ứng dụng."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Theo giao diện ứng dụng, để lộ nền khoảng hai phần ba so với Cửa sổ HUD."
+          },
+          "menu": {
+            "title": "Menu",
+            "description": "Theo giao diện ứng dụng, đặc hơn nữa."
+          },
+          "sidebar": {
+            "title": "Thanh bên",
+            "description": "Theo giao diện ứng dụng, dịu và chỉ hơi để lộ nền."
+          },
+          "underWindowBackground": {
+            "title": "Dưới cửa sổ",
+            "description": "Hiệu ứng mờ rộng nhất, gần như không còn thấy nền."
+          },
+          "sheet": {
+            "title": "Sheet",
+            "description": "Đục trên các phiên bản macOS gần đây — không thấy nền phía sau."
+          },
+          "tooltip": {
+            "title": "Chú giải",
+            "description": "Theo giao diện ứng dụng, chỉ hơi để lộ nền."
+          },
+          "contentBackground": {
+            "title": "Nền nội dung",
+            "description": "Đục trên các phiên bản macOS gần đây — không thấy nền phía sau."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Chọn một màu",
         "hexLabel": "Giá trị màu hex",
@@ -328,13 +366,25 @@
           "title": "Văn bản",
           "description": "Màu chữ của thẻ, và màu gốc để pha mọi tông trung tính."
         },
+        "border": {
+          "title": "Viền",
+          "description": "Màu viền của thẻ."
+        },
+        "borderOpacity": {
+          "title": "Độ mờ đục của viền",
+          "description": "Mức độ hiện rõ của viền thẻ."
+        },
         "sizeScale": {
           "title": "Tỷ lệ kích thước",
-          "description": "Phóng to mọi kích thước trong thẻ cùng lúc — chiều rộng, chiều cao, đệm trong và cỡ chữ. Giá trị duy nhất làm thay đổi khoảng không mà lớp phủ chiếm trên màn hình."
+          "description": "Phóng to mọi kích thước trong thẻ cùng lúc — chiều rộng, chiều cao, đệm trong và cỡ chữ. Một trong hai giá trị làm thay đổi khoảng không mà lớp phủ chiếm trên màn hình; giá trị còn lại là độ dày viền."
         },
         "radius": {
           "title": "Bo góc",
           "description": "Độ bo góc của thẻ."
+        },
+        "borderWidth": {
+          "title": "Độ dày viền",
+          "description": "Viền của thẻ dày đến mức nào. Cửa sổ lớp phủ cũng to ra theo."
         },
         "padding": {
           "title": "Đệm trong",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Khoảng cách dạng sóng",
           "description": "Khoảng cách giữa các thanh dạng sóng."
+        },
+        "waveformWidth": {
+          "title": "Độ rộng dạng sóng",
+          "description": "Độ rộng của mỗi thanh dạng sóng."
         }
       },
       "themeFile": {
         "title": "Tệp giao diện",
         "description": "Một tệp JSON tùy chọn ghi đè các giá trị giao diện lớp phủ, để các công cụ tạo giao diện bên ngoài có thể điều khiển lớp phủ.",
         "notFound": "Không có tệp giao diện. Hãy tạo một tệp tại đường dẫn này để ghi đè các giá trị giao diện lớp phủ.",
-        "active": "Đang hoạt động — tệp này đặt {{count}} trong 9 giá trị.",
+        "active": "Đang hoạt động — tệp này đặt {{count}} trong {{total}} giá trị.",
         "reload": "Tải lại",
         "copy": "Sao chép giao diện dạng JSON",
         "copied": "Đã sao chép",

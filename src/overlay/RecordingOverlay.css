@@ -81,8 +81,13 @@
      zooms the whole card. */
   --ov-scale: 1; /* size_scale: multiplies every length in the card */
   --ov-radius: 24px; /* radius: the card's corner radius */
+  --ov-border-w: 1px; /* border_width: the card's stroke, one per edge. The
+                         card is content-box, so overlay.rs adds two of these
+                         to every card footprint -- with --ov-scale, the only
+                         token that changes the native window's size. */
   --ov-pad-x: 10px; /* padding: the control row's horizontal padding */
   --ov-wave-gap: 3px; /* waveform_gap: gap between waveform bars */
+  --ov-wave-w: 4px; /* waveform_width: the width of one waveform bar */
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -201,9 +206,9 @@
   flex: none; /* hold our own width; never let the stage flex shrink the card */
   transform-origin: bottom center;
   background: var(--s-surface);
-  /* The hairline scales with everything else, so the card's footprint is
+  /* The stroke scales with everything else, so the card's footprint is
      exactly its base size times the scale, border included. */
-  border: calc(1px * var(--ov-scale)) solid var(--s-border);
+  border: calc(var(--ov-border-w) * var(--ov-scale)) solid var(--s-border);
   /* Flat: no drop shadow, no backdrop blur/saturate (was a glassy gradient look). */
   /* pop-in plays on mount; morph (width/radius) is a transition */
   animation: scard-pop var(--ov-morph-ms) cubic-bezier(0.22, 1, 0.36, 1);
@@ -401,10 +406,12 @@
   flex: none;
 }
 .swave i {
-  width: calc(4px * var(--ov-scale));
+  width: calc(var(--ov-wave-w) * var(--ov-scale));
   min-height: calc(3px * var(--ov-scale));
   max-height: calc(18px * var(--ov-scale));
-  border-radius: calc(2px * var(--ov-scale));
+  /* Half the bar's width, so a bar is a capsule at every width -- at the
+     inherit 4px this is today's 2px. */
+  border-radius: calc(var(--ov-wave-w) / 2 * var(--ov-scale));
   background: var(--s-accent);
   transition:
     height 80ms linear,
@@ -523,8 +530,10 @@
   width: 100%;
   height: 100%;
   /* .scard is content-box (the only other box-sizing in this file is .sdot),
-     so without this the 1px border pushes the card 2px past the window and
-     body{overflow:hidden} clips it. */
+     so without this the border would push the card two --ov-border-w past
+     the window and body{overflow:hidden} would clip it. The window is sized
+     to the card *including* its border, so border-box is what makes the two
+     rectangles the same one at every border width. */
   box-sizing: border-box;
   /* The window frame is the animation: only the card's own morph is killed,
      so its border and the blur's edge stay on one rectangle. Named properties

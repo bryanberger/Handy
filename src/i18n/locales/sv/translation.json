@@ -306,6 +306,44 @@
         },
         "unavailableNote": "Glas är inte tillgängligt på den här Mac-datorn just nu — till exempel när Reducera transparens är på i macOS — så overlayen visas som Platt."
       },
+      "glassMaterial": {
+        "title": "Glasmaterial",
+        "description": "Vilken oskärpa i macOS glasytan ritas med. Gäller bara när Material är Glas.",
+        "options": {
+          "hudWindow": {
+            "title": "HUD-fönster",
+            "description": "Släpper igenom mest av bakgrunden. Alltid mörkt, oavsett apptema."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Följer apptemat, ungefär två tredjedelar så genomskinligt som HUD-fönster."
+          },
+          "menu": {
+            "title": "Meny",
+            "description": "Följer apptemat, ännu tätare."
+          },
+          "sidebar": {
+            "title": "Sidofält",
+            "description": "Följer apptemat, mjukt och bara lite genomskinligt."
+          },
+          "underWindowBackground": {
+            "title": "Under fönstret",
+            "description": "Den bredaste oskärpan, nästan inget av bakgrunden är kvar."
+          },
+          "sheet": {
+            "title": "Ark",
+            "description": "Ogenomskinligt på senare macOS — ingen bakgrund syns igenom."
+          },
+          "tooltip": {
+            "title": "Verktygstips",
+            "description": "Följer apptemat, bara lite genomskinligt."
+          },
+          "contentBackground": {
+            "title": "Innehållsbakgrund",
+            "description": "Ogenomskinligt på senare macOS — ingen bakgrund syns igenom."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Välj en färg",
         "hexLabel": "Hexadecimalt färgvärde",
@@ -328,13 +366,25 @@
           "title": "Text",
           "description": "Kortets förgrundsfärg, och basen som varje neutral ton blandas från."
         },
+        "border": {
+          "title": "Kant",
+          "description": "Färgen på kortets kant."
+        },
+        "borderOpacity": {
+          "title": "Kantens opacitet",
+          "description": "Hur synlig kortets kant är."
+        },
         "sizeScale": {
           "title": "Storleksskala",
-          "description": "Skalar alla mått i kortet på en gång — bredder, höjder, innermarginaler och text. Det enda värdet som ändrar hur mycket plats overlayen behöver på skärmen."
+          "description": "Skalar alla mått i kortet på en gång — bredder, höjder, innermarginaler och text. Ett av de två värden som ändrar hur mycket plats overlayen behöver på skärmen; det andra är kanttjockleken."
         },
         "radius": {
           "title": "Hörnradie",
           "description": "Kortets hörnradie."
+        },
+        "borderWidth": {
+          "title": "Kanttjocklek",
+          "description": "Hur tjock kortets kant är. Overlayfönstret växer med den."
         },
         "padding": {
           "title": "Innermarginal",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Vågformsavstånd",
           "description": "Avståndet mellan vågformens staplar."
+        },
+        "waveformWidth": {
+          "title": "Vågformsbredd",
+          "description": "Bredden på varje stapel i vågformen."
         }
       },
       "themeFile": {
         "title": "Temafil",
         "description": "En valfri JSON-fil som åsidosätter värden i overlaytemat, så att externa temaverktyg kan styra overlayen.",
         "notFound": "Ingen temafil. Skapa en på den här sökvägen för att åsidosätta värden i overlaytemat.",
-        "active": "Aktiv — den här filen anger {{count}} av 9 värden.",
+        "active": "Aktiv — den här filen anger {{count}} av {{total}} värden.",
         "reload": "Läs om",
         "copy": "Kopiera temat som JSON",
         "copied": "Kopierad",

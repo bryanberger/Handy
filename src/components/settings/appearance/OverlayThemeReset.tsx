@@ -6,7 +6,7 @@ import ResetIcon from "@/components/icons/ResetIcon";
 
 export interface OverlayThemeResetProps {
   /** Disabled once every overlay-theme token already equals the default
-   *  (all nine inherit). */
+   *  (every token inherits). */
   disabled: boolean;
   /** True when the theme file owns at least one token — the confirmation
    *  wording changes because those values survive the reset. */

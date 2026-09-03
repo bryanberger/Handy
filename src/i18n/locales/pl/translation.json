@@ -306,6 +306,44 @@
         },
         "unavailableNote": "Szkło nie jest teraz dostępne na tym Macu — na przykład gdy w macOS włączona jest opcja Ogranicz przezroczystość — więc nakładka jest renderowana jako Płaska."
       },
+      "glassMaterial": {
+        "title": "Materiał szkła",
+        "description": "Którym rozmyciem macOS rysowana jest powierzchnia Szkła. Działa tylko wtedy, gdy Materiał to Szkło.",
+        "options": {
+          "hudWindow": {
+            "title": "Okno HUD",
+            "description": "Przepuszcza najwięcej tła. Zawsze ciemne, niezależnie od motywu aplikacji."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Podąża za motywem aplikacji, przepuszcza około dwóch trzecich tego co Okno HUD."
+          },
+          "menu": {
+            "title": "Menu",
+            "description": "Podąża za motywem aplikacji, jeszcze gęstsze."
+          },
+          "sidebar": {
+            "title": "Pasek boczny",
+            "description": "Podąża za motywem aplikacji, miękki i tylko lekko prześwitujący."
+          },
+          "underWindowBackground": {
+            "title": "Pod oknem",
+            "description": "Najszersze rozmycie, z tła zostaje niewiele."
+          },
+          "sheet": {
+            "title": "Arkusz",
+            "description": "Nieprzezroczysty na nowszych wersjach macOS — tło w ogóle nie prześwituje."
+          },
+          "tooltip": {
+            "title": "Podpowiedź",
+            "description": "Podąża za motywem aplikacji, tylko lekko prześwitujący."
+          },
+          "contentBackground": {
+            "title": "Tło zawartości",
+            "description": "Nieprzezroczysty na nowszych wersjach macOS — tło w ogóle nie prześwituje."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Wybierz kolor",
         "hexLabel": "Szesnastkowa wartość koloru",
@@ -328,13 +366,25 @@
           "title": "Tekst",
           "description": "Kolor pierwszego planu karty i baza, z której mieszane są wszystkie neutralne odcienie."
         },
+        "border": {
+          "title": "Obramowanie",
+          "description": "Kolor krawędzi karty."
+        },
+        "borderOpacity": {
+          "title": "Krycie obramowania",
+          "description": "Jak bardzo widoczna jest krawędź karty."
+        },
         "sizeScale": {
           "title": "Skala rozmiaru",
-          "description": "Skaluje wszystkie wymiary karty naraz — szerokości, wysokości, odstępy wewnętrzne i tekst. Jedyna wartość, która zmienia ilość miejsca zajmowanego przez nakładkę na ekranie."
+          "description": "Skaluje wszystkie wymiary karty naraz — szerokości, wysokości, odstępy wewnętrzne i tekst. Jedna z dwóch wartości, które zmieniają ilość miejsca zajmowanego przez nakładkę na ekranie; drugą jest grubość obramowania."
         },
         "radius": {
           "title": "Zaokrąglenie rogów",
           "description": "Promień zaokrąglenia rogów karty."
+        },
+        "borderWidth": {
+          "title": "Grubość obramowania",
+          "description": "Jak gruba jest krawędź karty. Okno nakładki powiększa się razem z nią."
         },
         "padding": {
           "title": "Odstęp wewnętrzny",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Odstęp fali",
           "description": "Odstęp między słupkami fali dźwiękowej."
+        },
+        "waveformWidth": {
+          "title": "Szerokość fali",
+          "description": "Szerokość każdego słupka fali dźwiękowej."
         }
       },
       "themeFile": {
         "title": "Plik motywu",
         "description": "Opcjonalny plik JSON, który nadpisuje wartości motywu nakładki, dzięki czemu zewnętrzne narzędzia do motywów mogą sterować nakładką.",
         "notFound": "Brak pliku motywu. Utwórz go w tej lokalizacji, aby nadpisać wartości motywu nakładki.",
-        "active": "Aktywny — ten plik ustawia {{count}} z 9 wartości.",
+        "active": "Aktywny — ten plik ustawia {{count}} z {{total}} wartości.",
         "reload": "Wczytaj ponownie",
         "copy": "Kopiuj motyw jako JSON",
         "copied": "Skopiowano",

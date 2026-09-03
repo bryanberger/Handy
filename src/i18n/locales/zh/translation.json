@@ -306,6 +306,44 @@
         },
         "unavailableNote": "此 Mac 目前无法使用玻璃（例如 macOS 的「降低透明度」已开启时），因此悬浮窗以平面呈现。"
       },
+      "glassMaterial": {
+        "title": "玻璃材质",
+        "description": "玻璃表面使用哪种 macOS 模糊效果绘制。仅在材质为玻璃时生效。",
+        "options": {
+          "hudWindow": {
+            "title": "HUD 窗口",
+            "description": "透出的背景最多。无论应用主题如何，始终为深色。"
+          },
+          "popover": {
+            "title": "弹出框",
+            "description": "跟随应用主题，通透度约为 HUD 窗口的三分之二。"
+          },
+          "menu": {
+            "title": "菜单",
+            "description": "跟随应用主题，更为厚实。"
+          },
+          "sidebar": {
+            "title": "边栏",
+            "description": "跟随应用主题，柔和且仅略微透出背景。"
+          },
+          "underWindowBackground": {
+            "title": "窗口下方",
+            "description": "模糊范围最广，几乎看不到背景。"
+          },
+          "sheet": {
+            "title": "面板",
+            "description": "在较新的 macOS 上不透明——完全不会透出背景。"
+          },
+          "tooltip": {
+            "title": "工具提示",
+            "description": "跟随应用主题，仅略微透出背景。"
+          },
+          "contentBackground": {
+            "title": "内容背景",
+            "description": "在较新的 macOS 上不透明——完全不会透出背景。"
+          }
+        }
+      },
       "color": {
         "swatchLabel": "选择颜色",
         "hexLabel": "十六进制颜色值",
@@ -328,13 +366,25 @@
           "title": "文字",
           "description": "卡片的前景色，也是所有中性色调的混合基色。"
         },
+        "border": {
+          "title": "边框",
+          "description": "卡片边缘的颜色。"
+        },
+        "borderOpacity": {
+          "title": "边框不透明度",
+          "description": "卡片边缘的明显程度。"
+        },
         "sizeScale": {
           "title": "尺寸缩放",
-          "description": "同时缩放卡片中的所有尺寸——宽度、高度、内边距和文字。它是唯一会改变悬浮窗在屏幕上所占空间的项。"
+          "description": "同时缩放卡片中的所有尺寸——宽度、高度、内边距和文字。它是会改变悬浮窗在屏幕上所占空间的两个项之一，另一个是边框宽度。"
         },
         "radius": {
           "title": "圆角半径",
           "description": "卡片的圆角半径。"
+        },
+        "borderWidth": {
+          "title": "边框宽度",
+          "description": "卡片边缘的粗细。悬浮窗窗口也会随之变大。"
         },
         "padding": {
           "title": "内边距",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "波形间距",
           "description": "波形柱之间的间距。"
+        },
+        "waveformWidth": {
+          "title": "波形宽度",
+          "description": "每根波形柱的宽度。"
         }
       },
       "themeFile": {
         "title": "主题文件",
         "description": "一个可选的 JSON 文件，用于覆盖悬浮窗主题的值，让外部主题工具可以控制悬浮窗。",
         "notFound": "没有主题文件。在此路径创建一个即可覆盖悬浮窗主题的值。",
-        "active": "已启用——此文件设置了 9 个值中的 {{count}} 个。",
+        "active": "已启用——此文件设置了 {{total}} 个值中的 {{count}} 个。",
         "reload": "重新加载",
         "copy": "以 JSON 复制主题",
         "copied": "已复制",

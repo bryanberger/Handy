@@ -41,7 +41,7 @@ Which screen edge the overlay sits at: Top or Bottom.
 _Avoid_: placement, anchor, alignment
 
 **Overlay theme**:
-The complete set of tokens that determine how the overlay looks: accent, surface, text, material, size, radius, and spacing. Every token is optional, so a theme may set one value or all of them.
+The complete set of tokens that determine how the overlay looks: accent, surface, text, border, material and the macOS material Glass is drawn with, size, radius, and spacing. Every token is optional, so a theme may set one value or all of them.
 _Avoid_: overlay skin, overlay colors, overlay CSS, customization
 
 **Token**:
@@ -73,7 +73,7 @@ How the surface is rendered: Flat (an opaque surface) or Glass (a translucent su
 _Avoid_: effect, blur mode, vibrancy, acrylic, frosted (implementation terms)
 
 **Size scale**:
-The single factor that zooms every length in the card at once — widths, heights, paddings, and type. It is the only token that changes how much room the overlay needs on screen.
+The single factor that zooms every length in the card at once — widths, heights, paddings, and type. It is one of the two tokens that change how much room the overlay needs on screen; border width is the other.
 _Avoid_: zoom, size, scale factor (bare), DPI, density
 
 **Resolved overlay theme**:

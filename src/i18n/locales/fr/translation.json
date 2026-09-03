@@ -306,6 +306,44 @@
         },
         "unavailableNote": "Le verre n'est pas disponible sur ce Mac pour le moment — par exemple lorsque Réduire la transparence est activé dans macOS — donc l'overlay est rendu en Plat."
       },
+      "glassMaterial": {
+        "title": "Matériau du verre",
+        "description": "Le flou macOS avec lequel la surface Verre est dessinée. Ne s'applique que lorsque Matériau vaut Verre.",
+        "options": {
+          "hudWindow": {
+            "title": "Fenêtre HUD",
+            "description": "Laisse passer le plus d'arrière-plan. Toujours sombre, quel que soit le thème de l'application."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Suit le thème de l'application, environ deux tiers moins transparent que Fenêtre HUD."
+          },
+          "menu": {
+            "title": "Menu",
+            "description": "Suit le thème de l'application, encore plus dense."
+          },
+          "sidebar": {
+            "title": "Barre latérale",
+            "description": "Suit le thème de l'application, doux et à peine transparent."
+          },
+          "underWindowBackground": {
+            "title": "Sous la fenêtre",
+            "description": "Le flou le plus large, il ne reste presque rien de l'arrière-plan."
+          },
+          "sheet": {
+            "title": "Feuille",
+            "description": "Opaque sur les versions récentes de macOS — aucun arrière-plan ne transparaît."
+          },
+          "tooltip": {
+            "title": "Info-bulle",
+            "description": "Suit le thème de l'application, à peine transparent."
+          },
+          "contentBackground": {
+            "title": "Arrière-plan de contenu",
+            "description": "Opaque sur les versions récentes de macOS — aucun arrière-plan ne transparaît."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Choisir une couleur",
         "hexLabel": "Valeur hexadécimale de la couleur",
@@ -328,13 +366,25 @@
           "title": "Texte",
           "description": "La couleur de premier plan de la carte, et la base à partir de laquelle chaque ton neutre est mélangé."
         },
+        "border": {
+          "title": "Bordure",
+          "description": "La couleur du bord de la carte."
+        },
+        "borderOpacity": {
+          "title": "Opacité de la bordure",
+          "description": "À quel point le bord de la carte est visible."
+        },
         "sizeScale": {
           "title": "Échelle de taille",
-          "description": "Met à l'échelle toutes les longueurs de la carte d'un coup — largeurs, hauteurs, marges intérieures et texte. Le seul réglage qui change la place que l'overlay occupe à l'écran."
+          "description": "Met à l'échelle toutes les longueurs de la carte d'un coup — largeurs, hauteurs, marges intérieures et texte. L'un des deux réglages qui changent la place que l'overlay occupe à l'écran ; l'autre est l'épaisseur de la bordure."
         },
         "radius": {
           "title": "Rayon des coins",
           "description": "Le rayon des coins de la carte."
+        },
+        "borderWidth": {
+          "title": "Épaisseur de la bordure",
+          "description": "L'épaisseur du bord de la carte. La fenêtre de l'overlay s'agrandit d'autant."
         },
         "padding": {
           "title": "Marge intérieure",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Espacement de la forme d'onde",
           "description": "L'espace entre les barres de la forme d'onde."
+        },
+        "waveformWidth": {
+          "title": "Largeur de la forme d'onde",
+          "description": "La largeur de chaque barre de la forme d'onde."
         }
       },
       "themeFile": {
         "title": "Fichier de thème",
         "description": "Un fichier JSON facultatif qui remplace les valeurs du thème de l'overlay, afin que des outils de personnalisation externes puissent piloter l'overlay.",
         "notFound": "Aucun fichier de thème. Créez-en un à cet emplacement pour remplacer les valeurs du thème de l'overlay.",
-        "active": "Actif — ce fichier définit {{count}} valeurs sur 9.",
+        "active": "Actif — ce fichier définit {{count}} valeurs sur {{total}}.",
         "reload": "Recharger",
         "copy": "Copier le thème en JSON",
         "copied": "Copié",

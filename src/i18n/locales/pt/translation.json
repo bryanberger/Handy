@@ -306,6 +306,44 @@
         },
         "unavailableNote": "O vidro não está disponível neste Mac no momento — por exemplo quando Reduzir transparência está ativado no macOS — então a sobreposição é exibida como Plana."
       },
+      "glassMaterial": {
+        "title": "Material do vidro",
+        "description": "Com qual desfoque do macOS a superfície de Vidro é desenhada. Só vale enquanto Material estiver como Vidro.",
+        "options": {
+          "hudWindow": {
+            "title": "Janela HUD",
+            "description": "Deixa passar a maior parte do fundo. Sempre escuro, seja qual for o tema do aplicativo."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Segue o tema do aplicativo, deixa passar cerca de dois terços do que a Janela HUD deixa."
+          },
+          "menu": {
+            "title": "Menu",
+            "description": "Segue o tema do aplicativo, ainda mais denso."
+          },
+          "sidebar": {
+            "title": "Barra lateral",
+            "description": "Segue o tema do aplicativo, suave e quase sem transparência."
+          },
+          "underWindowBackground": {
+            "title": "Sob a janela",
+            "description": "O desfoque mais amplo, quase nada do fundo permanece."
+          },
+          "sheet": {
+            "title": "Folha",
+            "description": "Opaco nas versões recentes do macOS — nenhum fundo aparece através."
+          },
+          "tooltip": {
+            "title": "Tooltip",
+            "description": "Segue o tema do aplicativo, quase sem transparência."
+          },
+          "contentBackground": {
+            "title": "Fundo de conteúdo",
+            "description": "Opaco nas versões recentes do macOS — nenhum fundo aparece através."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Escolher uma cor",
         "hexLabel": "Valor de cor hexadecimal",
@@ -328,13 +366,25 @@
           "title": "Texto",
           "description": "A cor de primeiro plano do cartão e a base a partir da qual cada tom neutro é misturado."
         },
+        "border": {
+          "title": "Borda",
+          "description": "A cor da borda do cartão."
+        },
+        "borderOpacity": {
+          "title": "Opacidade da borda",
+          "description": "O quanto a borda do cartão aparece."
+        },
         "sizeScale": {
           "title": "Escala de tamanho",
-          "description": "Amplia todos os comprimentos do cartão de uma vez — larguras, alturas, espaçamento interno e texto. O único valor que muda quanto espaço a sobreposição ocupa na tela."
+          "description": "Amplia todos os comprimentos do cartão de uma vez — larguras, alturas, espaçamento interno e texto. Um dos dois valores que mudam quanto espaço a sobreposição ocupa na tela; o outro é a espessura da borda."
         },
         "radius": {
           "title": "Raio dos cantos",
           "description": "O raio dos cantos do cartão."
+        },
+        "borderWidth": {
+          "title": "Espessura da borda",
+          "description": "A espessura da borda do cartão. A janela da sobreposição cresce junto."
         },
         "padding": {
           "title": "Espaçamento interno",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Espaço da forma de onda",
           "description": "O espaço entre as barras da forma de onda."
+        },
+        "waveformWidth": {
+          "title": "Largura da forma de onda",
+          "description": "A largura de cada barra da forma de onda."
         }
       },
       "themeFile": {
         "title": "Arquivo de tema",
         "description": "Um arquivo JSON opcional que substitui os valores do tema da sobreposição, para que ferramentas externas de personalização possam controlá-la.",
         "notFound": "Nenhum arquivo de tema. Crie um neste caminho para substituir os valores do tema da sobreposição.",
-        "active": "Ativo — este arquivo define {{count}} de 9 valores.",
+        "active": "Ativo — este arquivo define {{count}} de {{total}} valores.",
         "reload": "Recarregar",
         "copy": "Copiar o tema como JSON",
         "copied": "Copiado",

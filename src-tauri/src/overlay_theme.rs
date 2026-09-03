@@ -1,7 +1,7 @@
 //! Overlay theme: storage, per-key merge, and delivery.
 //!
-//! An *overlay theme* is the set of nine optional tokens that decide how the
-//! recording overlay's card looks. Every token is optional and absent means
+//! An *overlay theme* is the set of fourteen optional tokens that decide how
+//! the recording overlay's card looks. Every token is optional and absent means
 //! *inherit* — the overlay uses Handy's built-in, theme-aware value — so a
 //! theme that sets nothing reproduces today's overlay exactly.
 //!
@@ -90,6 +90,80 @@ pub enum Material {
     Glass,
 }
 
+/// Which macOS material the Glass blur is drawn with.
+///
+/// The blur is one `NSVisualEffectView`, and its `material` is a live setter
+/// on that one view — swapping it never re-creates anything — so this token
+/// costs a single property assignment. It is read only while the effective
+/// Material is Glass; on Flat, and off macOS, it is carried through the merge
+/// and ignored.
+///
+/// The eight values are the `NSVisualEffectMaterial` cases that make sense
+/// behind a small floating card, ordered from the most see-through to the
+/// least; the default is the one that measured the most backdrop transmission
+/// on macOS 26, in both app themes, at the tint an unset `surface_opacity`
+/// resolves to under Glass.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum GlassMaterial {
+    /// `NSVisualEffectMaterialHUDWindow`: the most see-through of the eight
+    /// in both app themes, and the default. It is also the one that does not
+    /// follow the system appearance — a fixed dark recipe — but under the thin
+    /// default tint that reads as contrast rather than as gloom: over a white
+    /// backdrop under a Light theme it lands within 3 levels of Popover, and
+    /// over a dark backdrop it darkens 13 levels further.
+    #[default]
+    HudWindow,
+    /// `NSVisualEffectMaterialPopover`: follows the appearance, about two
+    /// thirds of HudWindow's transmission. The one to pick for a card that
+    /// tracks the system appearance.
+    Popover,
+    /// `NSVisualEffectMaterialMenu`: follows the appearance, denser again.
+    Menu,
+    /// `NSVisualEffectMaterialSidebar`: follows the appearance, softer.
+    Sidebar,
+    /// `NSVisualEffectMaterialUnderWindowBackground`: the widest blur radius,
+    /// and little transmission left.
+    UnderWindowBackground,
+    /// `NSVisualEffectMaterialSheet`: opaque in both themes on macOS 26.
+    Sheet,
+    /// `NSVisualEffectMaterialToolTip`: follows the appearance, very light.
+    Tooltip,
+    /// `NSVisualEffectMaterialContentBackground`: opaque in both themes on
+    /// macOS 26.
+    ContentBackground,
+}
+
+impl GlassMaterial {
+    /// Declaration order — the order the Appearance tab's dropdown and the
+    /// theme file's documentation list them in.
+    pub const ALL: [GlassMaterial; 8] = [
+        Self::HudWindow,
+        Self::Popover,
+        Self::Menu,
+        Self::Sidebar,
+        Self::UnderWindowBackground,
+        Self::Sheet,
+        Self::Tooltip,
+        Self::ContentBackground,
+    ];
+
+    /// The theme-file spelling, which is also the serde representation and
+    /// the value the frontend's bindings carry.
+    pub fn as_key(self) -> &'static str {
+        match self {
+            Self::HudWindow => "hud_window",
+            Self::Popover => "popover",
+            Self::Menu => "menu",
+            Self::Sidebar => "sidebar",
+            Self::UnderWindowBackground => "under_window_background",
+            Self::Sheet => "sheet",
+            Self::Tooltip => "tooltip",
+            Self::ContentBackground => "content_background",
+        }
+    }
+}
+
 /// Lowest accepted [`OverlayTheme::size_scale`].
 pub const SIZE_SCALE_MIN: f64 = 0.80;
 /// Highest accepted [`OverlayTheme::size_scale`].
@@ -104,10 +178,46 @@ pub const RADIUS_MAX: u16 = 32;
 pub const PADDING_MAX: u16 = 20;
 /// Highest accepted `waveform_gap`, in px at scale 1.
 pub const WAVEFORM_GAP_MAX: u16 = 5;
+/// Lowest accepted `border_opacity`. Zero is a legitimate value: it is how a
+/// theme asks for a card with no visible edge without giving up the width.
+pub const BORDER_OPACITY_MIN: f64 = 0.00;
+/// Highest accepted `border_opacity`.
+pub const BORDER_OPACITY_MAX: f64 = 1.00;
+/// Highest accepted `border_width`, in px at scale 1. Past 4 the stroke stops
+/// reading as an edge and starts reading as a second surface.
+pub const BORDER_WIDTH_MAX: u16 = 4;
+/// Lowest accepted `waveform_width`, in px at scale 1. Below 2 the bars all
+/// but vanish at the smallest size scale.
+pub const WAVEFORM_WIDTH_MIN: u16 = 2;
+/// Highest accepted `waveform_width`, in px at scale 1.
+///
+/// **The invariant this bound exists for:** the widest the control row's
+/// centre column can ever be is `9 * WAVEFORM_WIDTH_MAX + 8 *
+/// WAVEFORM_GAP_MAX + 8` (nine bars, eight gaps, `.swave`'s 8 px right
+/// padding); adding the row's two `PADDING_MAX` insets and the two 22 px side
+/// columns that hold the dot and the cancel button gives 186 px, which still
+/// fits inside the 216 px working pill. So no combination of these tokens can
+/// force the native window to grow — `size_scale` and `border_width` stay the
+/// only tokens that change the card's footprint. Pinned by
+/// `overlay::tests::the_waveform_never_outgrows_the_working_pill`.
+pub const WAVEFORM_WIDTH_MAX: u16 = 6;
+
+/// The `border_width` an unset token inherits, in px at scale 1: today's
+/// hairline (`--ov-border-w: 1px`, `RecordingOverlay.css`).
+pub const BORDER_WIDTH_INHERIT: u16 = 1;
+/// The `waveform_width` an unset token inherits, in px at scale 1: today's
+/// bar (`--ov-wave-w: 4px`, `RecordingOverlay.css`).
+///
+/// Test-only, unlike [`BORDER_WIDTH_INHERIT`]: no production Rust path reads
+/// it, because a bar's width never reaches the native window geometry. It
+/// exists so `overlay_window_constants_match_overlay_css` can pin the
+/// stylesheet's declared inherit value to the token table.
+#[cfg(test)]
+pub const WAVEFORM_WIDTH_INHERIT: u16 = 4;
 
 /// A token whose stored value does not parse becomes `None` — inherit —
 /// instead of failing the whole [`OverlayTheme`], which would make
-/// `salvage_settings` drop the `overlay_theme` key and reset all nine tokens.
+/// `salvage_settings` drop the `overlay_theme` key and reset every token.
 ///
 /// Safe because `AppSettings` is only ever deserialized from a
 /// `serde_json::Value`, which is self-describing.
@@ -130,7 +240,7 @@ where
     }
 }
 
-/// The nine overlay-theme tokens. `None` means *inherit*.
+/// The fourteen overlay-theme tokens. `None` means *inherit*.
 ///
 /// Field names are literally the theme-file keys. Every field deserializes
 /// leniently: a value of the wrong type or shape degrades to `None` with a
@@ -154,22 +264,41 @@ pub struct OverlayTheme {
     /// The card's foreground colour, and the base every neutral derives from.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub text: Option<HexColor>,
+    /// The card's border colour, before `border_opacity` is applied. Unset it
+    /// derives from `text` on both Materials; only the alpha it is mixed at
+    /// differs, being stronger under Glass.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub border: Option<HexColor>,
+    /// The card border's alpha, 0.00–1.00.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub border_opacity: Option<f64>,
     /// Flat or Glass. Glass renders as Flat wherever it is unavailable, so
     /// what is actually painted is the resolved theme's effective material.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub material: Option<Material>,
+    /// Which macOS material the Glass blur uses. Ignored under Flat.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub glass_material: Option<GlassMaterial>,
     /// One factor multiplying every length in the card, 0.80–1.50.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub size_scale: Option<f64>,
     /// The card's corner radius at scale 1, 0–32 px.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub radius: Option<u16>,
+    /// The card's border width at scale 1, 0–4 px. The one token besides
+    /// `size_scale` that changes the card's footprint, so the native window
+    /// is computed from it too.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub border_width: Option<u16>,
     /// The card's inner horizontal padding at scale 1, 0–20 px.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub padding: Option<u16>,
     /// Gap between waveform bars at scale 1, 0–5 px.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub waveform_gap: Option<u16>,
+    /// Width of each waveform bar at scale 1, 2–6 px.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub waveform_width: Option<u16>,
 }
 
 impl OverlayTheme {
@@ -191,6 +320,24 @@ impl OverlayTheme {
         self.material.unwrap_or_default()
     }
 
+    /// The macOS material the Glass blur is drawn with: unset ⇒ the measured
+    /// default. Only consulted while the effective Material is Glass.
+    pub fn glass_material(&self) -> GlassMaterial {
+        self.glass_material.unwrap_or_default()
+    }
+
+    /// The border width in px at `size_scale` 1: unset ⇒
+    /// [`BORDER_WIDTH_INHERIT`], otherwise clamped to `0..=BORDER_WIDTH_MAX`.
+    ///
+    /// **The single clamp**, like [`Self::size_scale`]: the native window
+    /// footprint includes two of these, so the geometry and the card must
+    /// never disagree about how wide a border was allowed to get.
+    pub fn border_width(&self) -> u16 {
+        self.border_width
+            .unwrap_or(BORDER_WIDTH_INHERIT)
+            .min(BORDER_WIDTH_MAX)
+    }
+
     /// A copy with every token clamped to this module's bounds.
     ///
     /// Applied before persisting and again after merging, so no out-of-range
@@ -209,7 +356,15 @@ impl OverlayTheme {
                 "surface_opacity",
             ),
             text: self.text.clone(),
+            border: self.border.clone(),
+            border_opacity: clamp_float(
+                self.border_opacity,
+                BORDER_OPACITY_MIN,
+                BORDER_OPACITY_MAX,
+                "border_opacity",
+            ),
             material: self.material,
+            glass_material: self.glass_material,
             size_scale: clamp_float(
                 self.size_scale,
                 SIZE_SCALE_MIN,
@@ -217,8 +372,12 @@ impl OverlayTheme {
                 "size_scale",
             ),
             radius: self.radius.map(|value| value.min(RADIUS_MAX)),
+            border_width: self.border_width.map(|value| value.min(BORDER_WIDTH_MAX)),
             padding: self.padding.map(|value| value.min(PADDING_MAX)),
             waveform_gap: self.waveform_gap.map(|value| value.min(WAVEFORM_GAP_MAX)),
+            waveform_width: self
+                .waveform_width
+                .map(|value| value.clamp(WAVEFORM_WIDTH_MIN, WAVEFORM_WIDTH_MAX)),
         }
     }
 }
@@ -394,11 +553,16 @@ pub fn merge(file: &OverlayTheme, settings: &OverlayTheme) -> OverlayTheme {
         surface: file.surface.clone().or_else(|| settings.surface.clone()),
         surface_opacity: file.surface_opacity.or(settings.surface_opacity),
         text: file.text.clone().or_else(|| settings.text.clone()),
+        border: file.border.clone().or_else(|| settings.border.clone()),
+        border_opacity: file.border_opacity.or(settings.border_opacity),
         material: file.material.or(settings.material),
+        glass_material: file.glass_material.or(settings.glass_material),
         size_scale: file.size_scale.or(settings.size_scale),
         radius: file.radius.or(settings.radius),
+        border_width: file.border_width.or(settings.border_width),
         padding: file.padding.or(settings.padding),
         waveform_gap: file.waveform_gap.or(settings.waveform_gap),
+        waveform_width: file.waveform_width.or(settings.waveform_width),
     }
 }
 
@@ -535,15 +699,22 @@ mod tests {
         assert_eq!(theme.surface, None);
         assert_eq!(theme.surface_opacity, None);
         assert_eq!(theme.text, None);
+        assert_eq!(theme.border, None);
+        assert_eq!(theme.border_opacity, None);
         assert_eq!(theme.material, None);
+        assert_eq!(theme.glass_material, None);
         assert_eq!(theme.size_scale, None);
         assert_eq!(theme.radius, None);
+        assert_eq!(theme.border_width, None);
         assert_eq!(theme.padding, None);
         assert_eq!(theme.waveform_gap, None);
+        assert_eq!(theme.waveform_width, None);
 
         // The accessors' inherit values.
         assert_eq!(theme.size_scale(), 1.0);
         assert_eq!(theme.material(), Material::Flat);
+        assert_eq!(theme.glass_material(), GlassMaterial::HudWindow);
+        assert_eq!(theme.border_width(), 1);
 
         // A store written before this field existed, and an explicit
         // all-null document, are the same thing.
@@ -556,11 +727,16 @@ mod tests {
             "surface": null,
             "surface_opacity": null,
             "text": null,
+            "border": null,
+            "border_opacity": null,
             "material": null,
+            "glass_material": null,
             "size_scale": null,
             "radius": null,
+            "border_width": null,
             "padding": null,
-            "waveform_gap": null
+            "waveform_gap": null,
+            "waveform_width": null
         }))
         .expect("null is the explicit spelling of inherit");
         assert_eq!(explicit_nulls, theme);
@@ -575,24 +751,34 @@ mod tests {
             "surface": "#1a1b26",
             "surface_opacity": 0.92,
             "text": "rebeccapurple",      // a CSS colour name, not a hex value
+            "border": "#ffffff",
+            "border_opacity": 0.25,
             "material": "Glass",          // the store's enums are case-sensitive
+            "glass_material": "HUDWindow", // likewise
             "size_scale": 1.1,
             "radius": 12.5,               // a float where integer px is required
+            "border_width": 2,
             "padding": 14,
-            "waveform_gap": 2
+            "waveform_gap": 2,
+            "waveform_width": 5
         }))
         .expect("one bad token must never fail the whole theme");
 
         assert_eq!(parsed.accent, None);
         assert_eq!(parsed.text, None);
         assert_eq!(parsed.material, None);
+        assert_eq!(parsed.glass_material, None);
         assert_eq!(parsed.radius, None);
 
         assert_eq!(parsed.surface, hex("#1a1b26"));
         assert_eq!(parsed.surface_opacity, Some(0.92));
+        assert_eq!(parsed.border, hex("#ffffff"));
+        assert_eq!(parsed.border_opacity, Some(0.25));
         assert_eq!(parsed.size_scale, Some(1.1));
+        assert_eq!(parsed.border_width, Some(2));
         assert_eq!(parsed.padding, Some(14));
         assert_eq!(parsed.waveform_gap, Some(2));
+        assert_eq!(parsed.waveform_width, Some(5));
     }
 
     #[test]
@@ -649,33 +835,49 @@ mod tests {
             surface: hex("#1a1b26"),
             surface_opacity: Some(2.0),
             text: hex("#c0caf5"),
+            border: hex("#ffffff"),
+            border_opacity: Some(2.0),
             material: Some(Material::Glass),
+            glass_material: Some(GlassMaterial::Menu),
             size_scale: Some(3.0),
             radius: Some(99),
+            border_width: Some(99),
             padding: Some(99),
             waveform_gap: Some(99),
+            waveform_width: Some(99),
         }
         .normalized();
 
         assert_eq!(over.surface_opacity, Some(1.00));
+        assert_eq!(over.border_opacity, Some(1.00));
         assert_eq!(over.size_scale, Some(1.50));
         assert_eq!(over.radius, Some(32));
+        assert_eq!(over.border_width, Some(4));
         assert_eq!(over.padding, Some(20));
         assert_eq!(over.waveform_gap, Some(5));
+        assert_eq!(over.waveform_width, Some(6));
         // Colours and the enum are already canonical; clamping leaves them be.
         assert_eq!(over.accent, hex("#7aa2f7"));
         assert_eq!(over.surface, hex("#1a1b26"));
         assert_eq!(over.text, hex("#c0caf5"));
+        assert_eq!(over.border, hex("#ffffff"));
         assert_eq!(over.material, Some(Material::Glass));
+        assert_eq!(over.glass_material, Some(GlassMaterial::Menu));
 
         let under = OverlayTheme {
             surface_opacity: Some(0.1),
+            border_opacity: Some(-0.5),
             size_scale: Some(0.1),
+            waveform_width: Some(0),
             ..Default::default()
         }
         .normalized();
         assert_eq!(under.surface_opacity, Some(0.30));
+        // border_opacity's floor is 0, unlike the surface's: an invisible
+        // edge is a legitimate theme, an invisible card is not.
+        assert_eq!(under.border_opacity, Some(0.00));
         assert_eq!(under.size_scale, Some(0.80));
+        assert_eq!(under.waveform_width, Some(2));
 
         // Unset stays unset: clamping must never invent a value, or every
         // token would start writing a custom property.
@@ -705,6 +907,57 @@ mod tests {
         );
     }
 
+    /// The border width is the second token the native window geometry reads,
+    /// so its inherit value and its clamp are pinned the same way
+    /// `size_scale`'s are — with the literals from the token table, never the
+    /// module's own constants.
+    #[test]
+    fn border_width_inherits_one_and_clamps_to_four() {
+        let width = |value: Option<u16>| {
+            OverlayTheme {
+                border_width: value,
+                ..Default::default()
+            }
+            .border_width()
+        };
+
+        assert_eq!(width(None), 1);
+        assert_eq!(width(Some(0)), 0);
+        assert_eq!(width(Some(4)), 4);
+        assert_eq!(width(Some(99)), 4);
+    }
+
+    /// The Glass material is a closed enum whose theme-file spelling is its
+    /// serde representation; the tab, the file and the bindings all read the
+    /// same eight strings, so drift in either direction has to fail here.
+    #[test]
+    fn glass_material_keys_are_the_serde_spelling() {
+        for material in GlassMaterial::ALL {
+            let value = serde_json::to_value(material).expect("an enum serializes");
+            assert_eq!(value, json!(material.as_key()));
+            let parsed: GlassMaterial =
+                serde_json::from_value(value).expect("the spelling round-trips");
+            assert_eq!(parsed, material);
+        }
+
+        assert_eq!(
+            GlassMaterial::ALL.map(|material| material.as_key()),
+            [
+                "hud_window",
+                "popover",
+                "menu",
+                "sidebar",
+                "under_window_background",
+                "sheet",
+                "tooltip",
+                "content_background",
+            ]
+        );
+        // The default is the one the material comparison sheet chose: the
+        // most see-through of the eight, in both app themes.
+        assert_eq!(GlassMaterial::default(), GlassMaterial::HudWindow);
+    }
+
     #[test]
     fn merge_prefers_the_file_per_key() {
         let file = OverlayTheme {
@@ -716,6 +969,10 @@ mod tests {
             accent: hex("#ff0000"),
             surface: hex("#1a1b26"),
             radius: Some(12),
+            border: hex("#ffffff"),
+            border_width: Some(3),
+            glass_material: Some(GlassMaterial::Menu),
+            waveform_width: Some(5),
             ..Default::default()
         };
 
@@ -727,6 +984,10 @@ mod tests {
         // …the settings fill the gaps…
         assert_eq!(merged.surface, hex("#1a1b26"));
         assert_eq!(merged.radius, Some(12));
+        assert_eq!(merged.border, hex("#ffffff"));
+        assert_eq!(merged.border_width, Some(3));
+        assert_eq!(merged.glass_material, Some(GlassMaterial::Menu));
+        assert_eq!(merged.waveform_width, Some(5));
         // …and a key neither of them sets still inherits.
         assert_eq!(merged.text, None);
 

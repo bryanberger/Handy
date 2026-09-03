@@ -306,6 +306,44 @@
         },
         "unavailableNote": "Sklo na tomto Macu právě není dostupné — například když je v macOS zapnuté Omezit průhlednost — takže se překryv vykresluje jako Plochý."
       },
+      "glassMaterial": {
+        "title": "Materiál skla",
+        "description": "Kterým rozostřením macOS se skleněný povrch vykresluje. Platí jen tehdy, když je Materiál nastaven na Sklo.",
+        "options": {
+          "hudWindow": {
+            "title": "Okno HUD",
+            "description": "Propouští nejvíc pozadí. Vždy tmavé, bez ohledu na motiv aplikace."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Sleduje motiv aplikace, propouští asi dvě třetiny toho co Okno HUD."
+          },
+          "menu": {
+            "title": "Nabídka",
+            "description": "Sleduje motiv aplikace, ještě hustší."
+          },
+          "sidebar": {
+            "title": "Postranní panel",
+            "description": "Sleduje motiv aplikace, měkký a jen mírně průsvitný."
+          },
+          "underWindowBackground": {
+            "title": "Pod oknem",
+            "description": "Nejširší rozostření, z pozadí zbude jen málo."
+          },
+          "sheet": {
+            "title": "List",
+            "description": "Na novějších verzích macOS neprůhledný — žádné pozadí neprosvítá."
+          },
+          "tooltip": {
+            "title": "Popisek",
+            "description": "Sleduje motiv aplikace, jen mírně průsvitný."
+          },
+          "contentBackground": {
+            "title": "Pozadí obsahu",
+            "description": "Na novějších verzích macOS neprůhledný — žádné pozadí neprosvítá."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Vyberte barvu",
         "hexLabel": "Hexadecimální hodnota barvy",
@@ -328,13 +366,25 @@
           "title": "Text",
           "description": "Barva popředí karty a základ, ze kterého se míchají všechny neutrální odstíny."
         },
+        "border": {
+          "title": "Ohraničení",
+          "description": "Barva okraje karty."
+        },
+        "borderOpacity": {
+          "title": "Krytí ohraničení",
+          "description": "Jak výrazný je okraj karty."
+        },
         "sizeScale": {
           "title": "Měřítko velikosti",
-          "description": "Zvětší všechny rozměry karty najednou — šířky, výšky, vnitřní okraje i písmo. Jediná hodnota, která mění, kolik místa překryv na obrazovce potřebuje."
+          "description": "Zvětší všechny rozměry karty najednou — šířky, výšky, vnitřní okraje i písmo. Jedna ze dvou hodnot, které mění, kolik místa překryv na obrazovce potřebuje; tou druhou je tloušťka ohraničení."
         },
         "radius": {
           "title": "Zaoblení rohů",
           "description": "Zaoblení rohů karty."
+        },
+        "borderWidth": {
+          "title": "Tloušťka ohraničení",
+          "description": "Jak silný je okraj karty. Okno překryvu se s ním zvětšuje."
         },
         "padding": {
           "title": "Vnitřní okraj",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Rozestup křivky",
           "description": "Mezera mezi sloupci zvukové křivky."
+        },
+        "waveformWidth": {
+          "title": "Šířka křivky",
+          "description": "Šířka každého sloupce zvukové křivky."
         }
       },
       "themeFile": {
         "title": "Soubor motivu",
         "description": "Volitelný soubor JSON, který přepisuje hodnoty motivu překryvu, takže překryv mohou řídit externí nástroje pro motivy.",
         "notFound": "Žádný soubor motivu. Vytvořte ho na této cestě, chcete-li přepsat hodnoty motivu překryvu.",
-        "active": "Aktivní — tento soubor nastavuje {{count}} z 9 hodnot.",
+        "active": "Aktivní — tento soubor nastavuje {{count}} z {{total}} hodnot.",
         "reload": "Načíst znovu",
         "copy": "Kopírovat motiv jako JSON",
         "copied": "Zkopírováno",

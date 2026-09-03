@@ -13,7 +13,7 @@ describe("moreDiagnosticsCount", () => {
   });
 
   test("is the difference when the payload was capped", () => {
-    // A broken file can produce up to nine diagnostics; the payload caps at 5.
+    // A broken file can produce one diagnostic per token; the payload caps at 5.
     expect(moreDiagnosticsCount(9, 5)).toBe(4);
   });
 

@@ -3,6 +3,8 @@ import type { Material, OverlayTheme, ResolvedOverlayTheme } from "@/bindings";
 import {
   applyOverlayTheme,
   autoForeground,
+  BORDER_INHERIT,
+  BORDER_OPACITY_INHERIT,
   getStoredOverlayTheme,
   INHERIT_ALL,
   OVERLAY_THEME_CSS_PROPERTIES,
@@ -168,98 +170,178 @@ describe("derivations", () => {
   test("the numeric bounds are the contract's", () => {
     expect(OVERLAY_TOKEN_BOUNDS).toEqual({
       surface_opacity: { min: 0.3, max: 1.0, step: 0.01 },
+      border_opacity: { min: 0.0, max: 1.0, step: 0.01 },
       size_scale: { min: 0.8, max: 1.5, step: 0.05 },
       radius: { min: 0, max: 32, step: 1 },
+      border_width: { min: 0, max: 4, step: 1 },
       padding: { min: 0, max: 20, step: 1 },
       waveform_gap: { min: 0, max: 5, step: 1 },
+      waveform_width: { min: 2, max: 6, step: 1 },
     });
   });
 
   test("lengths are written raw, for CSS to multiply by the scale", () => {
     expect(
       resolveOverlayThemeVars(
-        resolved({ size_scale: 1.1, radius: 12, padding: 14, waveform_gap: 2 }),
+        resolved({
+          size_scale: 1.1,
+          radius: 12,
+          border_width: 2,
+          padding: 14,
+          waveform_gap: 2,
+          waveform_width: 5,
+        }),
       ),
     ).toEqual({
       "--ov-scale": "1.1",
       "--ov-radius": "12px",
+      "--ov-border-w": "2px",
       "--ov-pad-x": "14px",
       "--ov-wave-gap": "2px",
+      "--ov-wave-w": "5px",
     });
+  });
+
+  test("a zero border width still writes the property", () => {
+    // 0 is a value, not "unset": without the property the stylesheet's own
+    // 1px would come back and the native window would be two points wider
+    // than the card.
+    expect(
+      resolveOverlayThemeVars(resolved({ border_width: 0 }))["--ov-border-w"],
+    ).toBe("0px");
+  });
+});
+
+describe("the border", () => {
+  test("its two tokens compose into one property", () => {
+    expect(
+      resolveOverlayThemeVars(
+        resolved({ border: "#ff0000", border_opacity: 0.4 }),
+      ),
+    ).toEqual({
+      "--s-border": "color-mix(in srgb, #ff0000 40%, transparent)",
+    });
+  });
+
+  test("a colour alone inherits the Flat opacity, and vice versa", () => {
+    expect(BORDER_OPACITY_INHERIT.flat).toBe(0.12);
+    expect(BORDER_INHERIT).toBe("var(--s-text)");
+
+    expect(
+      resolveOverlayThemeVars(resolved({ border: "#ff0000" }))["--s-border"],
+    ).toBe("color-mix(in srgb, #ff0000 12%, transparent)");
+    expect(
+      resolveOverlayThemeVars(resolved({ border_opacity: 0.4 }))["--s-border"],
+    ).toBe("color-mix(in srgb, var(--s-text) 40%, transparent)");
+  });
+
+  test("a fully transparent edge is a value, not an unset token", () => {
+    expect(
+      resolveOverlayThemeVars(resolved({ border_opacity: 0 }))["--s-border"],
+    ).toBe("color-mix(in srgb, var(--s-text) 0%, transparent)");
+  });
+
+  test("neither token alone disturbs the rest of the neutrals", () => {
+    const vars = resolveOverlayThemeVars(resolved({ border: "#ff0000" }));
+    expect(vars["--s-muted"]).toBeUndefined();
+    expect(vars["--s-faint"]).toBeUndefined();
+    expect(vars["--s-hair"]).toBeUndefined();
   });
 });
 
 describe("Glass", () => {
-  test("writes the surface and the strengthened neutrals unconditionally", () => {
-    expect(SURFACE_OPACITY_INHERIT.glass).toBe(0.7);
+  test("writes the surface, the neutrals and the edge unconditionally", () => {
+    // The tint is thin enough for the blur to read as blur, and the edge is
+    // the same foreground mix Flat uses, only at a stronger alpha.
+    expect(SURFACE_OPACITY_INHERIT.glass).toBe(0.45);
+    expect(BORDER_OPACITY_INHERIT.glass).toBe(0.25);
+
     expect(resolveOverlayThemeVars(resolved({}, "glass"))).toEqual({
       "--s-surface":
-        "color-mix(in srgb, var(--color-background) 70%, transparent)",
+        "color-mix(in srgb, var(--color-background) 45%, transparent)",
       "--s-muted": "color-mix(in srgb, var(--s-text) 78%, transparent)",
       "--s-faint": "color-mix(in srgb, var(--s-text) 52%, transparent)",
-      "--s-border": "color-mix(in srgb, var(--s-text) 20%, transparent)",
       "--s-hair": "color-mix(in srgb, var(--s-text) 12%, transparent)",
+      "--s-border": "color-mix(in srgb, var(--s-text) 25%, transparent)",
     });
+  });
+
+  test("a set border still wins over the Glass edge", () => {
+    expect(
+      resolveOverlayThemeVars(
+        resolved({ border: "#7aa2f7", border_opacity: 0.5 }, "glass"),
+      )["--s-border"],
+    ).toBe("color-mix(in srgb, #7aa2f7 50%, transparent)");
   });
 
   test("a requested Glass downgraded to Flat renders Flat neutrals", () => {
     const vars = resolveOverlayThemeVars(resolved({ material: "glass" }));
     expect(vars["--s-surface"]).toBeUndefined();
     expect(vars["--s-muted"]).toBeUndefined();
+    expect(vars["--s-border"]).toBeUndefined();
   });
 });
 
 describe("the worked example", () => {
-  // The token contract's fully custom theme file, and the CSS it says that file
-  // resolves to. Its `material: "glass"` is listed with the Flat neutrals, so
-  // this is the rendering where Glass was requested and downgraded (the
-  // percentages in the Glass case are covered above); and the contract's own
-  // derivation rules mix the neutrals from `var(--s-text)`, which resolves to
-  // the `--s-text` written beside them.
-  test("resolves to exactly the twelve properties listed", () => {
-    const theme: Partial<OverlayTheme> = {
-      accent: "#7aa2f7",
-      surface: "#1a1b26",
-      surface_opacity: 0.92,
-      text: "#c0caf5",
-      material: "glass",
-      size_scale: 1.1,
-      radius: 12,
-      padding: 14,
-      waveform_gap: 2,
-    };
-    expect(resolveOverlayThemeVars(resolved(theme))).toEqual({
+  /** The README's "A full theme", every one of the fourteen tokens set. */
+  const FULL_THEME: Partial<OverlayTheme> = {
+    accent: "#7aa2f7",
+    surface: "#1a1b26",
+    surface_opacity: 0.92,
+    text: "#c0caf5",
+    border: "#ffffff",
+    border_opacity: 0.3,
+    material: "glass",
+    glass_material: "popover",
+    size_scale: 1.1,
+    radius: 12,
+    border_width: 1,
+    padding: 14,
+    waveform_gap: 2,
+    waveform_width: 4,
+  };
+
+  // The README's full theme file and the CSS it resolves to. Its
+  // `material: "glass"` is read here with the Flat neutrals, so this is the
+  // rendering where Glass was requested and downgraded (the percentages in the
+  // Glass case are covered above); `glass_material` is the one token with no
+  // CSS at all — it sets a native view's property — so it writes nothing. The
+  // contract's derivation rules mix the neutrals from `var(--s-text)`, which
+  // resolves to the `--s-text` written beside them, while the explicit
+  // `border` replaces that mix for the edge.
+  test("resolves to exactly the fourteen properties listed", () => {
+    expect(resolveOverlayThemeVars(resolved(FULL_THEME))).toEqual({
       "--s-accent": "#7aa2f7",
       "--s-accent-soft": "color-mix(in srgb, #7aa2f7 20%, transparent)",
       "--s-surface": "color-mix(in srgb, #1a1b26 92%, transparent)",
       "--s-text": "#c0caf5",
       "--s-muted": "color-mix(in srgb, var(--s-text) 60%, transparent)",
       "--s-faint": "color-mix(in srgb, var(--s-text) 38%, transparent)",
-      "--s-border": "color-mix(in srgb, var(--s-text) 12%, transparent)",
+      "--s-border": "color-mix(in srgb, #ffffff 30%, transparent)",
       "--s-hair": "color-mix(in srgb, var(--s-text) 7%, transparent)",
       "--ov-scale": "1.1",
       "--ov-radius": "12px",
+      "--ov-border-w": "1px",
       "--ov-pad-x": "14px",
       "--ov-wave-gap": "2px",
+      "--ov-wave-w": "4px",
     });
   });
 
   test("every property it writes is registered for removal", () => {
-    const theme: Partial<OverlayTheme> = {
-      accent: "#7aa2f7",
-      surface: "#1a1b26",
-      surface_opacity: 0.92,
-      text: "#c0caf5",
-      size_scale: 1.1,
-      radius: 12,
-      padding: 14,
-      waveform_gap: 2,
-    };
-    for (const property of Object.keys(
-      resolveOverlayThemeVars(resolved(theme, "glass")),
-    )) {
+    // With every token set at once the module writes everything it can write,
+    // so the two lists have to match exactly: a property missing from
+    // OVERLAY_THEME_CSS_PROPERTIES would keep painting after its token went
+    // back to inherit, and one listed but never written would be dead weight.
+    const written = Object.keys(
+      resolveOverlayThemeVars(resolved(FULL_THEME, "glass")),
+    );
+    for (const property of written) {
       expect(OVERLAY_THEME_CSS_PROPERTIES).toContain(property);
     }
+    expect([...written].sort()).toEqual(
+      [...OVERLAY_THEME_CSS_PROPERTIES].sort(),
+    );
   });
 });
 
@@ -296,8 +378,11 @@ describe("the boundary re-validation", () => {
         "material": "glass",
         "size_scale": 9,
         "radius": -4,
+        "border_opacity": 5,
+        "border_width": 9,
         "padding": "14px",
-        "waveform_gap": null
+        "waveform_gap": null,
+        "waveform_width": 1
       },
       "effective_material": "opaque",
       "glass_support": { "supported": true, "available": true },

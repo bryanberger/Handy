@@ -2,10 +2,12 @@
 //!
 //! One `NSVisualEffectView` (the "glass view") is installed once, below the
 //! webview, and toggled with `setHidden`/`alphaValue` for the life of the
-//! app. Installing it more than once, or through Tauri's own `set_effects`,
-//! stacks views that nothing but a Rust-owned toggle can remove, so every
-//! function here treats installation as a one-time event and everything after
-//! it as a property change on the same view.
+//! app. Which macOS material it draws is the `glass_material` token, written
+//! onto that same view on every show — a live setter, never a re-install.
+//! Installing it more than once, or through Tauri's own `set_effects`, stacks
+//! views that nothing but a Rust-owned toggle can remove, so every function
+//! here treats installation as a one-time event and everything after it as a
+//! property change on the same view.
 //!
 //! Off macOS — and whenever installation fails — every function is a no-op
 //! and [`support`] reports Glass as unavailable, so the rest of the app
@@ -16,7 +18,7 @@
 //! `AppHandle::run_on_main_thread` (a no-op hop when already on it), so
 //! callers in `overlay.rs` never need to.
 
-use crate::overlay_theme::{GlassSupport, Material};
+use crate::overlay_theme::{GlassMaterial, GlassSupport, Material};
 use tauri::AppHandle;
 
 /// Install the single `NSVisualEffectView` behind the webview, hidden.
@@ -54,24 +56,29 @@ pub fn support(_app: &AppHandle) -> GlassSupport {
     }
 }
 
-/// Bring the glass view's visibility in line with the Material a show is
-/// about to render in.
+/// Bring the glass view's visibility and its macOS material in line with the
+/// theme a show is about to render in.
 ///
 /// Under Flat it hides the view outright — unconditionally, in case a
 /// previous Glass session left it visible; a stale translucent margin around
 /// a Flat card (which has slack again) would otherwise show through. Under
-/// Glass it changes nothing at all: the view stays exactly as visible as it
-/// was, so a first show cannot reveal it before the card paints. [`show_glass`]
-/// and [`morph_frame`] are the only functions that reveal it, once the window
-/// is sized and positioned for the card.
+/// Glass it writes `glass_material` onto the one installed view and changes
+/// nothing else: the view stays exactly as visible as it was, so a first show
+/// cannot reveal it before the card paints. [`show_glass`] and
+/// [`morph_frame`] are the only functions that reveal it, once the window is
+/// sized and positioned for the card.
+///
+/// `NSVisualEffectView`'s `material` is a live setter, so switching materials
+/// is a property write on the existing view — the view is never re-created,
+/// which is the whole reason a second one can never appear.
 #[cfg(target_os = "macos")]
-pub fn apply_material(app: &AppHandle, material: Material) {
-    native::apply_material(app, material);
+pub fn apply_material(app: &AppHandle, material: Material, glass_material: GlassMaterial) {
+    native::apply_material(app, material, glass_material);
 }
 
-/// Off macOS there is no glass view to hide.
+/// Off macOS there is no glass view to hide or re-material.
 #[cfg(not(target_os = "macos"))]
-pub fn apply_material(_app: &AppHandle, _material: Material) {}
+pub fn apply_material(_app: &AppHandle, _material: Material, _glass_material: GlassMaterial) {}
 
 /// Set the glass view's corner radius and reveal it, fading alpha 0 -> 1 over
 /// the card's own fade duration (`--ov-fade-ms`) if it was not already fully
@@ -136,7 +143,7 @@ mod native {
     use tauri::{AppHandle, Manager};
 
     use crate::overlay::CARD_FADE_MS;
-    use crate::overlay_theme::{GlassSupport, Material};
+    use crate::overlay_theme::{GlassMaterial, GlassSupport, Material};
     use crate::settings::OverlayPosition;
 
     /// The retained glass view, disguised as `usize` so the static can be
@@ -167,7 +174,10 @@ mod native {
 
             let bounds = content.bounds();
             let glass_view = NSVisualEffectView::initWithFrame(mtm.alloc(), bounds);
-            glass_view.setMaterial(NSVisualEffectMaterial::HUDWindow);
+            // The install-time material is only a starting value: every show
+            // and every reposition writes the resolved `glass_material`
+            // token onto this same view through `apply_material`.
+            glass_view.setMaterial(native_material(GlassMaterial::default()));
             glass_view.setBlendingMode(NSVisualEffectBlendingMode::BehindWindow);
             // Mandatory: this panel can never become key
             // (`can_become_key_window: false`, overlay.rs), so the default
@@ -216,17 +226,40 @@ mod native {
         }
     }
 
-    pub(super) fn apply_material(app: &AppHandle, material: Material) {
-        // Only Flat has anything to do, and it is a single `setHidden` — so
-        // Glass does not pay for a main-thread hop that would change nothing.
-        if material != Material::Flat {
-            return;
-        }
+    pub(super) fn apply_material(
+        app: &AppHandle,
+        material: Material,
+        glass_material: GlassMaterial,
+    ) {
         on_window(app, move |_window, _mtm| {
-            if let Some(view) = glass_view() {
-                view.setHidden(true);
+            let Some(view) = glass_view() else {
+                return;
+            };
+            match material {
+                // Hidden unconditionally, in case a previous Glass session
+                // left the view visible behind a card that now has slack.
+                Material::Flat => view.setHidden(true),
+                // A live property write on the installed view; visibility is
+                // deliberately untouched, so the blur cannot appear before
+                // the card has painted.
+                Material::Glass => view.setMaterial(native_material(glass_material)),
             }
         });
+    }
+
+    /// The token's AppKit counterpart. `NSVisualEffectMaterial` is a plain
+    /// enum of raw values, so this is the whole of the mapping.
+    fn native_material(glass_material: GlassMaterial) -> NSVisualEffectMaterial {
+        match glass_material {
+            GlassMaterial::HudWindow => NSVisualEffectMaterial::HUDWindow,
+            GlassMaterial::Popover => NSVisualEffectMaterial::Popover,
+            GlassMaterial::Menu => NSVisualEffectMaterial::Menu,
+            GlassMaterial::Sidebar => NSVisualEffectMaterial::Sidebar,
+            GlassMaterial::UnderWindowBackground => NSVisualEffectMaterial::UnderWindowBackground,
+            GlassMaterial::Sheet => NSVisualEffectMaterial::Sheet,
+            GlassMaterial::Tooltip => NSVisualEffectMaterial::ToolTip,
+            GlassMaterial::ContentBackground => NSVisualEffectMaterial::ContentBackground,
+        }
     }
 
     pub(super) fn show_glass(app: &AppHandle, radius: f64) {
@@ -430,8 +463,36 @@ mod native {
 
     #[cfg(test)]
     mod tests {
-        use super::morph_duration_ms;
+        use super::{morph_duration_ms, native_material, GlassMaterial};
         use crate::overlay::CARD_MORPH_MS;
+        use objc2_app_kit::NSVisualEffectMaterial;
+
+        /// Every token value maps to a distinct AppKit material, and the
+        /// default is the one the comparison sheet chose — a swapped pair
+        /// here would be invisible in every other test.
+        #[test]
+        fn every_glass_material_maps_to_its_appkit_counterpart() {
+            assert_eq!(
+                native_material(GlassMaterial::default()),
+                NSVisualEffectMaterial::HUDWindow
+            );
+            assert_eq!(
+                native_material(GlassMaterial::Popover),
+                NSVisualEffectMaterial::Popover
+            );
+            assert_eq!(
+                native_material(GlassMaterial::UnderWindowBackground),
+                NSVisualEffectMaterial::UnderWindowBackground
+            );
+
+            let mut mapped: Vec<isize> = GlassMaterial::ALL
+                .into_iter()
+                .map(|material| native_material(material).0)
+                .collect();
+            mapped.sort_unstable();
+            mapped.dedup();
+            assert_eq!(mapped.len(), GlassMaterial::ALL.len());
+        }
 
         /// The default the visual sign-off settled on: the window and its blur
         /// reach the new shape in the same frame the card does, with no bare

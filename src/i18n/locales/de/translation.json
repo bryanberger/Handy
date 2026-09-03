@@ -306,6 +306,44 @@
         },
         "unavailableNote": "Glas ist auf diesem Mac gerade nicht verfügbar — zum Beispiel wenn in macOS Transparenz reduzieren aktiv ist — daher wird das Overlay flach dargestellt."
       },
+      "glassMaterial": {
+        "title": "Glas-Material",
+        "description": "Mit welcher macOS-Unschärfe die Glasoberfläche gezeichnet wird. Gilt nur, solange Material auf Glas steht.",
+        "options": {
+          "hudWindow": {
+            "title": "HUD-Fenster",
+            "description": "Lässt am meisten vom Hintergrund durch. Immer dunkel, unabhängig vom App-Design."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Folgt dem App-Design, etwa zwei Drittel so durchsichtig wie HUD-Fenster."
+          },
+          "menu": {
+            "title": "Menü",
+            "description": "Folgt dem App-Design, noch etwas dichter."
+          },
+          "sidebar": {
+            "title": "Seitenleiste",
+            "description": "Folgt dem App-Design, weich und nur leicht durchsichtig."
+          },
+          "underWindowBackground": {
+            "title": "Unter dem Fenster",
+            "description": "Die breiteste Unschärfe, vom Hintergrund bleibt kaum etwas übrig."
+          },
+          "sheet": {
+            "title": "Sheet",
+            "description": "Auf neueren macOS-Versionen deckend — es scheint kein Hintergrund durch."
+          },
+          "tooltip": {
+            "title": "Tooltip",
+            "description": "Folgt dem App-Design, nur leicht durchsichtig."
+          },
+          "contentBackground": {
+            "title": "Inhaltshintergrund",
+            "description": "Auf neueren macOS-Versionen deckend — es scheint kein Hintergrund durch."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Farbe wählen",
         "hexLabel": "Hex-Farbwert",
@@ -328,13 +366,25 @@
           "title": "Text",
           "description": "Die Vordergrundfarbe der Karte und die Basis, aus der alle neutralen Töne gemischt werden."
         },
+        "border": {
+          "title": "Rahmen",
+          "description": "Die Farbe der Kartenkante."
+        },
+        "borderOpacity": {
+          "title": "Deckkraft des Rahmens",
+          "description": "Wie sichtbar die Kartenkante ist."
+        },
         "sizeScale": {
           "title": "Größenskalierung",
-          "description": "Skaliert alle Längen der Karte auf einmal — Breiten, Höhen, Innenabstände und Schrift. Der einzige Token, der ändert, wie viel Platz das Overlay auf dem Bildschirm braucht."
+          "description": "Skaliert alle Längen der Karte auf einmal — Breiten, Höhen, Innenabstände und Schrift. Einer von zwei Werten, die ändern, wie viel Platz das Overlay auf dem Bildschirm braucht; der andere ist die Rahmenstärke."
         },
         "radius": {
           "title": "Eckenradius",
           "description": "Der Eckenradius der Karte."
+        },
+        "borderWidth": {
+          "title": "Rahmenstärke",
+          "description": "Wie dick die Kartenkante ist. Das Overlay-Fenster wächst mit."
         },
         "padding": {
           "title": "Innenabstand",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Wellenform-Abstand",
           "description": "Der Abstand zwischen den Wellenform-Balken."
+        },
+        "waveformWidth": {
+          "title": "Wellenform-Breite",
+          "description": "Die Breite jedes Wellenform-Balkens."
         }
       },
       "themeFile": {
         "title": "Designdatei",
         "description": "Eine optionale JSON-Datei, die Werte des Overlay-Designs überschreibt, damit externe Theming-Tools das Overlay steuern können.",
         "notFound": "Keine Designdatei. Lege unter diesem Pfad eine an, um Werte des Overlay-Designs zu überschreiben.",
-        "active": "Aktiv — diese Datei setzt {{count}} von 9 Werten.",
+        "active": "Aktiv — diese Datei setzt {{count}} von {{total}} Werten.",
         "reload": "Neu laden",
         "copy": "Design als JSON kopieren",
         "copied": "Kopiert",

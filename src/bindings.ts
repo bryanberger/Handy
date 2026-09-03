@@ -910,7 +910,7 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 /**
  * Persist the whole overlay theme.
  * 
- * The frontend always sends the complete nine-token object: setting one token,
+ * The frontend always sends the complete fourteen-token object: setting one token,
  * clearing one token (reset to inherit) and resetting the whole theme are all
  * this one call with a different object. That keeps the settings store's
  * optimistic write and its rollback — both keyed on a single `AppSettings`
@@ -1121,6 +1121,63 @@ export type EngineType =
  */
 "TranscribeCpp" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "Canary" | "Cohere"
 /**
+ * Which macOS material the Glass blur is drawn with.
+ * 
+ * The blur is one `NSVisualEffectView`, and its `material` is a live setter
+ * on that one view — swapping it never re-creates anything — so this token
+ * costs a single property assignment. It is read only while the effective
+ * Material is Glass; on Flat, and off macOS, it is carried through the merge
+ * and ignored.
+ * 
+ * The eight values are the `NSVisualEffectMaterial` cases that make sense
+ * behind a small floating card, ordered from the most see-through to the
+ * least; the default is the one that measured the most backdrop transmission
+ * on macOS 26, in both app themes, at the tint an unset `surface_opacity`
+ * resolves to under Glass.
+ */
+export type GlassMaterial = 
+/**
+ * `NSVisualEffectMaterialHUDWindow`: the most see-through of the eight
+ * in both app themes, and the default. It is also the one that does not
+ * follow the system appearance — a fixed dark recipe — but under the thin
+ * default tint that reads as contrast rather than as gloom: over a white
+ * backdrop under a Light theme it lands within 3 levels of Popover, and
+ * over a dark backdrop it darkens 13 levels further.
+ */
+"hud_window" | 
+/**
+ * `NSVisualEffectMaterialPopover`: follows the appearance, about two
+ * thirds of HudWindow's transmission. The one to pick for a card that
+ * tracks the system appearance.
+ */
+"popover" | 
+/**
+ * `NSVisualEffectMaterialMenu`: follows the appearance, denser again.
+ */
+"menu" | 
+/**
+ * `NSVisualEffectMaterialSidebar`: follows the appearance, softer.
+ */
+"sidebar" | 
+/**
+ * `NSVisualEffectMaterialUnderWindowBackground`: the widest blur radius,
+ * and little transmission left.
+ */
+"under_window_background" | 
+/**
+ * `NSVisualEffectMaterialSheet`: opaque in both themes on macOS 26.
+ */
+"sheet" | 
+/**
+ * `NSVisualEffectMaterialToolTip`: follows the appearance, very light.
+ */
+"tooltip" | 
+/**
+ * `NSVisualEffectMaterialContentBackground`: opaque in both themes on
+ * macOS 26.
+ */
+"content_background"
+/**
  * Whether Glass can render.
  */
 export type GlassSupport = { 
@@ -1255,7 +1312,7 @@ export type OverlayPosition = "top" | "bottom"
  */
 export type OverlayStyle = "none" | "minimal" | "live"
 /**
- * The nine overlay-theme tokens. `None` means *inherit*.
+ * The fourteen overlay-theme tokens. `None` means *inherit*.
  * 
  * Field names are literally the theme-file keys. Every field deserializes
  * leniently: a value of the wrong type or shape degrades to `None` with a
@@ -1283,10 +1340,24 @@ surface_opacity?: number | null;
  */
 text?: HexColor | null; 
 /**
+ * The card's border colour, before `border_opacity` is applied. Unset it
+ * derives from `text` on both Materials; only the alpha it is mixed at
+ * differs, being stronger under Glass.
+ */
+border?: HexColor | null; 
+/**
+ * The card border's alpha, 0.00–1.00.
+ */
+border_opacity?: number | null; 
+/**
  * Flat or Glass. Glass renders as Flat wherever it is unavailable, so
  * what is actually painted is the resolved theme's effective material.
  */
 material?: Material | null; 
+/**
+ * Which macOS material the Glass blur uses. Ignored under Flat.
+ */
+glass_material?: GlassMaterial | null; 
 /**
  * One factor multiplying every length in the card, 0.80–1.50.
  */
@@ -1296,13 +1367,23 @@ size_scale?: number | null;
  */
 radius?: number | null; 
 /**
+ * The card's border width at scale 1, 0–4 px. The one token besides
+ * `size_scale` that changes the card's footprint, so the native window
+ * is computed from it too.
+ */
+border_width?: number | null; 
+/**
  * The card's inner horizontal padding at scale 1, 0–20 px.
  */
 padding?: number | null; 
 /**
  * Gap between waveform bars at scale 1, 0–5 px.
  */
-waveform_gap?: number | null }
+waveform_gap?: number | null; 
+/**
+ * Width of each waveform bar at scale 1, 2–6 px.
+ */
+waveform_width?: number | null }
 export type PaginatedHistory = { entries: HistoryEntry[]; has_more: boolean }
 export type PasteMethod = "ctrl_v" | "direct" | "none" | "shift_insert" | "ctrl_shift_v" | "external_script"
 export type PermissionAccess = "allowed" | "denied" | "unknown"

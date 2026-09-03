@@ -306,6 +306,44 @@
         },
         "unavailableNote": "Cam şu anda bu Mac'te kullanılamıyor — örneğin macOS'te Saydamlığı azalt açıkken — bu yüzden ekran katmanı Düz olarak çizilir."
       },
+      "glassMaterial": {
+        "title": "Cam Malzemesi",
+        "description": "Cam yüzeyin hangi macOS bulanıklığıyla çizileceği. Yalnızca Malzeme Cam iken geçerlidir.",
+        "options": {
+          "hudWindow": {
+            "title": "HUD Penceresi",
+            "description": "Arka planı en çok geçiren seçenek. Uygulama teması ne olursa olsun her zaman koyudur."
+          },
+          "popover": {
+            "title": "Popover",
+            "description": "Uygulama temasını izler, HUD Penceresi'nin geçirdiğinin yaklaşık üçte ikisini geçirir."
+          },
+          "menu": {
+            "title": "Menü",
+            "description": "Uygulama temasını izler, daha da yoğundur."
+          },
+          "sidebar": {
+            "title": "Kenar Çubuğu",
+            "description": "Uygulama temasını izler, yumuşaktır ve yalnızca hafifçe saydamdır."
+          },
+          "underWindowBackground": {
+            "title": "Pencerenin Altı",
+            "description": "En geniş bulanıklık; arka plandan geriye çok az şey kalır."
+          },
+          "sheet": {
+            "title": "Sayfa",
+            "description": "Yeni macOS sürümlerinde opaktır — arka plan hiç görünmez."
+          },
+          "tooltip": {
+            "title": "İpucu",
+            "description": "Uygulama temasını izler, yalnızca hafifçe saydamdır."
+          },
+          "contentBackground": {
+            "title": "İçerik Arka Planı",
+            "description": "Yeni macOS sürümlerinde opaktır — arka plan hiç görünmez."
+          }
+        }
+      },
       "color": {
         "swatchLabel": "Bir renk seçin",
         "hexLabel": "Onaltılık renk değeri",
@@ -328,13 +366,25 @@
           "title": "Metin",
           "description": "Kartın ön plan rengi ve tüm nötr tonların karıştırıldığı temel renk."
         },
+        "border": {
+          "title": "Kenarlık",
+          "description": "Kartın kenarının rengi."
+        },
+        "borderOpacity": {
+          "title": "Kenarlık Opaklığı",
+          "description": "Kartın kenarının ne kadar görünür olduğu."
+        },
         "sizeScale": {
           "title": "Boyut Ölçeği",
-          "description": "Karttaki tüm uzunlukları aynı anda ölçekler — genişlikler, yükseklikler, iç boşluklar ve yazı. Ekran katmanının ekranda ne kadar yer kapladığını değiştiren tek değer."
+          "description": "Karttaki tüm uzunlukları aynı anda ölçekler — genişlikler, yükseklikler, iç boşluklar ve yazı. Ekran katmanının ekranda ne kadar yer kapladığını değiştiren iki değerden biri; diğeri kenarlık kalınlığıdır."
         },
         "radius": {
           "title": "Köşe Yarıçapı",
           "description": "Kartın köşe yarıçapı."
+        },
+        "borderWidth": {
+          "title": "Kenarlık Kalınlığı",
+          "description": "Kartın kenarının ne kadar kalın olduğu. Ekran katmanı penceresi de onunla birlikte büyür."
         },
         "padding": {
           "title": "İç Boşluk",
@@ -343,13 +393,17 @@
         "waveformGap": {
           "title": "Dalga Formu Aralığı",
           "description": "Dalga formu çubukları arasındaki boşluk."
+        },
+        "waveformWidth": {
+          "title": "Dalga Formu Genişliği",
+          "description": "Her dalga formu çubuğunun genişliği."
         }
       },
       "themeFile": {
         "title": "Tema dosyası",
         "description": "Ekran katmanı temasının değerlerini geçersiz kılan isteğe bağlı bir JSON dosyası; böylece harici tema araçları ekran katmanını yönetebilir.",
         "notFound": "Tema dosyası yok. Ekran katmanı teması değerlerini geçersiz kılmak için bu yolda bir dosya oluşturun.",
-        "active": "Etkin — bu dosya 9 değerden {{count}} tanesini ayarlıyor.",
+        "active": "Etkin — bu dosya {{total}} değerden {{count}} tanesini ayarlıyor.",
         "reload": "Yeniden yükle",
         "copy": "Temayı JSON olarak kopyala",
         "copied": "Kopyalandı",

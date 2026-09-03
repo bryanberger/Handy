@@ -52,33 +52,42 @@ tauri_panel! {
 // if either side drifts.
 
 /// The card's border at size_scale 1, both sides: `.scard` is content-box and
-/// draws a 1 px hairline that scales with everything else, so the card's
-/// footprint is `(content + CARD_BORDER) × scale`.
-const CARD_BORDER: f64 = 2.0;
-/// Widest compact card (Minimal / transcribing / processing) at size_scale 1:
-/// `--ov-work-w` 216, the working pill, plus the border. The pill animates its
-/// width from `--ov-rest-w` 172 and expands from its centre, so the window must
-/// fit this widest state.
-const CARD_COMPACT_W: f64 = 216.0 + CARD_BORDER;
-/// Compact card height at size_scale 1: `--ov-base-h` 40, the control row, plus
-/// the border.
-const CARD_COMPACT_H: f64 = 40.0 + CARD_BORDER;
-/// Resting compact card (Minimal at rest) at size_scale 1: `--ov-rest-w` 172
-/// plus the border. Only [`OverlayCardShape::CompactRest`] uses this — under
-/// Flat the window still covers [`CARD_COMPACT_W`], the form's widest card.
-const CARD_COMPACT_REST_W: f64 = 172.0 + CARD_BORDER;
-/// Widest Live card at size_scale 1: `--ov-open-w` 392, the open panel, plus
-/// the border. Live opens from `--ov-pill-w` 184, so this is again the widest
+/// draws a `border_width` px stroke on each edge that scales with everything
+/// else, so the card's footprint is `(content + card_border(width)) × scale`.
+///
+/// A function rather than a constant because `border_width` is a token
+/// (0-4 px, inherit 1): it is, with `size_scale`, one of the only two tokens
+/// that change how much room the card needs. At the inherit width this is
+/// 2.0, today's hairline on both edges.
+const fn card_border(border_width: u16) -> f64 {
+    2.0 * border_width as f64
+}
+
+/// Widest compact card content (Minimal / transcribing / processing) at
+/// size_scale 1: `--ov-work-w`, the working pill. The pill animates its width
+/// from `--ov-rest-w` 172 and expands from its centre, so the window must fit
+/// this widest state.
+const CARD_COMPACT_CONTENT_W: f64 = 216.0;
+/// Compact card content height at size_scale 1: `--ov-base-h` 40, the control
+/// row.
+const CARD_COMPACT_CONTENT_H: f64 = 40.0;
+/// Resting compact card content (Minimal at rest) at size_scale 1:
+/// `--ov-rest-w` 172. Only [`OverlayCardShape::CompactRest`] uses this — under
+/// Flat the window still covers [`CARD_COMPACT_CONTENT_W`], the form's widest
+/// card.
+const CARD_COMPACT_REST_CONTENT_W: f64 = 172.0;
+/// Widest Live card content at size_scale 1: `--ov-open-w` 392, the open
+/// panel. Live opens from `--ov-pill-w` 184, so this is again the widest
 /// state.
-const CARD_LIVE_W: f64 = 392.0 + CARD_BORDER;
-/// Live pill before it opens or collapses, at size_scale 1: `--ov-pill-w` 184
-/// plus the border. Only [`OverlayCardShape::LivePill`] uses this — under
-/// Flat the window still covers [`CARD_LIVE_W`], the form's widest card.
-const CARD_LIVE_PILL_W: f64 = 184.0 + CARD_BORDER;
-/// Tallest Live card at size_scale 1: the control row `--ov-base-h` 40, the
-/// live-text region `--ov-cap-max-h` 64 and its `--ov-cap-pad-y` 12, plus the
-/// border.
-const CARD_LIVE_H: f64 = 40.0 + 64.0 + 12.0 + CARD_BORDER;
+const CARD_LIVE_CONTENT_W: f64 = 392.0;
+/// Live pill content before it opens or collapses, at size_scale 1:
+/// `--ov-pill-w` 184. Only [`OverlayCardShape::LivePill`] uses this — under
+/// Flat the window still covers [`CARD_LIVE_CONTENT_W`], the form's widest
+/// card.
+const CARD_LIVE_PILL_CONTENT_W: f64 = 184.0;
+/// Tallest Live card content at size_scale 1: the control row `--ov-base-h`
+/// 40, the live-text region `--ov-cap-max-h` 64 and its `--ov-cap-pad-y` 12.
+const CARD_LIVE_CONTENT_H: f64 = 40.0 + 64.0 + 12.0;
 
 /// How long the card's morph between two shapes takes, in milliseconds:
 /// `--ov-morph-ms`, the duration of `.scard`'s width and border-radius
@@ -109,18 +118,22 @@ const LIVE_SLACK: (f64, f64) = (6.0, 2.0);
 // fixtures for the tests below. They are `#[cfg(test)]` because no production
 // path reads a fixed size any more: every window is computed from the card and
 // the resolved size scale.
+/// The border on both sides at the inherit `border_width`, for the fixtures
+/// below: today's card, hairline included.
+#[cfg(test)]
+const CARD_BORDER_INHERIT: f64 = card_border(crate::overlay_theme::BORDER_WIDTH_INHERIT);
 /// Compact window width at size_scale 1.
 #[cfg(test)]
-const OVERLAY_WIDTH: f64 = CARD_COMPACT_W + COMPACT_SLACK.0;
+const OVERLAY_WIDTH: f64 = CARD_COMPACT_CONTENT_W + CARD_BORDER_INHERIT + COMPACT_SLACK.0;
 /// Compact window height at size_scale 1.
 #[cfg(test)]
-const OVERLAY_HEIGHT: f64 = CARD_COMPACT_H + COMPACT_SLACK.1;
+const OVERLAY_HEIGHT: f64 = CARD_COMPACT_CONTENT_H + CARD_BORDER_INHERIT + COMPACT_SLACK.1;
 /// Live window width at size_scale 1.
 #[cfg(test)]
-const OVERLAY_STREAM_WIDTH: f64 = CARD_LIVE_W + LIVE_SLACK.0;
+const OVERLAY_STREAM_WIDTH: f64 = CARD_LIVE_CONTENT_W + CARD_BORDER_INHERIT + LIVE_SLACK.0;
 /// Live window height at size_scale 1.
 #[cfg(test)]
-const OVERLAY_STREAM_HEIGHT: f64 = CARD_LIVE_H + LIVE_SLACK.1;
+const OVERLAY_STREAM_HEIGHT: f64 = CARD_LIVE_CONTENT_H + CARD_BORDER_INHERIT + LIVE_SLACK.1;
 
 /// Which card the overlay draws: the compact pill (Minimal, and the working
 /// states of both styles) or the Live panel.
@@ -142,10 +155,14 @@ impl OverlayForm {
     /// happens inside a window sized for the state's widest card; under
     /// Glass the window instead equals the *exact* current
     /// [`OverlayCardShape`], never a form's max.
-    fn card_footprint(self) -> (f64, f64) {
+    fn card_footprint(self, border_width: u16) -> (f64, f64) {
+        let border = card_border(border_width);
         match self {
-            Self::Compact => (CARD_COMPACT_W, CARD_COMPACT_H),
-            Self::Live => (CARD_LIVE_W, CARD_LIVE_H),
+            Self::Compact => (
+                CARD_COMPACT_CONTENT_W + border,
+                CARD_COMPACT_CONTENT_H + border,
+            ),
+            Self::Live => (CARD_LIVE_CONTENT_W + border, CARD_LIVE_CONTENT_H + border),
         }
     }
 }
@@ -205,14 +222,16 @@ impl OverlayCardShape {
     /// This shape's own exact footprint at size_scale 1, border included —
     /// what the window must equal under Glass, where the window is the card.
     /// Every number comes from the `--ov-*` block in RecordingOverlay.css.
-    fn card_footprint(self) -> (f64, f64) {
-        match self {
-            Self::CompactRest => (CARD_COMPACT_REST_W, CARD_COMPACT_H),
-            Self::CompactWorking => (CARD_COMPACT_W, CARD_COMPACT_H),
-            Self::LivePill => (CARD_LIVE_PILL_W, CARD_COMPACT_H),
-            Self::LiveWorking => (CARD_COMPACT_W, CARD_COMPACT_H),
-            Self::LiveOpen => (CARD_LIVE_W, CARD_LIVE_H),
-        }
+    fn card_footprint(self, border_width: u16) -> (f64, f64) {
+        let border = card_border(border_width);
+        let (content_width, content_height) = match self {
+            Self::CompactRest => (CARD_COMPACT_REST_CONTENT_W, CARD_COMPACT_CONTENT_H),
+            Self::CompactWorking => (CARD_COMPACT_CONTENT_W, CARD_COMPACT_CONTENT_H),
+            Self::LivePill => (CARD_LIVE_PILL_CONTENT_W, CARD_COMPACT_CONTENT_H),
+            Self::LiveWorking => (CARD_COMPACT_CONTENT_W, CARD_COMPACT_CONTENT_H),
+            Self::LiveOpen => (CARD_LIVE_CONTENT_W, CARD_LIVE_CONTENT_H),
+        };
+        (content_width + border, content_height + border)
     }
 
     /// The corner-radius factor CSS applies for this shape's `.scard...`
@@ -313,11 +332,18 @@ fn overlay_slack(form: OverlayForm, material: Material) -> (f64, f64) {
 ///
 /// The scaled card is rounded up before the slack is added, so the window is
 /// never a fraction of a point short of the card it hosts and every result is a
-/// whole number of points. `scale` is re-clamped here — the geometry boundary
-/// must never trust a number that reached it unclamped — using the same bounds
-/// as [`crate::overlay_theme::OverlayTheme::size_scale`], so the window and the
+/// whole number of points. `scale` and `border_width` are both re-clamped here
+/// — the geometry boundary must never trust a number that reached it unclamped
+/// — using the same bounds as
+/// [`crate::overlay_theme::OverlayTheme::size_scale`] and
+/// [`crate::overlay_theme::OverlayTheme::border_width`], so the window and the
 /// card can never disagree about how far a token was allowed to go.
-fn overlay_dimensions(shape: OverlayCardShape, scale: f64, material: Material) -> (f64, f64) {
+fn overlay_dimensions(
+    shape: OverlayCardShape,
+    scale: f64,
+    material: Material,
+    border_width: u16,
+) -> (f64, f64) {
     let scale = if scale.is_finite() {
         scale.clamp(
             crate::overlay_theme::SIZE_SCALE_MIN,
@@ -326,9 +352,10 @@ fn overlay_dimensions(shape: OverlayCardShape, scale: f64, material: Material) -
     } else {
         1.0
     };
+    let border_width = border_width.min(crate::overlay_theme::BORDER_WIDTH_MAX);
     let (card_width, card_height) = match material {
-        Material::Glass => shape.card_footprint(),
-        Material::Flat => shape.form().card_footprint(),
+        Material::Glass => shape.card_footprint(border_width),
+        Material::Flat => shape.form().card_footprint(border_width),
     };
     let (slack_width, slack_height) = overlay_slack(shape.form(), material);
 
@@ -356,13 +383,15 @@ fn shape_radius(shape: OverlayCardShape, radius_px: f64, scale: f64) -> f64 {
     radius_px * scale * shape.radius_factor()
 }
 
-/// The size scale in effect, clamped, from the resolved overlay theme.
+/// The two tokens the card's footprint depends on, clamped, from the resolved
+/// overlay theme: the size scale and the border width.
 ///
 /// Resolves from the theme-file cache — no filesystem IO — so it is safe on the
 /// main thread, where the geometry runs. The show path resolves with a fresh
 /// file read instead, off the main thread.
-fn resolved_size_scale(app_handle: &AppHandle) -> f64 {
-    crate::overlay_theme::resolve(app_handle).theme.size_scale()
+fn resolved_card_metrics(app_handle: &AppHandle) -> (f64, u16) {
+    let theme = crate::overlay_theme::resolve(app_handle).theme;
+    (theme.size_scale(), theme.border_width())
 }
 
 /// The compact window at the scale in effect: the size the overlay window is
@@ -376,10 +405,12 @@ fn resolved_size_scale(app_handle: &AppHandle) -> f64 {
 /// "cosmetic first-show resize" tradeoff the theme file's launch-time read
 /// already accepts.
 fn initial_overlay_dimensions(app_handle: &AppHandle) -> (f64, f64) {
+    let (scale, border_width) = resolved_card_metrics(app_handle);
     overlay_dimensions(
         OverlayCardShape::CompactRest,
-        resolved_size_scale(app_handle),
+        scale,
         Material::Flat,
+        border_width,
     )
 }
 
@@ -845,10 +876,11 @@ fn show_overlay_state_on_main(
     set_current_card_shape(shape);
     // Hides the glass view immediately if this show is Flat (in case a
     // previous Glass session left it visible); under Glass it changes
-    // nothing, so the blur cannot appear before the card paints.
-    crate::overlay_glass::apply_material(app_handle, material);
+    // nothing but the blur's own material, so the blur cannot appear before
+    // the card paints.
+    crate::overlay_glass::apply_material(app_handle, material, resolved.theme.glass_material());
 
-    let (width, height) = overlay_dimensions(shape, scale, material);
+    let (width, height) = overlay_dimensions(shape, scale, material, resolved.theme.border_width());
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
         // Invalidate any delayed hide still in flight from a previous session
         // (see `hide_recording_overlay`).
@@ -1168,8 +1200,10 @@ fn update_overlay_position_on_main(app_handle: &AppHandle, scale: Option<f64>) {
         let resolved = crate::overlay_theme::resolve(app_handle);
         let material = resolved.effective_material;
         // Hides the glass view when this reposition lands on Flat (in case a
-        // previous Glass session left it visible); a no-op otherwise.
-        crate::overlay_glass::apply_material(app_handle, material);
+        // previous Glass session left it visible); under Glass it applies the
+        // `glass_material` token live, which is how changing it in the tab
+        // reaches an overlay that is already on screen.
+        crate::overlay_glass::apply_material(app_handle, material, resolved.theme.glass_material());
 
         // Every platform recomputes the size from the card on screen and the
         // size scale, rather than reading the window's current size back from
@@ -1178,7 +1212,8 @@ fn update_overlay_position_on_main(app_handle: &AppHandle, scale: Option<f64>) {
         // window and be clipped.
         let scale = scale.unwrap_or_else(|| resolved.theme.size_scale());
         let shape = current_card_shape();
-        let (width, height) = overlay_dimensions(shape, scale, material);
+        let (width, height) =
+            overlay_dimensions(shape, scale, material, resolved.theme.border_width());
 
         #[cfg(target_os = "linux")]
         if LAYER_SHELL_ACTIVE.load(Ordering::SeqCst) {
@@ -1250,7 +1285,12 @@ pub fn set_card_shape(app_handle: &AppHandle, shape: OverlayCardShape, duration_
     }
 
     let scale = resolved.theme.size_scale();
-    let size = overlay_dimensions(shape, scale, resolved.effective_material);
+    let size = overlay_dimensions(
+        shape,
+        scale,
+        resolved.effective_material,
+        resolved.theme.border_width(),
+    );
     let radius = shape_radius(shape, radius_token_px(&resolved.theme), scale);
 
     // Whether the window is mapped decides between animating the frame and
@@ -1393,6 +1433,78 @@ pub fn emit_levels(app_handle: &AppHandle, levels: &[f32]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::overlay_theme::{
+        BORDER_WIDTH_INHERIT, BORDER_WIDTH_MAX, PADDING_MAX, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX,
+        WAVEFORM_WIDTH_MIN,
+    };
+
+    /// The stylesheet and the component the overlay actually ships with, read
+    /// at compile time. Every frontend number the tests below need is parsed
+    /// out of these rather than copied into this file, so a change over there
+    /// fails a test here instead of shipping a clipped card.
+    const OVERLAY_CSS: &str = include_str!("../../src/overlay/RecordingOverlay.css");
+    const OVERLAY_TSX: &str = include_str!("../../src/overlay/RecordingOverlay.tsx");
+
+    /// The number a declaration is written with, in the unit it carries: the
+    /// digits immediately before the first `unit` after `<name>:`. The needle
+    /// carries the colon, so `var(--ov-work-w)` usages never match — only the
+    /// declaration does — and taking the digits from the right sees through a
+    /// `calc(` or a `minmax(` the value is wrapped in.
+    fn css_value(css: &str, name: &str, unit: &str) -> f64 {
+        let needle = format!("{name}:");
+        let start = css
+            .find(&needle)
+            .unwrap_or_else(|| panic!("{name} is not declared in RecordingOverlay.css"));
+        let rest = &css[start + needle.len()..];
+        let end = rest
+            .find(unit)
+            .unwrap_or_else(|| panic!("{name} is not declared in {unit}"));
+        rest[..end]
+            .trim_start_matches(|character: char| {
+                !character.is_ascii_digit() && character != '-' && character != '.'
+            })
+            .parse()
+            .unwrap_or_else(|_| panic!("{name} is not a number"))
+    }
+
+    fn css_px(css: &str, name: &str) -> f64 {
+        css_value(css, name, "px")
+    }
+
+    fn css_ms(css: &str, name: &str) -> f64 {
+        css_value(css, name, "ms")
+    }
+
+    /// One rule's body, so a declaration is read from the rule that carries it
+    /// rather than from the first match anywhere in the stylesheet. `selector`
+    /// includes the brace (`".swave {"`), which is what makes it unambiguous.
+    fn css_rule<'a>(css: &'a str, selector: &str) -> &'a str {
+        let start = css
+            .find(selector)
+            .unwrap_or_else(|| panic!("{selector} is not a rule in RecordingOverlay.css"));
+        let body = &css[start + selector.len()..];
+        let end = body
+            .find('}')
+            .unwrap_or_else(|| panic!("{selector} is never closed"));
+        &body[..end]
+    }
+
+    /// The number a `const NAME = <number>;` in the overlay component is
+    /// declared with — the geometry input that lives in TypeScript rather than
+    /// in the stylesheet.
+    fn tsx_const(tsx: &str, declaration: &str) -> f64 {
+        let start = tsx
+            .find(declaration)
+            .unwrap_or_else(|| panic!("{declaration} is not in RecordingOverlay.tsx"));
+        let rest = &tsx[start + declaration.len()..];
+        let end = rest
+            .find(';')
+            .unwrap_or_else(|| panic!("{declaration} is never terminated"));
+        rest[..end]
+            .trim()
+            .parse()
+            .unwrap_or_else(|_| panic!("{declaration} is not a number"))
+    }
 
     #[test]
     fn monitor_hit_test_uses_half_open_physical_bounds() {
@@ -1419,7 +1531,7 @@ mod tests {
             assert_eq!(shape, expected_shape, "{state}");
             assert_eq!(shape.form(), OverlayForm::Compact, "{state}");
             assert_eq!(
-                overlay_dimensions(shape, 1.0, Material::Flat),
+                overlay_dimensions(shape, 1.0, Material::Flat, BORDER_WIDTH_INHERIT),
                 (256.0, 46.0),
                 "{state}"
             );
@@ -1427,7 +1539,12 @@ mod tests {
         assert_eq!(initial_card_shape("streaming"), OverlayCardShape::LivePill);
         assert_eq!(OverlayCardShape::LivePill.form(), OverlayForm::Live);
         assert_eq!(
-            overlay_dimensions(OverlayCardShape::LivePill, 1.0, Material::Flat),
+            overlay_dimensions(
+                OverlayCardShape::LivePill,
+                1.0,
+                Material::Flat,
+                BORDER_WIDTH_INHERIT
+            ),
             (400.0, 120.0)
         );
 
@@ -1446,19 +1563,39 @@ mod tests {
     #[test]
     fn overlay_dimensions_scale_with_the_token() {
         assert_eq!(
-            overlay_dimensions(OverlayCardShape::CompactRest, 1.5, Material::Flat),
+            overlay_dimensions(
+                OverlayCardShape::CompactRest,
+                1.5,
+                Material::Flat,
+                BORDER_WIDTH_INHERIT
+            ),
             (365.0, 67.0)
         );
         assert_eq!(
-            overlay_dimensions(OverlayCardShape::LivePill, 1.5, Material::Flat),
+            overlay_dimensions(
+                OverlayCardShape::LivePill,
+                1.5,
+                Material::Flat,
+                BORDER_WIDTH_INHERIT
+            ),
             (597.0, 179.0)
         );
         assert_eq!(
-            overlay_dimensions(OverlayCardShape::CompactRest, 0.8, Material::Flat),
+            overlay_dimensions(
+                OverlayCardShape::CompactRest,
+                0.8,
+                Material::Flat,
+                BORDER_WIDTH_INHERIT
+            ),
             (213.0, 38.0)
         );
         assert_eq!(
-            overlay_dimensions(OverlayCardShape::LivePill, 0.8, Material::Flat),
+            overlay_dimensions(
+                OverlayCardShape::LivePill,
+                0.8,
+                Material::Flat,
+                BORDER_WIDTH_INHERIT
+            ),
             (322.0, 97.0)
         );
     }
@@ -1468,16 +1605,31 @@ mod tests {
     #[test]
     fn overlay_dimensions_clamp_out_of_range_and_non_finite() {
         assert_eq!(
-            overlay_dimensions(OverlayCardShape::LiveOpen, 3.0, Material::Flat),
+            overlay_dimensions(
+                OverlayCardShape::LiveOpen,
+                3.0,
+                Material::Flat,
+                BORDER_WIDTH_INHERIT
+            ),
             (597.0, 179.0)
         );
         assert_eq!(
-            overlay_dimensions(OverlayCardShape::CompactWorking, 0.1, Material::Flat),
+            overlay_dimensions(
+                OverlayCardShape::CompactWorking,
+                0.1,
+                Material::Flat,
+                BORDER_WIDTH_INHERIT
+            ),
             (213.0, 38.0)
         );
         for broken in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
             assert_eq!(
-                overlay_dimensions(OverlayCardShape::CompactRest, broken, Material::Flat),
+                overlay_dimensions(
+                    OverlayCardShape::CompactRest,
+                    broken,
+                    Material::Flat,
+                    BORDER_WIDTH_INHERIT
+                ),
                 (256.0, 46.0)
             );
         }
@@ -1497,7 +1649,8 @@ mod tests {
             (OverlayCardShape::CompactWorking, 1.50, 327.0, 63.0),
             (OverlayCardShape::LiveOpen, 1.50, 591.0, 177.0),
         ] {
-            let (width, height) = overlay_dimensions(shape, scale, Material::Flat);
+            let (width, height) =
+                overlay_dimensions(shape, scale, Material::Flat, BORDER_WIDTH_INHERIT);
             assert!(
                 width >= card_width,
                 "{shape:?} at {scale}: window {width} is narrower than the card's {card_width}"
@@ -1538,14 +1691,14 @@ mod tests {
 
         for (shape, width, height) in CARDS {
             assert_eq!(
-                overlay_dimensions(shape, 1.0, Material::Glass),
+                overlay_dimensions(shape, 1.0, Material::Glass, BORDER_WIDTH_INHERIT),
                 (width, height),
                 "{shape:?} at 1.0"
             );
         }
         for (shape, width, height) in CARDS_AT_1_5 {
             assert_eq!(
-                overlay_dimensions(shape, 1.5, Material::Glass),
+                overlay_dimensions(shape, 1.5, Material::Glass, BORDER_WIDTH_INHERIT),
                 (width, height),
                 "{shape:?} at 1.5"
             );
@@ -1557,12 +1710,118 @@ mod tests {
             let scale = f64::from(80 + step * 5) / 100.0;
             for (shape, width, height) in CARDS {
                 assert_eq!(
-                    overlay_dimensions(shape, scale, Material::Glass),
+                    overlay_dimensions(shape, scale, Material::Glass, BORDER_WIDTH_INHERIT),
                     ((width * scale).ceil(), (height * scale).ceil()),
                     "{shape:?} at {scale}"
                 );
             }
         }
+    }
+
+    /// `border_width` is the second token that moves the native window, so
+    /// the window has to grow with it: the card is content-box, so each extra
+    /// px of stroke costs two px of footprint before the scale multiplies.
+    /// The expectations are the token table's arithmetic written out, never
+    /// `card_footprint()` called again.
+    #[test]
+    fn overlay_dimensions_follow_the_border_width() {
+        // Glass: the window IS the card, so the footprint is visible
+        // directly. LiveOpen's content is 392 x 116.
+        for (width, expected) in [
+            (0, (392.0, 116.0)),
+            (1, (394.0, 118.0)),
+            (2, (396.0, 120.0)),
+            (4, (400.0, 124.0)),
+        ] {
+            assert_eq!(
+                overlay_dimensions(OverlayCardShape::LiveOpen, 1.0, Material::Glass, width),
+                expected,
+                "border_width {width}"
+            );
+        }
+
+        // Flat keeps its slack, so the same growth lands on today's window:
+        // the compact form is 216 x 40 of content plus 38 x 4 of slack.
+        for (width, expected) in [(0, (254.0, 44.0)), (1, (256.0, 46.0)), (4, (262.0, 52.0))] {
+            assert_eq!(
+                overlay_dimensions(OverlayCardShape::CompactRest, 1.0, Material::Flat, width),
+                expected,
+                "border_width {width}"
+            );
+        }
+
+        // The stroke scales with the card, so at 1.5x a 4px border is 12
+        // points of footprint: 392 + 8 = 400 content-plus-border, x 1.5.
+        assert_eq!(
+            overlay_dimensions(OverlayCardShape::LiveOpen, 1.5, Material::Glass, 4),
+            (600.0, 186.0)
+        );
+
+        // Whatever the width, Glass's window equals its card and Flat's
+        // window covers it — the invariant zero slack rests on.
+        for width in 0..=BORDER_WIDTH_MAX {
+            for step in 0..=14 {
+                let scale = f64::from(80 + step * 5) / 100.0;
+                for shape in OverlayCardShape::ALL {
+                    let (glass_w, glass_h) =
+                        overlay_dimensions(shape, scale, Material::Glass, width);
+                    let (card_w, card_h) = shape.card_footprint(width);
+                    assert_eq!(
+                        (glass_w, glass_h),
+                        ((card_w * scale).ceil(), (card_h * scale).ceil()),
+                        "{shape:?} at {scale}, border {width}"
+                    );
+
+                    let (flat_w, flat_h) = overlay_dimensions(shape, scale, Material::Flat, width);
+                    assert!(
+                        flat_w >= glass_w && flat_h >= glass_h,
+                        "{shape:?} at {scale}, border {width}: Flat window \
+                         {flat_w}x{flat_h} does not cover the card {glass_w}x{glass_h}"
+                    );
+                }
+            }
+        }
+
+        // A width that reached the geometry unclamped is treated as the
+        // bound, exactly as an out-of-range scale is.
+        assert_eq!(
+            overlay_dimensions(OverlayCardShape::LiveOpen, 1.0, Material::Glass, 99),
+            overlay_dimensions(
+                OverlayCardShape::LiveOpen,
+                1.0,
+                Material::Glass,
+                BORDER_WIDTH_MAX
+            )
+        );
+    }
+
+    /// Why `waveform_width` stops at 6 and `padding` at 20: at every token's
+    /// maximum the control row's content still fits the working pill, so no
+    /// combination of the spacing tokens can force the native window to grow.
+    /// Only `size_scale` and `border_width` do that.
+    #[test]
+    fn the_waveform_never_outgrows_the_working_pill() {
+        // The three inputs the frontend owns, read from the frontend: the bar
+        // count from the component that renders them, and `.swave`'s right
+        // padding and `.sbase`'s two side columns (which hold the recording
+        // dot and the cancel button) from the stylesheet that draws them.
+        let bars = tsx_const(OVERLAY_TSX, "const WAVE_BARS = ");
+        let wave_padding_right = css_px(css_rule(OVERLAY_CSS, ".swave {"), "padding-right");
+        let side_column = css_px(css_rule(OVERLAY_CSS, ".sbase {"), "grid-template-columns");
+
+        let widest_row = bars * f64::from(WAVEFORM_WIDTH_MAX)
+            + (bars - 1.0) * f64::from(WAVEFORM_GAP_MAX)
+            + wave_padding_right
+            + 2.0 * f64::from(PADDING_MAX)
+            + 2.0 * side_column;
+
+        assert!(
+            widest_row <= CARD_COMPACT_CONTENT_W,
+            "the row at every maximum is {widest_row}, wider than the {CARD_COMPACT_CONTENT_W} working pill"
+        );
+        // And the narrowest bar still draws: 2px at the smallest scale is
+        // 1.6px, which WebKit still paints.
+        assert!(f64::from(WAVEFORM_WIDTH_MIN) * crate::overlay_theme::SIZE_SCALE_MIN >= 1.0);
     }
 
     /// The card shape survives the round trip through the byte the atomic
@@ -1657,64 +1916,56 @@ mod tests {
     /// naming the variable that drifted, instead of shipping a clipped card.
     #[test]
     fn overlay_window_constants_match_overlay_css() {
-        const CSS: &str = include_str!("../../src/overlay/RecordingOverlay.css");
-
-        /// The number a `--ov-*` custom property is declared with, in the
-        /// unit it carries. The needle carries the colon, so `var(--ov-work-w)`
-        /// usages never match — only the `:root` declaration does.
-        fn css_value(css: &str, name: &str, unit: &str) -> f64 {
-            let needle = format!("{name}:");
-            let start = css
-                .find(&needle)
-                .unwrap_or_else(|| panic!("{name} is not declared in RecordingOverlay.css"));
-            let rest = &css[start + needle.len()..];
-            let end = rest
-                .find(unit)
-                .unwrap_or_else(|| panic!("{name} is not declared in {unit}"));
-            rest[..end]
-                .trim()
-                .parse()
-                .unwrap_or_else(|_| panic!("{name} is not a number"))
-        }
-        fn css_px(css: &str, name: &str) -> f64 {
-            css_value(css, name, "px")
-        }
-        fn css_ms(css: &str, name: &str) -> f64 {
-            css_value(css, name, "ms")
-        }
-
-        // The card's hairline scales with the rest of it, so a footprint is the
-        // declared length plus CARD_BORDER, all times the scale.
-        assert_eq!(css_px(CSS, "--ov-work-w") + CARD_BORDER, CARD_COMPACT_W);
-        assert_eq!(css_px(CSS, "--ov-base-h") + CARD_BORDER, CARD_COMPACT_H);
-        assert_eq!(css_px(CSS, "--ov-open-w") + CARD_BORDER, CARD_LIVE_W);
+        // The card's content lengths, which the footprints above are built
+        // from before the border is added.
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-work-w"), CARD_COMPACT_CONTENT_W);
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-base-h"), CARD_COMPACT_CONTENT_H);
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-open-w"), CARD_LIVE_CONTENT_W);
         assert_eq!(
-            css_px(CSS, "--ov-base-h")
-                + css_px(CSS, "--ov-cap-max-h")
-                + css_px(CSS, "--ov-cap-pad-y")
-                + CARD_BORDER,
-            CARD_LIVE_H
+            css_px(OVERLAY_CSS, "--ov-base-h")
+                + css_px(OVERLAY_CSS, "--ov-cap-max-h")
+                + css_px(OVERLAY_CSS, "--ov-cap-pad-y"),
+            CARD_LIVE_CONTENT_H
         );
         // The two shapes only Glass sizes to exactly: the resting compact
         // pill and the Live pill before it opens or collapses.
         assert_eq!(
-            css_px(CSS, "--ov-rest-w") + CARD_BORDER,
-            CARD_COMPACT_REST_W
+            css_px(OVERLAY_CSS, "--ov-rest-w"),
+            CARD_COMPACT_REST_CONTENT_W
         );
-        assert_eq!(css_px(CSS, "--ov-pill-w") + CARD_BORDER, CARD_LIVE_PILL_W);
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-pill-w"), CARD_LIVE_PILL_CONTENT_W);
+
+        // The stroke `.scard` draws on each edge. The CSS declares the
+        // inherit width, and this side doubles it — the card is content-box,
+        // so the footprint carries one on each edge.
+        assert_eq!(
+            css_px(OVERLAY_CSS, "--ov-border-w"),
+            f64::from(BORDER_WIDTH_INHERIT)
+        );
+        assert_eq!(card_border(BORDER_WIDTH_INHERIT), CARD_BORDER_INHERIT);
+        // The waveform bar's own width: not part of any footprint, but the
+        // same "the CSS declares the inherit value" rule, so the tab's
+        // slider and the stylesheet cannot drift.
+        assert_eq!(
+            css_px(OVERLAY_CSS, "--ov-wave-w"),
+            f64::from(crate::overlay_theme::WAVEFORM_WIDTH_INHERIT)
+        );
 
         // The card's own timings. The CSS transitions read these two
         // properties, the overlay webview reads --ov-morph-ms at runtime to
         // tell the backend how long to animate the window frame, and the
         // native reveal and fade-out read the constants below — so all three
         // have to be one number.
-        assert_eq!(css_ms(CSS, "--ov-morph-ms"), f64::from(CARD_MORPH_MS));
-        assert_eq!(css_ms(CSS, "--ov-fade-ms"), f64::from(CARD_FADE_MS));
+        assert_eq!(
+            css_ms(OVERLAY_CSS, "--ov-morph-ms"),
+            f64::from(CARD_MORPH_MS)
+        );
+        assert_eq!(css_ms(OVERLAY_CSS, "--ov-fade-ms"), f64::from(CARD_FADE_MS));
 
         // Both morphs are a grow, so the widest card per form is the one the
         // window is sized from above.
-        assert!(css_px(CSS, "--ov-rest-w") <= css_px(CSS, "--ov-work-w"));
-        assert!(css_px(CSS, "--ov-pill-w") <= css_px(CSS, "--ov-open-w"));
+        assert!(css_px(OVERLAY_CSS, "--ov-rest-w") <= css_px(OVERLAY_CSS, "--ov-work-w"));
+        assert!(css_px(OVERLAY_CSS, "--ov-pill-w") <= css_px(OVERLAY_CSS, "--ov-open-w"));
     }
 
     #[cfg(target_os = "windows")]
@@ -1775,7 +2026,12 @@ mod tests {
 
         // A scaled window converts to physical pixels the same way and still
         // lands on the bottom offset: 2160 - 269 - 40 * 1.5 = 1831.
-        let (width, height) = overlay_dimensions(OverlayCardShape::LiveOpen, 1.5, Material::Flat);
+        let (width, height) = overlay_dimensions(
+            OverlayCardShape::LiveOpen,
+            1.5,
+            Material::Flat,
+            BORDER_WIDTH_INHERIT,
+        );
         assert_eq!(
             windows_overlay_bounds(
                 monitor_position,

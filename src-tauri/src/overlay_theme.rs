@@ -397,7 +397,7 @@ pub fn merge(file: &OverlayTheme, settings: &OverlayTheme) -> OverlayTheme {
 /// thread. Until the theme file exists there is no cache to read and the file
 /// contributes nothing.
 pub fn resolve(app: &AppHandle) -> ResolvedOverlayTheme {
-    resolve_with_file(app, ThemeFileState::absent())
+    resolve_reloading_for(app, settings_theme(app))
 }
 
 /// [`resolve`], preceded by a fresh read of the theme file.
@@ -407,12 +407,28 @@ pub fn resolve(app: &AppHandle) -> ResolvedOverlayTheme {
 /// already calling the right function. The theme-file slice adds the read here,
 /// at which point this must only ever be called off the main thread.
 pub fn resolve_reloading(app: &AppHandle) -> ResolvedOverlayTheme {
-    resolve_with_file(app, ThemeFileState::absent())
+    resolve_reloading_for(app, settings_theme(app))
 }
 
-fn resolve_with_file(app: &AppHandle, file: ThemeFileState) -> ResolvedOverlayTheme {
-    let settings = crate::settings::get_settings(app);
-    resolve_from(settings.overlay_theme, file, glass_support(app))
+/// [`resolve_reloading`] for a caller that has already loaded the settings.
+///
+/// Reading the settings store is a full deserialize plus the migration pass
+/// (`settings::get_settings`), so a path that has just read them — the overlay
+/// show path, which reads `overlay_style` to decide whether to show at all —
+/// passes the tokens it already holds instead of paying for a second read on
+/// every recording.
+pub fn resolve_reloading_for(
+    app: &AppHandle,
+    settings_theme: OverlayTheme,
+) -> ResolvedOverlayTheme {
+    // The theme file's read lands here in the theme-file slice, which is what
+    // makes this and `resolve_reloading` off-main-thread-only from then on.
+    resolve_from(settings_theme, ThemeFileState::absent(), glass_support(app))
+}
+
+/// The overlay theme as persisted, before the theme file and the clamping.
+fn settings_theme(app: &AppHandle) -> OverlayTheme {
+    crate::settings::get_settings(app).overlay_theme
 }
 
 /// The whole resolution rule with nothing to look up: merge the file over the
@@ -440,9 +456,11 @@ pub fn resolve_from(
 ///
 /// Order matters: the webviews are told first because a repaint is the slowest
 /// link, then the native window is resized, because a change to `size_scale`
-/// changes how much room the card needs. Repositioning unconditionally is
-/// deliberate — it is cheap, the window is almost always hidden, and skipping
-/// it would need a previous-resolved snapshot to diff against.
+/// changes how much room the card needs. The resize takes the scale from the
+/// theme already resolved here, so nothing is resolved twice. It runs
+/// unconditionally rather than only when the scale changed: skipping it would
+/// need a previous-resolved snapshot to diff against, and what it costs is one
+/// main-thread hop and a native move on a window that is usually hidden.
 ///
 /// Never call this from inside a `run_on_main_thread` closure: every native
 /// call it reaches hops to the main thread itself.
@@ -465,7 +483,7 @@ pub fn deliver(app: &AppHandle, resolved: &ResolvedOverlayTheme) {
     // The Material's native window effect is applied between these two steps
     // once the Glass module exists: window slack, and therefore the window
     // size, depends on it.
-    crate::utils::update_overlay_position(app);
+    crate::utils::update_overlay_position_with_scale(app, resolved.theme.size_scale());
 }
 
 #[cfg(test)]

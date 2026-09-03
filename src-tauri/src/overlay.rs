@@ -33,30 +33,177 @@ tauri_panel! {
     })
 }
 
-// Native overlay window sizes (logical points). One window is reused for every
-// state and resized in `show_overlay_state`; each size need only be at least as
-// large as the card it hosts (the `--ov-*` vars in RecordingOverlay.css). The
-// card is CSS-anchored flush to the screen edge, so window height doesn't move
-// where the card sits — only OVERLAY_TOP_OFFSET / OVERLAY_BOTTOM_OFFSET do. Keep
-// these in sync with the CSS card geometry.
+// Native overlay window geometry (logical points). One window is reused for
+// every state and resized on every show, from
 //
-// Compact overlay (Minimal / transcribing / processing): the 40h pill animates
-// width from 172 (--ov-rest-w) to 216 (--ov-work-w) and expands from center, so
-// the window must fit the widest state plus a little slack.
-const OVERLAY_WIDTH: f64 = 256.0;
-const OVERLAY_HEIGHT: f64 = 46.0;
+//     window(form, scale) = ceil(card footprint × scale) + slack(form)
+//
+// where the card footprint is the card's largest footprint in that form at
+// size_scale 1 (border included) and the slack is the transparent margin that
+// keeps the card's morph animations inside the window. The card is CSS-anchored
+// flush to the screen edge, so window size doesn't move where the card sits —
+// only OVERLAY_TOP_OFFSET / OVERLAY_BOTTOM_OFFSET do.
+//
+// The card constants mirror the `--ov-*` block in RecordingOverlay.css; the
+// `overlay_window_constants_match_overlay_css` test parses that file and fails
+// if either side drifts.
 
-// Actual is 394x118, just a little extra
-const OVERLAY_STREAM_WIDTH: f64 = 400.0;
-const OVERLAY_STREAM_HEIGHT: f64 = 120.0;
+/// The card's border at size_scale 1, both sides: `.scard` is content-box and
+/// draws a 1 px hairline that scales with everything else, so the card's
+/// footprint is `(content + CARD_BORDER) × scale`.
+const CARD_BORDER: f64 = 2.0;
+/// Widest compact card (Minimal / transcribing / processing) at size_scale 1:
+/// `--ov-work-w` 216, the working pill, plus the border. The pill animates its
+/// width from `--ov-rest-w` 172 and expands from its centre, so the window must
+/// fit this widest state.
+const CARD_COMPACT_W: f64 = 216.0 + CARD_BORDER;
+/// Compact card height at size_scale 1: `--ov-base-h` 40, the control row, plus
+/// the border.
+const CARD_COMPACT_H: f64 = 40.0 + CARD_BORDER;
+/// Widest Live card at size_scale 1: `--ov-open-w` 392, the open panel, plus
+/// the border. Live opens from `--ov-pill-w` 184, so this is again the widest
+/// state.
+const CARD_LIVE_W: f64 = 392.0 + CARD_BORDER;
+/// Tallest Live card at size_scale 1: the control row `--ov-base-h` 40, the
+/// live-text region `--ov-cap-max-h` 64 and its `--ov-cap-pad-y` 12, plus the
+/// border.
+const CARD_LIVE_H: f64 = 40.0 + 64.0 + 12.0 + CARD_BORDER;
 
-/// Overlay window size (logical) for a given UI state.
-fn overlay_dimensions(state: &str) -> (f64, f64) {
-    if state == "streaming" {
-        (OVERLAY_STREAM_WIDTH, OVERLAY_STREAM_HEIGHT)
-    } else {
-        (OVERLAY_WIDTH, OVERLAY_HEIGHT)
+/// Window slack for the compact states, in logical points: 218 + 38 = 256 wide,
+/// 42 + 4 = 46 tall, i.e. exactly the window this overlay has always used.
+const COMPACT_SLACK: (f64, f64) = (38.0, 4.0);
+/// Window slack for the Live panel: 394 + 6 = 400 wide, 118 + 2 = 120 tall —
+/// again today's window.
+const LIVE_SLACK: (f64, f64) = (6.0, 2.0);
+
+// The four windows this overlay has always used, kept as named scale-1
+// fixtures for the tests below. They are `#[cfg(test)]` because no production
+// path reads a fixed size any more: every window is computed from the card and
+// the resolved size scale.
+/// Compact window width at size_scale 1.
+#[cfg(test)]
+const OVERLAY_WIDTH: f64 = CARD_COMPACT_W + COMPACT_SLACK.0;
+/// Compact window height at size_scale 1.
+#[cfg(test)]
+const OVERLAY_HEIGHT: f64 = CARD_COMPACT_H + COMPACT_SLACK.1;
+/// Live window width at size_scale 1.
+#[cfg(test)]
+const OVERLAY_STREAM_WIDTH: f64 = CARD_LIVE_W + LIVE_SLACK.0;
+/// Live window height at size_scale 1.
+#[cfg(test)]
+const OVERLAY_STREAM_HEIGHT: f64 = CARD_LIVE_H + LIVE_SLACK.1;
+
+/// Which card the overlay draws: the compact pill (Minimal, and the working
+/// states of both styles) or the Live panel.
+///
+/// The only distinction the native geometry makes — every other difference
+/// between the UI states happens inside the card, at a size the window already
+/// covers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum OverlayForm {
+    /// The pill: Minimal in every state, and Live before it opens.
+    Compact,
+    /// The Live panel, sized for its open footprint.
+    Live,
+}
+
+impl OverlayForm {
+    /// The form a UI state renders in.
+    ///
+    /// The one place the state strings the show path carries (`"recording"`,
+    /// `"transcribing"`, `"processing"`, `"streaming"`) are interpreted; the
+    /// geometry below never sees them.
+    fn from_state(state: &str) -> Self {
+        if state == "streaming" {
+            Self::Live
+        } else {
+            Self::Compact
+        }
     }
+
+    /// The card's largest footprint in this form at size_scale 1, borders
+    /// included.
+    fn card_footprint(self) -> (f64, f64) {
+        match self {
+            Self::Compact => (CARD_COMPACT_W, CARD_COMPACT_H),
+            Self::Live => (CARD_LIVE_W, CARD_LIVE_H),
+        }
+    }
+}
+
+/// The transparent margin between the card's largest footprint and the edge of
+/// the native overlay window, in logical points.
+///
+/// It exists so a card mid-morph is never clipped by the overlay page's
+/// `overflow: hidden`. Slack is the one term of the geometry rule that depends
+/// on how the surface is rendered: the Material slice gives this function a
+/// `Material` argument and returns `(0.0, 0.0)` under Glass, where the window
+/// rectangle *is* the card and any slack would paint blur outside it. Nothing
+/// else in the rule changes.
+fn overlay_slack(form: OverlayForm) -> (f64, f64) {
+    match form {
+        OverlayForm::Compact => COMPACT_SLACK,
+        OverlayForm::Live => LIVE_SLACK,
+    }
+}
+
+/// Overlay window size (logical points) for a card form at a given size scale.
+///
+/// The scaled card is rounded up before the slack is added, so the window is
+/// never a fraction of a point short of the card it hosts and every result is a
+/// whole number of points. `scale` is re-clamped here — the geometry boundary
+/// must never trust a number that reached it unclamped — using the same bounds
+/// as [`crate::overlay_theme::OverlayTheme::size_scale`], so the window and the
+/// card can never disagree about how far a token was allowed to go.
+fn overlay_dimensions(form: OverlayForm, scale: f64) -> (f64, f64) {
+    let scale = if scale.is_finite() {
+        scale.clamp(
+            crate::overlay_theme::SIZE_SCALE_MIN,
+            crate::overlay_theme::SIZE_SCALE_MAX,
+        )
+    } else {
+        1.0
+    };
+    let (card_width, card_height) = form.card_footprint();
+    let (slack_width, slack_height) = overlay_slack(form);
+
+    (
+        (card_width * scale).ceil() + slack_width,
+        (card_height * scale).ceil() + slack_height,
+    )
+}
+
+/// Whether the card on screen is the Live panel. Stored on every platform when
+/// the overlay is shown, and cleared when it is actually unmapped.
+///
+/// Geometry follows the card actually on screen, never `overlay_style`: a user
+/// who switches Live → Minimal while a Live panel is up must not have the
+/// window shrink under it.
+static OVERLAY_SHOWS_LIVE: AtomicBool = AtomicBool::new(false);
+
+/// The form the overlay is showing, or [`OverlayForm::Compact`] when it is
+/// hidden — the form its window will be created for next.
+fn current_overlay_form() -> OverlayForm {
+    if OVERLAY_SHOWS_LIVE.load(Ordering::Relaxed) {
+        OverlayForm::Live
+    } else {
+        OverlayForm::Compact
+    }
+}
+
+/// The size scale in effect, clamped, from the resolved overlay theme.
+///
+/// Resolves from the theme-file cache — no filesystem IO — so it is safe on the
+/// main thread, where the geometry runs. The show path resolves with a fresh
+/// file read instead, off the main thread.
+fn resolved_size_scale(app_handle: &AppHandle) -> f64 {
+    crate::overlay_theme::resolve(app_handle).theme.size_scale()
+}
+
+/// The compact window at the scale in effect: the size the overlay window is
+/// created at, before any card has been shown.
+fn initial_overlay_dimensions(app_handle: &AppHandle) -> (f64, f64) {
+    overlay_dimensions(OverlayForm::Compact, resolved_size_scale(app_handle))
 }
 
 static LAST_MIC_LEVEL_EMIT: AtomicU64 = AtomicU64::new(0);
@@ -89,11 +236,13 @@ fn configure_layer_shell_position(gtk_window: &gtk::ApplicationWindow, position:
     gtk_window.set_layer_shell_margin(opposite_edge, 0);
 }
 
-/// Configures a GTK layer surface before it is shown.
+/// Configures a GTK layer surface: its size, and its edge and offset.
 ///
 /// Tauri's normal `set_size` path calls `gtk_window_resize`, but layer surfaces
 /// derive their dimensions from GTK's size request. gtk-layer-shell documents
-/// the `set_size_request` + `resize(1, 1)` sequence for forcing a new size.
+/// the `set_size_request` + `resize(1, 1)` sequence for forcing a new size, and
+/// commits the new size request itself, including while the surface is mapped —
+/// so this is also how a visible overlay follows a size-scale change.
 #[cfg(target_os = "linux")]
 fn configure_layer_shell_surface(
     gtk_window: &gtk::ApplicationWindow,
@@ -132,8 +281,10 @@ fn init_gtk_layer_shell(overlay_window: &tauri::webview::WebviewWindow) -> bool 
         gtk_window.set_keyboard_mode(KeyboardMode::None);
         gtk_window.set_exclusive_zone(0);
 
-        let overlay_position = settings::get_settings(overlay_window.app_handle()).overlay_position;
-        configure_layer_shell_surface(&gtk_window, overlay_position, OVERLAY_WIDTH, OVERLAY_HEIGHT);
+        let app_handle = overlay_window.app_handle();
+        let overlay_position = settings::get_settings(app_handle).overlay_position;
+        let (width, height) = initial_overlay_dimensions(app_handle);
+        configure_layer_shell_surface(&gtk_window, overlay_position, width, height);
 
         let initialized = gtk_window.is_layer_window();
         LAYER_SHELL_ACTIVE.store(initialized, Ordering::SeqCst);
@@ -274,18 +425,6 @@ fn calculate_overlay_position(
     Some((x, y))
 }
 
-/// Current overlay window size in logical units (points), for repositioning
-/// without assuming a fixed size (compact vs. streaming).
-#[cfg(not(target_os = "windows"))]
-fn current_overlay_logical_size(window: &tauri::webview::WebviewWindow) -> Option<(f64, f64)> {
-    let size = window.inner_size().ok()?;
-    let scale = window.scale_factor().ok()?;
-    Some((size.width as f64 / scale, size.height as f64 / scale))
-}
-
-#[cfg(target_os = "windows")]
-static WINDOWS_OVERLAY_IS_STREAMING: AtomicBool = AtomicBool::new(false);
-
 /// Overlay rectangle in the destination monitor's physical pixels, so nothing
 /// is converted through the window's previous-monitor DPI.
 #[cfg(target_os = "windows")]
@@ -366,11 +505,16 @@ fn place_windows_overlay(
 /// Creates the recording overlay window and keeps it hidden by default
 #[cfg(not(target_os = "macos"))]
 pub fn create_recording_overlay(app_handle: &AppHandle) {
+    // Created at the compact size for the scale in effect. Every show resizes
+    // the window anyway; starting at the right size saves the first show one
+    // pointless resize.
+    let (width, height) = initial_overlay_dimensions(app_handle);
+
     // On Linux (Wayland), monitor detection often fails, but we don't need exact coordinates
     // for Layer Shell as we use anchors. On other platforms, we require a monitor.
     #[cfg(not(target_os = "linux"))]
     {
-        let position = calculate_overlay_position(app_handle, OVERLAY_WIDTH, OVERLAY_HEIGHT);
+        let position = calculate_overlay_position(app_handle, width, height);
         if position.is_none() {
             debug!("Failed to determine overlay position, not creating overlay window");
             return;
@@ -386,7 +530,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     )
     .title("Recording")
     .resizable(false)
-    .inner_size(OVERLAY_WIDTH, OVERLAY_HEIGHT)
+    .inner_size(width, height)
     .shadow(false)
     .maximizable(false)
     .minimizable(false)
@@ -428,7 +572,12 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
 /// Creates the recording overlay panel and keeps it hidden by default (macOS)
 #[cfg(target_os = "macos")]
 pub fn create_recording_overlay(app_handle: &AppHandle) {
-    if let Some((x, y)) = calculate_overlay_position(app_handle, OVERLAY_WIDTH, OVERLAY_HEIGHT) {
+    // Created at the compact size for the scale in effect. Every show resizes
+    // the panel anyway; starting at the right size saves the first show one
+    // pointless resize.
+    let (width, height) = initial_overlay_dimensions(app_handle);
+
+    if let Some((x, y)) = calculate_overlay_position(app_handle, width, height) {
         // PanelBuilder creates a Tauri window then converts it to NSPanel.
         // The window remains registered, so get_webview_window() still works.
         match PanelBuilder::<_, RecordingOverlayPanel>::new(app_handle, "recording_overlay")
@@ -436,10 +585,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
             .title("Recording")
             .position(tauri::Position::Logical(tauri::LogicalPosition { x, y }))
             .level(PanelLevel::Status)
-            .size(tauri::Size::Logical(tauri::LogicalSize {
-                width: OVERLAY_WIDTH,
-                height: OVERLAY_HEIGHT,
-            }))
+            .size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
             .has_shadow(false)
             .transparent(true)
             .no_activate(true)
@@ -472,6 +618,16 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
         return;
     }
 
+    // How much room the card needs comes from the resolved overlay theme.
+    // Resolving re-reads the theme file, so it happens here, on the calling
+    // thread, and only the resulting number crosses to the main thread; and it
+    // is handed the tokens from the settings just read above, so this path
+    // deserializes the store once, not twice. Every show re-resolves, so a
+    // scale changed since the last one is in effect on the first frame.
+    let scale = crate::overlay_theme::resolve_reloading_for(app_handle, settings.overlay_theme)
+        .theme
+        .size_scale();
+
     // The rest queries monitors and the cursor and mutates window geometry. On
     // Linux the monitor/cursor lookups hit GDK/Xlib on the process's shared X11
     // connection, which is only safe from the GTK main thread — running them on
@@ -482,12 +638,17 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
     // inline when already on the main thread, so this never deadlocks.
     let handle = app_handle.clone();
     let state = state.to_string();
-    let _ = app_handle.run_on_main_thread(move || show_overlay_state_on_main(&handle, &state));
+    let _ =
+        app_handle.run_on_main_thread(move || show_overlay_state_on_main(&handle, &state, scale));
 }
 
-fn show_overlay_state_on_main(app_handle: &AppHandle, state: &str) {
-    // Size the overlay for this state (compact vs. streaming), then position it.
-    let (width, height) = overlay_dimensions(state);
+fn show_overlay_state_on_main(app_handle: &AppHandle, state: &str, scale: f64) {
+    // Size the overlay for this state's card at the resolved scale, then
+    // position it. The form is recorded before anything else, so a reposition
+    // that lands mid-session sizes the window for the card actually on screen.
+    let form = OverlayForm::from_state(state);
+    OVERLAY_SHOWS_LIVE.store(form == OverlayForm::Live, Ordering::Relaxed);
+    let (width, height) = overlay_dimensions(form, scale);
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
         // Invalidate any delayed hide still in flight from a previous session
         // (see `hide_recording_overlay`).
@@ -515,8 +676,6 @@ fn show_overlay_state_on_main(app_handle: &AppHandle, state: &str) {
             #[cfg(not(target_os = "windows"))]
             let _ =
                 overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
-            #[cfg(target_os = "windows")]
-            WINDOWS_OVERLAY_IS_STREAMING.store(state == "streaming", Ordering::Relaxed);
             let size_elapsed = size_started.elapsed();
 
             let pos_started = std::time::Instant::now();
@@ -608,45 +767,63 @@ pub fn show_processing_overlay(app_handle: &AppHandle) {
     show_overlay_state(app_handle, "processing");
 }
 
-/// Updates the overlay window position based on current settings
+/// Updates the overlay window position and size from the current settings.
+///
+/// For callers that changed something other than the overlay theme — the
+/// position and style commands — and therefore have no resolved scale in hand.
 pub fn update_overlay_position(app_handle: &AppHandle) {
+    update_overlay_window(app_handle, None);
+}
+
+/// [`update_overlay_position`] with the size scale the caller already resolved.
+///
+/// The overlay-theme delivery path holds the resolved theme, so passing the
+/// scale here keeps the main-thread hop from resolving it a second time.
+pub fn update_overlay_position_with_scale(app_handle: &AppHandle, scale: f64) {
+    update_overlay_window(app_handle, Some(scale));
+}
+
+fn update_overlay_window(app_handle: &AppHandle, scale: Option<f64>) {
     // Positioning queries monitors/cursor (GDK/Xlib on Linux) and moves the
     // window, so it must run on the main thread — see show_overlay_state.
     let handle = app_handle.clone();
-    let _ = app_handle.run_on_main_thread(move || update_overlay_position_on_main(&handle));
+    let _ = app_handle.run_on_main_thread(move || update_overlay_position_on_main(&handle, scale));
 }
 
-fn update_overlay_position_on_main(app_handle: &AppHandle) {
+fn update_overlay_position_on_main(app_handle: &AppHandle, scale: Option<f64>) {
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+        // Every platform recomputes the size from the card on screen and the
+        // size scale, rather than reading the window's current size back from
+        // the OS. A scale change therefore resizes the window even while it is
+        // visible — without it the card would repaint larger inside the old
+        // window and be clipped.
+        let scale = scale.unwrap_or_else(|| resolved_size_scale(app_handle));
+        let (width, height) = overlay_dimensions(current_overlay_form(), scale);
+
         #[cfg(target_os = "linux")]
         if LAYER_SHELL_ACTIVE.load(Ordering::SeqCst) {
             let position = settings::get_settings(app_handle).overlay_position;
             match overlay_window.gtk_window() {
-                Ok(gtk_window) => configure_layer_shell_position(&gtk_window, position),
+                // Layer surfaces size themselves from GTK's size request, so
+                // the full configure (size request + anchors) is what applies a
+                // new size here.
+                Ok(gtk_window) => {
+                    configure_layer_shell_surface(&gtk_window, position, width, height)
+                }
                 Err(error) => log::error!("Failed to access GTK overlay window: {error}"),
             }
             return;
         }
 
         #[cfg(target_os = "windows")]
-        {
-            let state = if WINDOWS_OVERLAY_IS_STREAMING.load(Ordering::Relaxed) {
-                "streaming"
-            } else {
-                "recording"
-            };
-            let (width, height) = overlay_dimensions(state);
-            if let Err(error) = place_windows_overlay(app_handle, &overlay_window, width, height) {
-                log::error!("Failed to update recording overlay position: {error}");
-            }
+        if let Err(error) = place_windows_overlay(app_handle, &overlay_window, width, height) {
+            log::error!("Failed to update recording overlay position: {error}");
         }
 
         #[cfg(not(target_os = "windows"))]
         {
-            // Use the window's current size so centering stays correct whether the
-            // overlay is in compact or streaming layout.
-            let (width, height) = current_overlay_logical_size(&overlay_window)
-                .unwrap_or((OVERLAY_WIDTH, OVERLAY_HEIGHT));
+            let _ =
+                overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
             if let Some((x, y)) = calculate_overlay_position(app_handle, width, height) {
                 let _ = overlay_window
                     .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
@@ -682,6 +859,10 @@ pub fn hide_recording_overlay(app_handle: &AppHandle) {
                 log::debug!("Skipping stale overlay hide: a newer session is showing the overlay");
                 return;
             }
+            // Nothing is on screen any more, so the window has no form to keep.
+            // Cleared here rather than when the hide is scheduled, so a show
+            // that lands inside the 300 ms delay keeps the form it just set.
+            OVERLAY_SHOWS_LIVE.store(false, Ordering::Relaxed);
             let _ = window_clone.hide();
         });
     }
@@ -759,6 +940,123 @@ mod tests {
         assert!(!is_mouse_within_monitor((-1, 1240), &position, &size));
     }
 
+    /// The "defaults reproduce today's overlay exactly" pin: with no size token
+    /// set, every state gets the window this overlay has always used. The
+    /// literals are the sizes overlay.rs hardcoded before the token existed.
+    #[test]
+    fn overlay_dimensions_at_scale_one_match_todays_windows() {
+        for state in ["recording", "transcribing", "processing"] {
+            let form = OverlayForm::from_state(state);
+            assert_eq!(form, OverlayForm::Compact, "{state}");
+            assert_eq!(overlay_dimensions(form, 1.0), (256.0, 46.0), "{state}");
+        }
+        assert_eq!(OverlayForm::from_state("streaming"), OverlayForm::Live);
+        assert_eq!(overlay_dimensions(OverlayForm::Live, 1.0), (400.0, 120.0));
+
+        // The same four numbers as named fixtures, so the Windows bounds tests
+        // below keep exercising today's sizes.
+        assert_eq!((OVERLAY_WIDTH, OVERLAY_HEIGHT), (256.0, 46.0));
+        assert_eq!(
+            (OVERLAY_STREAM_WIDTH, OVERLAY_STREAM_HEIGHT),
+            (400.0, 120.0)
+        );
+    }
+
+    /// Expected values from ticket 06 §4's table: the card scales, the slack
+    /// does not.
+    #[test]
+    fn overlay_dimensions_scale_with_the_token() {
+        assert_eq!(overlay_dimensions(OverlayForm::Compact, 1.5), (365.0, 67.0));
+        assert_eq!(overlay_dimensions(OverlayForm::Live, 1.5), (597.0, 179.0));
+        assert_eq!(overlay_dimensions(OverlayForm::Compact, 0.8), (213.0, 38.0));
+        assert_eq!(overlay_dimensions(OverlayForm::Live, 0.8), (322.0, 97.0));
+    }
+
+    /// A scale that reached the geometry unclamped is treated as the nearest
+    /// bound, and a number that is no scale at all falls back to 1.
+    #[test]
+    fn overlay_dimensions_clamp_out_of_range_and_non_finite() {
+        assert_eq!(overlay_dimensions(OverlayForm::Live, 3.0), (597.0, 179.0));
+        assert_eq!(overlay_dimensions(OverlayForm::Compact, 0.1), (213.0, 38.0));
+        for broken in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(
+                overlay_dimensions(OverlayForm::Compact, broken),
+                (256.0, 46.0)
+            );
+        }
+    }
+
+    /// The invariant the Material slice must not break when it sets the slack
+    /// to zero: the window covers the card at every scale. The card footprints
+    /// are the token contract's own numbers (02 §7, 06 §4), not a repeat of the
+    /// arithmetic under test.
+    #[test]
+    fn overlay_window_always_covers_the_card() {
+        for (form, scale, card_width, card_height) in [
+            (OverlayForm::Compact, 0.80, 175.0, 34.0),
+            (OverlayForm::Live, 0.80, 316.0, 95.0),
+            (OverlayForm::Compact, 1.00, 218.0, 42.0),
+            (OverlayForm::Live, 1.00, 394.0, 118.0),
+            (OverlayForm::Compact, 1.50, 327.0, 63.0),
+            (OverlayForm::Live, 1.50, 591.0, 177.0),
+        ] {
+            let (width, height) = overlay_dimensions(form, scale);
+            assert!(
+                width >= card_width,
+                "{form:?} at {scale}: window {width} is narrower than the card's {card_width}"
+            );
+            assert!(
+                height >= card_height,
+                "{form:?} at {scale}: window {height} is shorter than the card's {card_height}"
+            );
+        }
+    }
+
+    /// The card constants above and the `--ov-*` block in RecordingOverlay.css
+    /// are two copies of the same geometry. This test is what keeps them one
+    /// number: it reads the CSS the overlay actually ships with and fails
+    /// naming the variable that drifted, instead of shipping a clipped card.
+    #[test]
+    fn overlay_window_constants_match_overlay_css() {
+        const CSS: &str = include_str!("../../src/overlay/RecordingOverlay.css");
+
+        /// The px length a `--ov-*` custom property is declared with. The
+        /// needle carries the colon, so `var(--ov-work-w)` usages never match —
+        /// only the `:root` declaration does.
+        fn css_px(css: &str, name: &str) -> f64 {
+            let needle = format!("{name}:");
+            let start = css
+                .find(&needle)
+                .unwrap_or_else(|| panic!("{name} is not declared in RecordingOverlay.css"));
+            let rest = &css[start + needle.len()..];
+            let end = rest
+                .find("px")
+                .unwrap_or_else(|| panic!("{name} is not a px length"));
+            rest[..end]
+                .trim()
+                .parse()
+                .unwrap_or_else(|_| panic!("{name} is not a number"))
+        }
+
+        // The card's hairline scales with the rest of it, so a footprint is the
+        // declared length plus CARD_BORDER, all times the scale.
+        assert_eq!(css_px(CSS, "--ov-work-w") + CARD_BORDER, CARD_COMPACT_W);
+        assert_eq!(css_px(CSS, "--ov-base-h") + CARD_BORDER, CARD_COMPACT_H);
+        assert_eq!(css_px(CSS, "--ov-open-w") + CARD_BORDER, CARD_LIVE_W);
+        assert_eq!(
+            css_px(CSS, "--ov-base-h")
+                + css_px(CSS, "--ov-cap-max-h")
+                + css_px(CSS, "--ov-cap-pad-y")
+                + CARD_BORDER,
+            CARD_LIVE_H
+        );
+
+        // Both morphs are a grow, so the widest card per form is the one the
+        // window is sized from above.
+        assert!(css_px(CSS, "--ov-rest-w") <= css_px(CSS, "--ov-work-w"));
+        assert!(css_px(CSS, "--ov-pill-w") <= css_px(CSS, "--ov-open-w"));
+    }
+
     #[cfg(target_os = "windows")]
     #[test]
     fn windows_cursor_hit_test_does_not_scale_physical_monitor_bounds() {
@@ -813,6 +1111,21 @@ mod tests {
                 OverlayPosition::Top,
             ),
             (3648, 6, 384, 69)
+        );
+
+        // A scaled window converts to physical pixels the same way and still
+        // lands on the bottom offset: 2160 - 269 - 40 * 1.5 = 1831.
+        let (width, height) = overlay_dimensions(OverlayForm::Live, 1.5);
+        assert_eq!(
+            windows_overlay_bounds(
+                monitor_position,
+                monitor_size,
+                1.5,
+                width,
+                height,
+                OverlayPosition::Bottom,
+            ),
+            (3392, 1831, 896, 269)
         );
     }
 

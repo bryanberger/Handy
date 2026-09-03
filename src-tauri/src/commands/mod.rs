@@ -1,6 +1,7 @@
 pub mod audio;
 pub mod history;
 pub mod models;
+pub mod overlay_preview;
 pub mod overlay_theme;
 pub mod transcription;
 

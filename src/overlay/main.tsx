@@ -7,6 +7,7 @@ import {
   getStoredTheme,
   syncThemeFromSettings,
 } from "@/lib/utils/theme";
+import { applyOverlayTheme, getStoredOverlayTheme } from "@/lib/overlayTheme";
 import type { Theme } from "@/bindings";
 import "@/i18n";
 
@@ -17,6 +18,13 @@ import "@/i18n";
 applyTheme(getStoredTheme());
 syncThemeFromSettings();
 listen<Theme>("theme-changed", (event) => applyTheme(event.payload));
+
+// Same reasoning for the overlay theme, with one difference: the card renders
+// nothing until it is shown, so this is not about a flash. It makes the pull in
+// the show handler failure-tolerant — if it throws, the root already carries the
+// user's last-known theme instead of Handy's built-in pink. Reconciled by that
+// handler and by `resolved-overlay-theme`.
+applyOverlayTheme(document.documentElement, getStoredOverlayTheme());
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

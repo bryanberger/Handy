@@ -961,6 +961,21 @@ async reloadOverlayThemeFile() : Promise<Result<ResolvedOverlayTheme, string>> {
 }
 },
 /**
+ * Show the real overlay for a few seconds, driven by synthetic audio.
+ * 
+ * `sample_text` is the Live panel's transcript, passed in already translated so
+ * i18n stays entirely on the frontend. Resolves when the overlay is hidden
+ * again, so the caller can disable its button for the duration.
+ */
+async previewOverlayOnScreen(sampleText: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_overlay_on_screen", { sampleText }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Checks if the Mac is a laptop by detecting battery presence
  * 
  * This uses pmset to check for battery information.

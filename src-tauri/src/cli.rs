@@ -24,6 +24,12 @@ pub struct CliArgs {
     #[arg(long)]
     pub cancel: bool,
 
+    /// Show the recording overlay for a few seconds with synthetic audio, so an
+    /// overlay theme can be judged without a microphone (sent to running
+    /// instance)
+    #[arg(long)]
+    pub preview_overlay: bool,
+
     /// Enable debug mode with verbose logging
     #[arg(long)]
     pub debug: bool,

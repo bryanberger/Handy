@@ -766,6 +766,7 @@ pub fn run(cli_args: CliArgs) {
             commands::overlay_theme::change_overlay_theme_setting,
             commands::overlay_theme::get_resolved_overlay_theme,
             commands::overlay_theme::reload_overlay_theme_file,
+            commands::overlay_preview::preview_overlay_on_screen,
             helpers::clamshell::is_laptop,
         ])
         .events(collect_events![
@@ -860,6 +861,21 @@ pub fn run(cli_args: CliArgs) {
                 signal_handle::send_transcription_input(app, "transcribe_with_post_process", "CLI");
             } else if args.iter().any(|a| a == "--cancel") {
                 crate::utils::cancel_current_operation(app);
+            } else if args.iter().any(|a| a == "--preview-overlay") {
+                // Runtime-only, like the flags above: it changes nothing that is
+                // persisted. The sample text cannot come from the frontend here,
+                // so the CLI's fixed English sentence is used.
+                let handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(error) = commands::overlay_preview::run_overlay_preview(
+                        handle,
+                        commands::overlay_preview::CLI_PREVIEW_SAMPLE_TEXT.to_string(),
+                    )
+                    .await
+                    {
+                        log::warn!("--preview-overlay: {error}");
+                    }
+                });
             } else {
                 // A second process was launched without remote-control flags
                 // (e.g. the binary run from a shell). On macOS, relaunching the

@@ -1,3 +1,4 @@
+use crate::commands::overlay_preview;
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::transcription::TranscriptionManager;
 use crate::shortcut;
@@ -83,15 +84,39 @@ fn native_windows_machine() -> Option<u16> {
 
 /// Centralized cancellation function that can be called from anywhere in the app.
 /// Handles cancelling both recording and transcription operations and updates UI state.
+///
+/// Every cancel entry point funnels through here — the `cancel_operation`
+/// command (the overlay's own cancel button), the `--cancel` CLI flag, the
+/// cancel shortcut and the tray item — which is what lets the on-screen overlay
+/// preview be handled in exactly one place.
 pub fn cancel_current_operation(app: &AppHandle) {
     info!("Initiating operation cancellation...");
+
+    // The preview drives the same overlay a real session does, so a cancel that
+    // arrives while one is on screen is the preview's — but only while nothing
+    // real is running. A recording that overtook the preview still gets its
+    // full cancel below, because swallowing that one would strand a session.
+    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
+    let recording_was_active = audio_manager.is_recording();
+    match overlay_preview::cancel_disposition(
+        overlay_preview::is_previewing(),
+        recording_was_active,
+    ) {
+        overlay_preview::CancelDisposition::CancelOperation => {}
+        overlay_preview::CancelDisposition::EndPreviewOnly => {
+            overlay_preview::cancel_preview();
+            info!("Cancellation handled by the overlay preview; nothing else was running");
+            return;
+        }
+        overlay_preview::CancelDisposition::EndPreviewAndCancel => {
+            overlay_preview::cancel_preview();
+        }
+    }
 
     // Unregister the cancel shortcut asynchronously
     shortcut::unregister_cancel_shortcut(app);
 
     // Cancel any ongoing recording
-    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
-    let recording_was_active = audio_manager.is_recording();
     audio_manager.cancel_recording();
 
     // Abandon any live streaming transcription

@@ -4,12 +4,14 @@ import { useTranslation } from "react-i18next";
 import "./RecordingOverlay.css";
 import { commands, events } from "@/bindings";
 import type {
+  ResolvedOverlayTheme,
   StreamPhase,
   StreamPhaseEvent,
   StreamTextEvent,
   StreamWorkKind,
 } from "@/bindings";
 import i18n, { syncLanguageFromSettings } from "@/i18n";
+import { applyOverlayTheme, storeOverlayTheme } from "@/lib/overlayTheme";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 
 type OverlayState = "recording" | "streaming" | "transcribing" | "processing";
@@ -17,6 +19,13 @@ type OverlayState = "recording" | "streaming" | "transcribing" | "processing";
 // Number of reactive bars in the waveform (the simple, smoothed style shared by
 // every overlay form). Mic levels arrive as 16 FFT buckets; we take the first N.
 const WAVE_BARS = 9;
+
+// Paint a resolved overlay theme and remember it for the next boot. Both the
+// pull on show and the push on change do exactly this.
+const paintOverlayTheme = (resolved: ResolvedOverlayTheme) => {
+  applyOverlayTheme(document.documentElement, resolved);
+  storeOverlayTheme(resolved);
+};
 
 const RecordingOverlay: React.FC = () => {
   const { t } = useTranslation();
@@ -68,16 +77,27 @@ const RecordingOverlay: React.FC = () => {
 
         await syncLanguageFromSettings();
         // The Live panel flows downward from a top overlay and upward from a
-        // bottom one; read the placement so the layout can flip to match.
+        // bottom one; read the placement so the layout can flip to match. The
+        // overlay theme is pulled alongside it, so the card is painted from the
+        // same resolved theme the backend holds — one round trip for both.
         try {
-          const settings = await commands.getAppSettings();
+          const [settings, resolved] = await Promise.all([
+            commands.getAppSettings(),
+            commands.getResolvedOverlayTheme(),
+          ]);
           if (settings.status === "ok") {
             setPosition(
               settings.data.overlay_position === "top" ? "top" : "bottom",
             );
           }
+          if (resolved.status === "ok") {
+            // Imperative, not an effect: the custom properties and
+            // `data-material` must be on the root before the first painted
+            // frame, which an effect would leave to React's batching.
+            paintOverlayTheme(resolved.data);
+          }
         } catch {
-          // Keep the previous/default placement if settings can't be read.
+          // Keep the previous/default placement and theme if either read fails.
         }
         setState(overlayState);
         if (overlayState === "streaming") {
@@ -115,6 +135,12 @@ const RecordingOverlay: React.FC = () => {
         setStreamText(event.payload);
       });
 
+      // The theme can change while the overlay is visible (a slider drag in the
+      // Appearance tab), so repaint on every push as well.
+      const unlistenTheme = await events.resolvedOverlayTheme.listen((event) =>
+        paintOverlayTheme(event.payload),
+      );
+
       const unlistenPhase = await events.streamPhaseEvent.listen((event) => {
         const payload: StreamPhaseEvent = event.payload;
         setPhase(payload.phase);
@@ -127,6 +153,7 @@ const RecordingOverlay: React.FC = () => {
         unlistenReady();
         unlistenLevel();
         unlistenStream();
+        unlistenTheme();
         unlistenPhase();
       };
     };
@@ -176,7 +203,9 @@ const RecordingOverlay: React.FC = () => {
         <i
           key={i}
           style={{
-            height: `${Math.max(3, Math.min(18, 3 + Math.pow(v, 0.7) * 15))}px`,
+            // The bar heights are computed here, so they are the one length the
+            // CSS cannot scale on its own: multiply by --ov-scale inline.
+            height: `calc(${Math.max(3, Math.min(18, 3 + Math.pow(v, 0.7) * 15))}px * var(--ov-scale))`,
           }}
         />
       ))}

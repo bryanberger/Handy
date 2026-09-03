@@ -29,6 +29,13 @@ bun run build      # Build frontend (TypeScript + Vite)
 bun run preview    # Preview built frontend
 ```
 
+**Tests:**
+
+```bash
+bun run test:unit         # Bun unit tests for frontend modules (bun test src)
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust tests
+```
+
 **Linting and Formatting (run before committing):**
 
 ```bash
@@ -180,6 +187,7 @@ Handy supports command-line parameters on all platforms for integration with scr
 | `--toggle-transcription` | Toggle recording on/off on a running instance              |
 | `--toggle-post-process`  | Toggle recording with post-processing on/off               |
 | `--cancel`               | Cancel the current operation on a running instance         |
+| `--preview-overlay`      | Show the overlay for a few seconds to check its theme      |
 | `--start-hidden`         | Launch without showing the main window (tray icon visible) |
 | `--no-tray`              | Launch without system tray (closing window quits the app)  |
 | `--debug`                | Enable debug mode with verbose (Trace) logging             |

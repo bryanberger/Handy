@@ -908,6 +908,59 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 }
 },
 /**
+ * Persist the whole overlay theme.
+ * 
+ * The frontend always sends the complete nine-token object: setting one token,
+ * clearing one token (reset to inherit) and resetting the whole theme are all
+ * this one call with a different object. That keeps the settings store's
+ * optimistic write and its rollback — both keyed on a single `AppSettings`
+ * field — working unchanged.
+ * 
+ * Values are clamped before they are stored, so nothing out of range ever
+ * reaches the store, the native geometry or the frontend.
+ */
+async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_overlay_theme_setting", { theme }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The current resolved overlay theme, from the theme-file cache.
+ * 
+ * A pure pull: it does no filesystem IO, emits nothing and touches no native
+ * window, which is why the overlay can call it inside the settings read it
+ * already awaits when it is about to become visible.
+ */
+async getResolvedOverlayTheme() : Promise<Result<ResolvedOverlayTheme, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_resolved_overlay_theme") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Resolve the overlay theme, deliver it, and return it.
+ * 
+ * **There is no theme file yet**, so today this only re-resolves: it is the
+ * seam the Appearance tab already calls on mount and from its Reload button.
+ * It is `async` from the start because the theme-file slice adds a filesystem
+ * read here, and `async` is what keeps that read off the main thread — Tauri
+ * runs a sync command inline on the IPC thread and spawns an `async fn` on the
+ * runtime, so changing this later would change where the read lands.
+ */
+async reloadOverlayThemeFile() : Promise<Result<ResolvedOverlayTheme, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reload_overlay_theme_file") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Checks if the Mac is a laptop by detecting battery presence
  * 
  * This uses pmset to check for battery information.
@@ -928,10 +981,12 @@ async isLaptop() : Promise<Result<boolean, string>> {
 
 export const events = __makeEvents__<{
 historyUpdatePayload: HistoryUpdatePayload,
+resolvedOverlayTheme: ResolvedOverlayTheme,
 streamPhaseEvent: StreamPhaseEvent,
 streamTextEvent: StreamTextEvent
 }>({
 historyUpdatePayload: "history-update-payload",
+resolvedOverlayTheme: "resolved-overlay-theme",
 streamPhaseEvent: "stream-phase-event",
 streamTextEvent: "stream-text-event"
 })
@@ -1004,7 +1059,14 @@ vad_backend?: VadBackend;
  * not gated on this — that follows model capability. Migrated from the old
  * `overlay_position` (position `none` → style `None`).
  */
-overlay_style?: OverlayStyle }
+overlay_style?: OverlayStyle; 
+/**
+ * Overlay theme tokens (accent, surface, material, sizes, spacing). Every
+ * token is optional and absent means *inherit* — the overlay uses Handy's
+ * built-in, theme-aware value — so a settings store written before this
+ * field existed reproduces today's overlay exactly.
+ */
+overlay_theme?: OverlayTheme }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type AvailableAccelerators = { transcribe: string[]; ort: string[]; gpu_devices: GpuDeviceOption[] }
@@ -1018,7 +1080,32 @@ export type EngineType =
  * the file, so this one variant covers the whole transcribe-cpp family.
  */
 "TranscribeCpp" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "Canary" | "Cohere"
+/**
+ * Whether Glass can render.
+ */
+export type GlassSupport = { 
+/**
+ * The platform can render Glass at all. macOS only; a compile-time fact.
+ * Drives whether the Appearance tab's Glass option is selectable.
+ */
+supported: boolean; 
+/**
+ * Glass renders right now: `supported`, the effect view is installed, and
+ * macOS "Reduce transparency" is off. Drives what is actually painted.
+ */
+available: boolean }
 export type GpuDeviceOption = { id: string; name: string; total_vram_mb: number }
+/**
+ * A canonical `#rrggbb` colour.
+ * 
+ * Parsing is lenient — `#RGB` shorthand, a missing `#`, any case, surrounding
+ * whitespace — and always yields lowercase `#rrggbb`; 4- and 8-digit forms
+ * (which would carry alpha) and CSS colour names are rejected. This is the
+ * only string that ever reaches a CSS custom property, and it is re-serialised
+ * from this type rather than echoed, so no value from a settings store or a
+ * theme file is ever passed through verbatim.
+ */
+export type HexColor = string
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }
 export type HistoryUpdatePayload = { action: "added"; entry: HistoryEntry } | { action: "updated"; entry: HistoryEntry } | { action: "deleted"; id: number } | { action: "toggled"; id: number }
 /**
@@ -1037,6 +1124,21 @@ key_down: number; key_up: number; flags_changed: number; mouse: number; duration
 export type KeyboardImplementation = "tauri" | "handy_keys"
 export type LLMPrompt = { id: string; name: string; prompt: string }
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error"
+/**
+ * How the overlay surface is rendered: Flat (opaque) or Glass (translucent,
+ * blurring whatever is behind it).
+ */
+export type Material = 
+/**
+ * An opaque surface. The only Material outside macOS, and the fallback
+ * whenever Glass cannot render.
+ */
+"flat" | 
+/**
+ * A translucent surface backed by a native blur of whatever is behind the
+ * overlay window. macOS only.
+ */
+"glass"
 export type ModelInfo = { id: string; name: string; description: string; filename: string; source: ModelSource; size_mb: number; is_downloaded: boolean; is_downloading: boolean; partial_size: number; is_directory: boolean; engine_type: EngineType; accuracy_score: number; speed_score: number; supports_translation: boolean; is_recommended: boolean; supported_languages: string[]; supports_language_selection: boolean; is_custom: boolean; supports_streaming: boolean; supports_language_detection: boolean }
 export type ModelLoadStatus = { is_loaded: boolean; current_model: string | null }
 /**
@@ -1073,11 +1175,87 @@ export type OverlayPosition = "top" | "bottom"
  * streaming mode (that is driven purely by model capability).
  */
 export type OverlayStyle = "none" | "minimal" | "live"
+/**
+ * The nine overlay-theme tokens. `None` means *inherit*.
+ * 
+ * Field names are literally the theme-file keys. Every field deserializes
+ * leniently: a value of the wrong type or shape degrades to `None` with a
+ * `warn!`, so one bad token can never cost the other eight — the same
+ * principle `salvage_settings` applies one level up. The settings store's
+ * leniency is silent salvage (log only); the theme file applies the same rules
+ * but reports diagnostics, which is why it runs its own per-key pass instead
+ * of deserializing an `OverlayTheme` directly.
+ */
+export type OverlayTheme = { 
+/**
+ * Highlight colour: waveform bars, recording dot, caret, spinner arc.
+ */
+accent?: HexColor | null; 
+/**
+ * The card's background colour.
+ */
+surface?: HexColor | null; 
+/**
+ * The card background's alpha, 0.30–1.00.
+ */
+surface_opacity?: number | null; 
+/**
+ * The card's foreground colour, and the base every neutral derives from.
+ */
+text?: HexColor | null; 
+/**
+ * Flat or Glass. See [`effective_material`] for what is actually rendered.
+ */
+material?: Material | null; 
+/**
+ * One factor multiplying every length in the card, 0.80–1.50.
+ */
+size_scale?: number | null; 
+/**
+ * The card's corner radius at scale 1, 0–32 px.
+ */
+radius?: number | null; 
+/**
+ * The card's inner horizontal padding at scale 1, 0–20 px.
+ */
+padding?: number | null; 
+/**
+ * Gap between waveform bars at scale 1, 0–5 px.
+ */
+waveform_gap?: number | null }
 export type PaginatedHistory = { entries: HistoryEntry[]; has_more: boolean }
 export type PasteMethod = "ctrl_v" | "direct" | "none" | "shift_insert" | "ctrl_shift_v" | "external_script"
 export type PermissionAccess = "allowed" | "denied" | "unknown"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
+/**
+ * The whole answer to "how does the overlay look right now".
+ * 
+ * Command result **and** event payload, so the overlay's pull on show and the
+ * push on change carry the identical type.
+ */
+export type ResolvedOverlayTheme = { 
+/**
+ * `file ?? settings ?? inherit`, per key, clamped. `None` still means
+ * inherit: the apply layer writes no custom property for it.
+ */
+theme: OverlayTheme; 
+/**
+ * Concrete, never `None`: the requested Material downgraded to Flat when
+ * Glass is unavailable.
+ */
+effective_material: Material; 
+/**
+ * Whether Glass is offerable and whether it can render right now. Read by
+ * the Appearance tab instead of a platform check in TypeScript, so the two
+ * sides cannot disagree.
+ */
+glass_support: GlassSupport; 
+/**
+ * What the theme file contributed, including which tokens it owns and what
+ * the reader had to ignore.
+ */
+file: ThemeFileState }
 export type SecretMap = Partial<{ [key in string]: string }>
 export type SecureInputStatus = { 
 /**
@@ -1168,6 +1346,104 @@ export type StreamWorkKind = "transcribing" | "polishing"
  * and `Dark` force one of the two palettes Handy already ships.
  */
 export type Theme = "system" | "light" | "dark"
+/**
+ * One thing the theme file got wrong, reported to the Appearance tab.
+ * 
+ * `Deserialize` is required because this rides in the `resolved-overlay-theme`
+ * event payload, and listening for an event deserializes it.
+ */
+export type ThemeFileDiagnostic = { 
+/**
+ * What went wrong, as a stable identity the tab can translate.
+ */
+code: ThemeFileDiagnosticCode; 
+/**
+ * The token key, or `None` for a document-level problem. Doubles as the
+ * parameter for the translated message.
+ */
+key: string | null; 
+/**
+ * English, deliberately untranslated: it names JSON keys and values, and
+ * it is what goes to the log.
+ */
+message: string }
+/**
+ * What kind of thing the theme file got wrong.
+ * 
+ * A stable, translatable identity for a diagnostic: the Appearance tab looks
+ * up an i18n string by code and passes [`ThemeFileDiagnostic::key`] as a
+ * parameter, so the user reads their own language while
+ * [`ThemeFileDiagnostic::message`] keeps the English detail for the log.
+ */
+export type ThemeFileDiagnosticCode = 
+/**
+ * The document is not valid JSON, or not a JSON object.
+ */
+"malformed_document" | 
+/**
+ * The document declares a `version` this build does not know; it is parsed
+ * best-effort.
+ */
+"unsupported_version" | 
+/**
+ * A top-level key that is not a token and not `version`; ignored.
+ */
+"unknown_key" | 
+/**
+ * A token whose value is not the JSON type the contract requires.
+ */
+"wrong_type" | 
+/**
+ * A colour that is not a `#rrggbb` value this contract accepts.
+ */
+"invalid_color" | 
+/**
+ * A number outside the token's bounds; clamped to the nearest bound.
+ */
+"out_of_bounds" | 
+/**
+ * The file exists but could not be read (permissions, size, encoding).
+ */
+"unreadable"
+/**
+ * What the theme file currently contributes.
+ * 
+ * Populated by the theme-file reader; until that lands every resolve uses
+ * [`ThemeFileState::absent`], so the payload shape — and therefore the
+ * generated TypeScript bindings — is already final.
+ */
+export type ThemeFileState = { 
+/**
+ * The file in effect, or the path Handy would read if one appeared.
+ */
+path: string; 
+/**
+ * Whether a theme file was actually found and read at [`Self::path`].
+ */
+present: boolean; 
+/**
+ * The document's declared `version`, or `None` when it is absent or the
+ * file is not present. A missing version means 1.
+ */
+version: number | null; 
+/**
+ * The file's contribution to the merge.
+ */
+tokens: OverlayTheme; 
+/**
+ * The keys the file actually sets. These are the tab's lock markers: a
+ * file-owned token cannot be edited from the settings window.
+ */
+owned_keys: string[]; 
+/**
+ * Everything the reader had to ignore or clamp, in document order. The tab
+ * renders a capped list of these; all of them also go to the log.
+ */
+diagnostics: ThemeFileDiagnostic[]; 
+/**
+ * True when a failed read kept the previous, good document.
+ */
+stale: boolean }
 export type TranscribeAcceleratorSetting = "auto" | "cpu" | "gpu"
 export type TypingTool = "auto" | "wtype" | "kwtype" | "dotool" | "ydotool" | "xdotool"
 export type VadBackend = "silero" | "earshot"

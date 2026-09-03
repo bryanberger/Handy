@@ -14,6 +14,7 @@ mod llm_client;
 mod managers;
 mod memory;
 mod overlay;
+mod overlay_theme;
 mod paste_tx;
 pub mod portable;
 mod secure_input;
@@ -762,12 +763,16 @@ pub fn run(cli_args: CliArgs) {
             commands::history::retry_history_entry_transcription,
             commands::history::update_history_limit,
             commands::history::update_recording_retention_period,
+            commands::overlay_theme::change_overlay_theme_setting,
+            commands::overlay_theme::get_resolved_overlay_theme,
+            commands::overlay_theme::reload_overlay_theme_file,
             helpers::clamshell::is_laptop,
         ])
         .events(collect_events![
             managers::history::HistoryUpdatePayload,
             managers::transcription::StreamTextEvent,
             managers::transcription::StreamPhaseEvent,
+            overlay_theme::ResolvedOverlayTheme,
         ]);
 
     #[cfg(debug_assertions)] // <- Only export on non-release builds

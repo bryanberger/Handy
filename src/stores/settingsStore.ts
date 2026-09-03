@@ -6,6 +6,7 @@ import type {
   AudioDevice,
   TranscribeAcceleratorSetting,
   OrtAcceleratorSetting,
+  OverlayTheme,
   ShortcutActivation,
   VadBackend,
 } from "@/bindings";
@@ -194,6 +195,11 @@ const settingUpdaters: {
     commands.changeTranscribeGpuDevice(value as string | null),
   extra_recording_buffer_ms: (value) =>
     commands.changeExtraRecordingBufferSetting(value as number),
+  // One key for all nine tokens: the whole object is sent every time, so the
+  // store's optimistic write and rollback work unchanged and a whole-theme
+  // reset is `resetSetting("overlay_theme")`.
+  overlay_theme: (value) =>
+    commands.changeOverlayThemeSetting(value as OverlayTheme),
 };
 
 export const useSettingsStore = create<SettingsStore>()(

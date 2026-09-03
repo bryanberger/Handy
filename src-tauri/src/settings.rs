@@ -1,3 +1,4 @@
+use crate::overlay_theme::OverlayTheme;
 use crate::utils;
 use log::{debug, warn};
 use serde::de::{self, Visitor};
@@ -514,6 +515,12 @@ pub struct AppSettings {
     /// `overlay_position` (position `none` → style `None`).
     #[serde(default = "default_overlay_style")]
     pub overlay_style: OverlayStyle,
+    /// Overlay theme tokens (accent, surface, material, sizes, spacing). Every
+    /// token is optional and absent means *inherit* — the overlay uses Handy's
+    /// built-in, theme-aware value — so a settings store written before this
+    /// field existed reproduces today's overlay exactly.
+    #[serde(default)]
+    pub overlay_theme: OverlayTheme,
 }
 
 fn default_model() -> String {
@@ -970,6 +977,7 @@ pub fn get_default_settings() -> AppSettings {
         vad_enabled: default_vad_enabled(),
         vad_backend: VadBackend::default(),
         overlay_style: default_overlay_style(),
+        overlay_theme: OverlayTheme::default(),
     }
 }
 
@@ -1261,6 +1269,26 @@ mod tests {
         assert!(settings.filler_word_removal_enabled);
         // Bindings default to empty; the load path merges the real defaults in.
         assert!(settings.bindings.is_empty());
+    }
+
+    /// Salvage tier two: an `overlay_theme` that is not an object at all fails
+    /// `OverlayTheme::deserialize`, so the existing per-key salvage drops that
+    /// one key and leaves the other settings — and all nine tokens — intact.
+    #[test]
+    fn non_object_overlay_theme_is_salvaged_to_default() {
+        let stored = serde_json::json!({
+            "overlay_theme": "nope",
+            "hold_threshold_ms": 500,
+        });
+
+        assert!(
+            serde_json::from_value::<AppSettings>(stored.clone()).is_err(),
+            "a non-object overlay_theme must fail the strict parse"
+        );
+
+        let salvaged = salvage_settings(&stored);
+        assert_eq!(salvaged.overlay_theme, OverlayTheme::default());
+        assert_eq!(salvaged.hold_threshold_ms, 500);
     }
 
     /// Frozen snapshot of a real v0.9.0-era settings store, as written to

@@ -1,10 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { PathDisplay } from "@/components/ui/PathDisplay";
 import { SettingContainer } from "@/components/ui/SettingContainer";
+import { INHERIT_ALL, type OverlayThemeKey } from "@/lib/overlayTheme";
+import { commands } from "@/bindings";
 import type {
   OverlayTheme,
   ResolvedOverlayTheme,
@@ -13,12 +15,15 @@ import type {
 
 /** The settings-window theme as the v1 document a theming tool would read:
  *  only set tokens are emitted, so an all-inherit theme copies as
- *  `{"version": 1}` (ticket 07 §3). Used by `OverlayPreview`'s "Copy theme as
- *  JSON" button; it lives here, beside the rest of the theme-file contract,
- *  rather than in a component file that imports CSS. */
+ *  `{"version": 1}` (ticket 07 §3). Keys are emitted in the contract's own
+ *  order (`INHERIT_ALL` declares it) rather than whatever order the runtime
+ *  object happens to carry, so the copied document is byte-identical to the
+ *  contract's examples. Used by `OverlayPreview`'s "Copy theme as JSON"
+ *  button; it lives here, beside the rest of the theme-file contract, rather
+ *  than in a component file that imports CSS. */
 export function themeAsJsonDocument(theme: OverlayTheme): string {
   const doc: Record<string, unknown> = { version: 1 };
-  (Object.keys(theme) as (keyof OverlayTheme)[]).forEach((key) => {
+  (Object.keys(INHERIT_ALL) as OverlayThemeKey[]).forEach((key) => {
     const value = theme[key];
     if (value !== null && value !== undefined) doc[key] = value;
   });
@@ -51,18 +56,6 @@ export function moreDiagnosticsCount(total: number, shown: number): number {
 
 const MAX_SHOWN_DIAGNOSTICS = 5;
 
-/** The directory containing `filePath`. No Rust command reports whether it
- *  exists, so — like `AppDataDirectory`'s Open button — this only guards
- *  against an empty path and otherwise lets the OS report a missing folder. */
-function containingDirectory(filePath: string): string {
-  const trimmed = filePath.replace(/[\\/]+$/, "");
-  const lastSlash = Math.max(
-    trimmed.lastIndexOf("/"),
-    trimmed.lastIndexOf("\\"),
-  );
-  return lastSlash > 0 ? trimmed.slice(0, lastSlash) : trimmed;
-}
-
 export interface ThemeFileGroupProps {
   file: ResolvedOverlayTheme["file"];
   onReload: () => void;
@@ -84,12 +77,31 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  // Two paths, because the app is only granted `opener:default` — which
+  // covers `reveal_item_in_dir` but *not* `open_path`, so revealing is all the
+  // frontend can do on its own. When the file exists, reveal it (Finder /
+  // Explorer opens its folder with the file selected). When it does not,
+  // there is nothing to reveal, so fall back to the Rust command that opens
+  // the app data directory — the same `open_app_data_dir` `AppDataDirectory`
+  // uses, and the directory the file is meant to be created in.
+  //
+  // Caveat: with `HANDY_OVERLAY_THEME_FILE` pointing somewhere else and no
+  // file there yet, that fallback opens the app data directory rather than
+  // the env-named one. An explicit override with a missing target is a
+  // warning case already, and no command reports that directory.
   const handleOpen = async () => {
     if (!file.path) return;
     try {
-      await openPath(containingDirectory(file.path));
+      if (file.present) {
+        await revealItemInDir(file.path);
+        return;
+      }
+      const result = await commands.openAppDataDir();
+      if (result.status === "error") {
+        console.error("Failed to open the app data directory:", result.error);
+      }
     } catch (error) {
-      console.error("Failed to open the theme file's directory:", error);
+      console.error("Failed to show the theme file's directory:", error);
     }
   };
 

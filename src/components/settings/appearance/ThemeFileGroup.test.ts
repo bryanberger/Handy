@@ -71,4 +71,29 @@ describe("themeAsJsonDocument", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, material: "glass" };
     expect(() => JSON.parse(themeAsJsonDocument(theme))).not.toThrow();
   });
+
+  test("serializes exactly like the contract's examples", () => {
+    // Ticket 07 §2/§3: two-space indent, `version` first, tokens after it in
+    // the contract's own table order — not whatever order the runtime object
+    // happens to carry. This is the document a theming tool is handed, so its
+    // shape is part of the contract.
+    expect(themeAsJsonDocument(INHERIT_ALL)).toBe('{\n  "version": 1\n}');
+
+    const theme: OverlayTheme = {
+      ...INHERIT_ALL,
+      radius: 12,
+      accent: "#7aa2f7",
+      material: "glass",
+    };
+    expect(themeAsJsonDocument(theme)).toBe(
+      [
+        "{",
+        '  "version": 1,',
+        '  "accent": "#7aa2f7",',
+        '  "material": "glass",',
+        '  "radius": 12',
+        "}",
+      ].join("\n"),
+    );
+  });
 });

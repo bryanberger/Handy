@@ -10,14 +10,15 @@ import { useTranslation } from "react-i18next";
 import { Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { commands } from "@/bindings";
-import type { ResolvedOverlayTheme } from "@/bindings";
+import type { OverlayTheme, ResolvedOverlayTheme } from "@/bindings";
+import type { OverlayColorKey } from "@/lib/overlayTheme";
 import OverlayCard from "@/overlay/OverlayCard";
 import { cardFootprint, computeFit, type CardBaseMetrics } from "./fitScale";
 import { OverlayThemeReset } from "./OverlayThemeReset";
 import { themeAsJsonDocument } from "./ThemeFileGroup";
 import {
-  pinnableStatesFor,
   useOverlayPreviewDriver,
+  type OverlayPreviewStyle,
   type PreviewStateName,
 } from "./useOverlayPreviewDriver";
 import "./OverlayPreview.css";
@@ -31,15 +32,17 @@ const PROBE_STYLE = (cssVar: string): CSSProperties => ({
 });
 
 export interface OverlayPreviewProps {
-  style: "minimal" | "live";
+  style: OverlayPreviewStyle;
   position: "top" | "bottom";
   direction: "ltr" | "rtl";
   previewTheme: ResolvedOverlayTheme;
+  /** The settings-window theme on its own — what "Copy theme as JSON" puts on
+   *  the clipboard (ticket 07 §3), which is deliberately *not* `previewTheme`:
+   *  that one has the theme file's own values folded in, and copying those
+   *  back out would hand a tool author a document echoing its own input. */
+  settingsTheme: OverlayTheme;
   previewVars: CSSProperties;
-  colorProbeRefs: Record<
-    "accent" | "surface" | "text",
-    React.RefObject<HTMLSpanElement>
-  >;
+  colorProbeRefs: Record<OverlayColorKey, React.RefObject<HTMLSpanElement>>;
   resetDisabled: boolean;
   hasThemeFileOwnership: boolean;
   onResetConfirm: () => void;
@@ -58,6 +61,7 @@ export const OverlayPreview: React.FC<OverlayPreviewProps> = ({
   position,
   direction,
   previewTheme,
+  settingsTheme,
   previewVars,
   colorProbeRefs,
   resetDisabled,
@@ -150,29 +154,41 @@ export const OverlayPreview: React.FC<OverlayPreviewProps> = ({
   };
 
   const [copied, setCopied] = useState(false);
+  // Cleared on unmount (and before a second copy restarts it) so the timer
+  // can never call setState on a tab the user has already navigated away from.
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
+    },
+    [],
+  );
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(
-        themeAsJsonDocument(previewTheme.theme),
-      );
+      await navigator.clipboard.writeText(themeAsJsonDocument(settingsTheme));
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
     } catch (error) {
       console.error("Failed to copy the overlay theme as JSON:", error);
     }
   };
 
-  const requestedGlass = previewTheme.theme.material === "glass";
+  // Both captions key off `glass_support`, never off what was requested:
+  // `supported === false` is the platform fact ("macOS only"), and
+  // `supported && !available` is a Mac that cannot render Glass right now.
+  // The payload carries no reason for the latter, so the copy names none.
+  const glassSupport = previewTheme.glass_support;
   const showGlassNote = effectiveMaterial === "glass";
-  const showGlassUnavailable = requestedGlass && effectiveMaterial !== "glass";
-
-  const availableStates = pinnableStatesFor(style);
+  const showGlassUnsupported = !glassSupport.supported;
+  const showGlassUnavailable =
+    glassSupport.supported && !glassSupport.available;
 
   return (
     <div className="space-y-2 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1">
-          {availableStates.map((name: PreviewStateName) => (
+          {driver.availableStates.map((name: PreviewStateName) => (
             <button
               key={name}
               type="button"
@@ -296,9 +312,14 @@ export const OverlayPreview: React.FC<OverlayPreviewProps> = ({
           {t("settings.appearance.preview.glassNote")}
         </p>
       )}
-      {showGlassUnavailable && (
+      {showGlassUnsupported && (
         <p className="text-xs text-mid-gray">
           {t("settings.appearance.preview.glassUnavailable")}
+        </p>
+      )}
+      {showGlassUnavailable && (
+        <p className="text-xs text-mid-gray">
+          {t("settings.appearance.material.unavailableNote")}
         </p>
       )}
 

@@ -8,7 +8,7 @@ import { useSettings } from "@/hooks/useSettings";
 import {
   INHERIT_ALL,
   SURFACE_OPACITY_INHERIT,
-  type OverlayThemeKey,
+  type OverlayNumericKey,
 } from "@/lib/overlayTheme";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 import type {
@@ -36,7 +36,7 @@ import { EMPTY_FILE_STATE, useOverlayThemeVars } from "./useOverlayThemeVars";
  *  is excluded — its default depends on the effective Material and is read
  *  from the apply layer's own `SURFACE_OPACITY_INHERIT` instead, so it can
  *  never drift from what is actually painted. */
-const STATIC_NUMERIC_DEFAULTS: Partial<Record<OverlayThemeKey, number>> = {
+const STATIC_NUMERIC_DEFAULTS: Partial<Record<OverlayNumericKey, number>> = {
   size_scale: 1,
   radius: 24,
   padding: 10,
@@ -44,7 +44,7 @@ const STATIC_NUMERIC_DEFAULTS: Partial<Record<OverlayThemeKey, number>> = {
 };
 
 function numericDefault(
-  key: OverlayThemeKey,
+  key: OverlayNumericKey,
   effectiveMaterial: Material,
 ): number {
   if (key === "surface_opacity")
@@ -79,8 +79,7 @@ const AppearanceSettingsInner: React.FC = () => {
   const { resolved, isReloading, reload } = useResolvedOverlayTheme();
   const { draft, setDraft, flush, flushAll, reset } = useDraftSetting();
 
-  const style: OverlayStyle =
-    (settings?.overlay_style as OverlayStyle) ?? "live";
+  const style: OverlayStyle = settings?.overlay_style ?? "live";
   const position: OverlayPosition =
     settings?.overlay_position === "top" ? "top" : "bottom";
 
@@ -97,79 +96,78 @@ const AppearanceSettingsInner: React.FC = () => {
   const renderField = (field: OverlayTokenField) => {
     const locked = vars.isLocked(field.key);
 
-    if (field.kind === "color") {
-      const colorKey = field.key as "accent" | "surface" | "text";
-      return (
-        <ColorField
-          key={field.key}
-          label={t(field.labelKey)}
-          description={t(field.descriptionKey)}
-          value={vars.effectiveValue(field.key) as string | null}
-          resolvedDefault={vars.resolvedDefaults[colorKey]}
-          onChange={(hex) => setDraft(field.key, hex)}
-          onCommitNow={() => void flush(field.key)}
-          onReset={() => reset(field.key)}
-          locked={locked}
-          lockedDescription={lockedDescription}
-          isResetting={resettingWhole}
-        />
-      );
-    }
-
-    if (field.kind === "length" || field.kind === "factor") {
-      const resolvedValue = vars.effectiveValue(field.key) as number | null;
-      const value =
-        resolvedValue ?? numericDefault(field.key, vars.effectiveMaterial);
-      return (
-        <div
-          key={field.key}
-          onPointerUp={() => void flush(field.key)}
-          // React's synthetic onBlur bubbles (unlike the native `blur`
-          // event), so this fires when the range input inside loses focus —
-          // e.g. tabbing away mid-drag, which onPointerUp alone would miss.
-          onBlur={() => void flush(field.key)}
-        >
-          <Slider
-            grouped
-            descriptionMode="tooltip"
+    switch (field.kind) {
+      case "color":
+        return (
+          <ColorField
+            key={field.key}
             label={t(field.labelKey)}
-            description={locked ? lockedDescription : t(field.descriptionKey)}
-            value={value}
-            onChange={(next) => setDraft(field.key, next)}
-            min={field.min}
-            max={field.max}
-            step={field.step}
-            disabled={locked}
-            formatValue={(v) =>
-              field.kind === "length"
-                ? `${Math.round(v)}px`
-                : `${v.toFixed(2)}×`
-            }
+            description={t(field.descriptionKey)}
+            value={vars.effectiveValue(field.key)}
+            resolvedDefault={vars.resolvedDefaults[field.key]}
+            onChange={(hex) => setDraft(field.key, hex)}
+            onCommitNow={() => void flush(field.key)}
             onReset={() => reset(field.key)}
+            locked={locked}
+            lockedDescription={lockedDescription}
             isResetting={resettingWhole}
           />
-        </div>
-      );
-    }
+        );
 
-    // kind === "enum": the one enum token, Material, gets its own selector
-    // (platform gating, the Reduce Transparency note) rather than a generic
-    // dropdown, but still lives in this table so the group is driven the
-    // same way as Color and Size & Spacing.
-    const materialValue =
-      (vars.effectiveValue("material") as Material | null) ?? "flat";
-    return (
-      <MaterialSelector
-        key={field.key}
-        value={materialValue}
-        onSelect={(next) => void setOverlayThemeToken("material", next)}
-        glassSupport={
-          resolved?.glass_support ?? { supported: false, available: false }
-        }
-        locked={locked}
-        lockedDescription={lockedDescription}
-      />
-    );
+      case "length":
+      case "factor": {
+        const isLength = field.kind === "length";
+        const value =
+          vars.effectiveValue(field.key) ??
+          numericDefault(field.key, vars.effectiveMaterial);
+        return (
+          <div
+            key={field.key}
+            onPointerUp={() => void flush(field.key)}
+            // React's synthetic onBlur bubbles (unlike the native `blur`
+            // event), so this fires when the range input inside loses focus —
+            // e.g. tabbing away mid-drag, which onPointerUp alone would miss.
+            onBlur={() => void flush(field.key)}
+          >
+            <Slider
+              grouped
+              descriptionMode="tooltip"
+              label={t(field.labelKey)}
+              description={locked ? lockedDescription : t(field.descriptionKey)}
+              value={value}
+              onChange={(next) => setDraft(field.key, next)}
+              min={field.min}
+              max={field.max}
+              step={field.step}
+              disabled={locked}
+              formatValue={(v) =>
+                isLength ? `${Math.round(v)}px` : `${v.toFixed(2)}×`
+              }
+              onReset={() => reset(field.key)}
+              isResetting={resettingWhole}
+            />
+          </div>
+        );
+      }
+
+      // The one enum token, Material, gets its own selector (the Glass
+      // gating and the unavailable note) rather than a generic dropdown, but
+      // still lives in the descriptor table so the group is driven the same
+      // way as Color and Size & Spacing.
+      case "enum":
+        return (
+          <MaterialSelector
+            key={field.key}
+            value={vars.effectiveValue(field.key) ?? "flat"}
+            onSelect={(next) => void setOverlayThemeToken(field.key, next)}
+            glassSupport={
+              resolved?.glass_support ?? { supported: false, available: false }
+            }
+            locked={locked}
+            lockedDescription={lockedDescription}
+          />
+        );
+    }
   };
 
   return (
@@ -193,6 +191,7 @@ const AppearanceSettingsInner: React.FC = () => {
             position={position}
             direction={direction}
             previewTheme={vars.previewTheme}
+            settingsTheme={overlayTheme}
             previewVars={vars.previewVars}
             colorProbeRefs={vars.colorProbeRefs}
             resetDisabled={resetDisabled}

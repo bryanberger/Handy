@@ -37,6 +37,8 @@ function resolved(
       tokens: INHERIT_ALL,
       owned_keys: [],
       diagnostics: [],
+      // Added by slice 4's review, after this fixture was first written.
+      diagnostics_total: 0,
       stale: false,
     },
   };

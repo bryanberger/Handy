@@ -96,6 +96,42 @@ export function parseComputedColor(value: string): string | null {
   return `#${clampedHex(Number(rgbFn[1]))}${clampedHex(Number(rgbFn[2]))}${clampedHex(Number(rgbFn[3]))}`;
 }
 
+/**
+ * Whether two flat maps hold the same entries.
+ *
+ * The preview hangs its layout effects off two such maps — the resolved custom
+ * properties and the probed colours — and object *identity* is not a safe
+ * stand-in for "unchanged" for either of them. React is free to re-derive a
+ * `useState` value (it re-runs a functional updater on a re-render, and does so
+ * twice per render under `StrictMode`), so `draft` can arrive as a fresh object
+ * holding exactly the same tokens; anything memoized on its identity then
+ * churns too. When a layout effect keyed on that identity also sets state
+ * unconditionally, every commit leaves another sync update pending and React
+ * eventually throws "Maximum update depth exceeded". Comparing by value at both
+ * ends — the memo's key and the effect's payload — is what breaks that cycle.
+ *
+ * Exported for the unit tests; nothing outside this file imports it.
+ */
+export function sameStringMap(
+  a: Record<string, string | null>,
+  b: Record<string, string | null>,
+): boolean {
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((key) => key in b && a[key] === b[key]);
+}
+
+/**
+ * `next`, but with a reference that only changes when its entries do — the
+ * "hold the last value" cache React documents for refs, so a fresh-but-equal
+ * map cannot invalidate a dependency array.
+ */
+function useStableMap<T extends Record<string, string | null>>(next: T): T {
+  const held = useRef(next);
+  if (!sameStringMap(held.current, next)) held.current = next;
+  return held.current;
+}
+
 export interface UseOverlayThemeVarsResult {
   /** The resolved theme with the in-flight draft merged in — what the
    *  preview and its "Show on screen" counterpart should agree on. */
@@ -136,12 +172,10 @@ export function useOverlayThemeVars(
 ): UseOverlayThemeVarsResult {
   const baseTheme = resolved?.theme ?? INHERIT_ALL;
 
-  // Memoized so the object identity is stable across renders that don't
-  // actually change `resolved` or `draft` — the layout effect below depends
-  // on `previewVars`, and without this it would be a *new* object on every
-  // render (including ones caused by unrelated state elsewhere in the tree),
-  // re-firing the effect, calling setState, causing another render: an
-  // infinite "Maximum update depth exceeded" loop.
+  // Memoized so most renders reuse the same object. It is deliberately *not*
+  // what the layout effect below keys off: `draft` can be re-derived into a
+  // fresh-but-equal object, which would give this a new identity too (see
+  // `sameStringMap`).
   const previewTheme: ResolvedOverlayTheme = useMemo(() => {
     return resolved
       ? {
@@ -156,10 +190,12 @@ export function useOverlayThemeVars(
         };
   }, [resolved, draft]);
 
-  const previewVars = useMemo(
-    () => resolveOverlayThemeVars(previewTheme) as unknown as CSSProperties,
-    [previewTheme],
-  );
+  // The one value the preview's layout effects (here and `OverlayPreview`'s
+  // fit measurement) depend on, so its reference must change if and only if a
+  // custom property actually changed.
+  const previewVars = useStableMap(
+    useMemo(() => resolveOverlayThemeVars(previewTheme), [previewTheme]),
+  ) as unknown as CSSProperties;
 
   const accentRef = useRef<HTMLSpanElement>(null);
   const surfaceRef = useRef<HTMLSpanElement>(null);
@@ -176,6 +212,10 @@ export function useOverlayThemeVars(
     Record<OverlayColorKey, string | null>
   >({ accent: null, surface: null, text: null });
 
+  const lastMeasured = useRef<Record<OverlayColorKey, string | null> | null>(
+    null,
+  );
+
   // Runs before paint, so the first frame already shows a measured value —
   // re-read whenever the vars we just wrote (or the app theme) could have
   // changed what the probes resolve to.
@@ -184,13 +224,21 @@ export function useOverlayThemeVars(
       ref.current
         ? parseComputedColor(getComputedStyle(ref.current).color)
         : null;
-    setResolvedDefaults({
+    const measured = {
       accent: read(accentRef),
       surface: read(surfaceRef),
       text: read(textRef),
-    });
-    // previewVars only gets a new identity when `resolved`/`draft` actually
-    // change (it's memoized above), which is exactly the "on any token
+    };
+    // Skipping the call, rather than relying on React to bail out of it, is
+    // the point: a *scheduled* update inside a layout effect counts towards
+    // the nested-update limit even when it renders to the same tree.
+    if (lastMeasured.current && sameStringMap(lastMeasured.current, measured)) {
+      return;
+    }
+    lastMeasured.current = measured;
+    setResolvedDefaults(measured);
+    // `previewVars` only gets a new identity when a custom property actually
+    // changed (`useStableMap`, above), which is exactly the "on any token
     // change" trigger this effect wants; the three refs are stable for the
     // component's lifetime and do not need to be listed.
   }, [previewVars, remeasureSignal]);

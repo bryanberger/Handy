@@ -15,6 +15,18 @@
   height: 100%;
 }
 
+/* Reuse hazard 2: on screen the card is flush against its screen edge
+   (`align-items: flex-end` / `flex-start`), which inside a 148px stage reads as
+   the card falling out of the bottom of the stage. The stage is not a screen, so
+   centre it — the Top/Bottom choice still shows in the card's own layout (Live
+   stacks the pill above the text at the top) and in the hairline at that edge.
+   `.ov-stage.top` is (0,2,0), so the `.top` override needs its own, more
+   specific (0,3,0) selector rather than riding on the first one. */
+.ov-preview .ov-stage,
+.ov-preview .ov-stage.top {
+  align-items: center;
+}
+
 /* The preview's cancel button is decorative — `inert` already strips pointer
    events and focus, this just keeps the hover affordance from lighting up
    under a plain mouse-over (`inert` support aside). */

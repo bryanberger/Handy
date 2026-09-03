@@ -76,6 +76,11 @@ export const OverlayPreview: React.FC<OverlayPreviewProps> = ({
 
   const stageRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(1);
+  // Mirrors `fit` so the measurement below can skip an unchanged update
+  // without listing `fit` itself as a dependency (which would give
+  // `recomputeFit` — and so the layout effect and the ResizeObserver — a new
+  // identity on every fit change).
+  const fitRef = useRef(1);
 
   const recomputeFit = useCallback(() => {
     const stageEl = stageRef.current;
@@ -93,11 +98,21 @@ export const OverlayPreview: React.FC<OverlayPreviewProps> = ({
     };
     const footprint = cardFootprint(style, scale, base);
     const rect = stageEl.getBoundingClientRect();
-    setFit(
-      computeFit(rect.width, rect.height, footprint.width, footprint.height),
+    const next = computeFit(
+      rect.width,
+      rect.height,
+      footprint.width,
+      footprint.height,
     );
-    // `previewVars` is not read directly, but a fresh object each render is
-    // exactly the "token or scale changed" signal this needs to re-measure.
+    // Skipping an unchanged update matters here, not just for tidiness: this
+    // runs from a layout effect, and an update scheduled during a commit
+    // counts towards React's nested-update limit even when it changes nothing.
+    if (next === fitRef.current) return;
+    fitRef.current = next;
+    setFit(next);
+    // `previewVars` is not read directly; its reference changes exactly when a
+    // custom property does (`useStableMap` in `useOverlayThemeVars`), which is
+    // the "token or scale changed" signal this needs to re-measure on.
   }, [style, previewVars]);
 
   useLayoutEffect(() => {
@@ -264,20 +279,24 @@ export const OverlayPreview: React.FC<OverlayPreviewProps> = ({
           className="ov-preview-stage relative h-[148px] w-full overflow-hidden rounded-lg"
           data-material={effectiveMaterial}
         >
+          {/* A hairline at the screen edge the overlay is anchored to. The card
+              itself is centred in the stage (see OverlayPreview.css), so this is
+              the only thing left saying "Top" or "Bottom" for the compact pill;
+              it is kept deliberately faint so it reads as an annotation rather
+              than as an edge the card should be resting on. */}
           <div
             aria-hidden="true"
-            className={`pointer-events-none absolute inset-x-0 border-mid-gray/30 ${
-              position === "top" ? "top-0 border-t-2" : "bottom-0 border-b-2"
+            className={`pointer-events-none absolute inset-x-0 border-mid-gray/20 ${
+              position === "top" ? "top-0 border-t" : "bottom-0 border-b"
             }`}
           />
           <div
             className="h-full w-full"
+            // The card is centred, so the shrink pulls towards the middle
+            // rather than towards one edge.
             style={
               fit < 1
-                ? {
-                    transform: `scale(${fit})`,
-                    transformOrigin: position === "top" ? "50% 0%" : "50% 100%",
-                  }
+                ? { transform: `scale(${fit})`, transformOrigin: "50% 50%" }
                 : undefined
             }
           >

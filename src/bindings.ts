@@ -1420,11 +1420,11 @@ export type OverlayPosition = "top" | "bottom"
  */
 export type OverlayStyle = "none" | "minimal" | "live"
 /**
- * The sixteen overlay-theme tokens. `None` means inherit.
+ * The seventeen overlay-theme tokens. `None` means inherit.
  * 
  * Field names are the theme-file keys, and every field deserializes
  * leniently: a wrong type or shape degrades to `None` with a `warn!`, so one
- * bad token never costs the other fifteen, as `salvage_settings` does one
+ * bad token never costs the other sixteen, as `salvage_settings` does one
  * level up. The store salvages silently (log only); the theme file applies
  * the same rules but reports diagnostics, so it runs its own per-key pass
  * instead of deserializing an `OverlayTheme`.

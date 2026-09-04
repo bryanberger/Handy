@@ -309,8 +309,8 @@
       },
       "tokens": {
         "edgeMargin": {
-          "title": "Edge Margin",
-          "description": "How far the overlay sits from the screen edge it is anchored to. 0 is flush against the usable edge — below the menu bar and above the Dock on macOS, inside the work area on Windows, inside the area panels leave on Linux. Unaffected by the size scale."
+          "title": "هامش الحافة",
+          "description": "مدى بُعد التراكب عن حافة الشاشة المثبّت إليها. القيمة 0 تلصقه بالحافة القابلة للاستخدام — أسفل شريط القوائم وفوق الـ Dock في macOS، وداخل منطقة العمل في Windows، وداخل المنطقة التي تتركها اللوحات في Linux مع layer shell. لا يتأثر بمقياس الحجم."
         },
         "accent": {
           "title": "لون التمييز",

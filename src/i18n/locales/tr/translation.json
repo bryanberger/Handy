@@ -332,8 +332,8 @@
       },
       "tokens": {
         "edgeMargin": {
-          "title": "Edge Margin",
-          "description": "How far the overlay sits from the screen edge it is anchored to. 0 is flush against the usable edge — below the menu bar and above the Dock on macOS, inside the work area on Windows, inside the area panels leave on Linux. Unaffected by the size scale."
+          "title": "Kenar Boşluğu",
+          "description": "Ekran katmanının, bağlı olduğu ekran kenarından ne kadar uzakta duracağı. 0 onu kullanılabilir kenara yaslar — macOS'te menü çubuğunun altına ve Dock'un üstüne, Windows'ta çalışma alanının içine, Linux'ta layer shell ile panellerin bıraktığı alanın içine. Boyut ölçeğinden etkilenmez."
         },
         "accent": {
           "title": "Vurgu",

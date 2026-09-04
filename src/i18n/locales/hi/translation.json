@@ -332,8 +332,8 @@
       },
       "tokens": {
         "edgeMargin": {
-          "title": "Edge Margin",
-          "description": "How far the overlay sits from the screen edge it is anchored to. 0 is flush against the usable edge — below the menu bar and above the Dock on macOS, inside the work area on Windows, inside the area panels leave on Linux. Unaffected by the size scale."
+          "title": "किनारे से दूरी",
+          "description": "ओवरले जिस स्क्रीन किनारे से जुड़ा है, उससे कितनी दूर रहेगा। 0 उसे उपयोग-योग्य किनारे से बिल्कुल सटा देता है — macOS पर मेन्यू बार के नीचे और Dock के ऊपर, Windows पर वर्क एरिया के अंदर, और Linux पर layer shell के साथ पैनल जो जगह छोड़ते हैं उसके अंदर। इस पर साइज़ स्केल का असर नहीं होता।"
         },
         "accent": {
           "title": "एक्सेंट",

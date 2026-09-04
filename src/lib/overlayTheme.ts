@@ -226,7 +226,7 @@ export function inheritedBorder(
 /**
  * Each numeric token's single-number inherit, from `RecordingOverlay.css`.
  *
- * Two tokens are missing, the two whose inherit is not a single number:
+ * Two are missing, the two whose inherit is not a single number:
  * `border_opacity`, which follows the Material and the Glass style, and
  * `edge_margin`, which follows the platform and the anchored screen edge and
  * is therefore resolved in Rust and carried on the resolved theme.
@@ -251,14 +251,14 @@ const STATIC_NUMERIC_INHERIT: Record<
  * parameters because one token's inherit depends on them, the card's edge being
  * stronger over glass; `edgeMargin` is one because another's depends on the
  * platform and the anchored screen edge, which only Rust knows. Asking for all
- * three unconditionally keeps callers from having to know which token is which.
+ * three unconditionally saves callers knowing which token is which.
  *
  * `edgeMargin` is `effective_edge_margin` off the resolved theme, the same
  * number the native window is placed from, so the slider cannot show a gap the
- * overlay does not have. Passing anything else here is a lie about the screen,
- * so `null` (no resolved theme yet) comes back out as `null` for that token
- * alone: the caller has nothing true to show and holds the row back until it
- * does. Every other token's inherit is a constant and never null.
+ * overlay does not have. Anything else would be a lie about the screen, so
+ * `null` (no resolved theme yet) comes back out as `null` for that token alone,
+ * the caller having nothing true to show. Every other token's inherit is a
+ * constant and never null.
  *
  * The numbers live here beside the two alphas above, not in the Appearance
  * tab, so one module answers "what does an unset token inherit".

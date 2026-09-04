@@ -4,16 +4,15 @@
 //! Everything the overlay window's size, its blur's corner radius and its
 //! screen position are a function of lives here: the card's shapes, the
 //! transparent slack around them, the theme tokens that change how much room
-//! the card needs, and the edge margin that decides how far the card sits from
-//! the usable screen edge. It is pure code, with no `AppHandle`, no platform
-//! `cfg` and no AppKit, so the arithmetic deciding whether a card fits its
-//! window, and where that window lands, is tested on its own, on any host,
-//! rather than through the window creation, monitor queries and show/hide
-//! sequencing in [`crate::overlay`], its only caller.
+//! the card needs, and the edge margin that sets how far the card sits from the
+//! usable screen edge. It is pure code, with no `AppHandle`, no platform `cfg`
+//! and no AppKit, so whether a card fits its window, and where that window
+//! lands, is tested on its own on any host rather than through the window
+//! creation, monitor queries and show/hide sequencing in [`crate::overlay`],
+//! its only caller.
 //!
-//! All three platforms' placement lives here for that reason: each one only
-//! runs in its own build, so a `#[cfg]`-gated formula is a formula nobody's
-//! CI ever checks.
+//! All three platforms' placement lives here for that reason: each only runs in
+//! its own build, so a `#[cfg]`-gated formula is one nobody's CI checks.
 //!
 //! The card constants mirror the `--ov-*` block in `RecordingOverlay.css`, and
 //! `overlay_window_constants_match_overlay_css` fails if either side drifts.
@@ -390,9 +389,8 @@ impl CardMetrics {
 
 /// Which platform's placement rules apply.
 ///
-/// A value rather than a `#[cfg]` so every platform's edge margins are
-/// asserted on every host. [`Self::current`] is the one line that reads the
-/// build target.
+/// A value rather than a `#[cfg]` so every platform's edge margins are asserted
+/// on every host; [`Self::current`] alone reads the build target.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[allow(dead_code)] // Two of the three are always the other builds'.
 pub(crate) enum Platform {
@@ -423,38 +421,36 @@ impl Platform {
 /// The margin an unset `edge_margin` inherits, in logical points, per platform
 /// and per anchored edge.
 ///
-/// Every one of these reproduces where the overlay sits today, on that
-/// platform's usual configuration, now that the margin is measured from the
-/// *usable* edge rather than the raw monitor edge:
+/// Each reproduces where the overlay sits today on that platform's usual
+/// configuration, now that the margin is measured from the *usable* edge
+/// rather than the raw monitor edge:
 ///
 /// - **macOS Top, 21.** Today's placement is the raw display top plus 46, and
 ///   the menu bar plus its 1 pt separator is 25 of that on a non-notched Mac,
-///   so 46 - 25 = 21. Nothing reproduces today's pixels on *every* Mac, since
-///   that 25 is 38 on a notched laptop, 30 on Tahoe (measured as
+///   so 46 - 25 = 21. No number reproduces today's pixels on *every* Mac: that
+///   25 is 38 on a notched laptop, 30 on Tahoe (measured as
 ///   `frame.maxY - visibleFrame.maxY` on macOS 26.6.1, so the Top card lands
 ///   at 30 + 21 = 51, five points below today's 46), and moves with the
-///   display-scaling setting; 21 keeps Big Sur through Sequoia identical and
-///   moves the others further from the menu bar, never under it. Deliberately
-///   one number and not a version-conditional table: the shift is always
-///   *away* from the bar, so it costs a few points of margin and never
-///   legibility, while a per-version default would put the inherit back where
-///   it was, dependent on the display it is read on. The constant was born
-///   work-area-relative and lost the reference in PR #969; this restores it.
+///   display-scaling setting. 21 keeps Big Sur through Sequoia identical and
+///   moves the others further from the menu bar, never under it. One number
+///   rather than a version-conditional table: the shift is always *away* from
+///   the bar, costing a few points of margin and never legibility, while a
+///   per-version default would depend on the display it is read on. The
+///   constant lost its work-area reference in PR #969; this restores it.
 /// - **macOS Bottom, 15.** Already measured from `visibleFrame`, so this is
 ///   today's number unchanged, on every display and with any Dock setting.
-/// - **Windows Top, 4.** Today's 4 from the raw top, which equals the work
-///   area's top for any bottom- or side-docked taskbar. A top-docked taskbar
-///   is the one case that moves: the card now clears it instead of sitting on
-///   it.
+/// - **Windows Top, 4.** Today's 4 from the raw top, which is the work area's
+///   top for any bottom- or side-docked taskbar. Only a top-docked taskbar
+///   moves the card: it now clears the bar instead of sitting on it.
 /// - **Windows Bottom, 0.** Today's 40 from the raw bottom is exactly a
-///   Windows 10 taskbar's height, i.e. flush with the work area. Windows 11's
+///   Windows 10 taskbar's height, so flush with the work area. Windows 11's
 ///   48 pt bar makes the card sit on the taskbar rather than overlap it, and
-///   an auto-hidden taskbar leaves no work-area inset at all, so the card goes
-///   to the screen edge, as it already does on macOS beside a hidden Dock.
-/// - **Linux Top 4 / Bottom 40.** Layer shell already measures its margins
-///   from the area panels leave (the exclusive zone stays 0), so these are
-///   today's numbers unchanged. On the X11 fallback the reference becomes the
-///   work area, so the card clears a panel it used to hide behind.
+///   an auto-hidden taskbar leaves no work-area inset, so the card goes to the
+///   screen edge, as it already does on macOS beside a hidden Dock.
+/// - **Linux Top 4 / Bottom 40.** Layer shell already measures margins from
+///   the area panels leave (the exclusive zone stays 0), so these are today's
+///   numbers unchanged. On the X11 fallback the reference becomes the work
+///   area, so the card clears a panel it used to hide behind.
 pub(crate) fn inherit_edge_margin(platform: Platform, position: OverlayPosition) -> u16 {
     match (platform, position) {
         (Platform::MacOs, OverlayPosition::Top) => 21,
@@ -469,19 +465,18 @@ pub(crate) fn inherit_edge_margin(platform: Platform, position: OverlayPosition)
 /// One monitor's rectangles, as the placement below needs them.
 ///
 /// `position` and `size` are the full display, because the card is centred on
-/// the display and always has been: centring on the work area instead would
-/// slide it sideways whenever a Dock or taskbar is docked left or right.
-/// `work_top` and `work_bottom` are the usable edges, the ones `edge_margin`
-/// is measured from. Every field is in that monitor's physical pixels, the
-/// coordinate space Tauri reports both rectangles in, with `scale` the factor
-/// back to logical points.
+/// the display and always has been: centring on the work area would slide it
+/// sideways whenever a Dock or taskbar is docked left or right. `work_top` and
+/// `work_bottom` are the usable edges, the ones `edge_margin` is measured from.
+/// Every field is in that monitor's physical pixels, the space Tauri reports
+/// both rectangles in, with `scale` the factor back to logical points.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct MonitorBounds {
     pub(crate) position: PhysicalPosition<i32>,
     pub(crate) size: PhysicalSize<u32>,
-    /// The work area's top edge: below the macOS menu bar, below a top-docked
-    /// Windows taskbar, below an X11 top panel. Equal to `position.y` wherever
-    /// the platform reports no work area (Wayland without layer shell).
+    /// The work area's top edge: below the macOS menu bar, a top-docked Windows
+    /// taskbar, an X11 top panel. Equal to `position.y` where the platform
+    /// reports no work area (Wayland without layer shell).
     pub(crate) work_top: i32,
     /// The work area's bottom edge: above the Dock, above the taskbar.
     pub(crate) work_bottom: i32,
@@ -492,15 +487,15 @@ pub(crate) struct MonitorBounds {
 /// and the top that puts its *bottom* `margin` above the usable bottom edge.
 ///
 /// The one formula every platform places through, so "0 is flush with the
-/// usable edge" is one assertion rather than three. Unit-agnostic: pass
-/// logical points throughout for macOS and Linux, physical pixels throughout
-/// for Windows.
+/// usable edge" is one assertion rather than three. Unit-agnostic: logical
+/// points throughout for macOS and Linux, physical pixels throughout for
+/// Windows.
 ///
 /// The card is flush against the window's anchored side (`.ov-stage` pins it
-/// with `align-items: flex-start` / `flex-end` and `.scard` carries no margin),
-/// and the window slack lies entirely inward, so the *card's* visible gap is
-/// `margin` for every card shape, every `size_scale` and both Materials. That
-/// is why no term here mentions slack or Material.
+/// with `align-items: flex-start` / `flex-end` and `.scard` carries no margin)
+/// and the slack lies entirely inward, so the *card's* visible gap is `margin`
+/// for every card shape, every `size_scale` and both Materials, which is why no
+/// term here mentions slack or Material.
 pub(crate) fn overlay_edge_y(
     position: OverlayPosition,
     usable_top: f64,
@@ -517,14 +512,14 @@ pub(crate) fn overlay_edge_y(
 /// Where the overlay window goes in logical points: macOS, and Linux without
 /// layer shell.
 ///
-/// Logical rather than physical because tao converts a `PhysicalPosition`
-/// using the scale of the monitor the window is *currently* on, which mislands
-/// a cross-monitor move. On macOS a logical unit is an AppKit point, so one
-/// unit of margin is one point at any Retina factor.
+/// Logical rather than physical because tao converts a `PhysicalPosition` using
+/// the scale of the monitor the window is *currently* on, which mislands a
+/// cross-monitor move. On macOS a logical unit is an AppKit point, so one unit
+/// of margin is one point at any Retina factor.
 ///
 /// Where the platform reports no work area, GDK on Wayland returning the
-/// monitor geometry, this degrades to the raw monitor edge, which is exactly
-/// what the fallback path does today.
+/// monitor geometry, this degrades to the raw monitor edge, exactly what the
+/// fallback path does today.
 #[allow(dead_code)] // Windows places through `windows_overlay_bounds`; both are tested everywhere.
 pub(crate) fn overlay_logical_origin(
     monitor: &MonitorBounds,
@@ -548,11 +543,10 @@ pub(crate) fn overlay_logical_origin(
 /// The overlay rectangle in the destination monitor's physical pixels, for the
 /// single `SetWindowPos` Windows places with.
 ///
-/// Windows does not take the logical path at all: there is no one logical
-/// space across mixed-DPI displays, so everything is converted against the
-/// destination monitor's own scale here and issued as physical pixels. The
-/// work area is already physical (`MONITORINFO.rcWork`), so only the margin
-/// and the window are scaled.
+/// Windows skips the logical path: there is no one logical space across
+/// mixed-DPI displays, so everything is converted against the destination
+/// monitor's own scale and issued as physical pixels. The work area is already
+/// physical (`MONITORINFO.rcWork`), so only the margin and the window scale.
 #[allow(dead_code)] // Only Windows places through this; the tests run on every host.
 pub(crate) fn windows_overlay_bounds(
     monitor: &MonitorBounds,
@@ -600,13 +594,13 @@ impl ScreenEdge {
 
 /// How a layer surface is anchored and inset.
 ///
-/// The margin goes on the anchored edge and the opposite edge gets zero, so
-/// the surface is pinned to one edge and free at the other. The compositor
+/// The margin goes on the anchored edge and zero on the opposite one, pinning
+/// the surface to one edge and leaving it free at the other. The compositor
 /// measures an anchored margin from the area other clients' exclusive zones
 /// leave free, which is what makes `0` flush with the *usable* edge on Wayland
-/// without Handy computing anything, provided Handy keeps its own exclusive
-/// zone at 0 and never enables the automatic one, which would push every other
-/// window on the desktop by the user's margin.
+/// with Handy computing nothing, provided Handy keeps its own exclusive zone at
+/// 0 and never enables the automatic one, which would push every other desktop
+/// window by the user's margin.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[allow(dead_code)] // Linux-only in production; asserted on every host.
 pub(crate) struct LayerShellPlacement {
@@ -641,12 +635,12 @@ pub(crate) fn layer_shell_placement(position: OverlayPosition, margin: u16) -> L
 /// colour edit skip the main-thread hop, the AppKit material write, the resize
 /// and the move.
 ///
-/// The anchored edge and the margin off it are part of it because a theme
-/// *can* move the window: `edge_margin` is a token, dragged live while the
-/// on-screen preview runs. Without them here the skip check would swallow
-/// every frame of that drag and the card would not move until the next show.
-/// What is still outside: which monitor the card lands on, which follows the
-/// cursor and is re-read on every placement.
+/// The anchored edge and the margin off it are here because a theme *can* move
+/// the window: `edge_margin` is a token, dragged live while the on-screen
+/// preview runs. Without them the skip would swallow every frame of that drag
+/// and the card would not move until the next show. Still outside: which
+/// monitor the card lands on, which follows the cursor and is re-read on every
+/// placement.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct OverlayWindowState {
     shape: OverlayCardShape,
@@ -685,9 +679,9 @@ impl OverlayWindowState {
         self.metrics.corner_radius(self.shape)
     }
 
-    /// The gap between that edge and the card, in logical points. Not scaled
-    /// by `size_scale`: it is a distance to a screen edge, not a card length,
-    /// and the screen does not zoom.
+    /// The gap between the anchored edge and the card, in logical points. Not
+    /// scaled by `size_scale`: a distance to a screen edge is not a card
+    /// length, and the screen does not zoom.
     pub(crate) fn edge_margin(&self) -> u16 {
         self.edge_margin
     }
@@ -1476,9 +1470,9 @@ mod tests {
     // ---------------------------------------------------------------- placement
 
     /// A 1920x1080 display at the origin, scale 1, with `top_inset` and
-    /// `bottom_inset` of its height taken by a menu bar, a taskbar, a panel or
-    /// the Dock. `display(0, 0)` is a bare screen, and what every platform
-    /// reports where it has no work area to give.
+    /// `bottom_inset` of its height taken by a menu bar, taskbar, panel or the
+    /// Dock. `display(0, 0)` is a bare screen, and what a platform reports when
+    /// it has no work area to give.
     fn display(top_inset: i32, bottom_inset: i32) -> MonitorBounds {
         scaled_display(top_inset, bottom_inset, 1.0)
     }
@@ -1537,9 +1531,9 @@ mod tests {
         }
     }
 
-    /// The asymmetry the formula exists to hide: a Top window is placed by its
-    /// own top edge, so its height never enters, while a Bottom one moves up
-    /// point for point as it grows.
+    /// The asymmetry the formula hides: a Top window is placed by its own top
+    /// edge, so its height never enters, while a Bottom one moves up point for
+    /// point as it grows.
     #[test]
     fn only_a_bottom_overlay_moves_with_its_height() {
         let (top, bottom, margin) = (25.0, 1055.0, 15.0);
@@ -1555,10 +1549,10 @@ mod tests {
     /// Why `edge_margin` needs no Material branch and no slack term.
     ///
     /// The card is flush against the window's anchored side and every point of
-    /// slack lies inward, so the window's anchored edge *is* the card's, for
-    /// each of the five shapes, both Materials (Flat's 38x4 / 6x2 slack and
-    /// Glass's zero) and every size scale. If slack ever moved to the anchored
-    /// side, the gap would stop being what the user asked for and this fails.
+    /// slack lies inward, so the window's anchored edge *is* the card's, for all
+    /// five shapes, both Materials (Flat's 38x4 / 6x2 slack and Glass's zero)
+    /// and every size scale. If slack ever moved to the anchored side the gap
+    /// would stop being what the user asked for and this fails.
     #[test]
     fn the_margin_is_the_gap_at_every_shape_material_and_scale() {
         let (top, bottom) = (25.0, 1055.0);
@@ -1585,10 +1579,10 @@ mod tests {
         }
     }
 
-    /// The six inherit values, asserted on any host. Each is the number that
-    /// reproduces today's placement on that platform's usual configuration;
+    /// The six inherit values, asserted on any host. Each reproduces today's
+    /// placement on that platform's usual configuration, which
     /// `todays_placement_survives_the_switch_to_the_usable_edge` below proves
-    /// it rather than restating it.
+    /// rather than restates.
     #[test]
     fn every_platform_and_position_inherits_its_own_margin() {
         use OverlayPosition::{Bottom, Top};
@@ -1601,8 +1595,8 @@ mod tests {
         assert_eq!(inherit_edge_margin(Linux, Top), 4);
         assert_eq!(inherit_edge_margin(Linux, Bottom), 40);
 
-        // Every one of them is a value the token itself accepts, or an unset
-        // slider would show a number the user could not dial back to.
+        // Each is a value the token itself accepts, or an unset slider would
+        // show a number the user could not dial back to.
         for platform in [MacOs, Windows, Linux] {
             for position in [Top, Bottom] {
                 assert!(
@@ -1628,11 +1622,11 @@ mod tests {
 
     /// **The all-inherit invariant.** A user who never touches the slider sees
     /// the overlay exactly where it has always been, on each platform's own
-    /// formula, in that platform's usual configuration.
+    /// formula in that platform's usual configuration.
     ///
-    /// Each `today` below is the arithmetic this branch replaced, spelled out
-    /// with the constant it used, and each `now` is the new placement at the
-    /// inherited margin. They are compared as numbers, not as formulas.
+    /// Each `today` is the arithmetic this branch replaced, spelled out with the
+    /// constant it used; each `now` is the new placement at the inherited
+    /// margin. They are compared as numbers, not formulas.
     #[test]
     fn todays_placement_survives_the_switch_to_the_usable_edge() {
         const HEIGHT: f64 = 46.0;
@@ -1764,14 +1758,13 @@ mod tests {
         }
     }
 
-    /// Retina: `MonitorBounds` arrives in the monitor's physical pixels and
-    /// the origin goes out in logical points, so every rectangle is divided by
-    /// the scale while the margin, already a point count, is not.
+    /// Retina: `MonitorBounds` arrives in the monitor's physical pixels and the
+    /// origin goes out in logical points, so every rectangle is divided by the
+    /// scale while the margin, already a point count, is not. The same display
+    /// at 1x and 2x therefore places the card on the same points.
     ///
-    /// The same display at 1x and at 2x therefore places the card on the same
-    /// points. Only the logical path needs this; Windows never leaves physical
-    /// pixels, which is what `windows_scales_the_margin_and_not_the_work_area`
-    /// covers.
+    /// Only the logical path needs this; Windows never leaves physical pixels,
+    /// which `windows_scales_the_margin_and_not_the_work_area` covers.
     #[test]
     fn the_logical_origin_divides_the_physical_rectangles_by_the_scale() {
         let height = 46.0;
@@ -1819,9 +1812,9 @@ mod tests {
 
     /// Windows converts against the destination monitor's own scale, so the
     /// window and the margin both land in that monitor's physical pixels. The
-    /// work area here is the whole display (an auto-hidden taskbar reports
-    /// exactly that), so these are the same numbers as before the switch, at
-    /// the margins that reproduce them.
+    /// work area here is the whole display (what an auto-hidden taskbar
+    /// reports), so these are the numbers from before the switch, at the
+    /// margins that reproduce them.
     #[test]
     fn windows_overlay_bounds_use_destination_monitor_scale() {
         let monitor = MonitorBounds {
@@ -1941,9 +1934,9 @@ mod tests {
         }
     }
 
-    /// The layer-shell rule, the only test the Linux branch can have off
-    /// Linux: the margin goes on the anchored edge, the opposite edge gets
-    /// zero, and the anchor follows the position.
+    /// The layer-shell rule, the only test the Linux branch can have off Linux:
+    /// the margin goes on the anchored edge, the opposite edge gets zero, and
+    /// the anchor follows the position.
     #[test]
     fn layer_shell_puts_the_margin_on_the_anchored_edge_alone() {
         for margin in [0u16, 4, 40, 200] {

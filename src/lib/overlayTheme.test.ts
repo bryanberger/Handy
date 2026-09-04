@@ -245,10 +245,9 @@ describe("inherit", () => {
     ).toBe(BORDER_OPACITY_INHERIT.flat);
   });
 
-  // The other inherit this module does not own. There is no per-platform table
-  // here on purpose: Rust places the window from `effective_edge_margin`, so
-  // the slider showing anything else would be showing a gap the overlay does
-  // not have.
+  // The other inherit this module does not own. No per-platform table here on
+  // purpose: Rust places the window from `effective_edge_margin`, so a slider
+  // showing anything else would show a gap the overlay does not have.
   test("the edge margin inherits whatever the backend resolved", () => {
     for (const margin of [0, 4, 15, 21, 40, 200]) {
       expect(
@@ -264,9 +263,9 @@ describe("inherit", () => {
   });
 
   // Before the first resolved payload there is no honest number: the inherit
-  // depends on the platform and the anchored edge, and only Rust knows both.
-  // Null comes back out so the tab can hold the row rather than flash a zero
-  // that reads as "flush" on a screen where nothing is flush.
+  // depends on the platform and the anchored edge, which only Rust knows. Null
+  // comes back out so the tab can hold the row rather than flash a zero that
+  // reads as "flush" on a screen where nothing is flush.
   test("an unresolved edge margin has no inherit to show", () => {
     expect(inheritedTokenValue("edge_margin", "flat", "regular", null)).toBe(
       null,

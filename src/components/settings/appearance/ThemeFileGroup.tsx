@@ -40,11 +40,11 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
 /** The tokens with a row in the Appearance tab under one Material and one
  *  overlay style. It asks for rows exactly as the groups render them, so a
  *  token that gains, loses or shares a row needs no second edit. Two of the
- *  seventeen never appear: `glass_material`, which only drives the
- *  pre-macOS-26 fallback engine and is set from the theme file, and the other
- *  Material's alpha. The `position` group is the one whose rows come and go:
- *  the edge margin sits under Overlay Position and is hidden with the overlay
- *  itself, there being no edge for an absent card to sit at. */
+ *  seventeen never appear: `glass_material`, which drives the pre-macOS-26
+ *  fallback engine alone and is set from the theme file, and the other
+ *  Material's alpha. The `position` group's rows come and go: the edge margin
+ *  sits under Overlay Position and is hidden with the overlay itself, there
+ *  being no edge for an absent card to sit at. */
 function keysWithARow(
   material: Material,
   style: OverlayStyle,
@@ -66,9 +66,9 @@ function keysWithARow(
  * Otherwise a file setting a row-less token would count as owning a value
  * with no control, and the total would promise rows that are not there.
  * `glass_material` has no row and the two alphas share one slot, so fifteen of
- * the seventeen ever show, fourteen with the overlay switched off and the edge
- * margin's row gone with it. The tokens still apply; this rule counts one
- * sentence, not the file.
+ * the seventeen ever show, fourteen with the overlay off and the edge margin's
+ * row gone with it. The tokens still apply; this rule counts one sentence, not
+ * the file.
  */
 export function lockedTokenCounts(
   ownedKeys: readonly string[],
@@ -116,9 +116,8 @@ export interface ThemeFileGroupProps {
   /** The effective Material, which sets how many rows are on screen for the
    *  "sets N of M values" line. See [`lockedTokenCounts`]. */
   material: Material;
-  /** The overlay style in effect, for the same line: the edge margin's row
-   *  goes away with the overlay, so it cannot be counted as one of the rows a
-   *  file could lock. */
+  /** The overlay style in effect, for the same line: the edge margin's row goes
+   *  away with the overlay, so it is not one of the rows a file could lock. */
   style: OverlayStyle;
   onReload: () => void;
   isReloading: boolean;

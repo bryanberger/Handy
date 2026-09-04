@@ -319,8 +319,8 @@
       },
       "tokens": {
         "edgeMargin": {
-          "title": "Edge Margin",
-          "description": "How far the overlay sits from the screen edge it is anchored to. 0 is flush against the usable edge — below the menu bar and above the Dock on macOS, inside the work area on Windows, inside the area panels leave on Linux. Unaffected by the size scale."
+          "title": "Відступ від краю",
+          "description": "Наскільки далеко накладка розташована від краю екрана, до якого її прив'язано. 0 притискає її впритул до придатного краю — під смугою меню й над Dock у macOS, усередині робочої області у Windows та всередині області, яку лишають панелі в Linux із layer shell. Масштаб розміру на неї не впливає."
         },
         "accent": {
           "title": "Акцент",

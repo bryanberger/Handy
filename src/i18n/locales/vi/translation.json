@@ -319,8 +319,8 @@
       },
       "tokens": {
         "edgeMargin": {
-          "title": "Edge Margin",
-          "description": "How far the overlay sits from the screen edge it is anchored to. 0 is flush against the usable edge — below the menu bar and above the Dock on macOS, inside the work area on Windows, inside the area panels leave on Linux. Unaffected by the size scale."
+          "title": "Lề mép màn hình",
+          "description": "Lớp phủ nằm cách mép màn hình mà nó neo vào bao xa. 0 đặt nó sát mép dùng được — dưới thanh menu và trên Dock trên macOS, trong vùng làm việc trên Windows, và trong vùng mà các panel chừa lại trên Linux khi dùng layer shell. Không bị tỷ lệ kích thước ảnh hưởng."
         },
         "accent": {
           "title": "Màu nhấn",

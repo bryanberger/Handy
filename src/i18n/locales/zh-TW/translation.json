@@ -319,8 +319,8 @@
       },
       "tokens": {
         "edgeMargin": {
-          "title": "Edge Margin",
-          "description": "How far the overlay sits from the screen edge it is anchored to. 0 is flush against the usable edge — below the menu bar and above the Dock on macOS, inside the work area on Windows, inside the area panels leave on Linux. Unaffected by the size scale."
+          "title": "邊緣間距",
+          "description": "懸浮窗距離其錨定的螢幕邊緣有多遠。0 表示緊貼可用邊緣——在 macOS 上位於選單列下方、Dock 上方，在 Windows 上位於工作區內，在 Linux 上使用 layer shell 時位於面板留出的區域內。不受尺寸縮放影響。"
         },
         "accent": {
           "title": "強調色",

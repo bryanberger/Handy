@@ -319,8 +319,8 @@
       },
       "tokens": {
         "edgeMargin": {
-          "title": "Edge Margin",
-          "description": "How far the overlay sits from the screen edge it is anchored to. 0 is flush against the usable edge — below the menu bar and above the Dock on macOS, inside the work area on Windows, inside the area panels leave on Linux. Unaffected by the size scale."
+          "title": "Margem da borda",
+          "description": "A que distância a sobreposição fica da borda da tela em que está ancorada. 0 a encosta na borda utilizável — abaixo da barra de menus e acima do Dock no macOS, dentro da área de trabalho no Windows e dentro da área que os painéis deixam livre no Linux com layer shell. Não é afetada pela escala de tamanho."
         },
         "accent": {
           "title": "Destaque",

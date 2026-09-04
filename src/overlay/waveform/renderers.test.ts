@@ -72,7 +72,7 @@ const WHITELIST: Record<CanvasWaveformStyle, readonly string[]> = {
     "arc",
     "fill",
   ],
-  // Whole-pixel squares, three passes: the panel, the glow, the lit dots.
+  // Whole-pixel squares, two passes: the glow, then the lit dots.
   matrix: ["beginPath", "rect", "fillStyle", "globalAlpha", "fill"],
   // Whole-pixel squares, one pass.
   steps: ["beginPath", "rect", "fillStyle", "globalAlpha", "fill"],

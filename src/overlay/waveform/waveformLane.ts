@@ -80,9 +80,8 @@ export const LEVEL_BUCKETS = 16;
  * How faint an arming idle drawn as one flat shape is, the muted waveform's
  * own 0.35.
  *
- * Not every style's: `matrix` lights one dot over its own unlit panel and sets
- * its contrast against that panel rather than against the lane, so it carries
- * its own alpha and says so.
+ * Not every style's: `matrix` lights one small dot on a bare lane, and a dot
+ * that small vanishes at 0.35, so it carries its own alpha and says so.
  */
 export const ARMING_ALPHA = 0.35;
 

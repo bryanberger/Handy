@@ -9,8 +9,9 @@ import {
 
 /**
  * Matrix: a dot-matrix VU. Every column is a stack of square dots lit from the
- * centre row outward in quantised steps, over the unlit panel every LED meter
- * shows, with a peak dot that hangs above the column and falls back into it.
+ * centre row outward in quantised steps, with a peak dot that hangs above the
+ * column and falls back into it. Only lit dots are drawn: the unlit panel an
+ * LED meter shows was tried and taken out, so the card stays clean.
  *
  * The grid comes from the lane, not from the tokens: the row pitch is the lane
  * divided by an odd row count, so one row is always the centre and the panel
@@ -18,8 +19,8 @@ import {
  * closes the space between them, both to whole device pixels, because a
  * half-pixel dot is a smear rather than an LED.
  *
- * Three fills a frame whatever the grid measures: the panel, the glow under
- * what is lit, and what is lit.
+ * Two fills a frame whatever the grid measures: the glow under what is lit,
+ * and what is lit.
  */
 
 /** Rows in the panel. Seven when the lane is tall enough for a dot that still
@@ -44,10 +45,6 @@ const GAP_SHARE = 0.32;
  *  per-column stores. */
 const MAX_COLUMNS = 96;
 
-/** How visible the unlit panel is: switched on, but never competing with a
- *  lit dot. */
-const PANEL_ALPHA = 0.15;
-
 /** The glow under a lit dot: one extra pass, this many device pixels wider on
  *  every side, at this alpha. */
 const GLOW_SPREAD = 1;
@@ -59,9 +56,8 @@ const PEAK_FALL_SECONDS = 0.6;
 /** The arming idle: one dot walking the centre row, this many columns a
  *  second, and how lit it is.
  *
- *  Not the lane's shared `ARMING_ALPHA`: the one walking dot has to out-read
- *  the unlit panel under it, drawn at `PANEL_ALPHA`, and at 0.35 over 0.15 it
- *  reads as a slightly warmer lamp rather than as a lit one. */
+ *  Not the lane's shared `ARMING_ALPHA`: a single small dot on a bare lane
+ *  disappears at 0.35, so it is drawn brighter to read as a lamp at all. */
 const WALK_COLUMNS_PER_SECOND = 14;
 const ARMING_LIT = 0.75;
 
@@ -104,17 +100,6 @@ function traceDot(
     Math.min(panel.width, x + panel.dot + grow) - left,
     Math.min(panel.height, y + panel.dot + grow) - top,
   );
-}
-
-/** Every unlit cell there is: the panel an LED meter shows whatever is being
- *  said. */
-function tracePanel(ctx: CanvasRenderingContext2D): void {
-  ctx.beginPath();
-  for (let column = 0; column < panel.columns; column += 1) {
-    for (let offset = -panel.steps; offset <= panel.steps; offset += 1) {
-      traceDot(ctx, column, offset, 0);
-    }
-  }
 }
 
 /** What is lit: each column's stack out from the centre row, mirrored above
@@ -198,11 +183,6 @@ export const drawMatrix: WaveformDraw = (
     litSteps[column] = Math.round(level * steps);
     peakStep[column] = Math.round(peak[column] * steps);
   }
-
-  tracePanel(ctx);
-  ctx.fillStyle = colors.muted;
-  ctx.globalAlpha = PANEL_ALPHA;
-  ctx.fill();
 
   // What is lit, traced twice: a spread pass for the glow, then the dots
   // themselves over it.

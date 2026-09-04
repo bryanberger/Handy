@@ -544,9 +544,13 @@ impl CardMetrics {
     /// The dot is bare here, not [`CARD_DOT_COL_W`]: with no waveform to pad
     /// the row, `.scard.nowave .sbase-l` drops the dot's inset so the dot and
     /// the cancel button sit one padding from their own card edges. With the
-    /// button gone too the row is the dot between two paddings, 27, and
-    /// `.scard.nowave.nocancel .sbase` centres it in exactly that.
+    /// button gone too the pill is a square, as wide as the row is tall, with
+    /// the dot centred by `.scard.nowave.nocancel .sbase`; the element gaps
+    /// have nothing left to fall between and do not widen it.
     fn bare_row_width(&self) -> f64 {
+        if !self.show_cancel {
+            return self.row_height();
+        }
         let side = self.side_min();
         2.0 * f64::from(self.padding) + self.gap_width() + side.max(CARD_DOT_W) + side
     }
@@ -1931,8 +1935,8 @@ mod tests {
             ),
             (174.0, 42.0)
         );
-        // With the waveform gone too, the row is the dot between two paddings,
-        // 2 x 10 + 7, and the stylesheet centres it in exactly that.
+        // With the waveform gone too, the pill is a square as wide as the row
+        // is tall, 20 + 2 x 10, with the dot centred in it.
         let bare = metrics_of(OverlayTheme {
             show_waveform: Some(false),
             show_cancel: Some(false),
@@ -1941,7 +1945,7 @@ mod tests {
         for shape in [OverlayCardShape::CompactRest, OverlayCardShape::LivePill] {
             assert_eq!(
                 bare.window_size(shape, Material::Glass, glass_shadow, 0.0),
-                (29.0, 42.0),
+                (42.0, 42.0),
                 "{shape:?}"
             );
         }
@@ -1981,8 +1985,8 @@ mod tests {
         // pill's), at size scale 1 and at 0.80, the smallest a theme can ask
         // for. 172 and 184 hold their tuned widths while the waveform is on the
         // row, whatever the cancel button does; without it they are the row,
-        // 64 with the button and 27 with the dot alone; every one plus the
-        // hairline per edge.
+        // 64 with the button and a 40 square with the dot alone; every one
+        // plus the hairline per edge.
         for (waveform, cancel, scale, compact, live) in [
             (true, true, 1.0, (174.0, 42.0), (186.0, 42.0)),
             (true, true, SIZE_SCALE_MIN, (140.0, 34.0), (149.0, 34.0)),
@@ -1990,8 +1994,8 @@ mod tests {
             (true, false, SIZE_SCALE_MIN, (140.0, 34.0), (149.0, 34.0)),
             (false, true, 1.0, (66.0, 42.0), (66.0, 42.0)),
             (false, true, SIZE_SCALE_MIN, (53.0, 34.0), (53.0, 34.0)),
-            (false, false, 1.0, (29.0, 42.0), (29.0, 42.0)),
-            (false, false, SIZE_SCALE_MIN, (24.0, 34.0), (24.0, 34.0)),
+            (false, false, 1.0, (42.0, 42.0), (42.0, 42.0)),
+            (false, false, SIZE_SCALE_MIN, (34.0, 34.0), (34.0, 34.0)),
         ] {
             let metrics = metrics_of(OverlayTheme {
                 size_scale: Some(scale),
@@ -2135,10 +2139,8 @@ mod tests {
         );
 
         // With the dot alone on the row the three columns collapse to their
-        // contents and the row centres them, which is how `bare_row_width`'s
-        // two paddings plus the dot land with the same padding on either side.
-        // The two element gaps have nothing left to fall between, so they
-        // become the free space that centring splits.
+        // contents and the row centres them in the square `bare_row_width`
+        // hands back, so the dot sits the same distance from every edge.
         let dot_only = css_rule(OVERLAY_CSS, ".scard.nowave.nocancel .sbase {");
         assert_eq!(
             collapsed(css_declaration(dot_only, "grid-template-columns")),
@@ -2324,6 +2326,10 @@ mod tests {
                 "calc(var(--ov-bare-w) * var(--ov-scale))",
             ),
             (
+                ".scard.nowave.nocancel {",
+                "calc((var(--ov-row-core-h) + 2 * var(--ov-pad)) * var(--ov-scale))",
+            ),
+            (
                 ".scard.open {",
                 "calc((var(--ov-open-w) + 2 * var(--ov-elem-gap)) * var(--ov-scale))",
             ),
@@ -2342,6 +2348,19 @@ mod tests {
                 "{selector}"
             );
         }
+        // …and the last of those is a square: with both elements hidden the
+        // pill is written as exactly what `.sbase` is tall, which is the row
+        // height `bare_row_width` hands back.
+        assert_eq!(
+            collapsed(css_declaration(
+                css_rule(OVERLAY_CSS, ".scard.nowave.nocancel {"),
+                "width"
+            )),
+            collapsed(css_declaration(
+                css_rule(OVERLAY_CSS, ".sbase {"),
+                "height"
+            ))
+        );
         // The row's gaps are the token itself, twice per row, which is what
         // the four widths above pay for.
         assert_eq!(

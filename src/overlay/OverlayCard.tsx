@@ -46,8 +46,8 @@ export interface OverlayCardProps {
    * The `show_cancel` token. False drops the button from every row; the
    * keyboard shortcut and `--cancel` still cancel. The apply layer takes the
    * row's 22 px side floor away with it, that floor being the room the button
-   * needed. With the waveform gone too it adds `nocancel`, which centres the
-   * dot left alone on the row.
+   * needed. With the waveform gone too it adds `nocancel`, and the pill is
+   * a square with that dot, left alone on the row, centred in it.
    */
   showCancel?: boolean;
   /**
@@ -202,8 +202,8 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
   );
 
   // The classes a resting shape takes from the two visibility tokens. `nowave`
-  // shrinks the pill to the row that is left; `nocancel` on top of it centres
-  // the dot that is then alone on that row. Neither ever reaches the working
+  // shrinks the pill to the row that is left; `nocancel` on top of it squares
+  // the pill around the dot that is then alone on that row. Neither ever reaches the working
   // pill or the open panel, both tuned to their content, so every morph out of
   // a shrunken shape stays a grow.
   const restingClasses = showWaveform

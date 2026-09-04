@@ -93,12 +93,13 @@ describe("the resting Minimal pill", () => {
     expect(rowChildren(html)).toBe(3);
   });
 
-  test("hiding both leaves the dot alone on the row, to be centred", () => {
+  test("hiding both leaves the dot alone in a square pill", () => {
     const html = render({ showWaveform: false, showCancel: false });
     expect(html).not.toContain("swave");
     expect(html).not.toContain('class="sx"');
     expect(html).toContain('class="sdot ready"');
-    // `nocancel` is what centres that dot. Without it the row keeps its three
+    // The pair is what makes the pill a square as wide as the row is tall,
+    // with the dot centred in it. Without `nocancel` the row keeps its three
     // tracks and the dot sits one padding in, with the whole empty right
     // column beside it.
     expect(cardClasses(html)).toEqual([

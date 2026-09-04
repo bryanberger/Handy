@@ -340,6 +340,13 @@
 .scard.nowave {
   width: calc(var(--ov-bare-w) * var(--ov-scale));
 }
+/* Both elements off: the pill is a square as wide as the row is tall, the dot
+   centred in it, so the radius token rounds something symmetrical. The element
+   gaps have nothing left to fall between and do not widen it. overlay_geometry.rs
+   returns the row height for this case. */
+.scard.nowave.nocancel {
+  width: calc((var(--ov-row-core-h) + 2 * var(--ov-pad)) * var(--ov-scale));
+}
 
 /* text region — auto-height open via grid-rows trick; region fades as a whole */
 .stext {
@@ -465,10 +472,10 @@
 }
 /* No cancel button either, so the dot is alone on the row. The three columns
    collapse to their contents and the row centres them, which is the only way
-   the dot lands in the middle of the card: left-aligned in its own track it
+   the dot lands in the middle of the square: left-aligned in its own track it
    would sit one padding in, with the whole empty right column beside it. The
-   two element gaps have nothing left to fall between, so they become free
-   space that the centring splits, and the card still pays for them. */
+   element gaps have nothing left to fall between, and the width above does not
+   pay for them. */
 .scard.nowave.nocancel .sbase {
   grid-template-columns: auto auto auto;
   justify-content: center;

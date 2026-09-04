@@ -1,9 +1,12 @@
-//! The theme file `overlay_theme.json`, a read-only input from outside Handy.
+//! Reading the theme file `overlay_theme.json`, which is the overlay theme.
 //!
-//! An external theming tool drives the overlay without the settings window.
-//! Handy only reads it, never writing, moving or rewriting. The one folder it
-//! creates is `~/.config/handy/`, behind the Appearance tab's Open button,
-//! never a path [`THEME_FILE_ENV_VAR`] named. Only typed tokens come out:
+//! Handy writes it from the Appearance tab, a theming tool or a text editor
+//! writes it from outside, and a watcher makes either one live. This module is
+//! the read half; [`crate::overlay_theme_write`] is the write half and
+//! [`crate::overlay_theme_file::ownership_at`] is the line between them: a
+//! symlink or a read-only file is somebody else's document, read and never
+//! touched. The one folder Handy creates is `~/.config/handy/`, never a path
+//! [`THEME_FILE_ENV_VAR`] named. Only typed tokens come out:
 //! canonical `#rrggbb` colours, `flat | glass`, the eight macOS
 //! `glass_material`, two `glass_style` and six `waveform_style` values,
 //! and numbers rounded and clamped to the token contract's bounds.
@@ -20,8 +23,10 @@
 //!
 //! One `open` serves both the metadata check and a bounded sub-KiB read, so a
 //! candidate cannot be swapped between them. Runs at launch, on every overlay
-//! show (off the main thread) and when the Appearance tab asks. No file
-//! watcher.
+//! show (off the main thread), on every debounced batch the watcher reports,
+//! after every write, and when the Appearance tab asks. Every one of those is
+//! a full re-read, so a watcher event Handy misses self-heals at the next
+//! dictation.
 //!
 //! Forward compatibility, promised to the tools that write this file. Colour
 //! values are `"#RRGGBB"` strings today; a future version may also accept
@@ -30,12 +35,12 @@
 //! either shape.
 
 use crate::overlay_theme::{
-    GlassMaterial, GlassStyle, HexColor, Material, OverlayTheme, ThemeFileDiagnostic,
-    ThemeFileDiagnosticCode, ThemeFileState, WaveformStyle, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN,
-    BORDER_WIDTH_MAX, ELEMENT_GAP_MAX, GLASS_TINT_MAX, GLASS_TINT_MIN, PADDING_MAX, RADIUS_MAX,
-    SHADOW_OFFSET_Y_MAX, SHADOW_STRENGTH_MAX, SHADOW_STRENGTH_MIN, SIZE_SCALE_MAX, SIZE_SCALE_MIN,
-    SURFACE_OPACITY_MAX, SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX,
-    WAVEFORM_WIDTH_MIN,
+    GlassMaterial, GlassStyle, HexColor, ManagedReason, Material, OverlayTheme,
+    ThemeFileDiagnostic, ThemeFileDiagnosticCode, ThemeFileOwnership, ThemeFileState,
+    WaveformStyle, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN, BORDER_WIDTH_MAX, ELEMENT_GAP_MAX,
+    GLASS_TINT_MAX, GLASS_TINT_MIN, PADDING_MAX, RADIUS_MAX, SHADOW_OFFSET_Y_MAX,
+    SHADOW_STRENGTH_MAX, SHADOW_STRENGTH_MIN, SIZE_SCALE_MAX, SIZE_SCALE_MIN, SURFACE_OPACITY_MAX,
+    SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
 };
 use log::{debug, warn};
 use serde_json::Value;
@@ -249,12 +254,32 @@ const TOKENS: [TokenSpec; 22] = [
 ];
 
 /// The one top-level key that is not a token.
-const VERSION_KEY: &str = "version";
+pub const VERSION_KEY: &str = "version";
+
+/// The token keys in the contract's order, which the README's table lists and
+/// [`crate::overlay_theme_write`] emits a document in.
+///
+/// Derived from [`TOKENS`] rather than listed again, so the reader and the
+/// writer cannot drift into two orders.
+pub fn token_keys() -> impl Iterator<Item = &'static str> {
+    TOKENS.iter().map(|token| token.key)
+}
+
+/// The tokens a document's text carries, for the write path's read-back check.
+///
+/// The same parser the read path runs, so a document Handy would refuse to
+/// load is one Handy refuses to write. Per-key diagnostics are dropped here:
+/// the writer's only question is whether what it emitted comes back.
+pub fn tokens_of(text: &str) -> Result<OverlayTheme, String> {
+    parse_document(text)
+        .map(|document| document.tokens)
+        .map_err(|problem| problem.message)
+}
 
 /// The last read, shared by every consumer.
 ///
 /// Warmed at launch before the overlay window exists, refreshed on every
-/// overlay show and by the Appearance tab's Reload button.
+/// overlay show, on every change the watcher sees, and after every write.
 static CACHE: RwLock<Option<ThemeFileState>> = RwLock::new(None);
 
 /// Where Handy looks for the theme file, highest priority first.
@@ -277,6 +302,99 @@ pub fn candidate_paths(app: &AppHandle) -> Vec<PathBuf> {
             env: Some(&path),
             ..Locations::default()
         }),
+    }
+}
+
+/// The path a committed change writes: the file in effect, or the one Handy
+/// would create for it.
+///
+/// The same choice [`read`] reports as [`ThemeFileState::path`], as a path
+/// rather than a display string. `None` when [`THEME_FILE_ENV_VAR`] holds
+/// something that is not a path, and when there is nowhere to put a file.
+pub fn effective_target(app: &AppHandle) -> Option<PathBuf> {
+    match env_override() {
+        EnvOverride::Invalid => None,
+        // Exclusive, present or not: an explicit instruction cannot resolve
+        // elsewhere, and the ownership check decides whether it may be written.
+        EnvOverride::Path(path) => Some(path),
+        EnvOverride::Unset => first_existing(&candidate_paths(app), |path| path.is_file())
+            .or_else(|| absent_path(app)),
+    }
+}
+
+/// The first candidate that holds a file, or `None` for a fresh install.
+///
+/// Pure over the predicate, so the priority order is testable without a temp
+/// tree. `is_file` follows symlinks, exactly as opening the candidate does, so
+/// a symlinked theme file is found here as well as read.
+fn first_existing(candidates: &[PathBuf], is_file: impl Fn(&Path) -> bool) -> Option<PathBuf> {
+    candidates.iter().find(|path| is_file(path)).cloned()
+}
+
+/// `~/.config/handy/overlay_theme.json`: where the migration puts the store's
+/// theme, and the path the Appearance tab prints with no file anywhere.
+pub fn config_target(app: &AppHandle) -> Option<PathBuf> {
+    config_theme_file(app)
+}
+
+/// Whether [`THEME_FILE_ENV_VAR`] is naming the theme file.
+///
+/// The migration asks, because a file it wrote under `~/.config/handy/` while
+/// the variable points somewhere else would never be read.
+pub fn env_override_in_effect() -> bool {
+    !matches!(env_override(), EnvOverride::Unset)
+}
+
+/// Whether Handy owns a theme file that exists, and why not when it does not.
+///
+/// The guard behind every write. A symlink is how a dotfile manager or an
+/// Omarchy-style tool says "this document is mine": Handy follows it to read
+/// and never writes through it, because writing would either replace the link
+/// or edit the tool's own source. A file whose permissions refuse a write is
+/// the same answer for a different reason.
+///
+/// The permission bit is a fast, conservative check, not the last word. On
+/// Unix it only reports "no write bit at all", so a file owned by someone else
+/// can still look writable here; the write then fails and says so. What
+/// matters is that a file this says is managed is never touched.
+pub fn ownership_at(path: &Path) -> ThemeFileOwnership {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => ThemeFileOwnership::managed(
+            ManagedReason::Symlink,
+            std::fs::read_link(path)
+                .ok()
+                .map(|target| target.display().to_string()),
+        ),
+        Ok(metadata) if metadata.permissions().readonly() => {
+            ThemeFileOwnership::managed(ManagedReason::ReadOnly, None)
+        }
+        Ok(_) => ThemeFileOwnership::owned(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => absent_ownership(path),
+        Err(error) => {
+            debug!(
+                "Cannot inspect {} to decide whether Handy writes it: {error}",
+                path.display()
+            );
+            ThemeFileOwnership::managed(ManagedReason::Unknown, None)
+        }
+    }
+}
+
+/// Whether Handy would create a file at a path where there is none.
+///
+/// It creates its own locations, which is how the first committed change makes
+/// `~/.config/handy/overlay_theme.json`, and never a path
+/// [`THEME_FILE_ENV_VAR`] named: that one was given to be read, and Handy does
+/// not build a tree at it. The same rule the read path's "nothing found"
+/// branch applies.
+fn absent_ownership(path: &Path) -> ThemeFileOwnership {
+    if env_override_in_effect() {
+        ThemeFileOwnership::managed(
+            ManagedReason::NotCreatable,
+            Some(path.display().to_string()),
+        )
+    } else {
+        ThemeFileOwnership::owned()
     }
 }
 
@@ -373,7 +491,8 @@ fn containing_directory(path: &Path) -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
-/// Read the theme file, update the cache, and return what it contributes.
+/// Read the theme file, update the cache, and return the overlay theme it
+/// holds.
 ///
 /// Never panics, never writes, never falls back from the file
 /// [`THEME_FILE_ENV_VAR`] named. Filesystem IO, so off the main thread bar the
@@ -385,7 +504,12 @@ pub fn read(app: &AppHandle) -> ThemeFileState {
         // document-level diagnostic naming the variable, since no candidate
         // list was built.
         EnvOverride::Invalid => log_truncate_and_attach_diagnostics(
-            ThemeFileState::absent_at(THEME_FILE_ENV_VAR.to_string()),
+            ThemeFileState {
+                // No path came out of the variable, so there is nothing to
+                // write and nothing to create.
+                ownership: ThemeFileOwnership::managed(ManagedReason::NotCreatable, None),
+                ..ThemeFileState::absent_at(THEME_FILE_ENV_VAR.to_string())
+            },
             vec![diagnostic(
                 ThemeFileDiagnosticCode::Unreadable,
                 Some(THEME_FILE_ENV_VAR.to_string()),
@@ -756,6 +880,7 @@ fn read_candidates(
                                 version: document.version,
                                 tokens: document.tokens,
                                 owned_keys: document.owned_keys,
+                                ownership: ownership_at(path),
                                 diagnostics: Vec::new(),
                                 diagnostics_total: 0, // set below, from the real count
                                 stale: false,
@@ -793,8 +918,20 @@ fn read_candidates(
         );
     }
 
+    // Absent in one of Handy's own locations is a first launch, and the first
+    // committed change creates the file. Absent at a path the env var named is
+    // not: Handy was told to read that one, and does not build a tree at it.
+    let ownership = if env_exclusive {
+        ThemeFileOwnership::managed(ManagedReason::NotCreatable, path.clone())
+    } else {
+        ThemeFileOwnership::owned()
+    };
+
     log_truncate_and_attach_diagnostics(
-        ThemeFileState::absent_at(path.unwrap_or_default()),
+        ThemeFileState {
+            ownership,
+            ..ThemeFileState::absent_at(path.unwrap_or_default())
+        },
         skipped,
     )
 }
@@ -808,6 +945,9 @@ fn keep_last_good(
     previous: Option<&ThemeFileState>,
     diagnostics: Vec<ThemeFileDiagnostic>,
 ) -> ThemeFileState {
+    // A file that exists but will not parse is still the file in effect, so
+    // the ownership question is asked of it, not of the document it held.
+    let ownership = ownership_at(path);
     let path = path.display().to_string();
 
     match previous.filter(|state| state.present) {
@@ -818,13 +958,20 @@ fn keep_last_good(
                 version: good.version,
                 tokens: good.tokens.clone(),
                 owned_keys: good.owned_keys.clone(),
+                ownership,
                 diagnostics: Vec::new(),
                 diagnostics_total: 0, // set below, from the real count
                 stale: true,
             },
             diagnostics,
         ),
-        None => log_truncate_and_attach_diagnostics(ThemeFileState::absent_at(path), diagnostics),
+        None => log_truncate_and_attach_diagnostics(
+            ThemeFileState {
+                ownership,
+                ..ThemeFileState::absent_at(path)
+            },
+            diagnostics,
+        ),
     }
 }
 
@@ -1354,6 +1501,100 @@ mod tests {
         let path = dir.join(name);
         std::fs::write(&path, contents).expect("the temp dir is writable");
         path
+    }
+
+    /// The ownership guard, which is the whole line between "Handy writes this
+    /// file" and "Handy reads somebody else's". A regular writable file and an
+    /// absent path in Handy's own location are Handy's; a read-only file is
+    /// not, and neither is the symlink the test below covers.
+    #[test]
+    fn a_read_only_file_is_managed_and_a_plain_one_is_not() {
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let plain = write(directory.path(), THEME_FILE_NAME, EXAMPLE_INHERIT);
+        assert_eq!(ownership_at(&plain), ThemeFileOwnership::owned());
+
+        // Nothing there yet is the ordinary first launch: Handy creates it.
+        let absent = directory.path().join("not-here.json");
+        assert_eq!(ownership_at(&absent), ThemeFileOwnership::owned());
+
+        // A read-only file is managed for its own reason.
+        let mut permissions = std::fs::metadata(&plain)
+            .expect("the file is there")
+            .permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&plain, permissions).expect("permissions are settable");
+        assert_eq!(
+            ownership_at(&plain),
+            ThemeFileOwnership::managed(ManagedReason::ReadOnly, None)
+        );
+    }
+
+    /// A symlink is how a dotfile manager or an Omarchy-style tool says the
+    /// document is its own. Handy follows it to read and reports the target,
+    /// so the user can find the file really in charge.
+    #[test]
+    #[cfg(unix)]
+    fn a_symlinked_theme_file_belongs_to_whoever_linked_it() {
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let real = write(directory.path(), "tokyo.json", EXAMPLE_INHERIT);
+        let link = directory.path().join(THEME_FILE_NAME);
+        std::os::unix::fs::symlink(&real, &link).expect("the temp dir takes a symlink");
+
+        let linked = ownership_at(&link);
+        assert!(!linked.writable);
+        assert_eq!(linked.reason, Some(ManagedReason::Symlink));
+        assert_eq!(linked.target, Some(real.display().to_string()));
+
+        // And it is still read: the tokens come through, only the writing
+        // stops.
+        let state = read_candidates(std::slice::from_ref(&link), false, Some(&link), None);
+        assert!(state.present);
+        assert_eq!(state.ownership, linked);
+    }
+
+    /// A path the env var named and nobody created is not Handy's to create.
+    /// It was handed over to be read, and Handy builds no tree at it.
+    #[test]
+    fn an_absent_env_named_path_is_never_created() {
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let named = directory.path().join("theme").join(THEME_FILE_NAME);
+        let _guard = EnvVarGuard::set(&named);
+
+        let ownership = ownership_at(&named);
+        assert!(!ownership.writable);
+        assert_eq!(ownership.reason, Some(ManagedReason::NotCreatable));
+        assert_eq!(ownership.target, Some(named.display().to_string()));
+
+        // Once it exists it is written like any other regular file, the user
+        // having chosen the path explicitly.
+        std::fs::create_dir_all(named.parent().expect("a parent")).expect("a writable temp dir");
+        std::fs::write(&named, EXAMPLE_INHERIT).expect("the temp dir is writable");
+        assert_eq!(ownership_at(&named), ThemeFileOwnership::owned());
+    }
+
+    /// Where a committed change goes: the file in effect if there is one, and
+    /// otherwise the path the tab prints. Same choice as the read, so the tab
+    /// never shows one path and writes another.
+    #[test]
+    fn the_write_target_is_the_first_file_that_exists() {
+        let portable = PathBuf::from("/opt/handy/Data/overlay_theme.json");
+        let config = PathBuf::from("/home/user/.config/handy/overlay_theme.json");
+        let app_data = PathBuf::from("/data/com.pais.handy/overlay_theme.json");
+        let candidates = vec![portable.clone(), config.clone(), app_data.clone()];
+
+        // Priority order, not "the first one Handy would create".
+        assert_eq!(
+            first_existing(&candidates, |path| path == app_data),
+            Some(app_data.clone())
+        );
+        assert_eq!(
+            first_existing(&candidates, |path| path != portable),
+            Some(config)
+        );
+        assert_eq!(first_existing(&candidates, |_| true), Some(portable));
+        // A fresh install has none of them, and the caller falls back to the
+        // path the tab prints.
+        assert_eq!(first_existing(&candidates, |_| false), None);
     }
 
     /// `~/.config/handy/` is documented, so it outranks app data, which stays

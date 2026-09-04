@@ -865,6 +865,65 @@ pub struct ThemeFileDiagnostic {
     pub message: String,
 }
 
+/// Why Handy reads the theme file but will not write it.
+///
+/// A stable, translatable identity, like [`ThemeFileDiagnosticCode`]. The
+/// Appearance tab looks up an i18n string by reason and passes the ownership's
+/// `target` as its parameter.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum ManagedReason {
+    /// The file itself is a symlink. Whoever made the link owns the document,
+    /// which is how a dotfile or Omarchy-style setup says "this one is mine",
+    /// so Handy follows it to read and never writes through it.
+    Symlink,
+    /// The file is there and its permissions refuse a write.
+    ReadOnly,
+    /// There is no file, and this is not a path Handy creates. Only
+    /// `HANDY_OVERLAY_THEME_FILE` names such a path: it was given to be read.
+    NotCreatable,
+    /// The path could not be inspected at all. Reading may still have
+    /// succeeded from the last good document, so this locks the tab rather
+    /// than assuming a write would land.
+    Unknown,
+}
+
+/// Whether the Appearance tab's changes are written to the theme file.
+///
+/// Handy owns the path when it is absent in one of Handy's own locations, or a
+/// regular, writable file. Anything else belongs to the user or to a tool, and
+/// Handy reads it without ever writing back.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Type)]
+pub struct ThemeFileOwnership {
+    /// True when a committed change from the Appearance tab writes this path.
+    pub writable: bool,
+    /// Why not, when `writable` is false.
+    pub reason: Option<ManagedReason>,
+    /// A symlink's target, the one reason carrying a detail. The tab shows it,
+    /// so the user can find the file really in charge.
+    pub target: Option<String>,
+}
+
+impl ThemeFileOwnership {
+    /// Handy writes this path.
+    pub fn owned() -> Self {
+        ThemeFileOwnership {
+            writable: true,
+            reason: None,
+            target: None,
+        }
+    }
+
+    /// Handy reads this path and leaves it alone.
+    pub fn managed(reason: ManagedReason, target: Option<String>) -> Self {
+        ThemeFileOwnership {
+            writable: false,
+            reason: Some(reason),
+            target,
+        }
+    }
+}
+
 /// What the theme file currently contributes.
 ///
 /// Only the theme-file reader reads the file, and it fills this in. Everything
@@ -878,11 +937,15 @@ pub struct ThemeFileState {
     /// The document's declared `version`, or `None` when it is absent or the
     /// file is not present. A missing version means 1.
     pub version: Option<u32>,
-    /// The file's contribution to the merge.
+    /// The overlay theme this document holds, which is the overlay theme.
     pub tokens: OverlayTheme,
-    /// The keys the file actually sets. These are the tab's lock markers: a
-    /// file-owned token cannot be edited from the settings window.
+    /// The keys the document actually sets, in contract order. What the tab's
+    /// "sets N of M values" line counts; the rest of the document's tokens
+    /// inherit.
     pub owned_keys: Vec<String>,
+    /// Whether Handy writes this path, and why not when it does not. A managed
+    /// file locks every token row in the Appearance tab.
+    pub ownership: ThemeFileOwnership,
     /// Everything the reader had to ignore or clamp, in contract order (the
     /// token table's, not the document's, since `serde_json` sorts an object's
     /// keys unless `preserve_order` is on). Capped at a handful of entries for
@@ -910,6 +973,10 @@ impl ThemeFileState {
             version: None,
             tokens: OverlayTheme::default(),
             owned_keys: Vec::new(),
+            // Absent in one of Handy's own locations is the ordinary first
+            // launch, and the first committed change creates the file. The
+            // reader overrides this for a path Handy was told only to read.
+            ownership: ThemeFileOwnership::owned(),
             diagnostics: Vec::new(),
             diagnostics_total: 0,
             stale: false,
@@ -923,8 +990,8 @@ impl ThemeFileState {
 /// show and the push on change carry the identical type.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Type, tauri_specta::Event)]
 pub struct ResolvedOverlayTheme {
-    /// `file ?? settings ?? inherit`, per key, clamped. `None` still means
-    /// inherit: the apply layer writes no custom property for it.
+    /// The theme file's tokens, clamped. `None` still means inherit: the apply
+    /// layer writes no custom property for it.
     pub theme: OverlayTheme,
     /// Concrete, never `None`: the requested Material downgraded to Flat when
     /// Glass is unavailable.
@@ -945,72 +1012,45 @@ pub struct ResolvedOverlayTheme {
     /// whenever the shadow strength is zero.
     #[serde(default)]
     pub shadow_edge_slack: f64,
-    /// What the theme file contributed, including which tokens it owns and what
-    /// the reader had to ignore.
+    /// The theme file behind `theme`: where it is, whether Handy writes it,
+    /// which tokens it sets and what the reader had to ignore.
     pub file: ThemeFileState,
+    /// Whether a file watcher is delivering changes to that file. False means
+    /// the Appearance tab keeps its Reload button, the only way a hand edit
+    /// reaches the screen then. Process-wide, so it rides here rather than on
+    /// the file state, which is cached per read.
+    pub watching: bool,
 }
 
-/// Merge two token sets per key: `file` wins wherever it sets a token, and an
-/// absent token falls through to `settings` and then to inherit.
-///
-/// One token breaks that shape: `glass_material` has no row in the Appearance
-/// tab, so the merge reads it from the file alone. See its field doc.
-///
-/// Pure, so the precedence rule is testable without an `AppHandle`.
-pub fn merge(file: &OverlayTheme, settings: &OverlayTheme) -> OverlayTheme {
-    OverlayTheme {
-        accent: file.accent.clone().or_else(|| settings.accent.clone()),
-        surface: file.surface.clone().or_else(|| settings.surface.clone()),
-        surface_opacity: file.surface_opacity.or(settings.surface_opacity),
-        glass_tint: file.glass_tint.or(settings.glass_tint),
-        text: file.text.clone().or_else(|| settings.text.clone()),
-        border: file.border.clone().or_else(|| settings.border.clone()),
-        border_opacity: file.border_opacity.or(settings.border_opacity),
-        material: file.material.or(settings.material),
-        // No `.or(settings.glass_material)` here. The tab has no control for
-        // it, so the store cannot be the source.
-        glass_material: file.glass_material,
-        glass_style: file.glass_style.or(settings.glass_style),
-        shadow_strength: file.shadow_strength.or(settings.shadow_strength),
-        shadow_offset_y: file.shadow_offset_y.or(settings.shadow_offset_y),
-        show_waveform: file.show_waveform.or(settings.show_waveform),
-        show_cancel: file.show_cancel.or(settings.show_cancel),
-        size_scale: file.size_scale.or(settings.size_scale),
-        radius: file.radius.or(settings.radius),
-        border_width: file.border_width.or(settings.border_width),
-        padding: file.padding.or(settings.padding),
-        element_gap: file.element_gap.or(settings.element_gap),
-        waveform_style: file.waveform_style.or(settings.waveform_style),
-        waveform_gap: file.waveform_gap.or(settings.waveform_gap),
-        waveform_width: file.waveform_width.or(settings.waveform_width),
-    }
-}
-
-/// Merge `theme file ?? settings ?? inherit` per key and clamp.
+/// The overlay theme as the theme file has it, clamped.
 ///
 /// Uses the theme-file cache, warmed by the launch-time read before any window
 /// exists, so this does no filesystem IO and is safe on the main thread. (The
 /// one cold-cache read inside [`crate::overlay_theme_file::cached`] can only
 /// happen before that.)
 pub fn resolve(app: &AppHandle) -> ResolvedOverlayTheme {
+    let file = crate::overlay_theme_file::cached(app);
     resolve_from(
-        settings_theme(app),
-        crate::overlay_theme_file::cached(app),
+        file.tokens.clone(),
+        file,
         glass_support(app),
         crate::overlay::anchored_edge_room(app),
+        watching(),
     )
 }
 
-/// [`resolve`] for a caller that already holds the stored tokens.
+/// [`resolve`] for tokens nobody has written to the file yet.
 ///
-/// The commit path just wrote the settings-level theme; the preview path was
-/// handed a draft that never reaches the store. Neither needs to read it back.
-pub fn resolve_with(app: &AppHandle, settings_theme: OverlayTheme) -> ResolvedOverlayTheme {
+/// The preview path was handed a draft that never reaches disk. The theme is
+/// taken as given and the file rides along as metadata only, so a draft paints
+/// over the file rather than losing to it.
+pub fn resolve_authored(app: &AppHandle, theme: OverlayTheme) -> ResolvedOverlayTheme {
     resolve_from(
-        settings_theme,
+        theme,
         crate::overlay_theme_file::cached(app),
         glass_support(app),
         crate::overlay::anchored_edge_room(app),
+        watching(),
     )
 }
 
@@ -1018,50 +1058,44 @@ pub fn resolve_with(app: &AppHandle, settings_theme: OverlayTheme) -> ResolvedOv
 ///
 /// The authoritative resolve: whatever the file says right now is what the
 /// overlay shows. It touches the filesystem, so call it only off the main
-/// thread. Its two callers, the overlay show path and Reload, do.
+/// thread. Its callers, the overlay show path, the watcher, a commit and
+/// Reload, all do.
 pub fn resolve_reloading(app: &AppHandle) -> ResolvedOverlayTheme {
-    resolve_reloading_for(app, settings_theme(app))
-}
-
-/// [`resolve_reloading`] for a caller that has already loaded the settings.
-///
-/// Reading the settings store is a full deserialize plus the migration pass
-/// (`settings::get_settings`). The overlay show path has already read them for
-/// `overlay_style` and whether to show at all, so it passes the tokens it holds
-/// instead of a second read on every recording.
-pub fn resolve_reloading_for(
-    app: &AppHandle,
-    settings_theme: OverlayTheme,
-) -> ResolvedOverlayTheme {
+    let file = crate::overlay_theme_file::read(app);
     resolve_from(
-        settings_theme,
-        crate::overlay_theme_file::read(app),
+        file.tokens.clone(),
+        file,
         glass_support(app),
         crate::overlay::anchored_edge_room(app),
+        watching(),
     )
 }
 
-/// The overlay theme as persisted, before the theme file and the clamping.
-fn settings_theme(app: &AppHandle) -> OverlayTheme {
-    crate::settings::get_overlay_theme(app)
+/// Whether the theme file's watcher is running, so the tab knows whether it
+/// still needs its Reload button.
+fn watching() -> bool {
+    crate::overlay_theme_watch::is_watching()
 }
 
-/// The whole resolution rule with nothing to look up: merge the file over the
-/// settings, clamp once, decide the Material actually rendered, and work out
-/// how far the window may grow towards the anchored screen edge.
+/// The whole resolution rule with nothing to look up: clamp the tokens once,
+/// decide the Material actually rendered, and work out how far the window may
+/// grow towards the anchored screen edge.
 ///
-/// `edge_room` is the gap the card already has to the usable edge, which only
-/// the placement knows; everything else is here.
+/// `theme` is normally `file.tokens`, the file being the theme; a draft passes
+/// its own tokens instead and the file rides along as metadata. `edge_room` is
+/// the gap the card already has to the usable edge, which only the placement
+/// knows; everything else is here.
 ///
-/// Pure, so the merge order, the clamping, the Glass downgrade and the shadow's
-/// anchored-side slack are testable together without an `AppHandle`.
+/// Pure, so the clamping, the Glass downgrade and the shadow's anchored-side
+/// slack are testable together without an `AppHandle`.
 pub fn resolve_from(
-    settings_theme: OverlayTheme,
+    theme: OverlayTheme,
     file: ThemeFileState,
     support: GlassSupport,
     edge_room: f64,
+    watching: bool,
 ) -> ResolvedOverlayTheme {
-    let theme = merge(&file.tokens, &settings_theme).normalized();
+    let theme = theme.normalized();
     let effective_material = effective_material(theme.material(), support);
 
     ResolvedOverlayTheme {
@@ -1074,6 +1108,7 @@ pub fn resolve_from(
         effective_material,
         glass_support: support,
         file,
+        watching,
     }
 }
 
@@ -1110,11 +1145,54 @@ pub fn deliver(app: &AppHandle, resolved: &ResolvedOverlayTheme) {
         resolved.theme.size_scale()
     );
 
+    record_delivery(resolved);
+
     if let Err(error) = resolved.emit(app) {
         warn!("Failed to emit the resolved overlay theme: {error}");
     }
 
     deliver_native(app, resolved);
+}
+
+/// The last theme [`deliver`] sent, so a re-read that resolves to it again can
+/// stay quiet.
+///
+/// The file watcher sees Handy's own writes as well as everyone else's. A
+/// commit writes the file, re-reads it and delivers; the watcher's event lands
+/// a moment later on the identical document, and this is what makes that
+/// second pass a no-op instead of a second repaint and window resize.
+static LAST_DELIVERED: std::sync::Mutex<Option<ResolvedOverlayTheme>> = std::sync::Mutex::new(None);
+
+/// Deliver only when this is not the theme already on screen.
+///
+/// What the watcher calls. Returns whether anything went out, which its log
+/// line reports.
+pub fn deliver_if_changed(app: &AppHandle, resolved: &ResolvedOverlayTheme) -> bool {
+    if !is_new_delivery(resolved) {
+        return false;
+    }
+    deliver(app, resolved);
+    true
+}
+
+/// Whether `resolved` differs from the last delivery. Reads the record without
+/// updating it, so the caller decides.
+fn is_new_delivery(resolved: &ResolvedOverlayTheme) -> bool {
+    match LAST_DELIVERED.lock() {
+        Ok(last) => last.as_ref() != Some(resolved),
+        // Nothing panics while holding this lock, so this is unreachable in
+        // practice; delivering again beats propagating a panic to the overlay.
+        Err(poisoned) => poisoned.into_inner().as_ref() != Some(resolved),
+    }
+}
+
+/// Remember what was delivered. Only [`deliver`] calls this: a draft is not
+/// persisted, so it must not make the file's own theme look already-delivered.
+fn record_delivery(resolved: &ResolvedOverlayTheme) {
+    match LAST_DELIVERED.lock() {
+        Ok(mut last) => *last = Some(resolved.clone()),
+        Err(poisoned) => *poisoned.into_inner() = Some(resolved.clone()),
+    }
 }
 
 /// Put a draft on the overlay without persisting it.
@@ -1662,122 +1740,88 @@ mod tests {
         }
     }
 
+    /// The file is the theme. Nothing merges over it and nothing under it, so
+    /// the resolved tokens are the document's own, clamped, and a document
+    /// that sets nothing is today's overlay.
+    ///
+    /// This is what "the resolver no longer reads the settings store" looks
+    /// like from the outside: [`resolve_from`] has no second token set to take
+    /// one from. The store's `overlay_theme` is read in exactly one place now,
+    /// `overlay_theme_write::migrate_once`.
     #[test]
-    fn merge_prefers_the_file_per_key() {
-        let file = OverlayTheme {
+    fn the_resolved_theme_is_the_files_own_tokens() {
+        let mut file = ThemeFileState::absent_at("/tmp/overlay_theme.json");
+        file.present = true;
+        file.owned_keys = vec!["accent".to_string(), "glass_material".to_string()];
+        file.tokens = OverlayTheme {
             accent: hex("#7aa2f7"),
-            size_scale: Some(1.1),
-            shadow_strength: Some(0.35),
-            show_waveform: Some(false),
-            ..Default::default()
-        };
-        let settings = OverlayTheme {
-            accent: hex("#ff0000"),
-            surface: hex("#1a1b26"),
-            glass_tint: Some(0.6),
-            radius: Some(12),
-            border: hex("#ffffff"),
-            border_width: Some(3),
-            glass_style: Some(GlassStyle::Clear),
-            waveform_width: Some(5),
-            shadow_strength: Some(0.9),
-            shadow_offset_y: Some(8),
-            show_waveform: Some(true),
-            show_cancel: Some(false),
-            element_gap: Some(6),
-            ..Default::default()
-        };
-
-        let merged = merge(&file, &settings);
-
-        // The file wins the keys it sets…
-        assert_eq!(merged.accent, hex("#7aa2f7"));
-        assert_eq!(merged.size_scale, Some(1.1));
-        // …the settings fill the gaps…
-        assert_eq!(merged.surface, hex("#1a1b26"));
-        assert_eq!(merged.glass_tint, Some(0.6));
-        assert_eq!(merged.radius, Some(12));
-        assert_eq!(merged.border, hex("#ffffff"));
-        assert_eq!(merged.border_width, Some(3));
-        assert_eq!(merged.glass_style, Some(GlassStyle::Clear));
-        assert_eq!(merged.waveform_width, Some(5));
-        assert_eq!(merged.shadow_offset_y, Some(8));
-        assert_eq!(merged.show_cancel, Some(false));
-        assert_eq!(merged.element_gap, Some(6));
-        // …including where both set the same key, file first, and where the
-        // file's value is the falsy one, which `or` must not skip.
-        assert_eq!(merged.shadow_strength, Some(0.35));
-        assert_eq!(merged.show_waveform, Some(false));
-        // …and a key neither of them sets still inherits.
-        assert_eq!(merged.text, None);
-
-        // Merging with an absent file gives the settings back unchanged, for
-        // every token the settings can carry, which is all but the one below.
-        assert_eq!(merge(&OverlayTheme::default(), &settings), settings);
-    }
-
-    /// `glass_material` is the one token the settings store cannot supply. Its
-    /// eight-option dropdown left the Appearance tab when Liquid Glass
-    /// arrived, so the file is the only source; the field survives only so
-    /// documents an older build stored keep deserializing.
-    #[test]
-    fn the_glass_material_is_taken_from_the_theme_file_alone() {
-        let settings = OverlayTheme {
-            glass_material: Some(GlassMaterial::Menu),
-            radius: Some(12),
-            ..Default::default()
-        };
-
-        let stored_only = merge(&OverlayTheme::default(), &settings);
-        assert_eq!(stored_only.glass_material, None);
-        // …and its neighbours in the same struct still fall through.
-        assert_eq!(stored_only.radius, Some(12));
-
-        let file = OverlayTheme {
+            // The one token that never had a row in the Appearance tab. The
+            // file was always its only source, and now it is every token's.
             glass_material: Some(GlassMaterial::Popover),
+            show_waveform: Some(false),
+            shadow_strength: Some(0.35),
             ..Default::default()
         };
-        assert_eq!(
-            merge(&file, &settings).glass_material,
-            Some(GlassMaterial::Popover)
+
+        let resolved = resolve_from(
+            file.tokens.clone(),
+            file.clone(),
+            NO_GLASS,
+            15.0,
+            /* watching */ true,
         );
+
+        assert_eq!(resolved.theme.accent, hex("#7aa2f7"));
+        assert_eq!(resolved.theme.glass_material, Some(GlassMaterial::Popover));
+        // A falsy value is a value, not an absence.
+        assert_eq!(resolved.theme.show_waveform, Some(false));
+        assert_eq!(resolved.theme.shadow_strength, Some(0.35));
+        // Everything the document is silent about still inherits.
+        assert_eq!(resolved.theme.surface, None);
+        assert_eq!(resolved.theme.radius, None);
+        // The file state rides through untouched, and the watcher's flag with
+        // it, which is what takes the tab's Reload button away.
+        assert_eq!(resolved.file, file);
+        assert!(resolved.watching);
+
+        // No file at all is today's overlay, every token inherited.
+        let bare = ThemeFileState::absent_at("/tmp/overlay_theme.json");
+        let resolved = resolve_from(bare.tokens.clone(), bare, NO_GLASS, 15.0, false);
+        assert_eq!(resolved.theme, OverlayTheme::default());
+        assert!(!resolved.watching);
     }
 
-    /// The resolver is the only place the three rules meet, so pin them
-    /// together: the file outranks the settings, the result is clamped once,
-    /// and a Glass request renders Flat while `available` is false, the state
-    /// this build ships in before the native Glass module.
+    /// Glass is unavailable: what this build reports off macOS, and before the
+    /// native effect view is installed.
+    const NO_GLASS: GlassSupport = GlassSupport {
+        supported: true,
+        available: false,
+        engine: GlassEngine::VisualEffect,
+    };
+
+    /// The resolver clamps once, and a Glass request renders Flat while
+    /// `available` is false without losing the request.
     #[test]
     fn resolve_clamps_once_and_downgrades_glass_when_unavailable() {
-        let mut file = ThemeFileState::absent_at("");
-        file.present = true;
-        file.owned_keys = vec!["size_scale".to_string()];
-        file.tokens = OverlayTheme {
-            size_scale: Some(9.0),
-            ..Default::default()
-        };
-
-        let settings_theme = OverlayTheme {
+        let tokens = OverlayTheme {
             accent: hex("#7aa2f7"),
             surface_opacity: Some(0.05),
             glass_tint: Some(1.9),
             material: Some(Material::Glass),
-            size_scale: Some(1.0),
+            size_scale: Some(9.0),
             radius: Some(99),
             ..Default::default()
         };
 
-        let unavailable = GlassSupport {
-            supported: true,
-            available: false,
-            engine: GlassEngine::VisualEffect,
-        };
-        let resolved = resolve_from(settings_theme.clone(), file.clone(), unavailable, 15.0);
+        let mut file = ThemeFileState::absent_at("");
+        file.present = true;
+        file.tokens = tokens.clone();
 
-        // The file's out-of-range value wins the key and is then clamped.
+        let resolved = resolve_from(tokens.clone(), file, NO_GLASS, 15.0, false);
+
+        // Every out-of-range value is moved to its bound in one pass.
         assert_eq!(resolved.theme.size_scale, Some(1.50));
         assert_eq!(resolved.theme.size_scale(), 1.50);
-        // The settings' own out-of-range values are clamped in the same pass.
         assert_eq!(resolved.theme.surface_opacity, Some(0.30));
         assert_eq!(resolved.theme.glass_tint, Some(1.00));
         assert_eq!(resolved.theme.radius, Some(32));
@@ -1787,11 +1831,7 @@ mod tests {
         // so turning Glass back on never has to re-ask the user.
         assert_eq!(resolved.theme.material, Some(Material::Glass));
         assert_eq!(resolved.effective_material, Material::Flat);
-        assert_eq!(resolved.glass_support, unavailable);
-
-        // The file state rides through untouched, drawing the tab's lock
-        // markers.
-        assert_eq!(resolved.file, file);
+        assert_eq!(resolved.glass_support, NO_GLASS);
 
         // Same inputs, Glass actually available: now it renders.
         let available = GlassSupport {
@@ -1800,14 +1840,49 @@ mod tests {
             engine: GlassEngine::Liquid,
         };
         let rendered = resolve_from(
-            settings_theme,
+            tokens,
             ThemeFileState::absent_at(""),
             available,
             15.0,
+            false,
         );
         assert_eq!(rendered.effective_material, Material::Glass);
-        // With no file, the settings' own scale survives.
-        assert_eq!(rendered.theme.size_scale, Some(1.0));
+    }
+
+    /// The gate that stops Handy's own write repainting twice. A commit
+    /// delivers, the watcher then reads the identical document back, and the
+    /// second pass has nothing to say.
+    #[test]
+    fn a_theme_already_delivered_is_not_delivered_again() {
+        let file = ThemeFileState::absent_at("/tmp/overlay_theme.json");
+        let resolved = resolve_from(file.tokens.clone(), file, NO_GLASS, 15.0, true);
+
+        // Left exactly as found, because this record is process-wide.
+        let previous = LAST_DELIVERED
+            .lock()
+            .map(|last| last.clone())
+            .unwrap_or_default();
+
+        record_delivery(&resolved);
+        assert!(
+            !is_new_delivery(&resolved),
+            "the watcher re-reading Handy's own write has nothing to deliver"
+        );
+
+        // A token moving is a new theme, even by one clamped step.
+        let mut changed = resolved.clone();
+        changed.theme.radius = Some(12);
+        assert!(is_new_delivery(&changed));
+
+        // So is a diagnostic appearing, with the tokens unchanged: the tab has
+        // an alert to show that it does not have yet.
+        let mut broken = resolved;
+        broken.file.stale = true;
+        assert!(is_new_delivery(&broken));
+
+        if let Ok(mut last) = LAST_DELIVERED.lock() {
+            *last = previous;
+        }
     }
 
     /// The resolved theme carries the one number the overlay page cannot work
@@ -1839,7 +1914,7 @@ mod tests {
         // platforms' offsets can offer.
         for (room, expected) in [(0.0, 0.0), (4.0, 4.0), (15.0, 15.0), (40.0, 24.0)] {
             assert_eq!(
-                resolve_from(shadowed.clone(), file.clone(), flat, room).shadow_edge_slack,
+                resolve_from(shadowed.clone(), file.clone(), flat, room, false).shadow_edge_slack,
                 expected,
                 "{room} points of room"
             );
@@ -1848,7 +1923,8 @@ mod tests {
         // Nothing is taken with no shadow to make room for, keeping an
         // untouched overlay's window byte-identical…
         assert_eq!(
-            resolve_from(OverlayTheme::default(), file.clone(), flat, 40.0).shadow_edge_slack,
+            resolve_from(OverlayTheme::default(), file.clone(), flat, 40.0, false)
+                .shadow_edge_slack,
             0.0
         );
         // …nor under Glass, where the shadow is macOS's own, outside a window
@@ -1859,11 +1935,11 @@ mod tests {
             ..shadowed.clone()
         };
         assert_eq!(
-            resolve_from(wants_glass.clone(), file.clone(), glass, 40.0).shadow_edge_slack,
+            resolve_from(wants_glass.clone(), file.clone(), glass, 40.0, false).shadow_edge_slack,
             0.0
         );
         assert_eq!(
-            resolve_from(wants_glass, file, flat, 40.0).shadow_edge_slack,
+            resolve_from(wants_glass, file, flat, 40.0, false).shadow_edge_slack,
             24.0
         );
     }

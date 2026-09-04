@@ -1653,7 +1653,7 @@ glass_support: GlassSupport;
  * the native window is sized and placed from it. Zero under Glass and
  * whenever the shadow strength is zero.
  */
-shadow_edge_slack: number; 
+shadow_edge_slack?: number; 
 /**
  * What the theme file contributed, including which tokens it owns and what
  * the reader had to ignore.

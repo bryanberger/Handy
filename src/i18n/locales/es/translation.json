@@ -11,6 +11,7 @@
   },
   "sidebar": {
     "general": "General",
+    "appearance": "Apariencia",
     "models": "Modelos",
     "advanced": "Avanzado",
     "postProcessing": "Post proceso",
@@ -256,6 +257,176 @@
       "volume": {
         "title": "Volumen",
         "description": "Ajusta el volumen de los sonidos de retroalimentación de audio"
+      }
+    },
+    "appearance": {
+      "groups": {
+        "app": "Aplicación",
+        "overlay": "Superposición",
+        "preview": "Vista previa en pantalla",
+        "color": "Color de la superposición",
+        "material": "Material de la superposición",
+        "elements": "Elementos de la superposición",
+        "size": "Tamaño y espaciado de la superposición",
+        "waveform": "Forma de onda",
+        "themeFile": "Archivo de tema"
+      },
+      "preview": {
+        "states": {
+          "cycle": "Ciclo",
+          "arming": "Preparando",
+          "recording": "Grabando",
+          "listening": "Escuchando",
+          "transcribing": "Transcribiendo",
+          "processing": "Procesando"
+        },
+        "start": "Iniciar vista previa",
+        "stop": "Detener vista previa",
+        "hint": "La superposición se queda en pantalla mientras editas, así que cada cambio se ve en ella al instante.",
+        "sampleText": "El veloz murciélago hindú comía feliz cardillo y kiwi, y Handy lo escribe.",
+        "blockedRecording": "No disponible mientras Handy está grabando",
+        "noneNote": "La superposición está desactivada, así que no hay nada que previsualizar. Elige Minimalista o En vivo arriba."
+      },
+      "reset": {
+        "button": "Restablecer tema de superposición",
+        "title": "¿Restablecer el tema de la superposición?",
+        "description": "Esto devuelve todos los colores, tamaños y espaciados de la superposición a los valores predeterminados de Handy. Tu estilo y posición de superposición no cambian.",
+        "descriptionWithThemeFile": "Esto devuelve a los valores predeterminados de Handy todos los colores, tamaños y espaciados de la superposición que no defina el archivo de tema. Tu estilo y posición de superposición no cambian, y los valores del archivo de tema siguen aplicándose.",
+        "confirm": "Restablecer",
+        "cancel": "Cancelar"
+      },
+      "material": {
+        "title": "Material",
+        "description": "Cómo se representa la superficie de la superposición. Plano es una superficie opaca; Cristal es translúcido y desenfoca lo que hay detrás.",
+        "options": {
+          "flat": "Plano",
+          "glass": "Cristal",
+          "glassMacOnly": "Cristal (solo macOS)"
+        },
+        "unavailableNote": "El cristal no está disponible ahora mismo en este Mac — por ejemplo cuando Reducir transparencia está activado en macOS — así que la superposición se muestra Plana.",
+        "glassHint": "La intensidad del tinte decide cuánto cubre el cristal el color de la superficie — bájala para ver más de lo que hay detrás."
+      },
+      "glassStyle": {
+        "title": "Estilo del cristal",
+        "description": "Con qué Liquid Glass se dibuja la superposición. Normal mantiene su propio oscurecimiento, así que la transcripción se lee sobre cualquier fondo; Transparente es más fino y deja ver más de lo que hay detrás. macOS 26 y posterior.",
+        "options": {
+          "regular": "Normal",
+          "clear": "Transparente"
+        }
+      },
+      "waveformStyle": {
+        "title": "Estilo de la onda",
+        "description": "Cómo se dibuja la forma de onda mientras Handy graba. Barras es el medidor de nivel propio de Handy; las demás se dibujan en un lienzo en ese mismo espacio, así que la superposición nunca cambia de tamaño.",
+        "options": {
+          "bars": "Barras",
+          "ribbon": "Cinta",
+          "bloom": "Flor",
+          "motes": "Motas",
+          "matrix": "Matriz",
+          "steps": "Escalones"
+        }
+      },
+      "color": {
+        "swatchLabel": "Elegir un color",
+        "hexLabel": "Valor de color hexadecimal",
+        "resetLabel": "Restablecer al valor predeterminado"
+      },
+      "tokens": {
+        "accent": {
+          "title": "Acento",
+          "description": "El color de resalte: la forma de onda, el punto de grabación, el cursor y el indicador de carga."
+        },
+        "surface": {
+          "title": "Superficie",
+          "description": "El color de fondo de la tarjeta de la superposición."
+        },
+        "surfaceOpacity": {
+          "title": "Opacidad de la superficie",
+          "description": "Cuánto se transparenta el fondo de la tarjeta. Se aplica con el material Plano; Cristal tiene su propia intensidad de tinte."
+        },
+        "glassTint": {
+          "title": "Intensidad del tinte",
+          "description": "Cuánto cubre el cristal el color de la superficie. Más bajo deja pasar más de lo que hay detrás de la superposición."
+        },
+        "text": {
+          "title": "Texto",
+          "description": "El color de primer plano de la tarjeta y la base con la que se mezcla cada tono neutro."
+        },
+        "border": {
+          "title": "Borde",
+          "description": "El color del borde de la tarjeta."
+        },
+        "borderOpacity": {
+          "title": "Opacidad del borde",
+          "description": "Cuánto se ve el borde de la tarjeta."
+        },
+        "shadowStrength": {
+          "title": "Sombra",
+          "description": "Qué tan marcada es la sombra que la tarjeta proyecta sobre el escritorio. Bájala a cero para que la tarjeta quede plana.",
+          "glassDescription": "Si la superposición proyecta una sombra sobre el escritorio.",
+          "glassNote": "macOS dibuja la sombra de una superposición de Cristal, así que solo se puede activar o desactivar, y el desplazamiento de la sombra no tiene efecto."
+        },
+        "shadowOffsetY": {
+          "title": "Desplazamiento de la sombra",
+          "description": "Cuánto cae la sombra por debajo de la tarjeta. La tarjeta en sí nunca se mueve; la ventana de la superposición crece a su alrededor, y la sombra se recorta donde llegaría al borde de la pantalla."
+        },
+        "showWaveform": {
+          "title": "Mostrar la forma de onda",
+          "description": "Muestra la forma de onda durante la grabación. Si se oculta, la superposición se reduce a una píldora pequeña."
+        },
+        "showCancel": {
+          "title": "Mostrar el botón de cancelar",
+          "description": "Muestra el botón de cancelar en la superposición. Tu atajo de teclado cancela igualmente."
+        },
+        "sizeScale": {
+          "title": "Escala de tamaño",
+          "description": "Escala todas las longitudes de la tarjeta a la vez — anchos, altos, espaciado interior y texto. Uno de los valores que cambian cuánto espacio necesita la superposición en pantalla; los otros son el espaciado interior, el grosor del borde y la separación entre elementos."
+        },
+        "radius": {
+          "title": "Radio de las esquinas",
+          "description": "El radio de las esquinas de la tarjeta."
+        },
+        "borderWidth": {
+          "title": "Grosor del borde",
+          "description": "El grosor del borde de la tarjeta. La ventana de la superposición crece con él."
+        },
+        "padding": {
+          "title": "Espaciado interior",
+          "description": "El espaciado interior de la tarjeta en los cuatro lados. La ventana de la superposición crece con él."
+        },
+        "elementGap": {
+          "title": "Separación entre elementos",
+          "description": "Espacio adicional entre el punto, la forma de onda, el temporizador y el botón de cancelar de la superposición. La ventana de la superposición crece con él."
+        },
+        "waveformGap": {
+          "title": "Separación de la onda",
+          "description": "La separación entre las barras de la forma de onda, o entre los puntos del estilo Matriz."
+        },
+        "waveformWidth": {
+          "title": "Ancho de la onda",
+          "description": "El ancho de las formas propias de la onda: una barra, una mota, un punto de la matriz o un escalón."
+        }
+      },
+      "themeFile": {
+        "title": "Archivo de tema",
+        "description": "Un archivo JSON opcional que sustituye los valores del tema de la superposición, para que herramientas de temas externas puedan controlarla.",
+        "notFound": "No hay archivo de tema. Crea uno en esta ruta para sustituir los valores del tema de la superposición.",
+        "active": "Activo — este archivo define {{count}} de {{total}} valores.",
+        "reload": "Recargar",
+        "copy": "Copiar el tema como JSON",
+        "copied": "Copiado",
+        "lockedDescription": "Definido por el archivo de tema. Edita overlay_theme.json o quita esta clave para cambiarlo aquí.",
+        "problemsTitle": "Problemas en el archivo de tema:",
+        "moreDiagnostics": "…y {{count}} más.",
+        "newerVersion": "Este archivo de tema lo escribió una versión más reciente de Handy. Los valores que esta versión no entiende se han ignorado.",
+        "diagnostics": {
+          "malformedDocument": "El archivo de tema no es JSON válido.",
+          "unknownKey": "Clave desconocida ignorada: {{key}}",
+          "wrongType": "\"{{key}}\" tiene el tipo incorrecto y se ha ignorado.",
+          "invalidColor": "\"{{key}}\" no es un color válido y se ha ignorado.",
+          "outOfBounds": "\"{{key}}\" estaba fuera del rango permitido y se ha ajustado al límite.",
+          "unreadable": "No se ha podido leer el archivo de tema."
+        }
       }
     },
     "advanced": {
@@ -690,6 +861,7 @@
     }
   },
   "overlay": {
+    "cancel": "Cancelar",
     "transcribing": "Transcribiendo...",
     "processing": "Procesando..."
   },

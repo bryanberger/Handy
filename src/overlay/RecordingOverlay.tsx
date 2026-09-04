@@ -1,25 +1,81 @@
-import { listen } from "@tauri-apps/api/event";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { emit, listen } from "@tauri-apps/api/event";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import "./RecordingOverlay.css";
 import { commands, events } from "@/bindings";
 import type {
+  ResolvedOverlayTheme,
   StreamPhase,
   StreamPhaseEvent,
   StreamTextEvent,
   StreamWorkKind,
+  WaveformStyle,
 } from "@/bindings";
 import i18n, { syncLanguageFromSettings } from "@/i18n";
+import {
+  applyOverlayTheme,
+  BOOLEAN_INHERIT,
+  storeOverlayTheme,
+  switchToken,
+  WAVEFORM_STYLE_INHERIT,
+  waveformStyleToken,
+} from "@/lib/overlayTheme";
 import { getLanguageDirection } from "@/lib/utils/rtl";
-
-type OverlayState = "recording" | "streaming" | "transcribing" | "processing";
+import OverlayCard, { type OverlayState } from "./OverlayCard";
+import { useCardShapeReporter } from "./useCardShapeReporter";
+import { LEVEL_BUCKETS } from "./waveform/waveformLane";
+import {
+  drawnWaveformStyle,
+  isCanvasWaveformStyle,
+} from "./waveform/waveformStyles";
 
 // Number of reactive bars in the waveform (the simple, smoothed style shared by
-// every overlay form). Mic levels arrive as 16 FFT buckets; we take the first N.
+// every overlay form). Mic levels arrive as LEVEL_BUCKETS FFT buckets; we take
+// the first N.
 const WAVE_BARS = 9;
 
+/** The theme facts this component keeps in state, because the card's markup
+ *  reads them rather than a custom property. */
+interface OverlayThemeFacts {
+  /** Whether the effective Material is Glass. Gates the card-shape reports. */
+  glass: boolean;
+  /** `show_waveform`, unset meaning shown. */
+  showWaveform: boolean;
+  /** `show_cancel`, unset meaning shown. */
+  showCancel: boolean;
+  /** `waveform_style`, unset meaning today's bars. */
+  waveformStyle: WaveformStyle;
+}
+
+// The resolved theme can come from the localStorage mirror, which bypasses
+// Rust, so the two switches go through the apply layer's re-validation like
+// every number and colour it paints.
+const themeFacts = (resolved: ResolvedOverlayTheme): OverlayThemeFacts => ({
+  glass: resolved.effective_material === "glass",
+  showWaveform: switchToken(resolved.theme, "show_waveform"),
+  showCancel: switchToken(resolved.theme, "show_cancel"),
+  waveformStyle: waveformStyleToken(resolved.theme),
+});
+
+// Paint a resolved overlay theme and report the facts the markup needs.
+const paintOverlayTheme = (
+  resolved: ResolvedOverlayTheme,
+): OverlayThemeFacts => {
+  applyOverlayTheme(document.documentElement, resolved);
+  return themeFacts(resolved);
+};
+
+// Paint a persisted theme and store it for the next boot. The show pull and the
+// change push both do this. A draft does not. It is unpersisted, so mirroring it
+// would paint a restart's first frame with a theme the user never settled on.
+const paintAndStoreOverlayTheme = (
+  resolved: ResolvedOverlayTheme,
+): OverlayThemeFacts => {
+  const facts = paintOverlayTheme(resolved);
+  storeOverlayTheme(resolved);
+  return facts;
+};
+
 const RecordingOverlay: React.FC = () => {
-  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const [state, setState] = useState<OverlayState>("recording");
   // `Stream::play()` returning does not mean hardware callbacks are flowing.
@@ -40,20 +96,58 @@ const RecordingOverlay: React.FC = () => {
   // Overlay placement (top vs bottom of the screen). The Live panel grows downward
   // from a top overlay (oldest line under the pill) and upward from a bottom one.
   const [position, setPosition] = useState<"top" | "bottom">("bottom");
-  // True once live text overflows the cap. A top overlay fades its top edge only
-  // while overflowing, so the resting first line stays crisp flush under the pill.
-  const [overflowing, setOverflowing] = useState(false);
+  // The theme facts the markup reads, from the resolved theme painted below:
+  // whether Glass is in effect (which gates the card-shape reports) and which
+  // of the row's two elements the theme keeps.
+  const [theme, setTheme] = useState<OverlayThemeFacts>({
+    glass: false,
+    showWaveform: BOOLEAN_INHERIT.show_waveform,
+    showCancel: BOOLEAN_INHERIT.show_cancel,
+    waveformStyle: WAVEFORM_STYLE_INHERIT,
+  });
+  // Bumped on every repaint, so a canvas waveform style re-reads the colours
+  // and the two waveform lengths it caches. A number rather than the facts
+  // object above, because a repaint that changes no fact still moves a colour.
+  const [themeRevision, setThemeRevision] = useState(0);
 
-  const smoothedLevelsRef = useRef<number[]>(Array(16).fill(0));
-  // Live-text scroll-back: the text region "sticks" to the newest line while the
-  // user is at the bottom; if they scroll up to read history, auto-follow pauses
-  // until they scroll back down.
-  const capRef = useRef<HTMLDivElement>(null);
-  const pinnedRef = useRef(true);
+  const smoothedLevelsRef = useRef<number[]>(Array(LEVEL_BUCKETS).fill(0));
+  // Whether the waveform is on a canvas, read by the microphone listener,
+  // which is registered once and cannot see the state above.
+  const canvasWaveformRef = useRef(false);
+  // The browser gave no 2D context, so every style falls back to the bars. Kept
+  // here, not in the card: the bars are fed from the level state above, which a
+  // canvas style skips, so a card falling back on its own would draw bars
+  // frozen at zero for the rest of the session. Cleared when the style changes,
+  // so one failure is not carried into a later choice.
+  const [canvasUnavailable, setCanvasUnavailable] = useState(false);
+  const canvasUnavailableRef = useRef(false);
+  const paintedStyleRef = useRef<WaveformStyle>(WAVEFORM_STYLE_INHERIT);
+  const reportCanvasUnavailable = useCallback(() => {
+    canvasUnavailableRef.current = true;
+    canvasWaveformRef.current = false;
+    setCanvasUnavailable(true);
+  }, []);
   const direction = getLanguageDirection(i18n.language);
 
   useEffect(() => {
     const setupEventListeners = async () => {
+      // Every repaint lands here: it holds the facts the markup reads, tells
+      // the microphone listener whether a canvas is drawing, and moves the
+      // revision a canvas style re-measures on.
+      const painted = (facts: OverlayThemeFacts) => {
+        // A style the user just picked deserves a fresh try at a canvas.
+        if (paintedStyleRef.current !== facts.waveformStyle) {
+          paintedStyleRef.current = facts.waveformStyle;
+          canvasUnavailableRef.current = false;
+          setCanvasUnavailable(false);
+        }
+        setTheme(facts);
+        canvasWaveformRef.current = isCanvasWaveformStyle(
+          drawnWaveformStyle(facts.waveformStyle, canvasUnavailableRef.current),
+        );
+        setThemeRevision((revision) => revision + 1);
+      };
+
       const unlistenShow = await listen("show-overlay", async (event) => {
         const overlayState = event.payload as OverlayState;
         // Reset synchronously before settings I/O. A fast microphone can emit
@@ -61,7 +155,7 @@ const RecordingOverlay: React.FC = () => {
         // them would overwrite that event and leave the overlay stuck arming.
         if (overlayState === "recording" || overlayState === "streaming") {
           setCaptureReady(false);
-          smoothedLevelsRef.current = Array(16).fill(0);
+          smoothedLevelsRef.current = Array(LEVEL_BUCKETS).fill(0);
           setLevels(Array(WAVE_BARS).fill(0));
           setStreamText({ committed: "", tentative: "" });
         }
@@ -69,15 +163,26 @@ const RecordingOverlay: React.FC = () => {
         await syncLanguageFromSettings();
         // The Live panel flows downward from a top overlay and upward from a
         // bottom one; read the placement so the layout can flip to match.
+        // This pulls the overlay theme alongside it, one round trip for both,
+        // so the card paints the same resolved theme the backend holds.
         try {
-          const settings = await commands.getAppSettings();
+          const [settings, resolved] = await Promise.all([
+            commands.getAppSettings(),
+            commands.getResolvedOverlayTheme(),
+          ]);
           if (settings.status === "ok") {
             setPosition(
               settings.data.overlay_position === "top" ? "top" : "bottom",
             );
           }
+          if (resolved.status === "ok") {
+            // Painted here, not in an effect. The custom properties and
+            // `data-material` must be on the root before the first painted
+            // frame, which an effect would leave to React's batching.
+            painted(paintAndStoreOverlayTheme(resolved.data));
+          }
         } catch {
-          // Keep the previous/default placement if settings can't be read.
+          // Keep the previous/default placement and theme if either read fails.
         }
         setState(overlayState);
         if (overlayState === "streaming") {
@@ -101,19 +206,41 @@ const RecordingOverlay: React.FC = () => {
 
       const unlistenLevel = await listen<number[]>("mic-level", (event) => {
         const newLevels = event.payload as number[];
-        // Exponential smoothing across the 16 buckets, then take the first N
+        // Exponential smoothing across every bucket, then take the first N
         // bars for the shared waveform.
         const smoothed = smoothedLevelsRef.current.map((prev, i) => {
           const target = newLevels[i] || 0;
           return prev * 0.7 + target * 0.3;
         });
         smoothedLevelsRef.current = smoothed;
-        setLevels(smoothed.slice(0, WAVE_BARS));
+        // A canvas style reads the ref inside its own animation loop, so it
+        // skips this state update: those styles cost fewer React renders than
+        // the bars, which are DOM elements and need one per frame.
+        if (!canvasWaveformRef.current) setLevels(smoothed.slice(0, WAVE_BARS));
       });
 
       const unlistenStream = await events.streamTextEvent.listen((event) => {
         setStreamText(event.payload);
       });
+
+      // The theme can change while the overlay is visible (a token committed
+      // in the Appearance tab), so repaint on every push too.
+      const unlistenTheme = await events.resolvedOverlayTheme.listen((event) =>
+        painted(paintAndStoreOverlayTheme(event.payload)),
+      );
+
+      // The same repaint for a theme still being edited. A draft arrives per
+      // animation frame while a slider is dragged, so this handler only paints.
+      const unlistenDraft = await events.overlayThemeDraft.listen((event) =>
+        painted(paintOverlayTheme(event.payload.resolved)),
+      );
+
+      // The app theme is applied in `main.tsx`, which repaints no overlay
+      // token, so nothing above moves. A canvas style still has to re-read its
+      // colours: the accent follows the app palette.
+      const unlistenAppTheme = await listen("theme-changed", () =>
+        setThemeRevision((revision) => revision + 1),
+      );
 
       const unlistenPhase = await events.streamPhaseEvent.listen((event) => {
         const payload: StreamPhaseEvent = event.payload;
@@ -121,12 +248,20 @@ const RecordingOverlay: React.FC = () => {
         if (payload.kind) setWorkKind(payload.kind);
       });
 
+      // Tauri delivers events only to webviews already listening, so any
+      // show before this point was dropped. This lets the backend re-run a
+      // missed one, so the first preview after launch is not an empty window.
+      void emit("overlay-webview-ready");
+
       return () => {
         unlistenShow();
         unlistenHide();
         unlistenReady();
         unlistenLevel();
         unlistenStream();
+        unlistenTheme();
+        unlistenDraft();
+        unlistenAppTheme();
         unlistenPhase();
       };
     };
@@ -141,164 +276,39 @@ const RecordingOverlay: React.FC = () => {
     return () => clearInterval(id);
   }, [state, isVisible, captureReady]);
 
-  // Stick to the bottom as text streams in — but only while pinned, so a user who
-  // has scrolled up to read history isn't yanked back down by the next chunk.
-  useLayoutEffect(() => {
-    const el = capRef.current;
-    if (!el) return;
-    // Fade the top edge only once text actually overflows the cap.
-    setOverflowing(el.scrollHeight > el.clientHeight + 1);
-    if (pinnedRef.current) el.scrollTop = el.scrollHeight;
-  }, [streamText]);
-
-  // Each fresh streaming session starts pinned to the bottom, fade cleared.
-  useEffect(() => {
-    pinnedRef.current = true;
-    setOverflowing(false);
-  }, [session]);
+  useCardShapeReporter({
+    isVisible,
+    glassActive: theme.glass,
+    state,
+    streamText,
+    phase,
+  });
 
   if (!isVisible) return null;
 
-  // Re-pin when the user is within ~a line of the bottom; unpin otherwise.
-  const handleStreamScroll = () => {
-    const el = capRef.current;
-    if (!el) return;
-    pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 16;
-  };
-
-  const fmtTime = (s: number) =>
-    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-
-  // ---- Shared building blocks (one visual language for every overlay form) ----
-  const waveform = (
-    <div className={`swave ${captureReady ? "ready" : "arming"}`}>
-      {levels.map((v, i) => (
-        <i
-          key={i}
-          style={{
-            height: `${Math.max(3, Math.min(18, 3 + Math.pow(v, 0.7) * 15))}px`,
-          }}
-        />
-      ))}
-    </div>
-  );
-
-  const cancelBtn = (
-    <button
-      className="sx"
-      aria-label="cancel"
-      onClick={() => commands.cancelOperation()}
-    >
-      <svg viewBox="0 0 16 16" aria-hidden="true">
-        <path
-          d="M4 4 L12 12 M12 4 L4 12"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-        />
-      </svg>
-    </button>
-  );
-
-  // dot (left) | waveform (center) | timer + cancel (right) — same structure for
-  // pill & panel, so the Live morph is a pure width change.
-  const listeningRow = (showTimer: boolean, showCancel: boolean) => (
-    <div className="sbase">
-      <div className="sbase-l">
-        <span className={`sdot ${captureReady ? "ready" : "arming"}`} />
-      </div>
-      {waveform}
-      <div className="sbase-r">
-        {showTimer && <span className="stimer">{fmtTime(elapsed)}</span>}
-        {showCancel && cancelBtn}
-      </div>
-    </div>
-  );
-
-  // spinner (left) | label (center) | cancel (right) — same 3-zone grid as the
-  // listening row, so the label is centered.
-  const workingRow = (label: string, showCancel: boolean) => (
-    <div className="sbase">
-      <div className="sbase-l">
-        <span className="sspinner" />
-      </div>
-      <span className="swork-label">{label}</span>
-      <div className="sbase-r">{showCancel && cancelBtn}</div>
-    </div>
-  );
-
-  // ---- Live overlay: a pill that sculpts open into a panel ----
-  if (state === "streaming") {
-    const hasText =
-      streamText.committed.length > 0 || streamText.tentative.length > 0;
-    const working = phase === "working";
-    // Keep the panel open whenever there's text — even while finalizing — so the
-    // transcript stays put under a working spinner instead of collapsing and
-    // squishing the text mid-stream. Only fall back to the small working pill
-    // when there was no text to preserve.
-    const open = hasText;
-    const collapsed = working && !hasText;
-
-    return (
-      <div dir={direction} className={`ov-stage ${position}`}>
-        <div
-          key={session}
-          className={`scard ${open ? "open" : ""} ${collapsed ? "working" : ""} ${
-            isVisible ? "" : "leaving"
-          }`}
-        >
-          <div className="stext">
-            <div className="stext-clip">
-              <div
-                className={`stext-cap ${overflowing ? "overflowing" : ""}`}
-                ref={capRef}
-                onScroll={handleStreamScroll}
-              >
-                <p>
-                  <span className="committed">
-                    {streamText.committed ? streamText.committed + " " : ""}
-                  </span>
-                  <span className="tentative">{streamText.tentative}</span>
-                  {/* Drop the blinking caret once finalizing — it's no longer
-                      capturing, and a static spinner conveys the work. */}
-                  {!working && <span className="scaret" />}
-                </p>
-              </div>
-            </div>
-          </div>
-          {working
-            ? workingRow(
-                workKind === "polishing"
-                  ? t("overlay.processing")
-                  : t("overlay.transcribing"),
-                true,
-              )
-            : listeningRow(open, true)}
-        </div>
-      </div>
-    );
-  }
-
-  // ---- Minimal overlay: exactly one row at a time — waveform (recording), or a
-  // spinner + label (transcribing / processing). Never both. The pill animates its
-  // width between them; the cancel button is in both rows so it stays put.
-  const working = state === "transcribing" || state === "processing";
-  const workLabel =
-    state === "processing"
-      ? t("overlay.processing")
-      : t("overlay.transcribing");
-
+  // The `.ov-stage` / `.scard` markup lives in OverlayCard so the Appearance
+  // tab's preview renders identically to a real dictation. This component owns
+  // only the Tauri listeners, the elapsed timer and the overlay position above.
   return (
-    <div
-      dir={direction}
-      className={`ov-stage ${position} ov-fade ${isVisible ? "show" : ""}`}
-    >
-      <div
-        className={`scard compact ${working && isVisible ? "cworking" : ""}`}
-      >
-        {working ? workingRow(workLabel, true) : listeningRow(false, true)}
-      </div>
-    </div>
+    <OverlayCard
+      state={state}
+      captureReady={captureReady}
+      levels={levels}
+      streamText={streamText}
+      phase={phase}
+      workKind={workKind}
+      elapsed={elapsed}
+      position={position}
+      showWaveform={theme.showWaveform}
+      showCancel={theme.showCancel}
+      waveformStyle={drawnWaveformStyle(theme.waveformStyle, canvasUnavailable)}
+      levelsRef={smoothedLevelsRef}
+      themeRevision={themeRevision}
+      onCanvasUnavailable={reportCanvasUnavailable}
+      session={session}
+      direction={direction}
+      onCancel={() => commands.cancelOperation()}
+    />
   );
 };
 

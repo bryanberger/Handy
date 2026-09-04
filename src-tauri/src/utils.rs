@@ -1,5 +1,6 @@
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::transcription::TranscriptionManager;
+use crate::overlay_preview::{self, CancelRemainder};
 use crate::shortcut;
 use crate::TranscriptionCoordinator;
 use log::info;
@@ -83,15 +84,27 @@ fn native_windows_machine() -> Option<u16> {
 
 /// Centralized cancellation function that can be called from anywhere in the app.
 /// Handles cancelling both recording and transcription operations and updates UI state.
+///
+/// Every cancel entry point funnels through here: the `cancel_operation`
+/// command (the overlay's cancel button), the `--cancel` flag, the cancel
+/// shortcut and the tray item. So the overlay preview is handled in one place.
 pub fn cancel_current_operation(app: &AppHandle) {
     info!("Initiating operation cancellation...");
+
+    // The preview uses the real session's overlay, so a cancel while one is on
+    // screen is the preview's, unless a real recording is running. That one
+    // gets its full cancel below, since swallowing it would strand a session.
+    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
+    let recording_was_active = audio_manager.is_recording();
+    if overlay_preview::take_cancel(recording_was_active) == CancelRemainder::Handled {
+        info!("Cancellation handled by the overlay preview; nothing else was running");
+        return;
+    }
 
     // Unregister the cancel shortcut asynchronously
     shortcut::unregister_cancel_shortcut(app);
 
     // Cancel any ongoing recording
-    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
-    let recording_was_active = audio_manager.is_recording();
     audio_manager.cancel_recording();
 
     // Abandon any live streaming transcription

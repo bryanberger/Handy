@@ -29,6 +29,13 @@ bun run build      # Build frontend (TypeScript + Vite)
 bun run preview    # Preview built frontend
 ```
 
+**Tests:**
+
+```bash
+bun run test:unit         # Bun unit tests for frontend modules (bun test src)
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust tests
+```
+
 **Linting and Formatting (run before committing):**
 
 ```bash
@@ -53,6 +60,8 @@ For detailed platform-specific build setup, see [BUILD.md](BUILD.md).
 
 Handy is a cross-platform desktop speech-to-text application built with Tauri 2.x (Rust backend + React/TypeScript frontend).
 
+[CONTEXT.md](CONTEXT.md) is the glossary. It names each thing in the app's appearance and its recording overlay, and the words to avoid. Use those names in code, comments, commits and UI strings.
+
 ### Backend Structure (src-tauri/src/)
 
 - `lib.rs` - Main entry point, Tauri setup, manager initialization
@@ -68,7 +77,16 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `cli.rs` - CLI argument definitions (clap derive)
 - `shortcut.rs` - Global keyboard shortcut handling
 - `settings.rs` - Application settings management
-- `overlay.rs` - Recording overlay window (platform-specific)
+- `overlay.rs` - Recording overlay window (platform-specific): window creation, monitors, positioning, show and hide, the Glass reveal, mic levels
+- `overlay_geometry.rs` - Card geometry, pure and platform-free: card shapes, card metrics (size scale, border width, radius), the window size and corner radius they produce, and the overlay window state the native window is configured from
+- `overlay_theme.rs` - Overlay theme tokens, the file/settings/inherit resolver, delivery
+- `overlay_theme_file.rs` - Reads `overlay_theme.json` (see the README's Overlay Theme File section)
+- `overlay_glass.rs` - The macOS Glass material. One native view under the webview, `NSGlassEffectView` (Liquid Glass) on macOS 26 and later and `NSVisualEffectView` before it, plus the native frame morph. `glass_support.engine` reports which engine drew; `glass_style` and `glass_material` are its live setters, one per engine
+- `overlay_preview.rs` - Preview mode. Drives the real overlay from synthetic audio, cycling or pinned to one state, until the Appearance tab stops it. It also backs `--preview-overlay`, which stops itself, and owns the cancel funnel every cancel path goes through
+- `frontend_source.rs` - Test-only readers for the overlay's stylesheet and TypeScript, so Rust tests pin their constants to the values the frontend paints
+- `commands/overlay_theme.rs` - Persist, read and reload the overlay theme
+- `commands/overlay_preview.rs` - Thin adapters onto `overlay_preview.rs`: start, set state, stop
+- `commands/overlay_card.rs` - Receives the overlay page's card-shape reports
 - `signal_handle.rs` - `send_transcription_input()` reusable function
 - `utils.rs` - Platform detection helpers
 
@@ -77,15 +95,21 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `App.tsx` - Main component with onboarding flow
 - `components/` - React UI components:
   - `settings/` - Settings UI
+  - `settings/appearance/` - Appearance tab: app theme, overlay theme tokens, on-screen preview, theme file
   - `model-selector/` - Model management interface
   - `onboarding/` - First-run experience
   - `overlay/` - Recording overlay UI
   - `update-checker/` - App update notifications
   - `shared/`, `ui/`, `icons/`, `footer/` - Shared components
 - `hooks/useSettings.ts` - Settings state management hook
+- `hooks/useResolvedOverlayTheme.ts` - Subscribes the settings window to the resolved overlay theme
 - `stores/settingsStore.ts` - Zustand store for settings
 - `bindings.ts` - Auto-generated Tauri type bindings (via tauri-specta)
 - `overlay/` - Recording overlay window entry point
+  - `OverlayCard.tsx` - The card's markup, rendered by the overlay window
+  - `cardShape.ts` - Which of the five card shapes is on screen, and the Live open/collapsed rule
+  - `useCardShapeReporter.ts` - Reports that shape to the backend (Glass only)
+- `lib/overlayTheme.ts` - The apply layer. Turns a resolved overlay theme into the overlay's CSS custom properties
 - `lib/types.ts` - Shared TypeScript type definitions
 
 ### Key Architecture Patterns
@@ -180,6 +204,7 @@ Handy supports command-line parameters on all platforms for integration with scr
 | `--toggle-transcription` | Toggle recording on/off on a running instance              |
 | `--toggle-post-process`  | Toggle recording with post-processing on/off               |
 | `--cancel`               | Cancel the current operation on a running instance         |
+| `--preview-overlay`      | Show the overlay for a few seconds to check its theme      |
 | `--start-hidden`         | Launch without showing the main window (tray icon visible) |
 | `--no-tray`              | Launch without system tray (closing window quits the app)  |
 | `--debug`                | Enable debug mode with verbose (Trace) logging             |
@@ -200,6 +225,8 @@ Access debug features: `Cmd+Shift+D` (macOS) or `Ctrl+Shift+D` (Windows/Linux)
 - **Windows**: Vulkan acceleration, code signing
 - **Linux**: OpenBLAS + Vulkan, limited Wayland support, overlay uses GTK layer shell (disable with `HANDY_NO_GTK_LAYER_SHELL=1`)
 - **Nix/NixOS**: the Nix package sets `HANDY_DISABLE_UPDATER=1` to force-disable the self-updater at runtime without touching the persisted setting (self-update can't work against an immutable `/nix/store`)
+- **macOS Glass**: the overlay window snaps between card shapes, because the native frame animation leads WebKit's repaint and briefly shows a bare blurred rim. `HANDY_GLASS_MORPH=1` opts the animation back in on real hardware; macOS "Reduce motion" snaps either way. On macOS 26 and later the blur is `NSGlassEffectView` (Liquid Glass) and the `glass_style` token picks Regular or Clear; before that it is `NSVisualEffectView` and the file-only `glass_material` token picks the `NSVisualEffectMaterial`. Both are tokens, not environment variables, so there is one source of truth, and `glass_material` is file-only because it has no row in the Appearance tab. Under Liquid Glass the surface tint is painted twice on purpose, natively as the glass's `tintColor` composed from `surface` and `glass_tint` so the glass lenses it, and again by the card as `--s-surface`. `glass_tint` sets the tint strength. `surface_opacity` is Flat's and Glass ignores it, so a card set opaque under Flat is still glass the moment Glass is picked. Measured on macOS 26, `tintColor` alone left the card dark under a Light app theme, the glass ignoring the tint's hue and not following the app appearance, with the transcript at 1.9:1; the card's own tint makes the same case 6.5:1. Dropping the CSS half is a one-branch change if real hardware honours both. Under Glass the panel also turns macOS's own window shadow back on (`overlay_glass::window_shadow`); Flat keeps it off because there the window is larger than the card and transparent around it. Clear's unset edge is a white highlight rather than a foreground hairline. A show can only seed the card shape from its state, and every Live state seeds the pill, so anything that rounds the blur after a show re-reads the shape on screen instead of carrying the seeded radius — the delayed fallback reveal included, since a reveal writes the radius even when the view is already visible
+- **Overlay theme file**: `HANDY_OVERLAY_THEME_FILE=<path>` names the `overlay_theme.json` Handy reads. It takes a path, not a flag, and it is exclusive. When set, no other location is tried and a missing target is a warning, not a silent fallback
 
 ## Troubleshooting
 

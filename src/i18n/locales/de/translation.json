@@ -11,6 +11,7 @@
   },
   "sidebar": {
     "general": "Allgemein",
+    "appearance": "Darstellung",
     "models": "Modelle",
     "advanced": "Erweitert",
     "postProcessing": "Nachbearbeitung",
@@ -256,6 +257,176 @@
       "volume": {
         "title": "Lautstärke",
         "description": "Lautstärke der Audio-Feedback-Töne anpassen"
+      }
+    },
+    "appearance": {
+      "groups": {
+        "app": "Anwendung",
+        "overlay": "Overlay",
+        "preview": "Vorschau auf dem Bildschirm",
+        "color": "Overlay-Farbe",
+        "material": "Overlay-Material",
+        "elements": "Overlay-Elemente",
+        "size": "Overlay-Größe & Abstände",
+        "waveform": "Wellenform",
+        "themeFile": "Designdatei"
+      },
+      "preview": {
+        "states": {
+          "cycle": "Durchlauf",
+          "arming": "Vorbereiten",
+          "recording": "Aufnahme",
+          "listening": "Zuhören",
+          "transcribing": "Transkription",
+          "processing": "Verarbeitung"
+        },
+        "start": "Vorschau starten",
+        "stop": "Vorschau beenden",
+        "hint": "Das Overlay bleibt beim Bearbeiten auf dem Bildschirm, sodass jede Änderung sofort darauf zu sehen ist.",
+        "sampleText": "Franz jagt im komplett verwahrlosten Taxi quer durch Bayern, und Handy schreibt es mit.",
+        "blockedRecording": "Nicht verfügbar, während Handy aufnimmt",
+        "noneNote": "Das Overlay ist ausgeschaltet, es gibt also nichts in der Vorschau. Wähle oben Minimal oder Live."
+      },
+      "reset": {
+        "button": "Overlay-Design zurücksetzen",
+        "title": "Overlay-Design zurücksetzen?",
+        "description": "Das setzt alle Farben, Größen und Abstände des Overlays auf die Standardwerte von Handy zurück. Overlay-Stil und -Position bleiben unverändert.",
+        "descriptionWithThemeFile": "Das setzt alle Farben, Größen und Abstände des Overlays, die nicht von der Designdatei gesetzt werden, auf die Standardwerte von Handy zurück. Overlay-Stil und -Position bleiben unverändert, und Werte aus der Designdatei bleiben wirksam.",
+        "confirm": "Zurücksetzen",
+        "cancel": "Abbrechen"
+      },
+      "material": {
+        "title": "Material",
+        "description": "Wie die Overlay-Oberfläche gerendert wird. Flach ist eine deckende Oberfläche; Glas ist durchscheinend und macht unscharf, was dahinter liegt.",
+        "options": {
+          "flat": "Flach",
+          "glass": "Glas",
+          "glassMacOnly": "Glas (nur macOS)"
+        },
+        "unavailableNote": "Glas ist auf diesem Mac gerade nicht verfügbar — zum Beispiel wenn in macOS Transparenz reduzieren aktiv ist — daher wird das Overlay flach dargestellt.",
+        "glassHint": "Die Tönungsstärke legt fest, wie stark die Oberflächenfarbe das Glas überdeckt — verringere sie, um mehr vom Hintergrund zu sehen."
+      },
+      "glassStyle": {
+        "title": "Glas-Stil",
+        "description": "Mit welchem Liquid Glass das Overlay gezeichnet wird. Normal dunkelt selbst ab, damit der Text über allem lesbar bleibt; Klar ist dünner und lässt mehr vom Hintergrund durch. Ab macOS 26.",
+        "options": {
+          "regular": "Normal",
+          "clear": "Klar"
+        }
+      },
+      "waveformStyle": {
+        "title": "Wellenform-Stil",
+        "description": "Wie die Wellenform gezeichnet wird, während Handy aufnimmt. Balken ist Handys eigene Pegelanzeige; die übrigen werden auf einer Zeichenfläche am selben Platz gezeichnet, sodass das Overlay seine Größe nie ändert.",
+        "options": {
+          "bars": "Balken",
+          "ribbon": "Band",
+          "bloom": "Blüte",
+          "motes": "Funken",
+          "matrix": "Matrix",
+          "steps": "Stufen"
+        }
+      },
+      "color": {
+        "swatchLabel": "Farbe wählen",
+        "hexLabel": "Hex-Farbwert",
+        "resetLabel": "Auf Standard zurücksetzen"
+      },
+      "tokens": {
+        "accent": {
+          "title": "Akzent",
+          "description": "Die Hervorhebungsfarbe: Wellenform, Aufnahmepunkt, Cursor und Ladeanzeige."
+        },
+        "surface": {
+          "title": "Oberfläche",
+          "description": "Die Hintergrundfarbe der Overlay-Karte."
+        },
+        "surfaceOpacity": {
+          "title": "Deckkraft der Oberfläche",
+          "description": "Wie durchsichtig der Hintergrund der Karte ist. Gilt beim Material Flach; Glas hat seine eigene Tönungsstärke."
+        },
+        "glassTint": {
+          "title": "Tönungsstärke",
+          "description": "Wie stark die Oberflächenfarbe das Glas überdeckt. Niedriger lässt mehr von dem durch, was hinter dem Overlay liegt."
+        },
+        "text": {
+          "title": "Text",
+          "description": "Die Vordergrundfarbe der Karte und die Basis, aus der alle neutralen Töne gemischt werden."
+        },
+        "border": {
+          "title": "Rahmen",
+          "description": "Die Farbe der Kartenkante."
+        },
+        "borderOpacity": {
+          "title": "Deckkraft des Rahmens",
+          "description": "Wie sichtbar die Kartenkante ist."
+        },
+        "shadowStrength": {
+          "title": "Schatten",
+          "description": "Wie kräftig der Schatten ist, den die Karte auf den Desktop wirft. Ganz herunterdrehen, damit die Karte flach aufliegt.",
+          "glassDescription": "Ob das Overlay einen Schatten auf den Desktop wirft.",
+          "glassNote": "Bei einem Glas-Overlay zeichnet macOS den Schatten, er lässt sich also nur ein- oder ausschalten, und der Schattenversatz hat keine Wirkung."
+        },
+        "shadowOffsetY": {
+          "title": "Schattenversatz",
+          "description": "Wie weit unterhalb der Karte ihr Schatten fällt. Die Karte selbst bewegt sich nie; das Overlay-Fenster wächst um sie herum, und der Schatten wird dort beschnitten, wo er den Bildschirmrand erreichen würde."
+        },
+        "showWaveform": {
+          "title": "Wellenform anzeigen",
+          "description": "Zeigt die Wellenform während der Aufnahme. Ist sie ausgeblendet, schrumpft das Overlay auf eine kleine Pille."
+        },
+        "showCancel": {
+          "title": "Abbrechen-Schaltfläche anzeigen",
+          "description": "Zeigt die Abbrechen-Schaltfläche im Overlay. Dein Tastenkürzel bricht so oder so ab."
+        },
+        "sizeScale": {
+          "title": "Größenskalierung",
+          "description": "Skaliert alle Längen der Karte auf einmal — Breiten, Höhen, Innenabstände und Schrift. Einer der Werte, die ändern, wie viel Platz das Overlay auf dem Bildschirm braucht; die anderen sind Innenabstand, Rahmenstärke und Elementabstand."
+        },
+        "radius": {
+          "title": "Eckenradius",
+          "description": "Der Eckenradius der Karte."
+        },
+        "borderWidth": {
+          "title": "Rahmenstärke",
+          "description": "Wie dick die Kartenkante ist. Das Overlay-Fenster wächst mit."
+        },
+        "padding": {
+          "title": "Innenabstand",
+          "description": "Der Innenabstand der Karte auf allen vier Seiten. Das Overlay-Fenster wächst mit."
+        },
+        "elementGap": {
+          "title": "Elementabstand",
+          "description": "Zusätzlicher Abstand zwischen Punkt, Wellenform, Zeitanzeige und Abbrechen-Schaltfläche des Overlays. Das Overlay-Fenster wächst mit."
+        },
+        "waveformGap": {
+          "title": "Wellenform-Abstand",
+          "description": "Der Abstand zwischen den Balken der Wellenform oder zwischen den Punkten des Stils Matrix."
+        },
+        "waveformWidth": {
+          "title": "Wellenform-Breite",
+          "description": "Wie breit die Formen der Wellenform selbst sind: ein Balken, ein Funke, ein Matrixpunkt oder eine Stufe."
+        }
+      },
+      "themeFile": {
+        "title": "Designdatei",
+        "description": "Eine optionale JSON-Datei, die Werte des Overlay-Designs überschreibt, damit externe Theming-Tools das Overlay steuern können.",
+        "notFound": "Keine Designdatei. Lege unter diesem Pfad eine an, um Werte des Overlay-Designs zu überschreiben.",
+        "active": "Aktiv — diese Datei setzt {{count}} von {{total}} Werten.",
+        "reload": "Neu laden",
+        "copy": "Design als JSON kopieren",
+        "copied": "Kopiert",
+        "lockedDescription": "Von der Designdatei gesetzt. Bearbeite overlay_theme.json oder entferne diesen Schlüssel, um ihn hier zu ändern.",
+        "problemsTitle": "Probleme in der Designdatei:",
+        "moreDiagnostics": "…und {{count}} weitere.",
+        "newerVersion": "Diese Designdatei wurde von einer neueren Version von Handy geschrieben. Werte, die diese Version nicht kennt, wurden ignoriert.",
+        "diagnostics": {
+          "malformedDocument": "Die Designdatei ist kein gültiges JSON.",
+          "unknownKey": "Unbekannter Schlüssel ignoriert: {{key}}",
+          "wrongType": "\"{{key}}\" hat den falschen Typ und wurde ignoriert.",
+          "invalidColor": "\"{{key}}\" ist keine gültige Farbe und wurde ignoriert.",
+          "outOfBounds": "\"{{key}}\" lag außerhalb des zulässigen Bereichs und wurde begrenzt.",
+          "unreadable": "Die Designdatei konnte nicht gelesen werden."
+        }
       }
     },
     "advanced": {
@@ -690,6 +861,7 @@
     }
   },
   "overlay": {
+    "cancel": "Abbrechen",
     "transcribing": "Transkribiere...",
     "processing": "Verarbeite..."
   },

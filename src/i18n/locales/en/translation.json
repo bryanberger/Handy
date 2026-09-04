@@ -11,6 +11,7 @@
   },
   "sidebar": {
     "general": "General",
+    "appearance": "Appearance",
     "models": "Models",
     "advanced": "Advanced",
     "postProcessing": "Post Process",
@@ -256,6 +257,176 @@
       "volume": {
         "title": "Volume",
         "description": "Adjust the volume of audio feedback sounds"
+      }
+    },
+    "appearance": {
+      "groups": {
+        "app": "Application",
+        "overlay": "Overlay",
+        "preview": "On-Screen Preview",
+        "color": "Overlay Color",
+        "material": "Overlay Material",
+        "elements": "Overlay Elements",
+        "size": "Overlay Size & Spacing",
+        "waveform": "Waveform",
+        "themeFile": "Theme File"
+      },
+      "preview": {
+        "states": {
+          "cycle": "Cycle",
+          "arming": "Arming",
+          "recording": "Recording",
+          "listening": "Listening",
+          "transcribing": "Transcribing",
+          "processing": "Processing"
+        },
+        "start": "Start preview",
+        "stop": "Stop preview",
+        "hint": "The overlay stays on screen while you edit, so every change shows on it right away.",
+        "sampleText": "The quick brown fox jumps over the lazy dog, and Handy writes it down.",
+        "blockedRecording": "Not available while Handy is recording",
+        "noneNote": "The overlay is turned off, so there is nothing to preview. Choose Minimal or Live above."
+      },
+      "reset": {
+        "button": "Reset overlay theme",
+        "title": "Reset overlay theme?",
+        "description": "This restores every overlay color, size and spacing to Handy's defaults. Your overlay style and position are not changed.",
+        "descriptionWithThemeFile": "This restores every overlay color, size and spacing that isn't set by the theme file to Handy's defaults. Your overlay style and position are not changed, and values set by the theme file stay in effect.",
+        "confirm": "Reset",
+        "cancel": "Cancel"
+      },
+      "material": {
+        "title": "Material",
+        "description": "How the overlay surface is rendered. Flat is an opaque surface; Glass is translucent and blurs whatever is behind it.",
+        "options": {
+          "flat": "Flat",
+          "glass": "Glass",
+          "glassMacOnly": "Glass (macOS only)"
+        },
+        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat.",
+        "glassHint": "Tint strength decides how much of the surface color covers the glass — lower it to see more of what is behind."
+      },
+      "glassStyle": {
+        "title": "Glass Style",
+        "description": "Which Liquid Glass the overlay is drawn with. Regular keeps its own dimming, so the transcript stays readable over anything; Clear is thinner and shows more of what is behind it. macOS 26 and later.",
+        "options": {
+          "regular": "Regular",
+          "clear": "Clear"
+        }
+      },
+      "waveformStyle": {
+        "title": "Waveform Style",
+        "description": "How the waveform is drawn while Handy records. Bars is Handy's own meter; the others are drawn on a canvas in the same space, so the overlay never changes size.",
+        "options": {
+          "bars": "Bars",
+          "ribbon": "Ribbon",
+          "bloom": "Bloom",
+          "motes": "Motes",
+          "matrix": "Matrix",
+          "steps": "Steps"
+        }
+      },
+      "color": {
+        "swatchLabel": "Pick a color",
+        "hexLabel": "Hex color value",
+        "resetLabel": "Reset to default"
+      },
+      "tokens": {
+        "accent": {
+          "title": "Accent",
+          "description": "The highlight color: the waveform, the recording dot, the caret and the spinner."
+        },
+        "surface": {
+          "title": "Surface",
+          "description": "The overlay card's background color."
+        },
+        "surfaceOpacity": {
+          "title": "Surface Opacity",
+          "description": "How see-through the card's background is. Applies under the Flat material; Glass has its own tint strength."
+        },
+        "glassTint": {
+          "title": "Tint Strength",
+          "description": "How much of the surface color covers the glass. Lower lets more of what is behind the overlay through."
+        },
+        "text": {
+          "title": "Text",
+          "description": "The card's foreground color, and the base every neutral tone is mixed from."
+        },
+        "border": {
+          "title": "Border",
+          "description": "The color of the card's edge."
+        },
+        "borderOpacity": {
+          "title": "Border Opacity",
+          "description": "How visible the card's edge is."
+        },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The card itself never moves; the overlay grows its window around it, and the shadow is trimmed where it would reach the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
+        "sizeScale": {
+          "title": "Size Scale",
+          "description": "Zooms every length in the card at once — widths, heights, padding and type. One of the tokens that change how much room the overlay needs on screen; padding, border width and element gap are the others."
+        },
+        "radius": {
+          "title": "Corner Radius",
+          "description": "The card's corner radius."
+        },
+        "borderWidth": {
+          "title": "Border Width",
+          "description": "How thick the card's edge is. The overlay window grows with it."
+        },
+        "padding": {
+          "title": "Padding",
+          "description": "The card's inner padding on all four sides. The overlay window grows with it."
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+        },
+        "waveformGap": {
+          "title": "Waveform Gap",
+          "description": "The gap between the waveform's bars, or between the dots of the matrix style."
+        },
+        "waveformWidth": {
+          "title": "Waveform Width",
+          "description": "How wide the waveform's own shapes are: a bar, a mote, a matrix dot or a step."
+        }
+      },
+      "themeFile": {
+        "title": "Theme file",
+        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
+        "notFound": "No theme file. Create one at this path to override overlay theme values.",
+        "active": "Active — this file sets {{count}} of {{total}} values.",
+        "reload": "Reload",
+        "copy": "Copy theme as JSON",
+        "copied": "Copied",
+        "lockedDescription": "Set by the theme file. Edit overlay_theme.json or remove this key to change it here.",
+        "problemsTitle": "Problems in the theme file:",
+        "moreDiagnostics": "…and {{count}} more.",
+        "newerVersion": "This theme file was written by a newer version of Handy. Values this version does not understand were ignored.",
+        "diagnostics": {
+          "malformedDocument": "The theme file isn't valid JSON.",
+          "unknownKey": "Unknown key ignored: {{key}}",
+          "wrongType": "\"{{key}}\" has the wrong type and was ignored.",
+          "invalidColor": "\"{{key}}\" isn't a valid color and was ignored.",
+          "outOfBounds": "\"{{key}}\" was outside its allowed range and was clamped.",
+          "unreadable": "The theme file couldn't be read."
+        }
       }
     },
     "advanced": {
@@ -693,6 +864,7 @@
     }
   },
   "overlay": {
+    "cancel": "Cancel",
     "transcribing": "Transcribing...",
     "processing": "Processing..."
   },

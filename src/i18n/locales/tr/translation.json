@@ -11,6 +11,7 @@
   },
   "sidebar": {
     "general": "Genel",
+    "appearance": "Görünüm",
     "models": "Modeller",
     "advanced": "Gelişmiş",
     "postProcessing": "Son İşlem",
@@ -256,6 +257,176 @@
       "volume": {
         "title": "Ses Seviyesi",
         "description": "Sesli geri bildirimlerin ses seviyesini ayarlayın"
+      }
+    },
+    "appearance": {
+      "groups": {
+        "app": "Uygulama",
+        "overlay": "Ekran Katmanı",
+        "preview": "Ekranda Önizleme",
+        "color": "Ekran Katmanı Rengi",
+        "material": "Ekran Katmanı Malzemesi",
+        "elements": "Ekran Katmanı Ögeleri",
+        "size": "Ekran Katmanı Boyutu ve Boşlukları",
+        "waveform": "Dalga Formu",
+        "themeFile": "Tema Dosyası"
+      },
+      "preview": {
+        "states": {
+          "cycle": "Döngü",
+          "arming": "Hazırlanıyor",
+          "recording": "Kaydediliyor",
+          "listening": "Dinleniyor",
+          "transcribing": "Transkribe ediliyor",
+          "processing": "İşleniyor"
+        },
+        "start": "Önizlemeyi başlat",
+        "stop": "Önizlemeyi durdur",
+        "hint": "Ekran katmanı siz düzenleme yaparken ekranda kalır, böylece her değişiklik anında üzerinde görünür.",
+        "sampleText": "Pijamalı hasta yağız şoföre çabucak güvendi, Handy de bunu yazıya döküyor.",
+        "blockedRecording": "Handy kayıt yaparken kullanılamaz",
+        "noneNote": "Ekran katmanı kapalı, bu yüzden önizlenecek bir şey yok. Yukarıdan Sade veya Canlı seçin."
+      },
+      "reset": {
+        "button": "Ekran katmanı temasını sıfırla",
+        "title": "Ekran katmanı teması sıfırlansın mı?",
+        "description": "Bu işlem ekran katmanının tüm renklerini, boyutlarını ve boşluklarını Handy'nin varsayılan değerlerine döndürür. Ekran katmanı stiliniz ve konumunuz değişmez.",
+        "descriptionWithThemeFile": "Bu işlem, ekran katmanının tema dosyası tarafından ayarlanmayan tüm renklerini, boyutlarını ve boşluklarını Handy'nin varsayılan değerlerine döndürür. Ekran katmanı stiliniz ve konumunuz değişmez, tema dosyasındaki değerler geçerli kalır.",
+        "confirm": "Sıfırla",
+        "cancel": "İptal"
+      },
+      "material": {
+        "title": "Malzeme",
+        "description": "Ekran katmanı yüzeyinin nasıl çizileceği. Düz opak bir yüzeydir; Cam yarı saydamdır ve arkasındaki her şeyi bulanıklaştırır.",
+        "options": {
+          "flat": "Düz",
+          "glass": "Cam",
+          "glassMacOnly": "Cam (yalnızca macOS)"
+        },
+        "unavailableNote": "Cam şu anda bu Mac'te kullanılamıyor — örneğin macOS'te Saydamlığı azalt açıkken — bu yüzden ekran katmanı Düz olarak çizilir.",
+        "glassHint": "Ton yoğunluğu, yüzey renginin camı ne kadar kaplayacağını belirler — arkadakini daha çok görmek için düşürün."
+      },
+      "glassStyle": {
+        "title": "Cam Stili",
+        "description": "Ekran katmanının hangi Liquid Glass ile çizileceği. Normal kendi karartmasını uygular, böylece transkripsiyon her zeminde okunaklı kalır; Şeffaf daha incedir ve arkasındakini daha çok gösterir. macOS 26 ve sonrası.",
+        "options": {
+          "regular": "Normal",
+          "clear": "Şeffaf"
+        }
+      },
+      "waveformStyle": {
+        "title": "Dalga Formu Stili",
+        "description": "Handy kayıt yaparken dalga formunun nasıl çizileceği. Çubuklar, Handy'nin kendi seviye göstergesidir; diğerleri aynı alanda bir tuval üzerine çizilir, böylece ekran katmanının boyutu hiç değişmez.",
+        "options": {
+          "bars": "Çubuklar",
+          "ribbon": "Şerit",
+          "bloom": "Tomurcuk",
+          "motes": "Kıvılcım",
+          "matrix": "Matris",
+          "steps": "Basamaklar"
+        }
+      },
+      "color": {
+        "swatchLabel": "Bir renk seçin",
+        "hexLabel": "Onaltılık renk değeri",
+        "resetLabel": "Varsayılana sıfırla"
+      },
+      "tokens": {
+        "accent": {
+          "title": "Vurgu",
+          "description": "Vurgu rengi: dalga formu, kayıt noktası, imleç ve yükleme göstergesi."
+        },
+        "surface": {
+          "title": "Yüzey",
+          "description": "Ekran katmanı kartının arka plan rengi."
+        },
+        "surfaceOpacity": {
+          "title": "Yüzey Opaklığı",
+          "description": "Kartın arka planının ne kadar saydam olduğu. Düz malzemesinde geçerlidir; Cam'ın kendi ton yoğunluğu vardır."
+        },
+        "glassTint": {
+          "title": "Ton Yoğunluğu",
+          "description": "Yüzey renginin camı ne kadar kapladığı. Daha düşük değer, ekran katmanının arkasındakini daha çok gösterir."
+        },
+        "text": {
+          "title": "Metin",
+          "description": "Kartın ön plan rengi ve tüm nötr tonların karıştırıldığı temel renk."
+        },
+        "border": {
+          "title": "Kenarlık",
+          "description": "Kartın kenarının rengi."
+        },
+        "borderOpacity": {
+          "title": "Kenarlık Opaklığı",
+          "description": "Kartın kenarının ne kadar görünür olduğu."
+        },
+        "shadowStrength": {
+          "title": "Gölge",
+          "description": "Kartın masaüstüne düşürdüğü gölgenin ne kadar güçlü olduğu. Kartın düz durması için sıfıra kadar azaltın.",
+          "glassDescription": "Ekran katmanının masaüstüne gölge düşürüp düşürmeyeceği.",
+          "glassNote": "Cam ekran katmanının gölgesini macOS çizer, bu yüzden yalnızca açılıp kapatılabilir ve gölge kayması bir etki yapmaz."
+        },
+        "shadowOffsetY": {
+          "title": "Gölge Kayması",
+          "description": "Kartın gölgesinin kartın ne kadar altına düştüğü. Kartın kendisi hiç yer değiştirmez; ekran katmanı penceresi kartın çevresinde büyür ve gölge, ekran kenarına ulaşacağı yerde kırpılır."
+        },
+        "showWaveform": {
+          "title": "Dalga Formunu Göster",
+          "description": "Kayıt sırasında dalga formunu gösterir. Gizlendiğinde ekran katmanı küçük bir göstergeye küçülür."
+        },
+        "showCancel": {
+          "title": "İptal Düğmesini Göster",
+          "description": "Ekran katmanında iptal düğmesini gösterir. Klavye kısayolunuz her durumda iptal eder."
+        },
+        "sizeScale": {
+          "title": "Boyut Ölçeği",
+          "description": "Karttaki tüm uzunlukları aynı anda ölçekler — genişlikler, yükseklikler, iç boşluklar ve yazı. Ekran katmanının ekranda ne kadar yer kapladığını değiştiren değerlerden biri; diğerleri iç boşluk, kenarlık kalınlığı ve öge aralığıdır."
+        },
+        "radius": {
+          "title": "Köşe Yarıçapı",
+          "description": "Kartın köşe yarıçapı."
+        },
+        "borderWidth": {
+          "title": "Kenarlık Kalınlığı",
+          "description": "Kartın kenarının ne kadar kalın olduğu. Ekran katmanı penceresi de onunla birlikte büyür."
+        },
+        "padding": {
+          "title": "İç Boşluk",
+          "description": "Kartın dört tarafındaki iç boşluk. Ekran katmanı penceresi de onunla birlikte büyür."
+        },
+        "elementGap": {
+          "title": "Öge Aralığı",
+          "description": "Ekran katmanının noktası, dalga formu, sayacı ve iptal düğmesi arasındaki ek boşluk. Ekran katmanı penceresi de onunla birlikte büyür."
+        },
+        "waveformGap": {
+          "title": "Dalga Formu Aralığı",
+          "description": "Dalga formu çubukları arasındaki ya da Matris stilinin noktaları arasındaki boşluk."
+        },
+        "waveformWidth": {
+          "title": "Dalga Formu Genişliği",
+          "description": "Dalga formunun kendi şekillerinin genişliği: bir çubuk, bir kıvılcım, bir matris noktası ya da bir basamak."
+        }
+      },
+      "themeFile": {
+        "title": "Tema dosyası",
+        "description": "Ekran katmanı temasının değerlerini geçersiz kılan isteğe bağlı bir JSON dosyası; böylece harici tema araçları ekran katmanını yönetebilir.",
+        "notFound": "Tema dosyası yok. Ekran katmanı teması değerlerini geçersiz kılmak için bu yolda bir dosya oluşturun.",
+        "active": "Etkin — bu dosya {{total}} değerden {{count}} tanesini ayarlıyor.",
+        "reload": "Yeniden yükle",
+        "copy": "Temayı JSON olarak kopyala",
+        "copied": "Kopyalandı",
+        "lockedDescription": "Tema dosyası tarafından ayarlandı. Burada değiştirmek için overlay_theme.json dosyasını düzenleyin veya bu anahtarı kaldırın.",
+        "problemsTitle": "Tema dosyasındaki sorunlar:",
+        "moreDiagnostics": "…ve {{count}} tane daha.",
+        "newerVersion": "Bu tema dosyası Handy'nin daha yeni bir sürümü tarafından yazılmış. Bu sürümün anlamadığı değerler yok sayıldı.",
+        "diagnostics": {
+          "malformedDocument": "Tema dosyası geçerli bir JSON değil.",
+          "unknownKey": "Bilinmeyen anahtar yok sayıldı: {{key}}",
+          "wrongType": "\"{{key}}\" yanlış türde ve yok sayıldı.",
+          "invalidColor": "\"{{key}}\" geçerli bir renk değil ve yok sayıldı.",
+          "outOfBounds": "\"{{key}}\" izin verilen aralığın dışındaydı ve sınıra çekildi.",
+          "unreadable": "Tema dosyası okunamadı."
+        }
       }
     },
     "advanced": {
@@ -690,6 +861,7 @@
     }
   },
   "overlay": {
+    "cancel": "İptal",
     "transcribing": "Transkribe ediliyor...",
     "processing": "İşleniyor..."
   },

@@ -6,6 +6,7 @@ import type {
   AudioDevice,
   TranscribeAcceleratorSetting,
   OrtAcceleratorSetting,
+  OverlayTheme,
   ShortcutActivation,
   VadBackend,
 } from "@/bindings";
@@ -194,6 +195,26 @@ const settingUpdaters: {
     commands.changeTranscribeGpuDevice(value as string | null),
   extra_recording_buffer_ms: (value) =>
     commands.changeExtraRecordingBufferSetting(value as number),
+  // One key holds all twenty-two tokens. Every write sends the whole object, so
+  // the store's optimistic write and rollback work unchanged, and a whole-theme
+  // reset is `resetSetting("overlay_theme")`.
+  //
+  // The command answers with the theme it stored, which can differ from the
+  // optimistic write because Rust clamps. Folding that answer back in replaces
+  // the full `refreshSettings()` the `settings-changed` listener below ran for
+  // this key. Same correction, no re-read of every other setting.
+  overlay_theme: async (value) => {
+    const result = await commands.changeOverlayThemeSetting(
+      value as OverlayTheme,
+    );
+    if (result.status === "error") throw new Error(result.error);
+    useSettingsStore.setState((state) =>
+      state.settings
+        ? { settings: { ...state.settings, overlay_theme: result.data } }
+        : {},
+    );
+    return result;
+  },
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -652,7 +673,14 @@ export const useSettingsStore = create<SettingsStore>()(
         get().refreshSettings();
       });
       listen<{ setting?: string }>("settings-changed", (event) => {
-        get().refreshSettings();
+        // The overlay theme is the one setting whose command hands back what
+        // it stored (see `settingUpdaters.overlay_theme`), so re-reading all of
+        // `AppSettings` here would re-derive a value the store already holds.
+        // Dragging an Appearance slider fires this path several times a second.
+        // The event still goes out for listeners outside this store.
+        if (event.payload.setting !== "overlay_theme") {
+          get().refreshSettings();
+        }
         if (event.payload.setting === "selected_microphone") {
           get().refreshAudioDevices();
         }

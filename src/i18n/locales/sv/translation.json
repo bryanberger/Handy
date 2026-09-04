@@ -11,6 +11,7 @@
   },
   "sidebar": {
     "general": "Allmänt",
+    "appearance": "Utseende",
     "models": "Modeller",
     "advanced": "Avancerat",
     "postProcessing": "Efterbearbetning",
@@ -256,6 +257,176 @@
       "volume": {
         "title": "Volym",
         "description": "Justera volymen för ljudåterkopplingsljud"
+      }
+    },
+    "appearance": {
+      "groups": {
+        "app": "Applikation",
+        "overlay": "Overlay",
+        "preview": "Förhandsvisning på skärmen",
+        "color": "Overlayfärg",
+        "material": "Overlaymaterial",
+        "elements": "Overlayelement",
+        "size": "Overlaystorlek och avstånd",
+        "waveform": "Vågform",
+        "themeFile": "Temafil"
+      },
+      "preview": {
+        "states": {
+          "cycle": "Cykel",
+          "arming": "Förbereder",
+          "recording": "Spelar in",
+          "listening": "Lyssnar",
+          "transcribing": "Transkriberar",
+          "processing": "Bearbetar"
+        },
+        "start": "Starta förhandsvisning",
+        "stop": "Stoppa förhandsvisning",
+        "hint": "Overlayen ligger kvar på skärmen medan du ändrar, så varje ändring syns direkt på den.",
+        "sampleText": "Flygande bäckasiner söka hwila på mjuka tuvor, och Handy skriver ner det.",
+        "blockedRecording": "Inte tillgängligt medan Handy spelar in",
+        "noneNote": "Overlayen är avstängd, så det finns inget att förhandsvisa. Välj Minimal eller Live ovan."
+      },
+      "reset": {
+        "button": "Återställ overlaytemat",
+        "title": "Återställa overlaytemat?",
+        "description": "Detta återställer alla färger, storlekar och avstånd i overlayen till Handys standardvärden. Din overlaystil och -position ändras inte.",
+        "descriptionWithThemeFile": "Detta återställer alla färger, storlekar och avstånd i overlayen som inte anges av temafilen till Handys standardvärden. Din overlaystil och -position ändras inte, och värden från temafilen fortsätter att gälla.",
+        "confirm": "Återställ",
+        "cancel": "Avbryt"
+      },
+      "material": {
+        "title": "Material",
+        "description": "Hur overlayens yta ritas upp. Platt är en ogenomskinlig yta; Glas är genomskinligt och gör det som finns bakom suddigt.",
+        "options": {
+          "flat": "Platt",
+          "glass": "Glas",
+          "glassMacOnly": "Glas (endast macOS)"
+        },
+        "unavailableNote": "Glas är inte tillgängligt på den här Mac-datorn just nu — till exempel när Reducera transparens är på i macOS — så overlayen visas som Platt.",
+        "glassHint": "Tonstyrkan avgör hur mycket ytans färg täcker glaset — sänk den för att se mer av det som finns bakom."
+      },
+      "glassStyle": {
+        "title": "Glasstil",
+        "description": "Med vilket Liquid Glass overlayen ritas. Normal dämpar själv, så transkriptionen förblir läsbar mot vad som helst; Klar är tunnare och visar mer av det som finns bakom. macOS 26 och senare.",
+        "options": {
+          "regular": "Normal",
+          "clear": "Klar"
+        }
+      },
+      "waveformStyle": {
+        "title": "Vågformsstil",
+        "description": "Hur vågformen ritas medan Handy spelar in. Staplar är Handys egen nivåmätare; de övriga ritas på en canvas på samma yta, så overlayen ändrar aldrig storlek.",
+        "options": {
+          "bars": "Staplar",
+          "ribbon": "Band",
+          "bloom": "Blomning",
+          "motes": "Gnistor",
+          "matrix": "Matris",
+          "steps": "Trappsteg"
+        }
+      },
+      "color": {
+        "swatchLabel": "Välj en färg",
+        "hexLabel": "Hexadecimalt färgvärde",
+        "resetLabel": "Återställ till standard"
+      },
+      "tokens": {
+        "accent": {
+          "title": "Accentfärg",
+          "description": "Färgen som framhäver: vågformen, inspelningspunkten, markören och förloppssnurran."
+        },
+        "surface": {
+          "title": "Yta",
+          "description": "Bakgrundsfärgen på overlayens kort."
+        },
+        "surfaceOpacity": {
+          "title": "Ytans opacitet",
+          "description": "Hur genomskinlig kortets bakgrund är. Gäller för materialet Platt; Glas har sin egen tonstyrka."
+        },
+        "glassTint": {
+          "title": "Tonstyrka",
+          "description": "Hur mycket ytans färg täcker glaset. Lägre släpper igenom mer av det som finns bakom overlayen."
+        },
+        "text": {
+          "title": "Text",
+          "description": "Kortets förgrundsfärg, och basen som varje neutral ton blandas från."
+        },
+        "border": {
+          "title": "Kant",
+          "description": "Färgen på kortets kant."
+        },
+        "borderOpacity": {
+          "title": "Kantens opacitet",
+          "description": "Hur synlig kortets kant är."
+        },
+        "shadowStrength": {
+          "title": "Skugga",
+          "description": "Hur kraftig skuggan är som kortet kastar på skrivbordet. Skruva ner den helt för ett kort som ligger platt.",
+          "glassDescription": "Om overlayen kastar en skugga på skrivbordet.",
+          "glassNote": "macOS ritar skuggan för en Glas-overlay, så den kan bara slås på eller av, och skuggförskjutningen har ingen effekt."
+        },
+        "shadowOffsetY": {
+          "title": "Skuggförskjutning",
+          "description": "Hur långt nedanför kortet dess skugga faller. Själva kortet flyttar sig aldrig; overlayfönstret växer runt det, och skuggan beskärs där den skulle nå skärmkanten."
+        },
+        "showWaveform": {
+          "title": "Visa vågform",
+          "description": "Visar vågformen under inspelning. När den är dold krymper overlayen till en liten indikator."
+        },
+        "showCancel": {
+          "title": "Visa avbryt-knapp",
+          "description": "Visar avbryt-knappen på overlayen. Ditt kortkommando avbryter ändå."
+        },
+        "sizeScale": {
+          "title": "Storleksskala",
+          "description": "Skalar alla mått i kortet på en gång — bredder, höjder, innermarginaler och text. Ett av de värden som ändrar hur mycket plats overlayen behöver på skärmen; de övriga är innermarginal, kanttjocklek och elementavstånd."
+        },
+        "radius": {
+          "title": "Hörnradie",
+          "description": "Kortets hörnradie."
+        },
+        "borderWidth": {
+          "title": "Kanttjocklek",
+          "description": "Hur tjock kortets kant är. Overlayfönstret växer med den."
+        },
+        "padding": {
+          "title": "Innermarginal",
+          "description": "Kortets innermarginal på alla fyra sidor. Overlayfönstret växer med den."
+        },
+        "elementGap": {
+          "title": "Elementavstånd",
+          "description": "Extra avstånd mellan overlayens punkt, vågform, tidsvisning och avbryt-knapp. Overlayfönstret växer med det."
+        },
+        "waveformGap": {
+          "title": "Vågformsavstånd",
+          "description": "Avståndet mellan vågformens staplar, eller mellan punkterna i stilen Matris."
+        },
+        "waveformWidth": {
+          "title": "Vågformsbredd",
+          "description": "Hur breda vågformens egna figurer är: en stapel, en gnista, en matrispunkt eller ett trappsteg."
+        }
+      },
+      "themeFile": {
+        "title": "Temafil",
+        "description": "En valfri JSON-fil som åsidosätter värden i overlaytemat, så att externa temaverktyg kan styra overlayen.",
+        "notFound": "Ingen temafil. Skapa en på den här sökvägen för att åsidosätta värden i overlaytemat.",
+        "active": "Aktiv — den här filen anger {{count}} av {{total}} värden.",
+        "reload": "Läs om",
+        "copy": "Kopiera temat som JSON",
+        "copied": "Kopierad",
+        "lockedDescription": "Anges av temafilen. Redigera overlay_theme.json eller ta bort nyckeln för att ändra värdet här.",
+        "problemsTitle": "Problem i temafilen:",
+        "moreDiagnostics": "…och {{count}} till.",
+        "newerVersion": "Den här temafilen skrevs av en nyare version av Handy. Värden som den här versionen inte förstår ignorerades.",
+        "diagnostics": {
+          "malformedDocument": "Temafilen är inte giltig JSON.",
+          "unknownKey": "Okänd nyckel ignorerades: {{key}}",
+          "wrongType": "\"{{key}}\" har fel typ och ignorerades.",
+          "invalidColor": "\"{{key}}\" är inte en giltig färg och ignorerades.",
+          "outOfBounds": "\"{{key}}\" låg utanför det tillåtna intervallet och begränsades.",
+          "unreadable": "Temafilen kunde inte läsas."
+        }
       }
     },
     "advanced": {
@@ -690,6 +861,7 @@
     }
   },
   "overlay": {
+    "cancel": "Avbryt",
     "transcribing": "Transkriberar...",
     "processing": "Bearbetar..."
   },

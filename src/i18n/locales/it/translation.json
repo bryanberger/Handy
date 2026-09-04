@@ -11,6 +11,7 @@
   },
   "sidebar": {
     "general": "Generale",
+    "appearance": "Aspetto",
     "models": "Modelli",
     "advanced": "Avanzate",
     "postProcessing": "Post-Elaborazione",
@@ -256,6 +257,176 @@
       "volume": {
         "title": "Volume",
         "description": "Regola il volume del feedback audio"
+      }
+    },
+    "appearance": {
+      "groups": {
+        "app": "Applicazione",
+        "overlay": "Overlay",
+        "preview": "Anteprima sullo schermo",
+        "color": "Colore dell'overlay",
+        "material": "Materiale dell'overlay",
+        "elements": "Elementi dell'overlay",
+        "size": "Dimensioni e spaziatura dell'overlay",
+        "waveform": "Forma d'onda",
+        "themeFile": "File del tema"
+      },
+      "preview": {
+        "states": {
+          "cycle": "Ciclo",
+          "arming": "Preparazione",
+          "recording": "Registrazione",
+          "listening": "In ascolto",
+          "transcribing": "Trascrizione",
+          "processing": "Elaborazione"
+        },
+        "start": "Avvia anteprima",
+        "stop": "Arresta anteprima",
+        "hint": "L'overlay resta sullo schermo mentre modifichi, così ogni cambiamento vi compare subito.",
+        "sampleText": "Ma la volpe, col suo balzo, ha raggiunto il quieto Fido, e Handy lo scrive.",
+        "blockedRecording": "Non disponibile mentre Handy sta registrando",
+        "noneNote": "L'overlay è disattivato, quindi non c'è nulla da vedere in anteprima. Scegli Minimo o In tempo reale qui sopra."
+      },
+      "reset": {
+        "button": "Reimposta il tema dell'overlay",
+        "title": "Reimpostare il tema dell'overlay?",
+        "description": "Riporta tutti i colori, le dimensioni e le spaziature dell'overlay ai valori predefiniti di Handy. Lo stile e la posizione dell'overlay non cambiano.",
+        "descriptionWithThemeFile": "Riporta ai valori predefiniti di Handy tutti i colori, le dimensioni e le spaziature dell'overlay non impostati dal file del tema. Lo stile e la posizione dell'overlay non cambiano e i valori impostati dal file del tema restano attivi.",
+        "confirm": "Reimposta",
+        "cancel": "Annulla"
+      },
+      "material": {
+        "title": "Materiale",
+        "description": "Come viene resa la superficie dell'overlay. Piatto è una superficie opaca; Vetro è traslucido e sfoca ciò che si trova dietro.",
+        "options": {
+          "flat": "Piatto",
+          "glass": "Vetro",
+          "glassMacOnly": "Vetro (solo macOS)"
+        },
+        "unavailableNote": "Il vetro non è disponibile su questo Mac in questo momento — ad esempio quando Riduci trasparenza è attivo su macOS — quindi l'overlay viene reso Piatto.",
+        "glassHint": "L'intensità della tinta decide quanto il colore della superficie copre il vetro — abbassala per vedere di più di ciò che sta dietro."
+      },
+      "glassStyle": {
+        "title": "Stile del vetro",
+        "description": "Con quale Liquid Glass viene disegnato l'overlay. Normale mantiene il proprio scurimento, così la trascrizione resta leggibile su qualsiasi sfondo; Trasparente è più sottile e lascia vedere di più ciò che sta dietro. macOS 26 e successivi.",
+        "options": {
+          "regular": "Normale",
+          "clear": "Trasparente"
+        }
+      },
+      "waveformStyle": {
+        "title": "Stile della forma d'onda",
+        "description": "Come viene disegnata la forma d'onda mentre Handy registra. Barre è l'indicatore di livello di Handy; gli altri stili vengono disegnati su un canvas nello stesso spazio, così l'overlay non cambia mai dimensione.",
+        "options": {
+          "bars": "Barre",
+          "ribbon": "Nastro",
+          "bloom": "Fiore",
+          "motes": "Scintille",
+          "matrix": "Matrice",
+          "steps": "Gradini"
+        }
+      },
+      "color": {
+        "swatchLabel": "Scegli un colore",
+        "hexLabel": "Valore colore esadecimale",
+        "resetLabel": "Ripristina il valore predefinito"
+      },
+      "tokens": {
+        "accent": {
+          "title": "Accento",
+          "description": "Il colore di risalto: la forma d'onda, il punto di registrazione, il cursore e l'indicatore di caricamento."
+        },
+        "surface": {
+          "title": "Superficie",
+          "description": "Il colore di sfondo della scheda dell'overlay."
+        },
+        "surfaceOpacity": {
+          "title": "Opacità della superficie",
+          "description": "Quanto lascia trasparire lo sfondo della scheda. Vale con il materiale Piatto; Vetro ha la sua intensità della tinta."
+        },
+        "glassTint": {
+          "title": "Intensità della tinta",
+          "description": "Quanto il colore della superficie copre il vetro. Più basso lascia passare di più di ciò che sta dietro l'overlay."
+        },
+        "text": {
+          "title": "Testo",
+          "description": "Il colore di primo piano della scheda e la base da cui viene miscelato ogni tono neutro."
+        },
+        "border": {
+          "title": "Bordo",
+          "description": "Il colore del bordo della scheda."
+        },
+        "borderOpacity": {
+          "title": "Opacità del bordo",
+          "description": "Quanto è visibile il bordo della scheda."
+        },
+        "shadowStrength": {
+          "title": "Ombra",
+          "description": "Quanto è marcata l'ombra che la scheda proietta sulla scrivania. Portala a zero per una scheda che appoggia piatta.",
+          "glassDescription": "Se l'overlay proietta un'ombra sulla scrivania.",
+          "glassNote": "L'ombra di un overlay in Vetro la disegna macOS, quindi si può solo attivare o disattivare e lo scostamento dell'ombra non ha effetto."
+        },
+        "shadowOffsetY": {
+          "title": "Scostamento dell'ombra",
+          "description": "Quanto in basso cade l'ombra sotto la scheda. La scheda stessa non si sposta mai: la finestra dell'overlay cresce attorno a essa e l'ombra viene tagliata dove arriverebbe al bordo dello schermo."
+        },
+        "showWaveform": {
+          "title": "Mostra la forma d'onda",
+          "description": "Mostra la forma d'onda durante la registrazione. Quando è nascosta l'overlay si riduce a una piccola barra."
+        },
+        "showCancel": {
+          "title": "Mostra il pulsante Annulla",
+          "description": "Mostra il pulsante Annulla sull'overlay. La scorciatoia da tastiera annulla comunque."
+        },
+        "sizeScale": {
+          "title": "Scala delle dimensioni",
+          "description": "Ridimensiona tutte le lunghezze della scheda insieme — larghezze, altezze, spaziatura interna e testo. Uno dei valori che cambiano quanto spazio occupa l'overlay sullo schermo; gli altri sono la spaziatura interna, lo spessore del bordo e la spaziatura tra gli elementi."
+        },
+        "radius": {
+          "title": "Raggio degli angoli",
+          "description": "Il raggio degli angoli della scheda."
+        },
+        "borderWidth": {
+          "title": "Spessore del bordo",
+          "description": "Quanto è spesso il bordo della scheda. La finestra dell'overlay cresce di conseguenza."
+        },
+        "padding": {
+          "title": "Spaziatura interna",
+          "description": "La spaziatura interna della scheda su tutti e quattro i lati. La finestra dell'overlay cresce di conseguenza."
+        },
+        "elementGap": {
+          "title": "Spaziatura tra gli elementi",
+          "description": "Spazio aggiuntivo tra il punto, la forma d'onda, il timer e il pulsante Annulla dell'overlay. La finestra dell'overlay cresce di conseguenza."
+        },
+        "waveformGap": {
+          "title": "Spaziatura della forma d'onda",
+          "description": "Lo spazio tra le barre della forma d'onda, o tra i punti dello stile Matrice."
+        },
+        "waveformWidth": {
+          "title": "Larghezza della forma d'onda",
+          "description": "Quanto sono larghe le forme proprie della forma d'onda: una barra, una scintilla, un punto della matrice o un gradino."
+        }
+      },
+      "themeFile": {
+        "title": "File del tema",
+        "description": "Un file JSON facoltativo che sostituisce i valori del tema dell'overlay, così strumenti di personalizzazione esterni possono pilotare l'overlay.",
+        "notFound": "Nessun file del tema. Creane uno in questo percorso per sostituire i valori del tema dell'overlay.",
+        "active": "Attivo — questo file imposta {{count}} valori su {{total}}.",
+        "reload": "Ricarica",
+        "copy": "Copia il tema come JSON",
+        "copied": "Copiato",
+        "lockedDescription": "Impostato dal file del tema. Modifica overlay_theme.json o rimuovi questa chiave per cambiarlo qui.",
+        "problemsTitle": "Problemi nel file del tema:",
+        "moreDiagnostics": "…e altri {{count}}.",
+        "newerVersion": "Questo file del tema è stato scritto da una versione più recente di Handy. I valori che questa versione non riconosce sono stati ignorati.",
+        "diagnostics": {
+          "malformedDocument": "Il file del tema non è JSON valido.",
+          "unknownKey": "Chiave sconosciuta ignorata: {{key}}",
+          "wrongType": "\"{{key}}\" ha il tipo sbagliato ed è stata ignorata.",
+          "invalidColor": "\"{{key}}\" non è un colore valido ed è stata ignorata.",
+          "outOfBounds": "\"{{key}}\" era fuori dall'intervallo consentito ed è stata riportata al limite.",
+          "unreadable": "Impossibile leggere il file del tema."
+        }
       }
     },
     "advanced": {
@@ -690,6 +861,7 @@
     }
   },
   "overlay": {
+    "cancel": "Annulla",
     "transcribing": "Trascrizione...",
     "processing": "Elaborazione..."
   },

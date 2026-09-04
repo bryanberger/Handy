@@ -1,3 +1,4 @@
+use crate::overlay_theme::OverlayTheme;
 use crate::utils;
 use log::{debug, warn};
 use serde::de::{self, Visitor};
@@ -514,6 +515,11 @@ pub struct AppSettings {
     /// `overlay_position` (position `none` → style `None`).
     #[serde(default = "default_overlay_style")]
     pub overlay_style: OverlayStyle,
+    /// Overlay theme tokens (accent, surface, material, sizes, spacing). Every
+    /// token is optional; an absent one inherits Handy's built-in, theme-aware
+    /// value. A store from before this field existed still draws today's overlay.
+    #[serde(default)]
+    pub overlay_theme: OverlayTheme,
 }
 
 fn default_model() -> String {
@@ -970,6 +976,7 @@ pub fn get_default_settings() -> AppSettings {
         vad_enabled: default_vad_enabled(),
         vad_backend: VadBackend::default(),
         overlay_style: default_overlay_style(),
+        overlay_theme: OverlayTheme::default(),
     }
 }
 
@@ -1214,6 +1221,86 @@ pub fn write_settings(app: &AppHandle, settings: AppSettings) {
     store.set("settings", serde_json::to_value(&settings).unwrap());
 }
 
+/// Just the stored `overlay_theme`, without deserializing the rest of
+/// `AppSettings`.
+///
+/// The overlay theme is resolved per animation frame while the Appearance tab
+/// is dragged, and on every overlay show and reposition. `get_settings`
+/// deserializes all sixty-odd fields, runs the migration pass and can write the
+/// store back, so this reads the one sub-object it needs instead.
+///
+/// Skipping the migrations is safe because none of them are this field's. The
+/// startup read (`load_or_create_app_settings`) has already run and persisted
+/// them before any window exists, and `overlay_theme` has never been migrated.
+/// It deserializes inherit-on-error, so an unreadable token falls back to
+/// inherit exactly as it would through the full read.
+///
+/// The shortcut still has to answer exactly what
+/// `get_settings(app).overlay_theme` would, on every store shape either can be
+/// handed. [`overlay_theme_from_stored`] is separated out for that agreement,
+/// pinned against the full read in the tests rather than asserted here.
+pub fn get_overlay_theme(app: &AppHandle) -> crate::overlay_theme::OverlayTheme {
+    let store = app
+        .store(crate::portable::store_path(SETTINGS_STORE_PATH))
+        .expect("Failed to initialize store");
+
+    overlay_theme_from_stored(store.get("settings").as_ref())
+}
+
+/// Just the stored `overlay_position`, without deserializing the rest of
+/// `AppSettings`.
+///
+/// The same shortcut as [`get_overlay_theme`], for the same caller: the overlay
+/// theme resolves per animation frame while a token is dragged, and now derives
+/// the shadow's anchored-side slack, which depends on the overlay position.
+/// Skipping the migration pass is safe here too: the one migration that ever
+/// touched `overlay_position` (the retired `"none"`) ran at startup before any
+/// window existed, and its own alias still covers a store that skipped it.
+pub fn get_overlay_position(app: &AppHandle) -> OverlayPosition {
+    let store = app
+        .store(crate::portable::store_path(SETTINGS_STORE_PATH))
+        .expect("Failed to initialize store");
+
+    overlay_position_from_stored(store.get("settings").as_ref())
+}
+
+/// The overlay position carried by a raw stored `settings` value.
+///
+/// Pure, so the agreement with `get_settings` is a test rather than a claim.
+/// Everything unreadable falls back to the same default `AppSettings` does, so
+/// the overlay is placed at the bottom rather than not at all.
+fn overlay_position_from_stored(stored: Option<&serde_json::Value>) -> OverlayPosition {
+    stored
+        .and_then(|settings| settings.get("overlay_position"))
+        .and_then(|position| serde_json::from_value(position.clone()).ok())
+        .unwrap_or_else(default_overlay_position)
+}
+
+/// The overlay theme carried by a raw stored `settings` value.
+///
+/// Pure, so the agreement with `get_settings` is a test rather than a claim.
+/// The three ways it comes up empty are all "inherit everything", which is what
+/// `AppSettings`' own default and salvage paths produce: a missing key, a
+/// missing `settings` value, or a value under the key that does not parse.
+///
+/// A parse failure is reported, not swallowed. `OverlayTheme` already inherits
+/// per field on error, so reaching this arm means the shape itself is wrong (a
+/// string, a list, a hand-edited store) and the user is about to wonder why
+/// their overlay looks untouched.
+fn overlay_theme_from_stored(stored: Option<&serde_json::Value>) -> OverlayTheme {
+    let Some(theme) = stored.and_then(|settings| settings.get("overlay_theme")) else {
+        return OverlayTheme::default();
+    };
+
+    match serde_json::from_value(theme.clone()) {
+        Ok(theme) => theme,
+        Err(e) => {
+            warn!("Failed to parse the stored overlay theme ({e}); inheriting every token");
+            OverlayTheme::default()
+        }
+    }
+}
+
 pub fn get_bindings(app: &AppHandle) -> HashMap<String, ShortcutBinding> {
     let settings = get_settings(app);
 
@@ -1261,6 +1348,151 @@ mod tests {
         assert!(settings.filler_word_removal_enabled);
         // Bindings default to empty; the load path merges the real defaults in.
         assert!(settings.bindings.is_empty());
+    }
+
+    /// Salvage tier two. An `overlay_theme` that is not an object fails
+    /// `OverlayTheme::deserialize`, so the per-key salvage drops that one key,
+    /// leaving every other setting and every token intact.
+    #[test]
+    fn non_object_overlay_theme_is_salvaged_to_default() {
+        let stored = serde_json::json!({
+            "overlay_theme": "nope",
+            "hold_threshold_ms": 500,
+        });
+
+        assert!(
+            serde_json::from_value::<AppSettings>(stored.clone()).is_err(),
+            "a non-object overlay_theme must fail the strict parse"
+        );
+
+        let salvaged = salvage_settings(&stored);
+        assert_eq!(salvaged.overlay_theme, OverlayTheme::default());
+        assert_eq!(salvaged.hold_threshold_ms, 500);
+    }
+
+    /// What the full read would answer for the same stored value: a strict
+    /// parse if it can, salvage if it cannot, exactly as `get_settings` picks.
+    fn overlay_theme_the_long_way(stored: &serde_json::Value) -> OverlayTheme {
+        match serde_json::from_value::<AppSettings>(stored.clone()) {
+            Ok(settings) => settings.overlay_theme,
+            Err(_) => salvage_settings(stored).overlay_theme,
+        }
+    }
+
+    /// `get_overlay_theme` is a shortcut around `get_settings`. If they
+    /// disagree, the overlay is drawn from one theme while the tab shows
+    /// another. Every store shape either can meet, pinned against the full read.
+    #[test]
+    fn the_overlay_theme_shortcut_answers_what_the_full_read_would() {
+        let a_theme = serde_json::json!({
+            "accent": "#36ffc4",
+            "surface_opacity": 1.0,
+            "size_scale": 0.85,
+        });
+
+        // Each case names whether the full read reaches it strictly or only
+        // through salvage, so a fixture that stops exercising the arm it was
+        // written for fails here rather than passing quietly.
+        let stores = [
+            // 1. The ordinary store: a valid theme object, read out whole.
+            (
+                "a valid theme",
+                serde_json::json!({ "overlay_theme": a_theme }),
+                false,
+            ),
+            // 2. A theme that is not an object at all. It fails the whole
+            //    `AppSettings` parse, so the full read salvages and drops the
+            //    key; the shortcut must land on inherit too, not panic.
+            (
+                "a non-object theme",
+                serde_json::json!({ "overlay_theme": "nope", "hold_threshold_ms": 500 }),
+                true,
+            ),
+            // 3. No theme in the store at all, which is every store written
+            //    before this feature existed.
+            (
+                "no theme key",
+                serde_json::json!({ "hold_threshold_ms": 500 }),
+                false,
+            ),
+            // 4. A store the strict parse rejects for its own reason, carrying a
+            //    good theme. Salvage keeps the theme and so must the shortcut,
+            //    or an unrelated broken field costs the user their colours.
+            (
+                "a salvaged store with a good theme",
+                serde_json::json!({ "overlay_theme": a_theme, "hold_threshold_ms": "not a number" }),
+                true,
+            ),
+        ];
+
+        for (what, stored, needs_salvage) in stores {
+            assert_eq!(
+                serde_json::from_value::<AppSettings>(stored.clone()).is_err(),
+                needs_salvage,
+                "{what}: the fixture must exercise the arm it claims to"
+            );
+            assert_eq!(
+                overlay_theme_from_stored(Some(&stored)),
+                overlay_theme_the_long_way(&stored),
+                "{what}: the shortcut and the full read must agree"
+            );
+        }
+
+        // The theme really is read, rather than every case agreeing on default.
+        assert_eq!(
+            overlay_theme_from_stored(Some(&serde_json::json!({ "overlay_theme": a_theme })))
+                .size_scale(),
+            0.85
+        );
+        // And a store with no `settings` value at all inherits everything.
+        assert_eq!(overlay_theme_from_stored(None), OverlayTheme::default());
+    }
+
+    /// The same, for the position. Same reasoning: the resolved overlay theme
+    /// derives its shadow's anchored-side slack from the overlay position, so a
+    /// shortcut that disagreed with the full read would size the window for one
+    /// edge and place it at the other.
+    #[test]
+    fn the_overlay_position_shortcut_answers_what_the_full_read_would() {
+        fn the_long_way(stored: &serde_json::Value) -> OverlayPosition {
+            match serde_json::from_value::<AppSettings>(stored.clone()) {
+                Ok(settings) => settings.overlay_position,
+                Err(_) => salvage_settings(stored).overlay_position,
+            }
+        }
+
+        for (what, stored) in [
+            (
+                "no position key",
+                serde_json::json!({ "hold_threshold_ms": 500 }),
+            ),
+            (
+                "bottom",
+                serde_json::json!({ "overlay_position": "bottom" }),
+            ),
+            ("top", serde_json::json!({ "overlay_position": "top" })),
+            // The retired `"none"`, which the field's own alias folds onto
+            // Bottom, so this shortcut needs no migration of its own.
+            (
+                "the legacy none",
+                serde_json::json!({ "overlay_position": "none" }),
+            ),
+            ("nonsense", serde_json::json!({ "overlay_position": 7 })),
+        ] {
+            assert_eq!(
+                overlay_position_from_stored(Some(&stored)),
+                the_long_way(&stored),
+                "{what}: the shortcut and the full read must agree"
+            );
+        }
+
+        // The position really is read, rather than every case agreeing on the
+        // default, and an absent store is placed rather than not placed at all.
+        assert_eq!(
+            overlay_position_from_stored(Some(&serde_json::json!({ "overlay_position": "top" }))),
+            OverlayPosition::Top
+        );
+        assert_eq!(overlay_position_from_stored(None), OverlayPosition::Bottom);
     }
 
     /// Frozen snapshot of a real v0.9.0-era settings store, as written to

@@ -1,9 +1,14 @@
 use crate::input;
+use crate::overlay_geometry::{
+    native_update_needed, OverlayCardShape, OverlayWindowState, CARD_FADE_MS,
+};
+use crate::overlay_theme::Material;
 use crate::settings;
 use crate::settings::{OverlayPosition, OverlayStyle};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
+use tauri::{AppHandle, Emitter, Listener, Manager, PhysicalPosition, PhysicalSize};
 
 #[cfg(not(target_os = "macos"))]
 use log::debug;
@@ -33,30 +38,42 @@ tauri_panel! {
     })
 }
 
-// Native overlay window sizes (logical points). One window is reused for every
-// state and resized in `show_overlay_state`; each size need only be at least as
-// large as the card it hosts (the `--ov-*` vars in RecordingOverlay.css). The
-// card is CSS-anchored flush to the screen edge, so window height doesn't move
-// where the card sits — only OVERLAY_TOP_OFFSET / OVERLAY_BOTTOM_OFFSET do. Keep
-// these in sync with the CSS card geometry.
-//
-// Compact overlay (Minimal / transcribing / processing): the 40h pill animates
-// width from 172 (--ov-rest-w) to 216 (--ov-work-w) and expands from center, so
-// the window must fit the widest state plus a little slack.
-const OVERLAY_WIDTH: f64 = 256.0;
-const OVERLAY_HEIGHT: f64 = 46.0;
+/// The shape the overlay window is sized for: the one most recently shown or
+/// reported by the webview, or [`OverlayCardShape::CompactRest`] before the
+/// first show and once the overlay is fully hidden (see `hide_recording_overlay`).
+///
+/// Under zero-slack Glass the window tracks the exact shape, not just compact
+/// versus Live. Which card is showing is recoverable, so one atomic covers both.
+static OVERLAY_CARD_SHAPE: AtomicU8 = AtomicU8::new(OverlayCardShape::CompactRest as u8);
 
-// Actual is 394x118, just a little extra
-const OVERLAY_STREAM_WIDTH: f64 = 400.0;
-const OVERLAY_STREAM_HEIGHT: f64 = 120.0;
+/// The shape the overlay window is currently sized for.
+fn current_card_shape() -> OverlayCardShape {
+    OverlayCardShape::from_u8(OVERLAY_CARD_SHAPE.load(Ordering::SeqCst))
+}
 
-/// Overlay window size (logical) for a given UI state.
-fn overlay_dimensions(state: &str) -> (f64, f64) {
-    if state == "streaming" {
-        (OVERLAY_STREAM_WIDTH, OVERLAY_STREAM_HEIGHT)
-    } else {
-        (OVERLAY_WIDTH, OVERLAY_HEIGHT)
-    }
+/// Store a new shape, returning the one it replaced. [`set_card_shape`] uses
+/// that to coalesce reports by identity rather than by time.
+fn set_current_card_shape(shape: OverlayCardShape) -> OverlayCardShape {
+    OverlayCardShape::from_u8(OVERLAY_CARD_SHAPE.swap(shape as u8, Ordering::SeqCst))
+}
+
+/// The compact window at the scale in effect: the overlay window's created
+/// size, and its reach past the card towards the anchored screen edge, before
+/// any card has been shown.
+///
+/// Always sized for Flat, because at window-creation time
+/// `overlay_glass::install` has not run yet (it needs the window this
+/// function's caller is about to build), so Glass can never be available here
+/// whatever is persisted. The first real show (`show_overlay_state_on_main`)
+/// resolves fresh and resizes correctly once Glass is installed, the same
+/// "cosmetic first-show resize" tradeoff the theme file's launch-time read
+/// already accepts.
+///
+/// Resolves from the theme-file cache with no filesystem IO, so it is safe on
+/// the main thread, where the geometry runs. The show path re-reads the file
+/// instead, off the main thread.
+fn initial_overlay_window(app_handle: &AppHandle) -> OverlayWindowState {
+    OverlayWindowState::initial(&crate::overlay_theme::resolve(app_handle))
 }
 
 static LAST_MIC_LEVEL_EMIT: AtomicU64 = AtomicU64::new(0);
@@ -73,15 +90,121 @@ const OVERLAY_BOTTOM_OFFSET: f64 = 15.0;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 const OVERLAY_BOTTOM_OFFSET: f64 = 40.0;
 
+/// How far the overlay card sits from the screen edge it is anchored to, in
+/// logical points.
+///
+/// A value rather than the two placement constants, so the arithmetic below
+/// runs at every platform's numbers from any host, which is how the shadow's
+/// "the card never moves" invariant is tested. The third stack's vertical edge
+/// margin (PR #2) replaces the pair with an `effective_edge_margin` read from
+/// the work area, substituting here and in [`anchored_edge_room`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PlacementOffsets {
+    /// The gap between the monitor's own top edge and a Top overlay's card.
+    /// Measured from the monitor rather than the usable area, so on macOS it
+    /// also has to clear the menu bar.
+    top: f64,
+    /// The gap between the usable bottom edge and a Bottom overlay's card. On
+    /// macOS the usable bottom already tracks the Dock.
+    bottom: f64,
+}
+
+impl PlacementOffsets {
+    /// What this build places with.
+    const PLATFORM: Self = Self {
+        top: OVERLAY_TOP_OFFSET,
+        bottom: OVERLAY_BOTTOM_OFFSET,
+    };
+}
+
+/// How far below the monitor's own top edge the usable area starts, in logical
+/// points: macOS's menu bar, and nothing anywhere else.
+///
+/// Cached because the resolved overlay theme carries the shadow's anchored-side
+/// slack to the overlay page and resolves off the main thread, where no monitor
+/// may be queried. Placements all run on the main thread, so each leaves its
+/// measurement here for the next resolve.
+static USABLE_TOP_INSET: Mutex<f64> = Mutex::new(USABLE_TOP_INSET_SEED);
+
+/// What the inset is taken to be before any placement has measured it.
+///
+/// Off macOS it is right: the Top placement measures from the monitor's own top
+/// edge, so nothing is inset, and a Linux layer surface never places through
+/// `calculate_overlay_position` to correct it. On macOS it is the Top offset
+/// itself, leaving a Top overlay's shadow no room there rather than guessing at
+/// an unmeasured menu bar; window creation places, so at most one window is
+/// ever sized from it.
+#[cfg(target_os = "macos")]
+const USABLE_TOP_INSET_SEED: f64 = OVERLAY_TOP_OFFSET;
+#[cfg(not(target_os = "macos"))]
+const USABLE_TOP_INSET_SEED: f64 = 0.0;
+
+/// The last measured usable-top inset, or the seed if a placement panicked
+/// mid-write, which errs towards a window that stays clear of the menu bar.
+fn usable_top_inset() -> f64 {
+    USABLE_TOP_INSET
+        .lock()
+        .map_or(USABLE_TOP_INSET_SEED, |inset| *inset)
+}
+
+/// Remember what a placement measured, for the resolves that cannot measure.
+fn note_usable_top_inset(inset: f64) {
+    if let Ok(mut cached) = USABLE_TOP_INSET.lock() {
+        *cached = inset;
+    }
+}
+
+/// Today's gap between the card's anchored edge and the usable edge of the
+/// screen, in logical points.
+///
+/// How far a Flat shadow may grow the overlay window towards that edge without
+/// ever covering the Dock, the taskbar or the menu bar, and so how far it
+/// reaches before the window boundary clips it. `top_inset` is where the usable
+/// area starts below the monitor's own top edge, since the Top placement
+/// measures from the monitor and must clear the menu bar itself.
+///
+/// Pure, and the one place the third stack's vertical edge margin (PR #2)
+/// substitutes its `effective_edge_margin` for these offsets.
+fn edge_room(position: OverlayPosition, offsets: PlacementOffsets, top_inset: f64) -> f64 {
+    match position {
+        OverlayPosition::Top => offsets.top - top_inset,
+        OverlayPosition::Bottom => offsets.bottom,
+    }
+    .max(0.0)
+}
+
+/// The room the resolved overlay theme caps a Flat shadow's anchored-side slack
+/// at, at the overlay position in force.
+///
+/// Public because `overlay_theme::resolve_from` derives that slack off the main
+/// thread, where the monitor query the room's one measured term needs is not
+/// allowed. See [`USABLE_TOP_INSET`].
+pub fn anchored_edge_room(app_handle: &AppHandle) -> f64 {
+    edge_room(
+        settings::get_overlay_position(app_handle),
+        PlacementOffsets::PLATFORM,
+        usable_top_inset(),
+    )
+}
+
 /// Configures the edge and offset of a GTK layer surface. gtk-layer-shell
 /// commits anchor and margin changes itself, including while the surface is
 /// mapped, so changing position does not require a manual hide/show cycle.
 #[cfg(target_os = "linux")]
-fn configure_layer_shell_position(gtk_window: &gtk::ApplicationWindow, position: OverlayPosition) {
-    let (edge, opposite_edge, margin) = match position {
+fn configure_layer_shell_position(
+    gtk_window: &gtk::ApplicationWindow,
+    position: OverlayPosition,
+    edge_slack: f64,
+) {
+    let (edge, opposite_edge, offset) = match position {
         OverlayPosition::Top => (Edge::Top, Edge::Bottom, OVERLAY_TOP_OFFSET),
         OverlayPosition::Bottom => (Edge::Bottom, Edge::Top, OVERLAY_BOTTOM_OFFSET),
     };
+    // The surface grew towards this edge by the shadow's edge slack, so its
+    // margin gives that back and the card stays put. Never past the edge
+    // itself, and the exclusive zone stays 0 (set once in
+    // `init_gtk_layer_shell`), so a shadow never reserves a strip of desktop.
+    let margin = (offset - edge_slack).max(0.0);
 
     gtk_window.set_anchor(edge, true);
     gtk_window.set_anchor(opposite_edge, false);
@@ -89,21 +212,24 @@ fn configure_layer_shell_position(gtk_window: &gtk::ApplicationWindow, position:
     gtk_window.set_layer_shell_margin(opposite_edge, 0);
 }
 
-/// Configures a GTK layer surface before it is shown.
+/// Configures a GTK layer surface's size, edge and offset.
 ///
 /// Tauri's normal `set_size` path calls `gtk_window_resize`, but layer surfaces
 /// derive their dimensions from GTK's size request. gtk-layer-shell documents
-/// the `set_size_request` + `resize(1, 1)` sequence for forcing a new size.
+/// the `set_size_request` + `resize(1, 1)` sequence for forcing a new size, and
+/// commits it itself, even while the surface is mapped, so a visible overlay
+/// follows a size-scale change this way too.
 #[cfg(target_os = "linux")]
 fn configure_layer_shell_surface(
     gtk_window: &gtk::ApplicationWindow,
     position: OverlayPosition,
     width: f64,
     height: f64,
+    edge_slack: f64,
 ) {
     use gtk::prelude::{GtkWindowExt, WidgetExt};
 
-    configure_layer_shell_position(gtk_window, position);
+    configure_layer_shell_position(gtk_window, position, edge_slack);
 
     gtk_window.set_size_request(
         width.round().max(1.0) as i32,
@@ -132,8 +258,17 @@ fn init_gtk_layer_shell(overlay_window: &tauri::webview::WebviewWindow) -> bool 
         gtk_window.set_keyboard_mode(KeyboardMode::None);
         gtk_window.set_exclusive_zone(0);
 
-        let overlay_position = settings::get_settings(overlay_window.app_handle()).overlay_position;
-        configure_layer_shell_surface(&gtk_window, overlay_position, OVERLAY_WIDTH, OVERLAY_HEIGHT);
+        let app_handle = overlay_window.app_handle();
+        let overlay_position = settings::get_settings(app_handle).overlay_position;
+        let window = initial_overlay_window(app_handle);
+        let (width, height) = window.window_size();
+        configure_layer_shell_surface(
+            &gtk_window,
+            overlay_position,
+            width,
+            height,
+            window.edge_slack(),
+        );
 
         let initialized = gtk_window.is_layer_window();
         LAYER_SHELL_ACTIVE.store(initialized, Ordering::SeqCst);
@@ -244,47 +379,101 @@ fn calculate_overlay_position(
     app_handle: &AppHandle,
     width: f64,
     height: f64,
+    edge_slack: f64,
 ) -> Option<(f64, f64)> {
     let monitor = get_monitor_with_cursor(app_handle)?;
     let scale = monitor.scale_factor();
-    let monitor_x = monitor.position().x as f64 / scale;
-    let monitor_y = monitor.position().y as f64 / scale;
-    let monitor_width = monitor.size().width as f64 / scale;
+
+    // work_area.position shares monitor.position's global coordinate space, so
+    // no monitor offset is added.
+    #[cfg(target_os = "macos")]
+    let (work_top, work_bottom) = {
+        let wa = monitor.work_area();
+        (
+            wa.position.y as f64 / scale,
+            (wa.position.y as f64 + wa.size.height as f64) / scale,
+        )
+    };
+    #[cfg(not(target_os = "macos"))]
+    let (work_top, work_bottom) = (
+        monitor.position().y as f64 / scale,
+        monitor.position().y as f64 / scale + monitor.size().height as f64 / scale,
+    );
+
+    let screen = OverlayScreen {
+        x: monitor.position().x as f64 / scale,
+        y: monitor.position().y as f64 / scale,
+        width: monitor.size().width as f64 / scale,
+        work_top,
+        work_bottom,
+    };
+    // The only monitor read of the menu bar's height there is. Left for the
+    // resolves that cannot query a monitor; see USABLE_TOP_INSET.
+    note_usable_top_inset(screen.top_inset());
 
     let settings = settings::get_settings(app_handle);
+    Some(overlay_origin(
+        screen,
+        (width, height),
+        settings.overlay_position,
+        PlacementOffsets::PLATFORM,
+        edge_slack,
+    ))
+}
 
-    let x = monitor_x + (monitor_width - width) / 2.0;
-    let y = match settings.overlay_position {
-        OverlayPosition::Top => monitor_y + OVERLAY_TOP_OFFSET,
-        OverlayPosition::Bottom => {
-            // work_area.position shares monitor.position's global coordinate
-            // space, so no monitor offset is added.
-            #[cfg(target_os = "macos")]
-            let bottom = {
-                let wa = monitor.work_area();
-                (wa.position.y as f64 + wa.size.height as f64) / scale
-            };
-            #[cfg(not(target_os = "macos"))]
-            let bottom = monitor_y + monitor.size().height as f64 / scale;
+/// The screen the overlay is placed on, in logical points.
+///
+/// Only what the placement reads, so [`overlay_origin`] runs without a monitor:
+/// the monitor's own rectangle, and the usable area's top and bottom, on macOS
+/// below the menu bar and above the Dock, elsewhere the monitor's own edges.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct OverlayScreen {
+    x: f64,
+    y: f64,
+    width: f64,
+    work_top: f64,
+    work_bottom: f64,
+}
 
-            bottom - height - OVERLAY_BOTTOM_OFFSET
-        }
+impl OverlayScreen {
+    /// How far below the monitor's own top edge the usable area starts.
+    fn top_inset(self) -> f64 {
+        (self.work_top - self.y).max(0.0)
+    }
+}
+
+/// Where the overlay window's top-left corner goes, in logical points.
+///
+/// Pure, so "the card sits `OVERLAY_*_OFFSET` from the screen edge" is a test
+/// rather than a reading of three platform branches. Horizontally the window is
+/// centred on the monitor; vertically it hangs off the anchored edge.
+///
+/// It is the *card* that keeps the offset, on both anchors and every platform,
+/// whatever its shadow does. Under Flat a shadowed card is inset from every
+/// window edge (`.ov-stage`'s padding): the full shadow slack on the three
+/// sides away from the anchored edge, `edge_slack` on the anchored side.
+/// Subtracting it here lands the card where it sits with no shadow.
+///
+/// `edge_slack` is capped at [`edge_room`], the gap the card already has to the
+/// usable edge, so the window stops short of the Dock and the menu bar and
+/// never swallows a click meant for them (measured in the VM, ticket 28). The
+/// shadow's faint tail is clipped at that edge instead.
+fn overlay_origin(
+    screen: OverlayScreen,
+    size: (f64, f64),
+    position: OverlayPosition,
+    offsets: PlacementOffsets,
+    edge_slack: f64,
+) -> (f64, f64) {
+    let (width, height) = size;
+    let x = screen.x + (screen.width - width) / 2.0;
+    let y = match position {
+        OverlayPosition::Top => screen.y + offsets.top - edge_slack,
+        OverlayPosition::Bottom => screen.work_bottom - height - offsets.bottom + edge_slack,
     };
 
-    Some((x, y))
+    (x, y)
 }
-
-/// Current overlay window size in logical units (points), for repositioning
-/// without assuming a fixed size (compact vs. streaming).
-#[cfg(not(target_os = "windows"))]
-fn current_overlay_logical_size(window: &tauri::webview::WebviewWindow) -> Option<(f64, f64)> {
-    let size = window.inner_size().ok()?;
-    let scale = window.scale_factor().ok()?;
-    Some((size.width as f64 / scale, size.height as f64 / scale))
-}
-
-#[cfg(target_os = "windows")]
-static WINDOWS_OVERLAY_IS_STREAMING: AtomicBool = AtomicBool::new(false);
 
 /// Overlay rectangle in the destination monitor's physical pixels, so nothing
 /// is converted through the window's previous-monitor DPI.
@@ -296,18 +485,21 @@ fn windows_overlay_bounds(
     logical_width: f64,
     logical_height: f64,
     overlay_position: OverlayPosition,
+    edge_slack: f64,
 ) -> (i32, i32, i32, i32) {
     let width = (logical_width * scale).round().max(1.0) as i32;
     let height = (logical_height * scale).round().max(1.0) as i32;
     let x = (monitor_position.x as f64 + (monitor_size.width as f64 - width as f64) / 2.0).round()
         as i32;
+    // `overlay_origin`'s rule in this monitor's own pixels: the offset the card
+    // keeps, less the slack the window grew towards that edge, both scaled.
     let y = match overlay_position {
         OverlayPosition::Top => {
-            (monitor_position.y as f64 + OVERLAY_TOP_OFFSET * scale).round() as i32
+            (monitor_position.y as f64 + (OVERLAY_TOP_OFFSET - edge_slack) * scale).round() as i32
         }
         OverlayPosition::Bottom => (monitor_position.y as f64 + monitor_size.height as f64
             - height as f64
-            - OVERLAY_BOTTOM_OFFSET * scale)
+            - (OVERLAY_BOTTOM_OFFSET - edge_slack) * scale)
             .round() as i32,
     };
 
@@ -322,6 +514,7 @@ fn place_windows_overlay(
     overlay_window: &tauri::webview::WebviewWindow,
     logical_width: f64,
     logical_height: f64,
+    edge_slack: f64,
 ) -> Result<(), String> {
     use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
 
@@ -334,6 +527,7 @@ fn place_windows_overlay(
         logical_width,
         logical_height,
         settings::get_settings(app_handle).overlay_position,
+        edge_slack,
     );
     let hwnd = overlay_window
         .hwnd()
@@ -366,11 +560,18 @@ fn place_windows_overlay(
 /// Creates the recording overlay window and keeps it hidden by default
 #[cfg(not(target_os = "macos"))]
 pub fn create_recording_overlay(app_handle: &AppHandle) {
+    // The new window is not configured for anything yet.
+    forget_window_state();
+    // Created at the compact size for the scale in effect. Every show resizes
+    // the window anyway; starting at the right size saves the first show one.
+    let window = initial_overlay_window(app_handle);
+    let (width, height) = window.window_size();
+
     // On Linux (Wayland), monitor detection often fails, but we don't need exact coordinates
     // for Layer Shell as we use anchors. On other platforms, we require a monitor.
     #[cfg(not(target_os = "linux"))]
     {
-        let position = calculate_overlay_position(app_handle, OVERLAY_WIDTH, OVERLAY_HEIGHT);
+        let position = calculate_overlay_position(app_handle, width, height, window.edge_slack());
         if position.is_none() {
             debug!("Failed to determine overlay position, not creating overlay window");
             return;
@@ -386,7 +587,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     )
     .title("Recording")
     .resizable(false)
-    .inner_size(OVERLAY_WIDTH, OVERLAY_HEIGHT)
+    .inner_size(width, height)
     .shadow(false)
     .maximizable(false)
     .minimizable(false)
@@ -407,6 +608,11 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     #[allow(unused_variables)]
     match builder.build() {
         Ok(window) => {
+            // Installs the native blur behind the webview, hidden until a Glass
+            // show reveals it. A no-op on every platform this cfg covers, called
+            // anyway so the Glass module has one install site per creation path.
+            crate::overlay_glass::install(app_handle);
+
             #[cfg(target_os = "linux")]
             {
                 // Try to initialize GTK layer shell, ignore errors if compositor doesn't support it
@@ -428,7 +634,15 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
 /// Creates the recording overlay panel and keeps it hidden by default (macOS)
 #[cfg(target_os = "macos")]
 pub fn create_recording_overlay(app_handle: &AppHandle) {
-    if let Some((x, y)) = calculate_overlay_position(app_handle, OVERLAY_WIDTH, OVERLAY_HEIGHT) {
+    // The new panel is not configured for anything yet.
+    forget_window_state();
+    // Created at the compact size for the scale in effect. Every show resizes
+    // the panel anyway; starting at the right size saves the first show one.
+    let window = initial_overlay_window(app_handle);
+    let (width, height) = window.window_size();
+
+    if let Some((x, y)) = calculate_overlay_position(app_handle, width, height, window.edge_slack())
+    {
         // PanelBuilder creates a Tauri window then converts it to NSPanel.
         // The window remains registered, so get_webview_window() still works.
         match PanelBuilder::<_, RecordingOverlayPanel>::new(app_handle, "recording_overlay")
@@ -436,10 +650,11 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
             .title("Recording")
             .position(tauri::Position::Logical(tauri::LogicalPosition { x, y }))
             .level(PanelLevel::Status)
-            .size(tauri::Size::Logical(tauri::LogicalSize {
-                width: OVERLAY_WIDTH,
-                height: OVERLAY_HEIGHT,
-            }))
+            .size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
+            // Flat's starting point, and Flat's forever: the window is larger
+            // than the card and transparent around it, so a shadow would trace
+            // a rectangle nobody can see. Glass turns it back on at runtime,
+            // where the window is the card (`overlay_glass::window_shadow`).
             .has_shadow(false)
             .transparent(true)
             .no_activate(true)
@@ -454,6 +669,10 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
             .build()
         {
             Ok(panel) => {
+                // Installs the native blur behind the webview, created hidden
+                // until a Glass show reveals it, so a session's first frame can
+                // never be a blurred rectangle with no card on it (nspanel#94).
+                crate::overlay_glass::install(app_handle);
                 panel.hide();
             }
             Err(e) => {
@@ -472,6 +691,14 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
         return;
     }
 
+    // How much room the card needs and which Material to render it in both come
+    // from the resolved overlay theme. Resolving re-reads the theme file, so it
+    // happens here, on the calling thread, and only the result crosses to the
+    // main thread. It takes the tokens from the settings read just above, so
+    // this path deserializes the store once. Every show re-resolves, so a scale
+    // or Material changed since the last show is in effect on the first frame.
+    let resolved = crate::overlay_theme::resolve_reloading_for(app_handle, settings.overlay_theme);
+
     // The rest queries monitors and the cursor and mutates window geometry. On
     // Linux the monitor/cursor lookups hit GDK/Xlib on the process's shared X11
     // connection, which is only safe from the GTK main thread — running them on
@@ -482,23 +709,51 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
     // inline when already on the main thread, so this never deadlocks.
     let handle = app_handle.clone();
     let state = state.to_string();
-    let _ = app_handle.run_on_main_thread(move || show_overlay_state_on_main(&handle, &state));
+    let _ = app_handle
+        .run_on_main_thread(move || show_overlay_state_on_main(&handle, &state, resolved));
 }
 
-fn show_overlay_state_on_main(app_handle: &AppHandle, state: &str) {
-    // Size the overlay for this state (compact vs. streaming), then position it.
-    let (width, height) = overlay_dimensions(state);
+fn show_overlay_state_on_main(
+    app_handle: &AppHandle,
+    state: &str,
+    resolved: crate::overlay_theme::ResolvedOverlayTheme,
+) {
+    let material = resolved.effective_material;
+
+    // The shape is recorded before anything else, including under Flat, where
+    // nothing reads it until a later Glass switch. That way a reposition
+    // mid-session sizes from the card on screen, never a stale default.
+    let shape = OverlayCardShape::initial_for(state);
+    set_current_card_shape(shape);
+    // A show configures the window from the same inputs a reposition does, so it
+    // keeps the same record, or the session's first theme edit repeats its work.
+    let window = OverlayWindowState::new(shape, &resolved);
+    let (width, height) = window.window_size();
+    let edge_slack = window.edge_slack();
+    let shadow = crate::overlay_glass::window_shadow(material, window.shadow_strength());
+    record_window_state(window);
+
+    // Hides the glass view at once if this show is Flat (in case a previous
+    // Glass session left it visible); under Glass it changes nothing but the
+    // blur's material, so the blur cannot appear before the card paints.
+    crate::overlay_glass::apply_material(
+        app_handle,
+        material,
+        shadow,
+        crate::overlay_glass::GlassAppearance::from_theme(&resolved.theme),
+    );
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
         // Invalidate any delayed hide still in flight from a previous session
         // (see `hide_recording_overlay`).
-        OVERLAY_SHOW_GENERATION.fetch_add(1, Ordering::SeqCst);
+        let generation = OVERLAY_SHOW_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+        OVERLAY_SESSION_ACTIVE.store(true, Ordering::SeqCst);
 
         #[cfg(target_os = "linux")]
         let shown_with_layer_shell = if LAYER_SHELL_ACTIVE.load(Ordering::SeqCst) {
             let position = settings::get_settings(app_handle).overlay_position;
             match overlay_window.gtk_window() {
                 Ok(gtk_window) => {
-                    configure_layer_shell_surface(&gtk_window, position, width, height)
+                    configure_layer_shell_surface(&gtk_window, position, width, height, edge_slack)
                 }
                 Err(error) => log::error!("Failed to access GTK overlay window: {error}"),
             }
@@ -515,26 +770,25 @@ fn show_overlay_state_on_main(app_handle: &AppHandle, state: &str) {
             #[cfg(not(target_os = "windows"))]
             let _ =
                 overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
-            #[cfg(target_os = "windows")]
-            WINDOWS_OVERLAY_IS_STREAMING.store(state == "streaming", Ordering::Relaxed);
             let size_elapsed = size_started.elapsed();
 
             let pos_started = std::time::Instant::now();
             #[cfg(not(target_os = "windows"))]
-            let set_pos_elapsed =
-                if let Some((x, y)) = calculate_overlay_position(app_handle, width, height) {
-                    let set_pos_started = std::time::Instant::now();
-                    let _ = overlay_window
-                        .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
-                    set_pos_started.elapsed()
-                } else {
-                    std::time::Duration::ZERO
-                };
+            let set_pos_elapsed = if let Some((x, y)) =
+                calculate_overlay_position(app_handle, width, height, edge_slack)
+            {
+                let set_pos_started = std::time::Instant::now();
+                let _ = overlay_window
+                    .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
+                set_pos_started.elapsed()
+            } else {
+                std::time::Duration::ZERO
+            };
             #[cfg(target_os = "windows")]
             let set_pos_elapsed = {
                 let set_pos_started = std::time::Instant::now();
                 if let Err(error) =
-                    place_windows_overlay(app_handle, &overlay_window, width, height)
+                    place_windows_overlay(app_handle, &overlay_window, width, height, edge_slack)
                 {
                     log::error!("Failed to place recording overlay: {error}");
                 }
@@ -553,7 +807,9 @@ fn show_overlay_state_on_main(app_handle: &AppHandle, state: &str) {
             // Re-assert bounds after show(): the pre-show move crosses the DPI
             // boundary, and tao's WM_DPICHANGED reflow clobbers the first placement.
             #[cfg(target_os = "windows")]
-            if let Err(error) = place_windows_overlay(app_handle, &overlay_window, width, height) {
+            if let Err(error) =
+                place_windows_overlay(app_handle, &overlay_window, width, height, edge_slack)
+            {
                 log::error!("Failed to re-assert recording overlay position: {error}");
             }
 
@@ -567,8 +823,189 @@ fn show_overlay_state_on_main(app_handle: &AppHandle, state: &str) {
             );
         }
 
-        let _ = overlay_window.emit("show-overlay", state);
+        {
+            // Emit and record are one step, under the lock the readiness signal
+            // also takes. A signal between them would find an empty slot and
+            // leave this show unreplayed forever.
+            let mut pending = pending_show_slot();
+            if let Err(error) = overlay_window.emit("show-overlay", state) {
+                log::warn!("Failed to hand the '{state}' overlay state to the webview: {error}");
+            }
+            // The emit reaches the overlay page only if it is already listening,
+            // so remember a show it was too young to hear. Once the page has
+            // ever been ready this stores nothing.
+            let webview_ready = OVERLAY_WEBVIEW_READY.load(Ordering::SeqCst);
+            *pending = pending_show_for(webview_ready, state, generation);
+        }
+
+        // The webview's first card-shape report for this session reveals the
+        // glass view, not this call. The webview has only just been handed
+        // `show-overlay` and is still fetching the resolved theme, so revealing
+        // here would put a blurred rectangle on screen before the card painted
+        // into it. This only arms the fallback for a webview that never reports
+        // at all. A no-op under Flat and off macOS.
+        if material == Material::Glass {
+            schedule_glass_fallback_reveal(app_handle);
+        }
+    } else {
+        log::warn!("Cannot show the '{state}' overlay: the overlay window does not exist");
     }
+}
+
+/// The event the overlay page emits once its listeners are registered.
+const OVERLAY_WEBVIEW_READY_EVENT: &str = "overlay-webview-ready";
+
+/// Whether the overlay page is listening yet.
+///
+/// Tauri hands an event only to webviews that already registered a listener,
+/// and the overlay page registers its own after its bundle loads, well after
+/// the window exists. A `show-overlay` emitted before that is dropped, which
+/// made the first `--preview-overlay` after a launch map an empty window.
+///
+/// Latched and never cleared, because the page loads once, at startup, and
+/// lives as long as the process.
+static OVERLAY_WEBVIEW_READY: AtomicBool = AtomicBool::new(false);
+
+/// A show that reached the overlay window before its page was listening.
+#[derive(Debug, PartialEq, Eq)]
+struct PendingShow {
+    /// The state the show carried, verbatim: `"recording"`, `"streaming"`,
+    /// `"transcribing"` or `"processing"`.
+    state: String,
+    /// The [`OVERLAY_SHOW_GENERATION`] this show belongs to.
+    generation: u64,
+}
+
+/// The one show waiting on the overlay page, if any.
+static PENDING_SHOW: Mutex<Option<PendingShow>> = Mutex::new(None);
+
+/// What a show has to leave behind for the readiness signal. A show the page
+/// received needs no replay and clears whatever an earlier one left, so at most
+/// one show is ever pending.
+fn pending_show_for(webview_ready: bool, state: &str, generation: u64) -> Option<PendingShow> {
+    (!webview_ready).then(|| PendingShow {
+        state: state.to_string(),
+        generation,
+    })
+}
+
+/// Which show the readiness signal replays: the remembered one, unless the
+/// overlay has moved on since.
+///
+/// A hide clears the pending show outright; the generation catches the rest.
+/// A show that raced the signal bumped the counter and reached the page on its
+/// own, so replaying the older state would put the wrong card on screen.
+fn show_to_replay(pending: Option<PendingShow>, generation: u64) -> Option<String> {
+    pending
+        .filter(|pending| pending.generation == generation)
+        .map(|pending| pending.state)
+}
+
+/// The pending-show slot, recovered from a poisoned lock, since it holds a
+/// plain record with no invariant a panic could have left broken.
+fn pending_show_slot() -> std::sync::MutexGuard<'static, Option<PendingShow>> {
+    PENDING_SHOW
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+}
+
+/// Remember the show waiting on the overlay page, or forget it with `None`.
+fn set_pending_show(pending: Option<PendingShow>) {
+    *pending_show_slot() = pending;
+}
+
+/// Start listening for the overlay page's readiness signal. Registered before
+/// the overlay window exists, so the signal cannot arrive with nothing to catch it.
+pub fn listen_for_overlay_webview_ready(app_handle: &AppHandle) {
+    let handle = app_handle.clone();
+    app_handle.listen(OVERLAY_WEBVIEW_READY_EVENT, move |_| {
+        note_overlay_webview_ready(&handle);
+    });
+}
+
+/// The overlay page has registered its listeners. Latch that, and re-run the
+/// show it was too young to hear, if there was one.
+fn note_overlay_webview_ready(app_handle: &AppHandle) {
+    // Latched and read out under one lock, so a show running concurrently
+    // either records itself before this take or sees the page as ready.
+    let pending = {
+        let mut slot = pending_show_slot();
+        OVERLAY_WEBVIEW_READY.store(true, Ordering::SeqCst);
+        slot.take()
+    };
+
+    let generation = OVERLAY_SHOW_GENERATION.load(Ordering::SeqCst);
+    let Some(state) = show_to_replay(pending, generation) else {
+        return;
+    };
+
+    log::debug!("Overlay page ready; re-running the '{state}' show it missed");
+    // Off the event's own thread, because a show re-reads the theme file,
+    // which must not happen on the main thread.
+    let handle = app_handle.clone();
+    std::thread::spawn(move || show_overlay_state(&handle, &state));
+}
+
+/// True from the moment a show maps the overlay window until the hide that
+/// ends that session is requested. Read by the Glass fallback reveal, which
+/// must not fade a blur in on a card already fading out. The show generation
+/// cannot tell that apart, because a hide does not start a new session.
+static OVERLAY_SESSION_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+/// How long the show path waits for the webview's first card-shape report
+/// before revealing the glass view itself. Twice the card's own fade, well
+/// past the webview's first paint on any machine that renders the card.
+const GLASS_FALLBACK_REVEAL_MS: u64 = CARD_FADE_MS as u64 * 2;
+
+/// Reveal the glass view a short while after a Glass show, unless the webview
+/// already had it revealed by reporting its card shape.
+///
+/// The reveal belongs to the first card-shape report, the only moment Rust
+/// knows the card has painted. This is the safety net for a webview that never
+/// reports (an older build's overlay page, or one whose script failed), which
+/// would otherwise show a completely transparent window under Glass.
+///
+/// Guarded by [`OVERLAY_SHOW_GENERATION`], like the delayed hide, so an older
+/// session's reveal cannot undo a newer one's, and by [`OVERLAY_SESSION_ACTIVE`],
+/// so a session that ended inside the delay never has a blur faded in on its way
+/// out. Revealing twice is harmless, because [`crate::overlay_glass::show_glass`]
+/// only updates the radius once the view is fully visible.
+///
+/// The Material is resolved when the timer fires, never taken from the show
+/// that armed it. A switch to Flat inside the delay hides the blur and gives
+/// the window its slack back, so a reveal carrying the show's stale Glass would
+/// put a translucent capsule around the Flat card, this exact bug. Resolving is
+/// a settings read, so it happens on this thread rather than the main one.
+///
+/// The corner radius is re-derived here for the same reason, from the shape on
+/// screen when the timer fires rather than the one the show seeded. A show can
+/// only seed a card from its state, and every Live state seeds the pill; the
+/// webview opens or collapses the panel afterwards, at two thirds and three
+/// quarters of the pill's radius. Because a reveal writes the radius even when
+/// the view is already visible, carrying the seed would round the blur for a
+/// card that is no longer there, leaving the panel's own border tracing a
+/// tighter arc than the glass under it.
+fn schedule_glass_fallback_reveal(app_handle: &AppHandle) {
+    let scheduled_at = OVERLAY_SHOW_GENERATION.load(Ordering::SeqCst);
+    let app_handle = app_handle.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(GLASS_FALLBACK_REVEAL_MS));
+        if OVERLAY_SHOW_GENERATION.load(Ordering::SeqCst) != scheduled_at
+            || !OVERLAY_SESSION_ACTIVE.load(Ordering::SeqCst)
+        {
+            log::debug!("Skipping stale Glass reveal: this session is no longer on screen");
+            return;
+        }
+        let resolved = crate::overlay_theme::resolve(&app_handle);
+        let material = resolved.effective_material;
+        let radius = OverlayWindowState::new(current_card_shape(), &resolved).corner_radius();
+        crate::overlay_glass::show_glass(
+            &app_handle,
+            material,
+            crate::overlay_glass::window_shadow(material, resolved.theme.shadow_strength(material)),
+            radius,
+        );
+    });
 }
 
 /// Notify the visible recording overlay that the input stream has delivered its
@@ -608,51 +1045,193 @@ pub fn show_processing_overlay(app_handle: &AppHandle) {
     show_overlay_state(app_handle, "processing");
 }
 
-/// Updates the overlay window position based on current settings
+/// Updates the overlay window position and size from the current settings, for
+/// callers that changed something other than the overlay theme and so have no
+/// resolved scale in hand: the position and style commands.
 pub fn update_overlay_position(app_handle: &AppHandle) {
+    update_overlay_window(app_handle);
+}
+
+/// What the native window was last configured for, or `None` when that is
+/// unknown (before the first configure, and after the window is re-created).
+static LAST_WINDOW_STATE: Mutex<Option<OverlayWindowState>> = Mutex::new(None);
+
+/// Remember what the window has just been configured for. Called by both paths
+/// that size and place it, so the cache describes the window, not one caller.
+fn record_window_state(state: OverlayWindowState) {
+    if let Ok(mut last) = LAST_WINDOW_STATE.lock() {
+        *last = Some(state);
+    }
+}
+
+/// Forget what the window was configured for, because the window is new.
+fn forget_window_state() {
+    if let Ok(mut last) = LAST_WINDOW_STATE.lock() {
+        *last = None;
+    }
+}
+
+/// Reposition the overlay for a theme the caller has already resolved, unless
+/// the window is already configured exactly that way. The skip is the point.
+/// An accent or a padding edit changes nothing the native window is built from,
+/// and the overlay theme is now delivered on every frame of a slider drag.
+pub fn update_overlay_position_for_theme(
+    app_handle: &AppHandle,
+    resolved: &crate::overlay_theme::ResolvedOverlayTheme,
+) {
+    let next = OverlayWindowState::new(current_card_shape(), resolved);
+    let unchanged = LAST_WINDOW_STATE
+        .lock()
+        .is_ok_and(|last| !native_update_needed(last.as_ref(), &next));
+    if unchanged {
+        return;
+    }
+
     // Positioning queries monitors/cursor (GDK/Xlib on Linux) and moves the
     // window, so it must run on the main thread — see show_overlay_state.
     let handle = app_handle.clone();
-    let _ = app_handle.run_on_main_thread(move || update_overlay_position_on_main(&handle));
+    let resolved = resolved.clone();
+    let _ = app_handle
+        .run_on_main_thread(move || update_overlay_position_on_main(&handle, Some(resolved)));
 }
 
-fn update_overlay_position_on_main(app_handle: &AppHandle) {
+fn update_overlay_window(app_handle: &AppHandle) {
+    // Positioning queries monitors/cursor (GDK/Xlib on Linux) and moves the
+    // window, so it must run on the main thread. See show_overlay_state.
+    let handle = app_handle.clone();
+    let _ = app_handle.run_on_main_thread(move || update_overlay_position_on_main(&handle, None));
+}
+
+fn update_overlay_position_on_main(
+    app_handle: &AppHandle,
+    resolved: Option<crate::overlay_theme::ResolvedOverlayTheme>,
+) {
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+        // Resolved here only for callers with no theme to pass, the position and
+        // style commands. Cache-only, no filesystem IO, safe on the main thread.
+        let resolved = resolved.unwrap_or_else(|| crate::overlay_theme::resolve(app_handle));
+        let material = resolved.effective_material;
+        // Hides the glass view when this reposition lands on Flat (in case a
+        // previous Glass session left it visible); under Glass it applies the
+        // engine's tokens live, so a changed Glass style, or the surface the
+        // liquid engine tints itself with, reaches an overlay already on screen.
+        // Every platform recomputes the size from the card on screen and the
+        // size scale rather than reading the window's size back from the OS, so
+        // a scale change resizes a visible window too. Without that the card
+        // would repaint larger inside the old window and be clipped.
+        let window = OverlayWindowState::new(current_card_shape(), &resolved);
+        let (width, height) = window.window_size();
+        let edge_slack = window.edge_slack();
+        let radius = window.corner_radius();
+        let shadow = crate::overlay_glass::window_shadow(material, window.shadow_strength());
+
+        crate::overlay_glass::apply_material(
+            app_handle,
+            material,
+            shadow,
+            crate::overlay_glass::GlassAppearance::from_theme(&resolved.theme),
+        );
+
+        // Recorded before the placement, so the one platform branch that returns
+        // early (layer shell) is covered too. A failed placement is only logged
+        // today; the next theme change carries a different state and tries again.
+        record_window_state(window);
+
         #[cfg(target_os = "linux")]
         if LAYER_SHELL_ACTIVE.load(Ordering::SeqCst) {
             let position = settings::get_settings(app_handle).overlay_position;
             match overlay_window.gtk_window() {
-                Ok(gtk_window) => configure_layer_shell_position(&gtk_window, position),
+                // Layer surfaces size themselves from GTK's size request, so the
+                // full configure (size request + anchors) applies a new size.
+                Ok(gtk_window) => {
+                    configure_layer_shell_surface(&gtk_window, position, width, height, edge_slack)
+                }
                 Err(error) => log::error!("Failed to access GTK overlay window: {error}"),
             }
             return;
         }
 
         #[cfg(target_os = "windows")]
+        if let Err(error) =
+            place_windows_overlay(app_handle, &overlay_window, width, height, edge_slack)
         {
-            let state = if WINDOWS_OVERLAY_IS_STREAMING.load(Ordering::Relaxed) {
-                "streaming"
-            } else {
-                "recording"
-            };
-            let (width, height) = overlay_dimensions(state);
-            if let Err(error) = place_windows_overlay(app_handle, &overlay_window, width, height) {
-                log::error!("Failed to update recording overlay position: {error}");
-            }
+            log::error!("Failed to update recording overlay position: {error}");
         }
 
         #[cfg(not(target_os = "windows"))]
         {
-            // Use the window's current size so centering stays correct whether the
-            // overlay is in compact or streaming layout.
-            let (width, height) = current_overlay_logical_size(&overlay_window)
-                .unwrap_or((OVERLAY_WIDTH, OVERLAY_HEIGHT));
-            if let Some((x, y)) = calculate_overlay_position(app_handle, width, height) {
+            let _ =
+                overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
+            if let Some((x, y)) = calculate_overlay_position(app_handle, width, height, edge_slack)
+            {
                 let _ = overlay_window
                     .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
             }
         }
+
+        // The window now matches the current card shape and size scale, so bring
+        // the glass view's corner radius in line, but only while the card is on
+        // screen. Revealing the blur on a hidden window would leave it at full
+        // alpha for the next show to flash before the card paints, and a
+        // reposition is common while the overlay is down (every theme, style and
+        // position change makes one). The next session's first card-shape report
+        // recomputes the radius anyway. Reveal or hide is `material`'s call, not
+        // this function's. Under Flat it takes the blur off screen a second time,
+        // the point of routing every reveal through one door. `is_visible` is an
+        // AppKit read, and this function already runs on the main thread.
+        if overlay_window.is_visible().unwrap_or(false) {
+            crate::overlay_glass::show_glass(app_handle, material, shadow, radius);
+        }
     }
+}
+
+/// Record a card-shape report from the overlay webview and, under Glass, move
+/// and reveal the native blur to match.
+///
+/// This is also where a Glass session's blur is first revealed. The report on
+/// the first frame of a session repeats the shape the show path seeded, so it
+/// takes the reveal branch below, the earliest moment Rust knows the card has
+/// actually painted.
+///
+/// Coalescing goes by shape identity rather than by time. A report repeating
+/// the shape already on screen only refreshes the radius and the reveal, and an
+/// in-flight animation superseded by a new shape is left to AppKit's own
+/// `animator()` to retarget rather than cancelled by hand. Under Flat, and off
+/// macOS where the effective Material is never Glass, this only updates the
+/// stored shape, which `update_overlay_position_on_main` reads back on the next
+/// reposition, and makes sure the blur is off screen.
+///
+/// The theme is resolved inside the main-thread hop, not before. The Material
+/// decides both the window size and whether the blur may be lit, and a switch
+/// landing between the two would size the window for one Material and light the
+/// blur for the other. Resolving is cache-only, so it is safe there.
+pub fn set_card_shape(app_handle: &AppHandle, shape: OverlayCardShape, duration_ms: u32) {
+    let previous = set_current_card_shape(shape);
+
+    // Whether the window is mapped decides between animating the frame and
+    // snapping it. `is_visible()` is an AppKit read on macOS, so it is taken in
+    // the same main-thread hop that acts on it, not the handler's own thread.
+    let handle = app_handle.clone();
+    let _ = app_handle.run_on_main_thread(move || {
+        let resolved = crate::overlay_theme::resolve(&handle);
+        let material = resolved.effective_material;
+        let window = OverlayWindowState::new(shape, &resolved);
+        let size = window.window_size();
+        let radius = window.corner_radius();
+        let shadow = crate::overlay_glass::window_shadow(material, window.shadow_strength());
+
+        let visible = handle
+            .get_webview_window("recording_overlay")
+            .and_then(|window| window.is_visible().ok())
+            .unwrap_or(false);
+        if material == Material::Glass && previous != shape && visible {
+            crate::overlay_glass::morph_frame(&handle, material, shadow, size, radius, duration_ms);
+        } else {
+            // Reveals under Glass; under Flat this is what takes a blur left
+            // over from a Glass session off screen.
+            crate::overlay_glass::show_glass(&handle, material, shadow, radius);
+        }
+    });
 }
 
 /// Generation counter bumped every time the overlay is shown. The delayed
@@ -671,8 +1250,18 @@ pub fn hide_recording_overlay(app_handle: &AppHandle) {
         // Snapshot before doing anything observable, so any show that lands
         // after this point invalidates the delayed hide below.
         let scheduled_at = OVERLAY_SHOW_GENERATION.load(Ordering::SeqCst);
+        // This session is over as far as the Glass reveal is concerned, even
+        // though the window stays mapped for the fade below.
+        OVERLAY_SESSION_ACTIVE.store(false, Ordering::SeqCst);
+        // A show still waiting on the overlay page belongs to the session that
+        // is ending here, so it must never be replayed.
+        set_pending_show(None);
         // Emit event to trigger fade-out animation
         let _ = overlay_window.emit("hide-overlay", ());
+        // Under Glass the blur is a native layer that takes no part in the card's
+        // exit, so it must be driven out on the same timing or it sits on screen
+        // with nothing in it. A no-op under Flat and when never revealed.
+        crate::overlay_glass::fade_out(app_handle, current_card_shape().glass_fade_out_ms());
         // Hide the window after a short delay to allow animation to complete,
         // unless a newer session has shown the overlay again by then.
         let window_clone = overlay_window.clone();
@@ -682,6 +1271,12 @@ pub fn hide_recording_overlay(app_handle: &AppHandle) {
                 log::debug!("Skipping stale overlay hide: a newer session is showing the overlay");
                 return;
             }
+            // Nothing is on screen any more, so the window has no shape to keep.
+            // Cleared here rather than when the hide is scheduled, so a show
+            // landing inside the 300 ms delay keeps the shape it just set. Under
+            // zero slack a stale shape from a finished Live session must not be
+            // what the next reposition sizes the window from.
+            set_current_card_shape(OverlayCardShape::CompactRest);
             let _ = window_clone.hide();
         });
     }
@@ -747,6 +1342,227 @@ pub fn emit_levels(app_handle: &AppHandle, levels: &[f32]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// Today's four windows at size_scale 1, so the Windows placement tests
+    /// below keep exercising the sizes this overlay has always used.
+    #[cfg(target_os = "windows")]
+    use crate::overlay_geometry::{
+        CardMetrics, ShadowMetrics, OVERLAY_HEIGHT, OVERLAY_STREAM_HEIGHT, OVERLAY_STREAM_WIDTH,
+        OVERLAY_WIDTH,
+    };
+
+    /// The three platforms' offsets, so the placement rule is exercised at all
+    /// of their numbers whichever host the tests run on.
+    const MACOS: PlacementOffsets = PlacementOffsets {
+        top: 46.0,
+        bottom: 15.0,
+    };
+    const WINDOWS: PlacementOffsets = PlacementOffsets {
+        top: 4.0,
+        bottom: 40.0,
+    };
+    const LINUX: PlacementOffsets = WINDOWS;
+
+    /// Every platform, named, for a test that has to walk them.
+    const PLATFORMS: [(&str, PlacementOffsets, f64); 3] = [
+        // macOS is the only one whose usable top sits below the monitor's: the
+        // menu bar, 30 points on macOS 26.
+        ("macos", MACOS, 30.0),
+        ("windows", WINDOWS, 0.0),
+        ("linux", LINUX, 0.0),
+    ];
+
+    /// A screen with the overlay on it: a 1440p display at the origin whose
+    /// menu bar takes `top_inset` points and whose Dock takes the bottom 60.
+    fn screen_with(top_inset: f64) -> OverlayScreen {
+        OverlayScreen {
+            x: 0.0,
+            y: 0.0,
+            width: 2560.0,
+            work_top: top_inset,
+            work_bottom: 1380.0,
+        }
+    }
+
+    /// The macOS screen, the one the platform-independent assertions use.
+    fn screen() -> OverlayScreen {
+        screen_with(30.0)
+    }
+
+    /// The card's own rectangle, recovered from the window that holds it: the
+    /// window less the slack it grew by on each side.
+    fn card_in(
+        origin: (f64, f64),
+        size: (f64, f64),
+        slack: f64,
+        edge_slack: f64,
+        position: OverlayPosition,
+    ) -> (f64, f64, f64, f64) {
+        let (top_pad, bottom_pad) = match position {
+            OverlayPosition::Top => (edge_slack, slack),
+            OverlayPosition::Bottom => (slack, edge_slack),
+        };
+        (
+            origin.0 + slack,
+            origin.1 + top_pad,
+            size.0 - 2.0 * slack,
+            size.1 - top_pad - bottom_pad,
+        )
+    }
+
+    /// The rule this whole change exists for: **the card never moves.** Its
+    /// screen rectangle is byte-identical with and without a shadow, at every
+    /// card shape, at both anchors, on all three platforms.
+    ///
+    /// The window around it does move and grow, so `.ov-stage`'s padding must
+    /// mirror `card_in` above.
+    #[test]
+    fn the_card_keeps_its_screen_position_when_a_shadow_is_added() {
+        // The five card shapes' Flat windows at scale 1, plus the largest one a
+        // size scale can reach.
+        for card in [(256.0, 46.0), (400.0, 120.0), (600.0, 180.0)] {
+            for (platform, offsets, top_inset) in PLATFORMS {
+                let screen = screen_with(top_inset);
+                for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+                    let room = edge_room(position, offsets, screen.top_inset());
+                    let bare = overlay_origin(screen, card, position, offsets, 0.0);
+                    let expected = card_in(bare, card, 0.0, 0.0, position);
+
+                    // Every slack a Flat shadow can ask for: none, the inherit
+                    // reach, and ceil((20 + 16) * 1.5), the largest there is.
+                    for slack in [0.0_f64, 16.0, 20.0, 24.0, 36.0, 54.0] {
+                        let edge_slack = slack.min(room);
+                        let size = (card.0 + 2.0 * slack, card.1 + slack + edge_slack);
+                        let origin = overlay_origin(screen, size, position, offsets, edge_slack);
+
+                        assert_eq!(
+                            card_in(origin, size, slack, edge_slack, position),
+                            expected,
+                            "{platform} {position:?} at slack {slack}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// …and the window it moved still stops at the usable edge, so a click
+    /// meant for the Dock or the menu bar still reaches them.
+    #[test]
+    fn the_window_never_passes_the_usable_edge() {
+        let card = (256.0, 46.0);
+
+        for (platform, offsets, top_inset) in PLATFORMS {
+            let screen = screen_with(top_inset);
+            for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+                let room = edge_room(position, offsets, screen.top_inset());
+                for slack in [0.0_f64, 16.0, 24.0, 54.0, 200.0] {
+                    let edge_slack = slack.min(room);
+                    let size = (card.0 + 2.0 * slack, card.1 + slack + edge_slack);
+                    let (_, y) = overlay_origin(screen, size, position, offsets, edge_slack);
+
+                    match position {
+                        OverlayPosition::Top => assert!(
+                            y >= screen.work_top,
+                            "{platform} top at slack {slack}: {y} is above {}",
+                            screen.work_top
+                        ),
+                        OverlayPosition::Bottom => assert!(
+                            y + size.1 <= screen.work_bottom,
+                            "{platform} bottom at slack {slack}: {} is below {}",
+                            y + size.1,
+                            screen.work_bottom
+                        ),
+                    }
+                }
+            }
+        }
+
+        // The rooms those bounds come from, written out: macOS's Top offset
+        // less a 30 point menu bar, its 15 points above the Dock, and the flush
+        // 4 and 40 Windows and Linux use.
+        assert_eq!(edge_room(OverlayPosition::Top, MACOS, 30.0), 16.0);
+        assert_eq!(edge_room(OverlayPosition::Bottom, MACOS, 30.0), 15.0);
+        assert_eq!(edge_room(OverlayPosition::Top, WINDOWS, 0.0), 4.0);
+        assert_eq!(edge_room(OverlayPosition::Bottom, WINDOWS, 0.0), 40.0);
+        // A menu bar taller than the offset leaves no room at all, not a
+        // negative one, as the unmeasured seed also produces.
+        assert_eq!(edge_room(OverlayPosition::Top, MACOS, 60.0), 0.0);
+        assert_eq!(edge_room(OverlayPosition::Top, MACOS, MACOS.top), 0.0);
+        // Which is exactly what the unmeasured seed produces on macOS, and
+        // nothing at all off it, where the usable top is the monitor's own.
+        assert_eq!(
+            edge_room(
+                OverlayPosition::Top,
+                PlacementOffsets::PLATFORM,
+                USABLE_TOP_INSET_SEED
+            ),
+            if cfg!(target_os = "macos") {
+                0.0
+            } else {
+                OVERLAY_TOP_OFFSET
+            }
+        );
+    }
+
+    /// With no shadow the arithmetic is byte-identical to what it was before
+    /// the token existed, so today's overlay does not move at all.
+    #[test]
+    fn a_shadowless_overlay_is_placed_exactly_as_it_always_was() {
+        let card = (256.0, 46.0);
+
+        assert_eq!(
+            overlay_origin(
+                screen(),
+                card,
+                OverlayPosition::Bottom,
+                PlacementOffsets::PLATFORM,
+                0.0
+            ),
+            (
+                (2560.0 - card.0) / 2.0,
+                1380.0 - card.1 - OVERLAY_BOTTOM_OFFSET
+            )
+        );
+        assert_eq!(
+            overlay_origin(
+                screen(),
+                card,
+                OverlayPosition::Top,
+                PlacementOffsets::PLATFORM,
+                0.0
+            ),
+            ((2560.0 - card.0) / 2.0, OVERLAY_TOP_OFFSET)
+        );
+    }
+
+    /// The monitor's own origin still carries the window, shadow or not, so a
+    /// second display placed left of or above the first is unaffected.
+    #[test]
+    fn the_shadow_does_not_move_the_card_off_its_monitor() {
+        let left = OverlayScreen {
+            x: -2560.0,
+            y: -200.0,
+            width: 2560.0,
+            work_top: -170.0,
+            work_bottom: 1240.0,
+        };
+        let slack = 24.0_f64;
+        let offsets = PlacementOffsets::PLATFORM;
+
+        for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+            let edge_slack = slack.min(edge_room(position, offsets, left.top_inset()));
+            let size = (256.0 + 2.0 * slack, 46.0 + slack + edge_slack);
+            let origin = overlay_origin(left, size, position, offsets, edge_slack);
+            let bare = overlay_origin(left, (256.0, 46.0), position, offsets, 0.0);
+
+            assert_eq!(
+                card_in(origin, size, slack, edge_slack, position),
+                card_in(bare, (256.0, 46.0), 0.0, 0.0, position),
+                "{position:?}"
+            );
+            assert_eq!(origin.0 + slack, -2560.0 + (2560.0 - 256.0) / 2.0);
+        }
+    }
 
     #[test]
     fn monitor_hit_test_uses_half_open_physical_bounds() {
@@ -757,6 +1573,36 @@ mod tests {
         assert!(is_mouse_within_monitor((-1, 1239), &position, &size));
         assert!(!is_mouse_within_monitor((0, 0), &position, &size));
         assert!(!is_mouse_within_monitor((-1, 1240), &position, &size));
+    }
+
+    /// The race the first `--preview-overlay` after a launch used to lose. The
+    /// show reaches the window before the page is listening, so it has to be
+    /// remembered rather than emitted and forgotten.
+    #[test]
+    fn a_show_the_overlay_page_cannot_hear_yet_is_remembered() {
+        assert_eq!(
+            pending_show_for(false, "recording", 7),
+            Some(PendingShow {
+                state: "recording".to_string(),
+                generation: 7,
+            })
+        );
+        assert_eq!(pending_show_for(true, "recording", 7), None);
+    }
+
+    #[test]
+    fn readiness_re_runs_the_show_that_was_missed() {
+        let pending = pending_show_for(false, "streaming", 3);
+        assert_eq!(show_to_replay(pending, 3), Some("streaming".to_string()));
+    }
+
+    /// Nothing pending, and a pending show the overlay has moved past, both
+    /// leave the screen alone.
+    #[test]
+    fn readiness_never_re_runs_a_stale_show() {
+        assert_eq!(show_to_replay(None, 3), None);
+        let pending = pending_show_for(false, "streaming", 3);
+        assert_eq!(show_to_replay(pending, 4), None);
     }
 
     #[cfg(target_os = "windows")]
@@ -800,6 +1646,7 @@ mod tests {
                 OVERLAY_WIDTH,
                 OVERLAY_HEIGHT,
                 OverlayPosition::Bottom,
+                0.0,
             ),
             (3648, 2031, 384, 69)
         );
@@ -811,8 +1658,71 @@ mod tests {
                 OVERLAY_WIDTH,
                 OVERLAY_HEIGHT,
                 OverlayPosition::Top,
+                0.0,
             ),
             (3648, 6, 384, 69)
+        );
+
+        // The shadow's anchored-side slack is scaled like every other length
+        // here, so the card lands where it did without one. A 20 point shadow
+        // at the top: Windows' 4 point offset is all the room there is, so the
+        // window is 24 points taller, starts flush with the monitor, and the
+        // card's own top edge is still 4 logical points down (6 physical, the
+        // unshadowed window's own y).
+        assert_eq!(
+            windows_overlay_bounds(
+                monitor_position,
+                monitor_size,
+                1.5,
+                OVERLAY_WIDTH + 40.0,
+                OVERLAY_HEIGHT + 24.0,
+                OverlayPosition::Top,
+                4.0,
+            ),
+            (3618, 0, 444, 105)
+        );
+        // At the bottom the whole 20 fits inside the 40 point offset, so the
+        // window ends 20 points above the monitor's edge and the card's bottom
+        // is still at 2160 - 40 x 1.5 = 2100.
+        assert_eq!(
+            windows_overlay_bounds(
+                monitor_position,
+                monitor_size,
+                1.5,
+                OVERLAY_WIDTH + 40.0,
+                OVERLAY_HEIGHT + 40.0,
+                OverlayPosition::Bottom,
+                20.0,
+            ),
+            (3618, 2001, 444, 129)
+        );
+
+        // A scaled window converts to physical pixels the same way and still
+        // lands on the bottom offset: 2160 - 269 - 40 * 1.5 = 1831.
+        let (width, height) = CardMetrics::from_theme(&crate::overlay_theme::OverlayTheme {
+            size_scale: Some(1.5),
+            ..Default::default()
+        })
+        .window_size(
+            OverlayCardShape::LiveOpen,
+            Material::Flat,
+            ShadowMetrics::from_theme(
+                &crate::overlay_theme::OverlayTheme::default(),
+                Material::Flat,
+            ),
+            0.0,
+        );
+        assert_eq!(
+            windows_overlay_bounds(
+                monitor_position,
+                monitor_size,
+                1.5,
+                width,
+                height,
+                OverlayPosition::Bottom,
+                0.0,
+            ),
+            (3392, 1831, 896, 269)
         );
     }
 
@@ -827,6 +1737,7 @@ mod tests {
                 OVERLAY_STREAM_WIDTH,
                 OVERLAY_STREAM_HEIGHT,
                 OverlayPosition::Bottom,
+                0.0,
             ),
             (-1530, 1040, 500, 150)
         );

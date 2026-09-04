@@ -1,0 +1,178 @@
+import { describe, expect, test } from "bun:test";
+import type { OverlayTheme } from "@/bindings";
+import { INHERIT_ALL } from "@/lib/overlayTheme";
+import {
+  diagnosticI18nKey,
+  lockedTokenCounts,
+  moreDiagnosticsCount,
+  themeAsJsonDocument,
+} from "./ThemeFileGroup";
+import { OVERLAY_TOKEN_FIELDS } from "./overlayTokenFields";
+
+describe("moreDiagnosticsCount", () => {
+  test("is 0 when nothing was capped", () => {
+    expect(moreDiagnosticsCount(3, 3)).toBe(0);
+  });
+
+  test("is the difference when the payload was capped", () => {
+    // A broken file can produce one diagnostic per token; the payload caps at 5.
+    expect(moreDiagnosticsCount(9, 5)).toBe(4);
+  });
+
+  test("never goes negative", () => {
+    expect(moreDiagnosticsCount(2, 5)).toBe(0);
+  });
+});
+
+describe("lockedTokenCounts", () => {
+  test("the total is the rows on screen, not every token there is", () => {
+    // Twenty of the contract's twenty-two under Flat. `glass_material`
+    // drives the pre-macOS-26 fallback engine and has no row; the two alphas
+    // share one slot, Flat's surface opacity or Glass's tint, never both.
+    expect(lockedTokenCounts([], "flat", true).total).toBe(20);
+    expect(Object.keys(INHERIT_ALL).length).toBe(22);
+
+    // One fewer under Glass: macOS places its own window shadow and takes no
+    // offset, so that row is not on screen to be locked.
+    expect(lockedTokenCounts([], "glass", true).total).toBe(19);
+
+    // The two shadow rows are one token, so the table has one entry more than
+    // the tokens it covers. The two waveform lengths count under every style,
+    // so the total does not move as the user picks one.
+    expect(OVERLAY_TOKEN_FIELDS.length).toBe(22);
+  });
+
+  test("a hidden waveform takes its whole group out of the total", () => {
+    // The tab drops the Waveform group with the waveform, so its three rows
+    // (the style and the two lengths) are not there to be locked.
+    expect(lockedTokenCounts([], "flat", false).total).toBe(17);
+    expect(lockedTokenCounts([], "glass", false).total).toBe(16);
+    // A file owning one of them counts nothing while the group is gone.
+    const waveformOwned = ["waveform_style", "accent"];
+    expect(lockedTokenCounts(waveformOwned, "flat", false)).toEqual({
+      count: 1,
+      total: 17,
+    });
+    expect(lockedTokenCounts(waveformOwned, "flat", true)).toEqual({
+      count: 2,
+      total: 20,
+    });
+  });
+
+  test("counts the owned tokens the tab can show as locked", () => {
+    expect(
+      lockedTokenCounts(["accent", "radius", "material"], "flat", true).count,
+    ).toBe(3);
+  });
+
+  test("a tab-less token the file owns is not counted", () => {
+    expect(lockedTokenCounts(["glass_material"], "flat", true).count).toBe(0);
+    expect(
+      lockedTokenCounts(["accent", "glass_material"], "flat", true).count,
+    ).toBe(1);
+  });
+
+  test("nor is the alpha belonging to the other Material", () => {
+    // A file pinning both alphas fills exactly one row, whichever Material is
+    // painted; the other control is not on screen to be locked.
+    const bothAlphas = ["surface_opacity", "glass_tint"];
+    expect(lockedTokenCounts(bothAlphas, "flat", true)).toEqual({
+      count: 1,
+      total: 20,
+    });
+    expect(lockedTokenCounts(bothAlphas, "glass", true)).toEqual({
+      count: 1,
+      total: 19,
+    });
+    expect(lockedTokenCounts(["glass_tint"], "flat", true).count).toBe(0);
+    expect(lockedTokenCounts(["surface_opacity"], "glass", true).count).toBe(0);
+  });
+
+  test("the shadow offset counts only where it has a row", () => {
+    // The token still applies under Glass, with nothing to lock there, so
+    // counting it would promise a row the user cannot find.
+    expect(lockedTokenCounts(["shadow_offset_y"], "flat", true).count).toBe(1);
+    expect(lockedTokenCounts(["shadow_offset_y"], "glass", true).count).toBe(0);
+    // The strength has a row on both, a slider or a switch.
+    for (const material of ["flat", "glass"] as const) {
+      expect(lockedTokenCounts(["shadow_strength"], material, true).count).toBe(
+        1,
+      );
+    }
+  });
+});
+
+describe("diagnosticI18nKey", () => {
+  test("maps every code to a distinct settings.appearance.themeFile key", () => {
+    const codes: Array<Parameters<typeof diagnosticI18nKey>[0]> = [
+      "malformed_document",
+      "unsupported_version",
+      "unknown_key",
+      "wrong_type",
+      "invalid_color",
+      "out_of_bounds",
+      "unreadable",
+    ];
+    const keys = codes.map(diagnosticI18nKey);
+    expect(new Set(keys).size).toBe(codes.length);
+    keys.forEach((key) =>
+      expect(key.startsWith("settings.appearance.themeFile.")).toBe(true),
+    );
+  });
+
+  test("unsupported_version reuses the dedicated newerVersion copy", () => {
+    expect(diagnosticI18nKey("unsupported_version")).toBe(
+      "settings.appearance.themeFile.newerVersion",
+    );
+  });
+});
+
+describe("themeAsJsonDocument", () => {
+  test("a fully-inherited theme copies as just the version", () => {
+    expect(JSON.parse(themeAsJsonDocument(INHERIT_ALL))).toEqual({
+      version: 1,
+    });
+  });
+
+  test("only set tokens are emitted", () => {
+    const theme: OverlayTheme = {
+      ...INHERIT_ALL,
+      accent: "#7aa2f7",
+      radius: 12,
+    };
+    expect(JSON.parse(themeAsJsonDocument(theme))).toEqual({
+      version: 1,
+      accent: "#7aa2f7",
+      radius: 12,
+    });
+  });
+
+  test("is valid JSON", () => {
+    const theme: OverlayTheme = { ...INHERIT_ALL, material: "glass" };
+    expect(() => JSON.parse(themeAsJsonDocument(theme))).not.toThrow();
+  });
+
+  test("serializes exactly like the contract's examples", () => {
+    // Two-space indent, `version` first, tokens after it in the contract's
+    // table order, not the runtime object's. This is the document a theming
+    // tool is handed, so its shape is part of the contract.
+    expect(themeAsJsonDocument(INHERIT_ALL)).toBe('{\n  "version": 1\n}');
+
+    const theme: OverlayTheme = {
+      ...INHERIT_ALL,
+      radius: 12,
+      accent: "#7aa2f7",
+      material: "glass",
+    };
+    expect(themeAsJsonDocument(theme)).toBe(
+      [
+        "{",
+        '  "version": 1,',
+        '  "accent": "#7aa2f7",',
+        '  "material": "glass",',
+        '  "radius": 12',
+        "}",
+      ].join("\n"),
+    );
+  });
+});

@@ -11,6 +11,7 @@
   },
   "sidebar": {
     "general": "Chung",
+    "appearance": "Giao diện",
     "models": "Mô hình",
     "advanced": "Nâng cao",
     "postProcessing": "Xử lý sau",
@@ -256,6 +257,176 @@
       "volume": {
         "title": "Âm lượng",
         "description": "Điều chỉnh âm lượng của âm thanh phản hồi"
+      }
+    },
+    "appearance": {
+      "groups": {
+        "app": "Ứng dụng",
+        "overlay": "Lớp phủ",
+        "preview": "Xem trước trên màn hình",
+        "color": "Màu lớp phủ",
+        "material": "Chất liệu lớp phủ",
+        "elements": "Các phần tử lớp phủ",
+        "size": "Kích thước và khoảng cách lớp phủ",
+        "waveform": "Dạng sóng",
+        "themeFile": "Tệp giao diện"
+      },
+      "preview": {
+        "states": {
+          "cycle": "Vòng lặp",
+          "arming": "Đang chuẩn bị",
+          "recording": "Đang ghi âm",
+          "listening": "Đang lắng nghe",
+          "transcribing": "Đang chuyển đổi",
+          "processing": "Đang xử lý"
+        },
+        "start": "Bắt đầu xem trước",
+        "stop": "Dừng xem trước",
+        "hint": "Lớp phủ vẫn hiển thị trên màn hình trong lúc bạn chỉnh sửa, nên mọi thay đổi đều hiện ra ngay trên đó.",
+        "sampleText": "Con cáo nâu nhanh nhẹn nhảy qua con chó lười, và Handy ghi lại điều đó.",
+        "blockedRecording": "Không khả dụng khi Handy đang ghi âm",
+        "noneNote": "Lớp phủ đang tắt nên không có gì để xem trước. Hãy chọn Tối giản hoặc Trực tiếp ở trên."
+      },
+      "reset": {
+        "button": "Đặt lại giao diện lớp phủ",
+        "title": "Đặt lại giao diện lớp phủ?",
+        "description": "Thao tác này khôi phục mọi màu sắc, kích thước và khoảng cách của lớp phủ về mặc định của Handy. Kiểu và vị trí lớp phủ của bạn không thay đổi.",
+        "descriptionWithThemeFile": "Thao tác này khôi phục về mặc định của Handy mọi màu sắc, kích thước và khoảng cách của lớp phủ không do tệp giao diện đặt. Kiểu và vị trí lớp phủ của bạn không thay đổi, và các giá trị do tệp giao diện đặt vẫn có hiệu lực.",
+        "confirm": "Đặt lại",
+        "cancel": "Hủy"
+      },
+      "material": {
+        "title": "Chất liệu",
+        "description": "Cách bề mặt lớp phủ được vẽ. Phẳng là bề mặt đục; Kính trong mờ và làm mờ mọi thứ phía sau.",
+        "options": {
+          "flat": "Phẳng",
+          "glass": "Kính",
+          "glassMacOnly": "Kính (chỉ macOS)"
+        },
+        "unavailableNote": "Kính hiện không khả dụng trên máy Mac này — ví dụ khi Giảm độ trong suốt của macOS đang bật — nên lớp phủ được vẽ dạng Phẳng.",
+        "glassHint": "Độ đậm màu phủ quyết định màu bề mặt phủ lên kính bao nhiêu — hạ xuống để thấy nhiều hơn phía sau."
+      },
+      "glassStyle": {
+        "title": "Kiểu kính",
+        "description": "Lớp phủ được vẽ bằng loại Liquid Glass nào. Thường tự làm tối nền nên bản chép vẫn dễ đọc trên mọi thứ; Trong suốt mỏng hơn và để lộ nhiều hơn phía sau. macOS 26 trở lên.",
+        "options": {
+          "regular": "Thường",
+          "clear": "Trong suốt"
+        }
+      },
+      "waveformStyle": {
+        "title": "Kiểu dạng sóng",
+        "description": "Cách dạng sóng được vẽ trong khi Handy ghi âm. Thanh là bộ đo mức âm riêng của Handy; các kiểu còn lại được vẽ trên một canvas trong cùng khoảng đó, nên lớp phủ không bao giờ đổi kích thước.",
+        "options": {
+          "bars": "Thanh",
+          "ribbon": "Dải lụa",
+          "bloom": "Bung nở",
+          "motes": "Đốm sáng",
+          "matrix": "Ma trận",
+          "steps": "Bậc thang"
+        }
+      },
+      "color": {
+        "swatchLabel": "Chọn một màu",
+        "hexLabel": "Giá trị màu hex",
+        "resetLabel": "Đặt lại về mặc định"
+      },
+      "tokens": {
+        "accent": {
+          "title": "Màu nhấn",
+          "description": "Màu làm nổi bật: dạng sóng, chấm ghi âm, con trỏ và vòng quay xử lý."
+        },
+        "surface": {
+          "title": "Bề mặt",
+          "description": "Màu nền của thẻ lớp phủ."
+        },
+        "surfaceOpacity": {
+          "title": "Độ mờ đục của bề mặt",
+          "description": "Mức độ nhìn xuyên qua nền của thẻ. Áp dụng với chất liệu Phẳng; Kính có độ đậm màu phủ riêng."
+        },
+        "glassTint": {
+          "title": "Độ đậm màu phủ",
+          "description": "Màu bề mặt phủ lên kính bao nhiêu. Giá trị thấp hơn để lộ nhiều hơn phần phía sau lớp phủ."
+        },
+        "text": {
+          "title": "Văn bản",
+          "description": "Màu chữ của thẻ, và màu gốc để pha mọi tông trung tính."
+        },
+        "border": {
+          "title": "Viền",
+          "description": "Màu viền của thẻ."
+        },
+        "borderOpacity": {
+          "title": "Độ mờ đục của viền",
+          "description": "Mức độ hiện rõ của viền thẻ."
+        },
+        "shadowStrength": {
+          "title": "Bóng đổ",
+          "description": "Bóng mà thẻ đổ xuống màn hình nền đậm đến mức nào. Giảm về 0 để thẻ nằm phẳng.",
+          "glassDescription": "Lớp phủ có đổ bóng xuống màn hình nền hay không.",
+          "glassNote": "macOS tự vẽ bóng cho lớp phủ Kính, nên chỉ có thể bật hoặc tắt, và độ lệch bóng không có tác dụng."
+        },
+        "shadowOffsetY": {
+          "title": "Độ lệch bóng",
+          "description": "Bóng của thẻ đổ xuống thấp bao nhiêu. Bản thân thẻ không hề dịch chuyển; cửa sổ lớp phủ to ra quanh thẻ, và bóng bị cắt ở chỗ nó chạm tới mép màn hình."
+        },
+        "showWaveform": {
+          "title": "Hiện dạng sóng",
+          "description": "Hiện dạng sóng trong khi ghi âm. Khi ẩn, lớp phủ thu lại thành một chỉ báo nhỏ."
+        },
+        "showCancel": {
+          "title": "Hiện nút hủy",
+          "description": "Hiện nút hủy trên lớp phủ. Dù thế nào thì phím tắt của bạn vẫn hủy được."
+        },
+        "sizeScale": {
+          "title": "Tỷ lệ kích thước",
+          "description": "Phóng to mọi kích thước trong thẻ cùng lúc — chiều rộng, chiều cao, đệm trong và cỡ chữ. Một trong những giá trị làm thay đổi khoảng không mà lớp phủ chiếm trên màn hình; những giá trị còn lại là đệm trong, độ dày viền và khoảng cách giữa các phần tử."
+        },
+        "radius": {
+          "title": "Bo góc",
+          "description": "Độ bo góc của thẻ."
+        },
+        "borderWidth": {
+          "title": "Độ dày viền",
+          "description": "Viền của thẻ dày đến mức nào. Cửa sổ lớp phủ cũng to ra theo."
+        },
+        "padding": {
+          "title": "Đệm trong",
+          "description": "Đệm trong của thẻ ở cả bốn phía. Cửa sổ lớp phủ cũng to ra theo."
+        },
+        "elementGap": {
+          "title": "Khoảng cách giữa các phần tử",
+          "description": "Khoảng cách thêm giữa chấm, dạng sóng, đồng hồ đếm giờ và nút hủy của lớp phủ. Cửa sổ lớp phủ cũng to ra theo."
+        },
+        "waveformGap": {
+          "title": "Khoảng cách dạng sóng",
+          "description": "Khoảng cách giữa các thanh dạng sóng, hoặc giữa các chấm của kiểu Ma trận."
+        },
+        "waveformWidth": {
+          "title": "Độ rộng dạng sóng",
+          "description": "Độ rộng các hình khối riêng của dạng sóng: một thanh, một đốm sáng, một chấm ma trận hay một bậc."
+        }
+      },
+      "themeFile": {
+        "title": "Tệp giao diện",
+        "description": "Một tệp JSON tùy chọn ghi đè các giá trị giao diện lớp phủ, để các công cụ tạo giao diện bên ngoài có thể điều khiển lớp phủ.",
+        "notFound": "Không có tệp giao diện. Hãy tạo một tệp tại đường dẫn này để ghi đè các giá trị giao diện lớp phủ.",
+        "active": "Đang hoạt động — tệp này đặt {{count}} trong {{total}} giá trị.",
+        "reload": "Tải lại",
+        "copy": "Sao chép giao diện dạng JSON",
+        "copied": "Đã sao chép",
+        "lockedDescription": "Được đặt bởi tệp giao diện. Hãy sửa overlay_theme.json hoặc xóa khóa này để thay đổi tại đây.",
+        "problemsTitle": "Sự cố trong tệp giao diện:",
+        "moreDiagnostics": "…và {{count}} mục nữa.",
+        "newerVersion": "Tệp giao diện này được ghi bởi một phiên bản Handy mới hơn. Các giá trị mà phiên bản này không hiểu đã bị bỏ qua.",
+        "diagnostics": {
+          "malformedDocument": "Tệp giao diện không phải JSON hợp lệ.",
+          "unknownKey": "Đã bỏ qua khóa không xác định: {{key}}",
+          "wrongType": "\"{{key}}\" sai kiểu dữ liệu nên đã bị bỏ qua.",
+          "invalidColor": "\"{{key}}\" không phải là màu hợp lệ nên đã bị bỏ qua.",
+          "outOfBounds": "\"{{key}}\" nằm ngoài phạm vi cho phép nên đã được giới hạn lại.",
+          "unreadable": "Không thể đọc tệp giao diện."
+        }
       }
     },
     "advanced": {
@@ -690,6 +861,7 @@
     }
   },
   "overlay": {
+    "cancel": "Hủy",
     "transcribing": "Đang chuyển đổi...",
     "processing": "Đang xử lý..."
   },

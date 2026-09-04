@@ -11,6 +11,7 @@
   },
   "sidebar": {
     "general": "Obecné",
+    "appearance": "Vzhled",
     "models": "Modely",
     "advanced": "Pokročilé",
     "postProcessing": "Následné zpracování",
@@ -256,6 +257,176 @@
       "volume": {
         "title": "Hlasitost",
         "description": "Upravte hlasitost zvukové odezvy"
+      }
+    },
+    "appearance": {
+      "groups": {
+        "app": "Aplikace",
+        "overlay": "Překryv",
+        "preview": "Náhled na obrazovce",
+        "color": "Barva překryvu",
+        "material": "Materiál překryvu",
+        "elements": "Prvky překryvu",
+        "size": "Velikost a rozestupy překryvu",
+        "waveform": "Zvuková křivka",
+        "themeFile": "Soubor motivu"
+      },
+      "preview": {
+        "states": {
+          "cycle": "Cyklus",
+          "arming": "Příprava",
+          "recording": "Nahrávání",
+          "listening": "Naslouchání",
+          "transcribing": "Přepis",
+          "processing": "Zpracování"
+        },
+        "start": "Spustit náhled",
+        "stop": "Zastavit náhled",
+        "hint": "Překryv zůstává během úprav na obrazovce, takže se na něm každá změna projeví hned.",
+        "sampleText": "Příliš žluťoučký kůň úpěl ďábelské ódy, a Handy to zapíše.",
+        "blockedRecording": "Nedostupné, když Handy nahrává",
+        "noneNote": "Překryv je vypnutý, takže není co zobrazit v náhledu. Zvolte výše Minimální nebo Živě."
+      },
+      "reset": {
+        "button": "Obnovit motiv překryvu",
+        "title": "Obnovit motiv překryvu?",
+        "description": "Vrátí všechny barvy, velikosti a rozestupy překryvu na výchozí hodnoty Handy. Styl ani pozice překryvu se nezmění.",
+        "descriptionWithThemeFile": "Vrátí na výchozí hodnoty Handy všechny barvy, velikosti a rozestupy překryvu, které nenastavuje soubor motivu. Styl ani pozice překryvu se nezmění a hodnoty ze souboru motivu zůstávají v platnosti.",
+        "confirm": "Obnovit",
+        "cancel": "Zrušit"
+      },
+      "material": {
+        "title": "Materiál",
+        "description": "Jak se vykresluje povrch překryvu. Plochý je neprůhledný povrch; Sklo je průsvitné a rozostřuje to, co je za ním.",
+        "options": {
+          "flat": "Plochý",
+          "glass": "Sklo",
+          "glassMacOnly": "Sklo (jen macOS)"
+        },
+        "unavailableNote": "Sklo na tomto Macu právě není dostupné — například když je v macOS zapnuté Omezit průhlednost — takže se překryv vykresluje jako Plochý.",
+        "glassHint": "Síla zabarvení určuje, jak moc barva povrchu překrývá sklo — snižte ji, ať je vidět víc z toho, co je za ním."
+      },
+      "glassStyle": {
+        "title": "Styl skla",
+        "description": "Kterým Liquid Glass se překryv vykresluje. Obyčejné si samo ztmavuje pozadí, takže přepis zůstává čitelný na čemkoli; Průhledné je tenčí a ukáže víc z toho, co je za ním. macOS 26 a novější.",
+        "options": {
+          "regular": "Obyčejné",
+          "clear": "Průhledné"
+        }
+      },
+      "waveformStyle": {
+        "title": "Styl křivky",
+        "description": "Jak se vykresluje zvuková křivka, když Handy nahrává. Sloupce jsou vlastní ukazatel úrovně Handy; ostatní se kreslí na plátno na stejném místě, takže překryv nikdy nemění velikost.",
+        "options": {
+          "bars": "Sloupce",
+          "ribbon": "Stuha",
+          "bloom": "Rozkvět",
+          "motes": "Jiskry",
+          "matrix": "Matice",
+          "steps": "Schody"
+        }
+      },
+      "color": {
+        "swatchLabel": "Vyberte barvu",
+        "hexLabel": "Hexadecimální hodnota barvy",
+        "resetLabel": "Obnovit výchozí"
+      },
+      "tokens": {
+        "accent": {
+          "title": "Akcent",
+          "description": "Barva zvýraznění: křivka zvuku, tečka nahrávání, kurzor a indikátor načítání."
+        },
+        "surface": {
+          "title": "Povrch",
+          "description": "Barva pozadí karty překryvu."
+        },
+        "surfaceOpacity": {
+          "title": "Krytí povrchu",
+          "description": "Jak moc pozadí karty prosvítá. Platí pro materiál Plochý; Sklo má vlastní sílu zabarvení."
+        },
+        "glassTint": {
+          "title": "Síla zabarvení",
+          "description": "Jak moc barva povrchu překrývá sklo. Nižší hodnota propustí víc z toho, co je za překryvem."
+        },
+        "text": {
+          "title": "Text",
+          "description": "Barva popředí karty a základ, ze kterého se míchají všechny neutrální odstíny."
+        },
+        "border": {
+          "title": "Ohraničení",
+          "description": "Barva okraje karty."
+        },
+        "borderOpacity": {
+          "title": "Krytí ohraničení",
+          "description": "Jak výrazný je okraj karty."
+        },
+        "shadowStrength": {
+          "title": "Stín",
+          "description": "Jak výrazný stín karta vrhá na plochu. Snižte jej na nulu, aby karta ležela naplocho.",
+          "glassDescription": "Zda překryv vrhá stín na plochu.",
+          "glassNote": "Stín překryvu z materiálu Sklo vykresluje macOS, takže jej lze pouze zapnout nebo vypnout a posun stínu nemá žádný účinek."
+        },
+        "shadowOffsetY": {
+          "title": "Posun stínu",
+          "description": "Jak nízko pod kartu její stín dopadá. Samotná karta se nikdy neposune; okno překryvu se zvětšuje kolem ní a stín se ořízne tam, kde by dosáhl na okraj obrazovky."
+        },
+        "showWaveform": {
+          "title": "Zobrazit zvukovou křivku",
+          "description": "Zobrazí zvukovou křivku během nahrávání. Když je skrytá, překryv se zmenší na malý indikátor."
+        },
+        "showCancel": {
+          "title": "Zobrazit tlačítko zrušení",
+          "description": "Zobrazí na překryvu tlačítko zrušení. Klávesová zkratka nahrávání zruší tak jako tak."
+        },
+        "sizeScale": {
+          "title": "Měřítko velikosti",
+          "description": "Zvětší všechny rozměry karty najednou — šířky, výšky, vnitřní okraje i písmo. Jedna z hodnot, které mění, kolik místa překryv na obrazovce potřebuje; dalšími jsou vnitřní okraj, tloušťka ohraničení a rozestup prvků."
+        },
+        "radius": {
+          "title": "Zaoblení rohů",
+          "description": "Zaoblení rohů karty."
+        },
+        "borderWidth": {
+          "title": "Tloušťka ohraničení",
+          "description": "Jak silný je okraj karty. Okno překryvu se s ním zvětšuje."
+        },
+        "padding": {
+          "title": "Vnitřní okraj",
+          "description": "Vnitřní okraj karty na všech čtyřech stranách. Okno překryvu se s ním zvětšuje."
+        },
+        "elementGap": {
+          "title": "Rozestup prvků",
+          "description": "Rozestup navíc mezi tečkou, zvukovou křivkou, časovačem a tlačítkem zrušení v překryvu. Okno překryvu se s ním zvětšuje."
+        },
+        "waveformGap": {
+          "title": "Rozestup křivky",
+          "description": "Mezera mezi sloupci zvukové křivky nebo mezi body stylu Matice."
+        },
+        "waveformWidth": {
+          "title": "Šířka křivky",
+          "description": "Jak široké jsou vlastní tvary křivky: sloupec, jiskra, bod matice nebo schod."
+        }
+      },
+      "themeFile": {
+        "title": "Soubor motivu",
+        "description": "Volitelný soubor JSON, který přepisuje hodnoty motivu překryvu, takže překryv mohou řídit externí nástroje pro motivy.",
+        "notFound": "Žádný soubor motivu. Vytvořte ho na této cestě, chcete-li přepsat hodnoty motivu překryvu.",
+        "active": "Aktivní — tento soubor nastavuje {{count}} z {{total}} hodnot.",
+        "reload": "Načíst znovu",
+        "copy": "Kopírovat motiv jako JSON",
+        "copied": "Zkopírováno",
+        "lockedDescription": "Nastaveno souborem motivu. Upravte overlay_theme.json nebo tento klíč odeberte, chcete-li hodnotu měnit zde.",
+        "problemsTitle": "Problémy v souboru motivu:",
+        "moreDiagnostics": "…a {{count}} dalších.",
+        "newerVersion": "Tento soubor motivu zapsala novější verze Handy. Hodnoty, kterým tato verze nerozumí, byly ignorovány.",
+        "diagnostics": {
+          "malformedDocument": "Soubor motivu není platný JSON.",
+          "unknownKey": "Neznámý klíč ignorován: {{key}}",
+          "wrongType": "\"{{key}}\" má nesprávný typ a byl ignorován.",
+          "invalidColor": "\"{{key}}\" není platná barva a byl ignorován.",
+          "outOfBounds": "\"{{key}}\" byl mimo povolený rozsah a byl omezen.",
+          "unreadable": "Soubor motivu se nepodařilo přečíst."
+        }
       }
     },
     "advanced": {
@@ -690,6 +861,7 @@
     }
   },
   "overlay": {
+    "cancel": "Zrušit",
     "transcribing": "Přepisuji...",
     "processing": "Zpracovávám..."
   },

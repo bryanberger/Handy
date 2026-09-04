@@ -11,6 +11,7 @@
   },
   "sidebar": {
     "general": "Generelt",
+    "appearance": "Udseende",
     "models": "Modeller",
     "advanced": "Avanceret",
     "postProcessing": "Efterbehandling",
@@ -256,6 +257,176 @@
       "volume": {
         "title": "Lydstyrke",
         "description": "Juster lydstyrken for lydfeedback"
+      }
+    },
+    "appearance": {
+      "groups": {
+        "app": "Applikation",
+        "overlay": "Overlay",
+        "preview": "Forhåndsvisning på skærmen",
+        "color": "Overlayfarve",
+        "material": "Overlaymateriale",
+        "elements": "Overlayelementer",
+        "size": "Overlaystørrelse og afstande",
+        "waveform": "Bølgeform",
+        "themeFile": "Temafil"
+      },
+      "preview": {
+        "states": {
+          "cycle": "Cyklus",
+          "arming": "Forbereder",
+          "recording": "Optager",
+          "listening": "Lytter",
+          "transcribing": "Transskriberer",
+          "processing": "Behandler"
+        },
+        "start": "Start forhåndsvisning",
+        "stop": "Stop forhåndsvisning",
+        "hint": "Overlayet bliver på skærmen, mens du redigerer, så hver ændring vises på det med det samme.",
+        "sampleText": "Quizdeltagerne spiste jordbær med fløde, og Handy skriver det ned.",
+        "blockedRecording": "Ikke tilgængelig, mens Handy optager",
+        "noneNote": "Overlayet er slået fra, så der er intet at forhåndsvise. Vælg Minimal eller Live ovenfor."
+      },
+      "reset": {
+        "button": "Nulstil overlaytemaet",
+        "title": "Nulstil overlaytemaet?",
+        "description": "Dette sætter alle overlayets farver, størrelser og afstande tilbage til Handys standardværdier. Din overlaystil og -placering ændres ikke.",
+        "descriptionWithThemeFile": "Dette sætter alle overlayets farver, størrelser og afstande, der ikke er angivet af temafilen, tilbage til Handys standardværdier. Din overlaystil og -placering ændres ikke, og værdier fra temafilen gælder fortsat.",
+        "confirm": "Nulstil",
+        "cancel": "Annuller"
+      },
+      "material": {
+        "title": "Materiale",
+        "description": "Hvordan overlayets overflade gengives. Flad er en uigennemsigtig overflade; Glas er halvgennemsigtigt og slører det, der er bagved.",
+        "options": {
+          "flat": "Flad",
+          "glass": "Glas",
+          "glassMacOnly": "Glas (kun macOS)"
+        },
+        "unavailableNote": "Glas er ikke tilgængeligt på denne Mac lige nu — for eksempel når Reducér gennemsigtighed er slået til i macOS — så overlayet vises Fladt.",
+        "glassHint": "Tonestyrken afgør, hvor meget overfladens farve dækker glasset — sænk den for at se mere af det, der er bagved."
+      },
+      "glassStyle": {
+        "title": "Glasstil",
+        "description": "Med hvilket Liquid Glass overlayet tegnes. Normal dæmper selv, så transskriptionen forbliver læsbar oven på hvad som helst; Klar er tyndere og viser mere af det, der er bagved. macOS 26 og nyere.",
+        "options": {
+          "regular": "Normal",
+          "clear": "Klar"
+        }
+      },
+      "waveformStyle": {
+        "title": "Bølgeformstil",
+        "description": "Hvordan bølgeformen tegnes, mens Handy optager. Søjler er Handys egen niveaumåler; de øvrige tegnes på et lærred i samme felt, så overlayet aldrig skifter størrelse.",
+        "options": {
+          "bars": "Søjler",
+          "ribbon": "Bånd",
+          "bloom": "Blomstring",
+          "motes": "Gnister",
+          "matrix": "Matrix",
+          "steps": "Trin"
+        }
+      },
+      "color": {
+        "swatchLabel": "Vælg en farve",
+        "hexLabel": "Hexadecimal farveværdi",
+        "resetLabel": "Nulstil til standard"
+      },
+      "tokens": {
+        "accent": {
+          "title": "Accent",
+          "description": "Fremhævningsfarven: bølgeformen, optageprikken, markøren og indlæsningsikonet."
+        },
+        "surface": {
+          "title": "Overflade",
+          "description": "Baggrundsfarven på overlayets kort."
+        },
+        "surfaceOpacity": {
+          "title": "Overfladens dækkraft",
+          "description": "Hvor gennemsigtig kortets baggrund er. Gælder for materialet Flad; Glas har sin egen tonestyrke."
+        },
+        "glassTint": {
+          "title": "Tonestyrke",
+          "description": "Hvor meget overfladens farve dækker glasset. Lavere lader mere af det, der er bag overlayet, komme igennem."
+        },
+        "text": {
+          "title": "Tekst",
+          "description": "Kortets forgrundsfarve og den base, alle neutrale toner blandes ud fra."
+        },
+        "border": {
+          "title": "Kant",
+          "description": "Farven på kortets kant."
+        },
+        "borderOpacity": {
+          "title": "Kantens dækkraft",
+          "description": "Hvor synlig kortets kant er."
+        },
+        "shadowStrength": {
+          "title": "Skygge",
+          "description": "Hvor kraftig den skygge, kortet kaster på skrivebordet, er. Skru den helt ned, hvis kortet skal ligge fladt.",
+          "glassDescription": "Om overlayet kaster en skygge på skrivebordet.",
+          "glassNote": "macOS tegner skyggen for et Glas-overlay, så den kan kun slås til eller fra, og skyggeforskydningen har ingen virkning."
+        },
+        "shadowOffsetY": {
+          "title": "Skyggeforskydning",
+          "description": "Hvor langt nede under kortet skyggen falder. Selve kortet flytter sig aldrig; overlayvinduet vokser omkring det, og skyggen beskæres, hvor den ville nå skærmkanten."
+        },
+        "showWaveform": {
+          "title": "Vis bølgeform",
+          "description": "Vis bølgeformen under optagelse. Når den er skjult, skrumper overlayet til en lille pille."
+        },
+        "showCancel": {
+          "title": "Vis annuller-knap",
+          "description": "Vis annuller-knappen på overlayet. Din tastaturgenvej annullerer stadig uanset hvad."
+        },
+        "sizeScale": {
+          "title": "Størrelsesskala",
+          "description": "Skalerer alle mål i kortet på én gang — bredder, højder, indvendige margener og tekst. En af de værdier, der ændrer, hvor meget plads overlayet fylder på skærmen; de øvrige er indvendig margen, kanttykkelse og elementafstand."
+        },
+        "radius": {
+          "title": "Hjørneradius",
+          "description": "Kortets hjørneradius."
+        },
+        "borderWidth": {
+          "title": "Kanttykkelse",
+          "description": "Hvor tyk kortets kant er. Overlayvinduet vokser med den."
+        },
+        "padding": {
+          "title": "Indvendig margen",
+          "description": "Kortets indvendige margen på alle fire sider. Overlayvinduet vokser med den."
+        },
+        "elementGap": {
+          "title": "Elementafstand",
+          "description": "Ekstra afstand mellem overlayets prik, bølgeform, tidsvisning og annuller-knap. Overlayvinduet vokser med den."
+        },
+        "waveformGap": {
+          "title": "Bølgeformafstand",
+          "description": "Afstanden mellem bølgeformens søjler eller mellem prikkerne i stilen Matrix."
+        },
+        "waveformWidth": {
+          "title": "Bølgeformbredde",
+          "description": "Hvor brede bølgeformens egne figurer er: en søjle, en gnist, en matrixprik eller et trin."
+        }
+      },
+      "themeFile": {
+        "title": "Temafil",
+        "description": "En valgfri JSON-fil, der tilsidesætter værdier i overlaytemaet, så eksterne temaværktøjer kan styre overlayet.",
+        "notFound": "Ingen temafil. Opret en på denne sti for at tilsidesætte værdier i overlaytemaet.",
+        "active": "Aktiv — denne fil angiver {{count}} af {{total}} værdier.",
+        "reload": "Genindlæs",
+        "copy": "Kopiér temaet som JSON",
+        "copied": "Kopieret",
+        "lockedDescription": "Angivet af temafilen. Rediger overlay_theme.json, eller fjern denne nøgle for at ændre den her.",
+        "problemsTitle": "Problemer i temafilen:",
+        "moreDiagnostics": "…og {{count}} mere.",
+        "newerVersion": "Denne temafil er skrevet af en nyere version af Handy. Værdier, som denne version ikke forstår, blev ignoreret.",
+        "diagnostics": {
+          "malformedDocument": "Temafilen er ikke gyldig JSON.",
+          "unknownKey": "Ukendt nøgle ignoreret: {{key}}",
+          "wrongType": "\"{{key}}\" har den forkerte type og blev ignoreret.",
+          "invalidColor": "\"{{key}}\" er ikke en gyldig farve og blev ignoreret.",
+          "outOfBounds": "\"{{key}}\" lå uden for det tilladte interval og blev begrænset.",
+          "unreadable": "Temafilen kunne ikke læses."
+        }
       }
     },
     "advanced": {
@@ -693,6 +864,7 @@
     }
   },
   "overlay": {
+    "cancel": "Annuller",
     "transcribing": "Transskriberer...",
     "processing": "Behandler..."
   },

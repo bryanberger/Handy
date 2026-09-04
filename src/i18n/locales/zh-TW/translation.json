@@ -11,6 +11,7 @@
   },
   "sidebar": {
     "general": "一般",
+    "appearance": "外觀",
     "models": "模型",
     "advanced": "進階",
     "postProcessing": "後處理",
@@ -256,6 +257,176 @@
       "volume": {
         "title": "音量",
         "description": "調整聲音回饋的音量"
+      }
+    },
+    "appearance": {
+      "groups": {
+        "app": "應用程式",
+        "overlay": "懸浮窗",
+        "preview": "螢幕上的預覽",
+        "color": "懸浮窗顏色",
+        "material": "懸浮窗材質",
+        "elements": "懸浮窗元素",
+        "size": "懸浮窗尺寸與間距",
+        "waveform": "波形",
+        "themeFile": "主題檔案"
+      },
+      "preview": {
+        "states": {
+          "cycle": "循環",
+          "arming": "準備中",
+          "recording": "錄製中",
+          "listening": "聆聽中",
+          "transcribing": "轉錄中",
+          "processing": "處理中"
+        },
+        "start": "開始預覽",
+        "stop": "停止預覽",
+        "hint": "編輯時懸浮窗會一直留在螢幕上，因此每項變更都會立即顯示在上面。",
+        "sampleText": "敏捷的棕色狐狸跳過了那隻懶狗，Handy 把它記錄了下來。",
+        "blockedRecording": "Handy 錄製期間無法使用",
+        "noneNote": "懸浮窗已關閉，因此沒有可預覽的內容。請在上方選擇「精簡」或「即時」。"
+      },
+      "reset": {
+        "button": "重設懸浮窗主題",
+        "title": "重設懸浮窗主題？",
+        "description": "這會將懸浮窗的所有顏色、尺寸與間距還原為 Handy 的預設值。懸浮窗樣式與位置不會變更。",
+        "descriptionWithThemeFile": "這會將懸浮窗中未由主題檔案設定的所有顏色、尺寸與間距還原為 Handy 的預設值。懸浮窗樣式與位置不會變更，主題檔案設定的值仍然有效。",
+        "confirm": "重設",
+        "cancel": "取消"
+      },
+      "material": {
+        "title": "材質",
+        "description": "懸浮窗表面的呈現方式。平面是不透明的表面；玻璃是半透明的，會模糊其背後的內容。",
+        "options": {
+          "flat": "平面",
+          "glass": "玻璃",
+          "glassMacOnly": "玻璃（僅 macOS）"
+        },
+        "unavailableNote": "此 Mac 目前無法使用玻璃（例如 macOS 的「降低透明度」已開啟時），因此懸浮窗以平面呈現。",
+        "glassHint": "著色強度決定表面顏色覆蓋玻璃的程度——調低即可看到更多背後的內容。"
+      },
+      "glassStyle": {
+        "title": "玻璃樣式",
+        "description": "懸浮窗要以哪種液態玻璃繪製。標準會自行壓暗背景，因此轉錄文字在任何背景上都清晰可讀；透明較薄，會透出更多背後的內容。需要 macOS 26 或更新版本。",
+        "options": {
+          "regular": "標準",
+          "clear": "透明"
+        }
+      },
+      "waveformStyle": {
+        "title": "波形樣式",
+        "description": "Handy 錄製時波形的繪製方式。長條是 Handy 內建的電平表；其餘樣式會在同一區域的畫布上繪製，因此懸浮窗尺寸始終不變。",
+        "options": {
+          "bars": "長條",
+          "ribbon": "飄帶",
+          "bloom": "綻放",
+          "motes": "粒子",
+          "matrix": "點陣",
+          "steps": "階梯"
+        }
+      },
+      "color": {
+        "swatchLabel": "選擇顏色",
+        "hexLabel": "十六進位顏色值",
+        "resetLabel": "重設為預設值"
+      },
+      "tokens": {
+        "accent": {
+          "title": "強調色",
+          "description": "醒目提示的顏色：波形、錄製圓點、游標與載入圖示。"
+        },
+        "surface": {
+          "title": "表面",
+          "description": "懸浮窗卡片的背景色。"
+        },
+        "surfaceOpacity": {
+          "title": "表面不透明度",
+          "description": "卡片背景的透視程度。在材質為平面時生效；玻璃有自己的著色強度。"
+        },
+        "glassTint": {
+          "title": "著色強度",
+          "description": "表面顏色覆蓋玻璃的程度。調低會透出更多懸浮窗背後的內容。"
+        },
+        "text": {
+          "title": "文字",
+          "description": "卡片的前景色，也是所有中性色調的混合基準色。"
+        },
+        "border": {
+          "title": "邊框",
+          "description": "卡片邊緣的顏色。"
+        },
+        "borderOpacity": {
+          "title": "邊框不透明度",
+          "description": "卡片邊緣的明顯程度。"
+        },
+        "shadowStrength": {
+          "title": "陰影",
+          "description": "卡片投在桌面上的陰影有多重。調到最低可讓卡片平貼在桌面上。",
+          "glassDescription": "懸浮窗是否在桌面上投下陰影。",
+          "glassNote": "玻璃懸浮窗的陰影由 macOS 繪製，因此只能開啟或關閉，陰影偏移不會有作用。"
+        },
+        "shadowOffsetY": {
+          "title": "陰影偏移",
+          "description": "卡片的陰影落在其下方多遠處。卡片本身不會移動，懸浮窗視窗會在卡片四周變大；在陰影會觸及螢幕邊緣之處，陰影會被裁掉。"
+        },
+        "showWaveform": {
+          "title": "顯示波形",
+          "description": "錄製時顯示波形。隱藏後，懸浮窗會縮成一個小膠囊。"
+        },
+        "showCancel": {
+          "title": "顯示取消按鈕",
+          "description": "在懸浮窗上顯示取消按鈕。無論顯示與否，您的鍵盤快捷鍵都可以取消。"
+        },
+        "sizeScale": {
+          "title": "尺寸縮放",
+          "description": "一次縮放卡片中的所有尺寸——寬度、高度、內邊距與文字。這是會改變懸浮窗在螢幕上所佔空間的項目之一，其餘是內邊距、邊框寬度與元素間距。"
+        },
+        "radius": {
+          "title": "圓角半徑",
+          "description": "卡片的圓角半徑。"
+        },
+        "borderWidth": {
+          "title": "邊框寬度",
+          "description": "卡片邊緣的粗細。懸浮窗視窗也會隨之變大。"
+        },
+        "padding": {
+          "title": "內邊距",
+          "description": "卡片四邊的內邊距。懸浮窗視窗也會隨之變大。"
+        },
+        "elementGap": {
+          "title": "元素間距",
+          "description": "懸浮窗的圓點、波形、計時器與取消按鈕之間的額外間距。懸浮窗視窗也會隨之變大。"
+        },
+        "waveformGap": {
+          "title": "波形間距",
+          "description": "波形長條之間，或點陣樣式中各點之間的間距。"
+        },
+        "waveformWidth": {
+          "title": "波形寬度",
+          "description": "波形本身圖形的寬度：一根長條、一粒粒子、點陣中的一個點或一級階梯。"
+        }
+      },
+      "themeFile": {
+        "title": "主題檔案",
+        "description": "選用的 JSON 檔案，可覆寫懸浮窗主題的值，讓外部主題工具能夠控制懸浮窗。",
+        "notFound": "沒有主題檔案。在此路徑建立一個即可覆寫懸浮窗主題的值。",
+        "active": "已啟用——此檔案設定了 {{total}} 個值中的 {{count}} 個。",
+        "reload": "重新載入",
+        "copy": "以 JSON 複製主題",
+        "copied": "已複製",
+        "lockedDescription": "由主題檔案設定。若要在此處變更，請編輯 overlay_theme.json 或移除該鍵。",
+        "problemsTitle": "主題檔案中的問題：",
+        "moreDiagnostics": "…還有 {{count}} 項。",
+        "newerVersion": "此主題檔案由較新版本的 Handy 寫入。目前版本無法識別的值已被忽略。",
+        "diagnostics": {
+          "malformedDocument": "主題檔案不是有效的 JSON。",
+          "unknownKey": "已忽略未知的鍵：{{key}}",
+          "wrongType": "\"{{key}}\" 的類型錯誤，已被忽略。",
+          "invalidColor": "\"{{key}}\" 不是有效的顏色，已被忽略。",
+          "outOfBounds": "\"{{key}}\" 超出允許範圍，已限制在邊界值。",
+          "unreadable": "無法讀取主題檔案。"
+        }
       }
     },
     "advanced": {
@@ -690,6 +861,7 @@
     }
   },
   "overlay": {
+    "cancel": "取消",
     "transcribing": "正在轉錄...",
     "processing": "處理中..."
   },

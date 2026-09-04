@@ -8,12 +8,21 @@ mod catalog;
 pub mod cli;
 mod clipboard;
 mod commands;
+/// The frontend files whose numbers this crate keeps a second copy of, and the
+/// parsers the pins read them with.
+#[cfg(test)]
+mod frontend_source;
 mod helpers;
 mod input;
 mod llm_client;
 mod managers;
 mod memory;
 mod overlay;
+mod overlay_geometry;
+mod overlay_glass;
+mod overlay_preview;
+mod overlay_theme;
+mod overlay_theme_file;
 mod paste_tx;
 pub mod portable;
 mod secure_input;
@@ -364,6 +373,10 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     // Apply the autostart preference (SMAppService login item on macOS 13+,
     // tauri-plugin-autostart elsewhere)
     autostart::apply_autostart(app_handle, settings.autostart_enabled);
+
+    // Before the overlay window exists, so the page's readiness signal cannot
+    // arrive with nothing listening for it.
+    utils::listen_for_overlay_webview_ready(app_handle);
 
     // Create the recording overlay window (hidden by default)
     utils::create_recording_overlay(app_handle);
@@ -762,12 +775,23 @@ pub fn run(cli_args: CliArgs) {
             commands::history::retry_history_entry_transcription,
             commands::history::update_history_limit,
             commands::history::update_recording_retention_period,
+            commands::overlay_theme::change_overlay_theme_setting,
+            commands::overlay_theme::preview_overlay_theme_draft,
+            commands::overlay_theme::get_resolved_overlay_theme,
+            commands::overlay_theme::reload_overlay_theme_file,
+            commands::overlay_theme::reveal_overlay_theme_location,
+            commands::overlay_preview::start_overlay_preview,
+            commands::overlay_preview::set_overlay_preview_state,
+            commands::overlay_preview::stop_overlay_preview,
+            commands::overlay_card::set_overlay_card_shape,
             helpers::clamshell::is_laptop,
         ])
         .events(collect_events![
             managers::history::HistoryUpdatePayload,
             managers::transcription::StreamTextEvent,
             managers::transcription::StreamPhaseEvent,
+            overlay_theme::ResolvedOverlayTheme,
+            overlay_theme::OverlayThemeDraft,
         ]);
 
     #[cfg(debug_assertions)] // <- Only export on non-release builds
@@ -855,6 +879,23 @@ pub fn run(cli_args: CliArgs) {
                 signal_handle::send_transcription_input(app, "transcribe_with_post_process", "CLI");
             } else if args.iter().any(|a| a == "--cancel") {
                 crate::utils::cancel_current_operation(app);
+            } else if args.iter().any(|a| a == "--preview-overlay") {
+                // Runtime-only, like the flags above. Nothing persisted changes.
+                //
+                // Runs on its own OS thread, never `async_runtime::spawn`. This
+                // callback runs on the runtime worker the single-instance plugin
+                // parks in its blocking accept loop, so a task spawned here lands
+                // in that worker's LIFO slot, which no other worker may steal. It
+                // would sit there until the next forwarded launch displaced it,
+                // so every preview would show the previous invocation's and the
+                // first would never show at all. The preview driver is a plain
+                // thread throughout, so there is no runtime to enter.
+                let handle = app.clone();
+                std::thread::spawn(move || {
+                    if let Err(error) = overlay_preview::run_cli_preview(handle) {
+                        log::warn!("--preview-overlay: {error}");
+                    }
+                });
             } else {
                 // A second process was launched without remote-control flags
                 // (e.g. the binary run from a shell). On macOS, relaunching the
@@ -949,6 +990,14 @@ pub fn run(cli_args: CliArgs) {
 
             let mut settings = get_settings(app.handle());
 
+            // Warm the theme-file cache before anything reads the overlay theme.
+            // The overlay window is created further down with the resolved size
+            // scale, so a file-supplied scale must be known here or the first
+            // show would resize a window built for the settings' scale. Also
+            // logs the file's diagnostics at startup, where a user asking "why
+            // is my theme ignored" will find them.
+            overlay_theme_file::read(app.handle());
+
             // Apply the persisted appearance theme to the native title bar before
             // the window is shown, so it matches the in-app palette without a flash
             // of the wrong theme. See `apply_window_theme` for what this does per
@@ -1023,6 +1072,14 @@ pub fn run(cli_args: CliArgs) {
                 api.prevent_close();
                 let _res = window.hide();
 
+                // An overlay preview belongs to the Appearance tab, which just
+                // went away with the window. Handled here, not in the frontend,
+                // because closing to the tray hides the window without
+                // unmounting anything. The webview keeps running, so React never
+                // learns it is off screen. The driver also watches the window for
+                // hides that never reach this handler; this is the immediate half.
+                overlay_preview::stop_preview();
+
                 #[cfg(target_os = "macos")]
                 {
                     let settings = get_settings(window.app_handle());
@@ -1044,6 +1101,12 @@ pub fn run(cli_args: CliArgs) {
                 log::info!("Theme changed to: {:?}", theme);
                 // Re-apply the current tray state with the new theme's icon set
                 utils::refresh_tray_icon(window.app_handle());
+                // Same for the overlay's native Glass tint, composed from the
+                // window's effective appearance when it is written. This is the
+                // System-theme half of the fix `change_theme_setting` makes for
+                // an explicit Light/Dark pick. The OS switching under us has to
+                // move the glass too.
+                overlay_glass::reapply_appearance(window.app_handle());
             }
             _ => {}
         })
@@ -1075,6 +1138,9 @@ pub fn run(cli_args: CliArgs) {
         }
         // Teardown transcribe.cpp before exit
         tauri::RunEvent::Exit => {
+            // Let the preview driver's thread fall out of its loop rather than
+            // leaving it emitting into a webview that is going away.
+            overlay_preview::stop_preview();
             if let Some(tm) = app.try_state::<Arc<TranscriptionManager>>() {
                 let _ = tm.unload_model();
             }

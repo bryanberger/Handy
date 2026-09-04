@@ -1388,6 +1388,27 @@ mod tests {
         );
     }
 
+    /// A show seeds the card shape from its state alone, and every Live state
+    /// seeds the pill; the webview opens or collapses the panel afterwards, at
+    /// two other radii. So nothing that rounds the blur after a show may carry
+    /// the seeded radius — it has to re-read the shape on screen, which is why
+    /// `overlay::schedule_glass_fallback_reveal` derives its own. Carrying it
+    /// left the open panel's border tracing a tighter arc than the glass under
+    /// it, the pill's radius on the panel's window.
+    #[test]
+    fn the_shape_a_live_show_seeds_does_not_carry_the_morphed_card_s_radius() {
+        let metrics = inherit_metrics();
+        let seeded = OverlayCardShape::initial_for("streaming");
+        assert_eq!(seeded, OverlayCardShape::LivePill);
+        for morphed in [OverlayCardShape::LiveOpen, OverlayCardShape::LiveWorking] {
+            assert_ne!(
+                metrics.corner_radius(seeded),
+                metrics.corner_radius(morphed),
+                "{morphed:?} would be rounded for the pill the show seeded"
+            );
+        }
+    }
+
     /// Why `waveform_width` stops at 6 and `padding` at 20: at every token's
     /// maximum the control row still fits the *working* pill, so no spacing
     /// token can force that window wider whatever else changes.

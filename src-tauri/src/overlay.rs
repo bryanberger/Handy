@@ -730,7 +730,6 @@ fn show_overlay_state_on_main(
     let window = OverlayWindowState::new(shape, &resolved);
     let (width, height) = window.window_size();
     let edge_slack = window.edge_slack();
-    let radius = window.corner_radius();
     let shadow = crate::overlay_glass::window_shadow(material, window.shadow_strength());
     record_window_state(window);
 
@@ -846,7 +845,7 @@ fn show_overlay_state_on_main(
         // into it. This only arms the fallback for a webview that never reports
         // at all. A no-op under Flat and off macOS.
         if material == Material::Glass {
-            schedule_glass_fallback_reveal(app_handle, radius);
+            schedule_glass_fallback_reveal(app_handle);
         }
     } else {
         log::warn!("Cannot show the '{state}' overlay: the overlay window does not exist");
@@ -977,7 +976,16 @@ const GLASS_FALLBACK_REVEAL_MS: u64 = CARD_FADE_MS as u64 * 2;
 /// the window its slack back, so a reveal carrying the show's stale Glass would
 /// put a translucent capsule around the Flat card, this exact bug. Resolving is
 /// a settings read, so it happens on this thread rather than the main one.
-fn schedule_glass_fallback_reveal(app_handle: &AppHandle, radius: f64) {
+///
+/// The corner radius is re-derived here for the same reason, from the shape on
+/// screen when the timer fires rather than the one the show seeded. A show can
+/// only seed a card from its state, and every Live state seeds the pill; the
+/// webview opens or collapses the panel afterwards, at two thirds and three
+/// quarters of the pill's radius. Because a reveal writes the radius even when
+/// the view is already visible, carrying the seed would round the blur for a
+/// card that is no longer there, leaving the panel's own border tracing a
+/// tighter arc than the glass under it.
+fn schedule_glass_fallback_reveal(app_handle: &AppHandle) {
     let scheduled_at = OVERLAY_SHOW_GENERATION.load(Ordering::SeqCst);
     let app_handle = app_handle.clone();
     std::thread::spawn(move || {
@@ -990,6 +998,7 @@ fn schedule_glass_fallback_reveal(app_handle: &AppHandle, radius: f64) {
         }
         let resolved = crate::overlay_theme::resolve(&app_handle);
         let material = resolved.effective_material;
+        let radius = OverlayWindowState::new(current_card_shape(), &resolved).corner_radius();
         crate::overlay_glass::show_glass(
             &app_handle,
             material,

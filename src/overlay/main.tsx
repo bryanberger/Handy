@@ -12,18 +12,17 @@ import type { Theme } from "@/bindings";
 import "@/i18n";
 
 // A separate webview from the settings window, so the overlay has to set
-// `data-theme` on its own document. Apply the last-known theme before render
-// (shared localStorage) to avoid a flash, reconcile with the persisted setting
-// in case the overlay booted first, then follow live changes.
+// `data-theme` itself. Apply the last-known theme (shared localStorage)
+// before render to avoid a flash, reconcile with the persisted setting in case
+// the overlay booted first, then follow live changes.
 applyTheme(getStoredTheme());
 syncThemeFromSettings();
 listen<Theme>("theme-changed", (event) => applyTheme(event.payload));
 
-// Same reasoning for the overlay theme, with one difference. The card renders
-// nothing until it is shown, so this is not about a flash. It makes the pull
-// in the show handler failure-tolerant. If that pull throws, the root already
-// carries the user's last-known theme instead of Handy's built-in pink. The
-// show handler and `resolved-overlay-theme` reconcile it.
+// Same reasoning for the overlay theme, minus the flash. The card renders
+// nothing until shown. This makes the show handler's pull failure-tolerant.
+// If it throws, the root already carries the last-known theme, not Handy's
+// built-in pink, and the show handler and `resolved-overlay-theme` reconcile it.
 applyOverlayTheme(document.documentElement, getStoredOverlayTheme());
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

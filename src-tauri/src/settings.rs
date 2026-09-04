@@ -516,9 +516,8 @@ pub struct AppSettings {
     #[serde(default = "default_overlay_style")]
     pub overlay_style: OverlayStyle,
     /// Overlay theme tokens (accent, surface, material, sizes, spacing). Every
-    /// token is optional, and an absent one means inherit, so the overlay uses
-    /// Handy's built-in, theme-aware value for it. A settings store written
-    /// before this field existed still reproduces today's overlay exactly.
+    /// token is optional; an absent one inherits Handy's built-in, theme-aware
+    /// value. A store from before this field existed still draws today's overlay.
     #[serde(default)]
     pub overlay_theme: OverlayTheme,
 }
@@ -1225,23 +1224,21 @@ pub fn write_settings(app: &AppHandle, settings: AppSettings) {
 /// Just the stored `overlay_theme`, without deserializing the rest of
 /// `AppSettings`.
 ///
-/// The overlay theme is resolved on paths that run per animation frame while
-/// the Appearance tab is being dragged, and on every overlay show and
-/// reposition. `get_settings` is the wrong tool there, since it deserializes
-/// all sixty-odd fields, runs the migration pass and can write the store back.
-/// This reads the one sub-object it needs and nothing else.
+/// The overlay theme is resolved per animation frame while the Appearance tab
+/// is dragged, and on every overlay show and reposition. `get_settings`
+/// deserializes all sixty-odd fields, runs the migration pass and can write the
+/// store back, so this reads the one sub-object it needs instead.
 ///
 /// Skipping the migrations is safe because none of them are this field's. The
 /// startup read (`load_or_create_app_settings`) has already run and persisted
 /// them before any window exists, and `overlay_theme` has never been migrated.
-/// It is deserialized inherit-on-error, so an unreadable token falls back to
-/// inherit here exactly as it would through the full read.
+/// It deserializes inherit-on-error, so an unreadable token falls back to
+/// inherit exactly as it would through the full read.
 ///
-/// The shortcut nonetheless has to answer exactly what
+/// The shortcut still has to answer exactly what
 /// `get_settings(app).overlay_theme` would, on every store shape either can be
-/// handed. That agreement is what [`overlay_theme_from_stored`] is separated
-/// out for, and it is pinned against the full read in the tests rather than
-/// asserted here.
+/// handed. [`overlay_theme_from_stored`] is separated out for that agreement,
+/// pinned against the full read in the tests rather than asserted here.
 pub fn get_overlay_theme(app: &AppHandle) -> crate::overlay_theme::OverlayTheme {
     let store = app
         .store(crate::portable::store_path(SETTINGS_STORE_PATH))
@@ -1253,15 +1250,14 @@ pub fn get_overlay_theme(app: &AppHandle) -> crate::overlay_theme::OverlayTheme 
 /// The overlay theme carried by a raw stored `settings` value.
 ///
 /// Pure, so the agreement with `get_settings` is a test rather than a claim.
-/// The three ways it can come up empty are all "inherit everything", which is
-/// exactly what `AppSettings`' own default and salvage paths produce: the key
-/// is missing, the whole `settings` value is missing, or the value under the
-/// key does not parse.
+/// The three ways it comes up empty are all "inherit everything", which is what
+/// `AppSettings`' own default and salvage paths produce: a missing key, a
+/// missing `settings` value, or a value under the key that does not parse.
 ///
-/// A parse failure is reported rather than swallowed. `OverlayTheme` already
-/// inherits per field on error, so reaching this arm means the shape itself is
-/// wrong: a string, a list, a hand-edited store. The user is about to wonder
-/// why their overlay looks untouched.
+/// A parse failure is reported, not swallowed. `OverlayTheme` already inherits
+/// per field on error, so reaching this arm means the shape itself is wrong (a
+/// string, a list, a hand-edited store) and the user is about to wonder why
+/// their overlay looks untouched.
 fn overlay_theme_from_stored(stored: Option<&serde_json::Value>) -> OverlayTheme {
     let Some(theme) = stored.and_then(|settings| settings.get("overlay_theme")) else {
         return OverlayTheme::default();
@@ -1325,9 +1321,9 @@ mod tests {
         assert!(settings.bindings.is_empty());
     }
 
-    /// Salvage tier two. An `overlay_theme` that is not an object at all fails
-    /// `OverlayTheme::deserialize`, so the existing per-key salvage drops that
-    /// one key, leaving every other setting and every token intact.
+    /// Salvage tier two. An `overlay_theme` that is not an object fails
+    /// `OverlayTheme::deserialize`, so the per-key salvage drops that one key,
+    /// leaving every other setting and every token intact.
     #[test]
     fn non_object_overlay_theme_is_salvaged_to_default() {
         let stored = serde_json::json!({
@@ -1345,9 +1341,8 @@ mod tests {
         assert_eq!(salvaged.hold_threshold_ms, 500);
     }
 
-    /// What the full read would have answered for the same stored value. It
-    /// parses strictly if it can and salvages if it cannot, exactly as
-    /// `get_settings` chooses between them.
+    /// What the full read would answer for the same stored value: a strict
+    /// parse if it can, salvage if it cannot, exactly as `get_settings` picks.
     fn overlay_theme_the_long_way(stored: &serde_json::Value) -> OverlayTheme {
         match serde_json::from_value::<AppSettings>(stored.clone()) {
             Ok(settings) => settings.overlay_theme,
@@ -1355,10 +1350,9 @@ mod tests {
         }
     }
 
-    /// `get_overlay_theme` is a shortcut around `get_settings`, and a shortcut
-    /// that disagrees with the road is a bug. The overlay would be drawn from
-    /// one theme while the tab shows another. Every store shape either can
-    /// meet, pinned against the full read.
+    /// `get_overlay_theme` is a shortcut around `get_settings`. If they
+    /// disagree, the overlay is drawn from one theme while the tab shows
+    /// another. Every store shape either can meet, pinned against the full read.
     #[test]
     fn the_overlay_theme_shortcut_answers_what_the_full_read_would() {
         let a_theme = serde_json::json!({
@@ -1392,10 +1386,9 @@ mod tests {
                 serde_json::json!({ "hold_threshold_ms": 500 }),
                 false,
             ),
-            // 4. A store the strict parse rejects for a reason of its own,
-            //    carrying a perfectly good theme. Salvage keeps the theme, and
-            //    so must the shortcut, because an unrelated broken field must
-            //    not cost the user their colours.
+            // 4. A store the strict parse rejects for its own reason, carrying a
+            //    good theme. Salvage keeps the theme and so must the shortcut,
+            //    or an unrelated broken field costs the user their colours.
             (
                 "a salvaged store with a good theme",
                 serde_json::json!({ "overlay_theme": a_theme, "hold_threshold_ms": "not a number" }),

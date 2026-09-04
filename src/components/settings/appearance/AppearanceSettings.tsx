@@ -31,8 +31,7 @@ import { ThemeFileGroup } from "./ThemeFileGroup";
 import { setOverlayThemeToken, useDraftSetting } from "./useDraftSetting";
 import { EMPTY_FILE_STATE, useOverlayThemeVars } from "./useOverlayThemeVars";
 
-/** What the tab assumes before the first resolved payload arrives: no Glass,
- *  and so no engine. */
+/** Assumed before the first resolved payload arrives. No Glass, no engine. */
 const NO_GLASS: GlassSupport = {
   supported: false,
   available: false,
@@ -46,12 +45,11 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
 }
 
 /**
- * The Appearance tab. It holds the app theme picker and the overlay
- * style/position (both reused unchanged from About/Advanced), the on-screen
- * preview, the overlay-theme tokens grouped as Color / Material / Size &
- * Spacing, and the Theme File group. Groups 4 onward read
- * `OVERLAY_TOKEN_FIELDS` rather than hardcoding their rows, so that table is
- * the only place a token's shape is declared.
+ * The Appearance tab. App theme picker, overlay style/position (both reused
+ * unchanged from About/Advanced), on-screen preview, overlay-theme tokens as
+ * Color / Material / Size & Spacing, and the Theme File group. Groups 4 on read
+ * `OVERLAY_TOKEN_FIELDS` rather than hardcoded rows, so that table alone
+ * declares a token's shape.
  */
 export const AppearanceSettings: React.FC = () => (
   <ErrorBoundary context="Appearance tab">
@@ -63,18 +61,16 @@ const AppearanceSettingsInner: React.FC = () => {
   const { t } = useTranslation();
   const { settings, isUpdating, resetSetting } = useSettings();
   const { resolved, isReloading, reload } = useResolvedOverlayTheme();
-  // Whether the overlay on screen is this tab's to repaint live. The preview
-  // card below owns it, since it is the only thing that knows. Without it a
-  // drag would send a draft to the backend every frame for it to refuse.
+  // Whether the overlay is this tab's to repaint live. The preview card owns
+  // it, the only thing that knows; else a drag sends a refused draft per frame.
   const [overlayIsOurs, setOverlayIsOurs] = useState(false);
   const { draft, setDraft, flush, flushAll, reset } =
     useDraftSetting(overlayIsOurs);
 
   const style: OverlayStyle = settings?.overlay_style ?? "live";
 
-  // What the user last did to the surface itself, handed to the preview card,
-  // which decides whether it is worth putting the overlay on screen. The
-  // counter makes two identical picks two requests.
+  // The user's last surface change, for the preview card to decide whether to
+  // show the overlay. The counter makes two identical picks two requests.
   const [lastSurfaceChange, setLastSurfaceChange] =
     useState<PreviewChangeRequest | null>(null);
   const reportSurfaceChange = useCallback((change: PreviewChange) => {
@@ -87,10 +83,9 @@ const AppearanceSettingsInner: React.FC = () => {
   const vars = useOverlayThemeVars(resolved, draft, settings?.theme);
   const glassSupport = resolved?.glass_support ?? NO_GLASS;
 
-  // Stable for the tab's lifetime, so a memoised row's props only change when
-  // its own value does. See `OverlayTokenRow`. `setDraft`, `flush` and
-  // `reset` are already stable (`useDraftSetting`); these only drop the
-  // promises the two async ones return, which no caller here awaits.
+  // Stable for the tab's life, so a memoised row's props change only with its
+  // own value (see `OverlayTokenRow`). `setDraft`, `flush` and `reset` are
+  // stable already (`useDraftSetting`); this drops the two unawaited promises.
   const handleFlush = useCallback(
     (key: OverlayThemeKey) => void flush(key),
     [flush],
@@ -126,11 +121,10 @@ const AppearanceSettingsInner: React.FC = () => {
     const locked = vars.isLocked(field.key);
 
     switch (field.kind) {
-      // The two enum tokens with a row get their own selectors rather than a
-      // generic dropdown. Material handles the Glass gating and the
-      // unavailable note, the Glass style its engine gating. Both still live
-      // in the descriptor table, so the group is driven the same way as Color
-      // and Size & Spacing.
+      // The two enum tokens with a row get their own selectors, not a generic
+      // dropdown. Material handles the Glass gating and the unavailable note,
+      // the Glass style its engine gating. Both still live in the descriptor
+      // table, so the group is driven like Color and Size & Spacing.
       case "material":
         return (
           <MaterialSelector
@@ -221,17 +215,16 @@ const AppearanceSettingsInner: React.FC = () => {
         />
       </SettingsGroup>
 
-      {/* An off-screen measuring device rather than a preview. The colour
-          fields read their "resolved default" back off it, wired by the hook
-          that reads it. Mounted whenever the tab is, so the refs are attached
-          before the fields below ask for a reading. It costs nothing while
-          the overlay is off and they are hidden. */}
+      {/* An off-screen measuring device, not a preview. The colour fields read
+          their "resolved default" off it, wired by the hook that reads it.
+          Mounted with the tab, so the refs attach before the fields ask for a
+          reading. Costs nothing while the overlay is off and the probes hidden. */}
       {vars.probes}
 
       {style !== "none" && (
         <>
-          {/* Each group shows the rows its Material has: under Flat the
-              surface opacity, under Glass the tint strength in its place. */}
+          {/* Each group shows the rows its Material has: under Flat the surface
+              opacity, under Glass the tint strength in its place. */}
           <SettingsGroup title={t("settings.appearance.groups.color")}>
             {overlayTokenFieldsFor("color", vars.effectiveMaterial).map(
               renderField,

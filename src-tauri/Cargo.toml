@@ -154,14 +154,13 @@ objc2 = "0.6"
 objc2-foundation = "0.3"
 objc2-app-kit = "0.3"
 objc2-service-management = "0.3.2"
-# Glass material (overlay_glass.rs): CALayer's corner radius and
-# CAMediaTimingFunction for the native frame morph. Adds no new crate —
-# objc2-app-kit's own default features already pull this in transitively for
-# NSAnimationContext's timing-function setter, so this only turns the
-# existing locked 0.3.2 into a direct, typed dependency.
+# Glass material (overlay_glass.rs) uses CALayer's corner radius and
+# CAMediaTimingFunction for the native frame morph. objc2-app-kit's defaults
+# pull both in transitively for NSAnimationContext's timing-function setter, so
+# this adds no crate and only makes the locked 0.3.2 direct and typed.
 objc2-quartz-core = "0.3"
-# Same story: objc2-app-kit's default features already build against block2
-# for NSAnimationContext's completion handler, which the animated frame morph
+# Same reason. objc2-app-kit's defaults already build against block2 for
+# NSAnimationContext's completion handler, which the animated frame morph
 # invalidates the window shadow from. This only makes the locked 0.6.2 direct.
 block2 = "0.6"
 

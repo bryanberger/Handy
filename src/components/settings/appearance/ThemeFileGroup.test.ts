@@ -26,10 +26,9 @@ describe("moreDiagnosticsCount", () => {
 
 describe("lockedTokenCounts", () => {
   test("the total is the rows on screen, not every token there is", () => {
-    // Two short of the contract's sixteen, on either Material:
-    // `glass_material` drives the pre-macOS-26 fallback engine and has no row
-    // at all, and the two alphas share one slot, either Flat's surface
-    // opacity or Glass's tint strength, never both.
+    // Two short of the contract's sixteen on either Material. `glass_material`
+    // drives the pre-macOS-26 fallback engine and has no row; the two alphas
+    // share one slot, Flat's surface opacity or Glass's tint, never both.
     for (const material of ["flat", "glass"] as const) {
       const { total } = lockedTokenCounts([], material);
       expect(total).toBe(14);
@@ -52,8 +51,8 @@ describe("lockedTokenCounts", () => {
   });
 
   test("nor is the alpha belonging to the other Material", () => {
-    // A file that pins both alphas fills exactly one row, whichever Material
-    // is being painted; the other control is not on screen to be locked.
+    // A file pinning both alphas fills exactly one row, whichever Material is
+    // painted; the other control is not on screen to be locked.
     const bothAlphas = ["surface_opacity", "glass_tint"];
     expect(lockedTokenCounts(bothAlphas, "flat")).toEqual({
       count: 1,
@@ -120,9 +119,8 @@ describe("themeAsJsonDocument", () => {
 
   test("serializes exactly like the contract's examples", () => {
     // Two-space indent, `version` first, tokens after it in the contract's
-    // own table order, rather than whatever order the runtime object happens
-    // to carry. This is the document a theming tool is handed, so its shape
-    // is part of the contract.
+    // table order, not the runtime object's. This is the document a theming
+    // tool is handed, so its shape is part of the contract.
     expect(themeAsJsonDocument(INHERIT_ALL)).toBe('{\n  "version": 1\n}');
 
     const theme: OverlayTheme = {

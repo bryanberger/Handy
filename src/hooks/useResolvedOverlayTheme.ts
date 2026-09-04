@@ -11,10 +11,9 @@ interface ResolvedOverlayThemeState {
   subscribe: () => void;
 }
 
-// Module-level singleton, mirroring settingsStore.ts. The settings window has
-// exactly one Appearance tab at a time, so one store is all that's needed,
-// and the `resolved-overlay-theme` listener below is registered once for the
-// life of the window rather than per mount/unmount of the tab.
+// Module-level singleton, mirroring settingsStore.ts. One Appearance tab at a
+// time means one store, and the `resolved-overlay-theme` listener below
+// registers once for the window's life, not per tab mount.
 const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
   (set, get) => ({
     resolved: null,
@@ -22,9 +21,8 @@ const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
     subscribed: false,
 
     // Re-reads the theme file from disk, resolves and returns the merged
-    // theme (commands.reloadOverlayThemeFile). That covers the "Appearance
-    // tab mount" and "Reload button" rows of the theme file's reload
-    // contract.
+    // theme (commands.reloadOverlayThemeFile), covering the "Appearance tab
+    // mount" and "Reload button" rows of the theme file's reload contract.
     load: async () => {
       set({ isReloading: true });
       try {
@@ -41,9 +39,9 @@ const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
       }
     },
 
-    // Keeps `resolved` current between reloads: a token committed from this
-    // tab, a theme-file change picked up by the overlay's next show, or
-    // another window's Reload all deliver the same event.
+    // Keeps `resolved` current between reloads. A commit from this tab, a
+    // theme-file change seen at the overlay's next show, and another window's
+    // Reload all send the same event.
     subscribe: () => {
       if (get().subscribed) return;
       set({ subscribed: true });
@@ -55,11 +53,10 @@ const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
 );
 
 /**
- * The resolved overlay theme for the Appearance tab: the merged tokens
- * (`file ?? settings ?? inherit`), the Material actually rendered, whether
- * Glass is available, and the theme file's state. It is the same payload the
- * overlay window itself paints from, so the preview and the on-screen overlay
- * can never disagree.
+ * The resolved overlay theme for the Appearance tab. Merged tokens
+ * (`file ?? settings ?? inherit`), the Material rendered, whether Glass is
+ * available, and the theme file's state. The overlay paints from this same
+ * payload, so preview and overlay cannot disagree.
  */
 export function useResolvedOverlayTheme() {
   const { resolved, isReloading, load, subscribe } =

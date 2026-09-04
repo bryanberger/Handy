@@ -1,6 +1,6 @@
 # Handy
 
-Handy is a local, offline speech-to-text desktop app. A global shortcut records the microphone, a local model transcribes it, and Handy pastes the text into the active application. This glossary covers the terms for the app's appearance and its recording overlay.
+Handy is a local, offline speech-to-text desktop app. A global shortcut records the microphone, a local model transcribes it, and Handy pastes the text into the active application. This glossary covers the app's appearance and its recording overlay.
 
 ## Language
 
@@ -29,15 +29,15 @@ The small floating window shown on screen while Handy records, transcribes, or p
 _Avoid_: HUD, widget, popup, indicator
 
 **Card**:
-The visible rounded rectangle the overlay draws inside its window, the pill in Minimal and the panel in Live. How much of the window it fills depends on the material. Flat leaves transparent slack around it, and Glass makes the window the card exactly.
+The visible rounded rectangle the overlay draws inside its window, the pill in Minimal and the panel in Live. How much of the window it fills depends on the material. Flat leaves transparent slack around it; Glass makes the window the card exactly.
 _Avoid_: overlay window, box, container, bubble
 
 **Card shape**:
-Which of the five rectangles the card is drawing right now: the resting pill, the working pill, the Live pill, the Live panel collapsed to a pill, or the Live panel open. Only the webview knows it, so it reports it; under Flat it is bookkeeping, under Glass it is what the window is sized to.
+Which of the five rectangles the card is drawing right now: the resting pill, the working pill, the Live pill, the Live panel collapsed to a pill, or the Live panel open. Only the webview knows it, so it reports it. Under Flat that is bookkeeping; under Glass it is what the window is sized to.
 _Avoid_: card state, overlay state (that is what the card is showing, not what shape it takes), variant, form
 
 **Card metrics**:
-The three tokens a card's rectangle is computed from, clamped and carried together. Size scale and border width decide how much room the card needs, and size scale and radius decide how round its corners are. They travel as one because the window and the blur are sized and rounded from the same set.
+The three tokens a card's rectangle is computed from, clamped and carried together. Size scale and border width decide how much room the card needs; size scale and radius decide how round its corners are. They travel as one because the window and the blur are sized and rounded from the same set.
 _Avoid_: dimensions, sizing options, geometry (which is the computation, not its inputs)
 
 **Overlay style**:
@@ -49,11 +49,11 @@ Which screen edge the overlay sits at: Top or Bottom.
 _Avoid_: placement, anchor, alignment
 
 **Overlay theme**:
-The complete set of tokens that determine how the overlay looks: accent, surface, text, border, material and the macOS material Glass is drawn with, size, radius, and spacing. Every token is optional, so a theme may set one value or all of them.
+The tokens that decide how the overlay looks: accent, surface, text, border, material and the macOS material Glass is drawn with, size, radius, and spacing. Every token is optional, so a theme may set one value or all of them.
 _Avoid_: overlay skin, overlay colors, overlay CSS, customization
 
 **Token**:
-One named, user-settable value in the overlay theme, such as the accent color or the corner radius. Every token is optional and every token can be set from the settings window or the theme file.
+One named, user-settable value in the overlay theme, such as the accent color or the corner radius. Every token is optional and settable from the settings window or the theme file.
 _Avoid_: variable, property, knob, option
 
 **Inherit**:
@@ -73,7 +73,7 @@ The overlay card's background color. Its translucency is a separate token, surfa
 _Avoid_: background, fill, card color
 
 **Text**:
-The overlay theme's foreground color. It paints the transcript, and it is the base every derived neutral is mixed from. Set it whenever the surface is set.
+The overlay theme's foreground color. It paints the transcript and is the base every derived neutral is mixed from. Set it whenever the surface is set.
 _Avoid_: foreground, fg, font color, transcript color
 
 **Tint strength**:
@@ -85,7 +85,7 @@ How the surface is rendered: Flat (an opaque surface) or Glass (a translucent su
 _Avoid_: effect, blur mode, vibrancy, acrylic, frosted (implementation terms)
 
 **Size scale**:
-The single factor that zooms every length in the card at once, including widths, heights, paddings, and type. It is one of the tokens that change how much room the overlay needs on screen, with border width and padding.
+The single factor that zooms every length in the card at once, including widths, heights, paddings, and type. With border width and padding, it is one of the tokens that change how much room the overlay needs on screen.
 _Avoid_: zoom, size, scale factor (bare), DPI, density
 
 **Resolved overlay theme**:
@@ -93,7 +93,7 @@ The overlay theme after the per-token merge of theme file, then settings, then i
 _Avoid_: merged theme, effective theme, computed theme
 
 **Apply layer**:
-The one module that turns a resolved overlay theme into the overlay's custom properties and material attribute, used identically by the overlay and by the preview.
+The one module that turns a resolved overlay theme into the overlay's custom properties and material attribute, used identically by the overlay and the preview.
 _Avoid_: theme applier, style engine, renderer
 
 **Window slack**:

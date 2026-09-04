@@ -20,16 +20,15 @@ import { useCardShapeReporter } from "./useCardShapeReporter";
 const WAVE_BARS = 9;
 
 // Paint a resolved overlay theme. Returns whether the effective Material is
-// Glass, the one thing about the theme this component has to keep in state.
+// Glass, the only theme fact this component keeps in state.
 const paintOverlayTheme = (resolved: ResolvedOverlayTheme): boolean => {
   applyOverlayTheme(document.documentElement, resolved);
   return resolved.effective_material === "glass";
 };
 
-// Paint a persisted theme and remember it for the next boot. Both the pull on
-// show and the push on change do exactly this. A draft deliberately does not.
-// It has not been persisted, so mirroring it would let a theme the user never
-// settled on paint the first frame after a restart.
+// Paint a persisted theme and store it for the next boot. The show pull and the
+// change push both do this. A draft does not. It is unpersisted, so mirroring it
+// would paint a restart's first frame with a theme the user never settled on.
 const paintAndStoreOverlayTheme = (resolved: ResolvedOverlayTheme): boolean => {
   const glass = paintOverlayTheme(resolved);
   storeOverlayTheme(resolved);
@@ -58,7 +57,7 @@ const RecordingOverlay: React.FC = () => {
   // from a top overlay (oldest line under the pill) and upward from a bottom one.
   const [position, setPosition] = useState<"top" | "bottom">("bottom");
   // Whether the effective Material is Glass, from the resolved theme painted
-  // below. Gates the card-shape reports, which only Glass needs.
+  // below. Gates the card-shape reports that only Glass needs.
   const [glassActive, setGlassActive] = useState(false);
 
   const smoothedLevelsRef = useRef<number[]>(Array(16).fill(0));
@@ -82,7 +81,7 @@ const RecordingOverlay: React.FC = () => {
         // The Live panel flows downward from a top overlay and upward from a
         // bottom one; read the placement so the layout can flip to match.
         // This pulls the overlay theme alongside it, one round trip for both,
-        // so the card paints from the same resolved theme the backend holds.
+        // so the card paints the same resolved theme the backend holds.
         try {
           const [settings, resolved] = await Promise.all([
             commands.getAppSettings(),
@@ -94,9 +93,9 @@ const RecordingOverlay: React.FC = () => {
             );
           }
           if (resolved.status === "ok") {
-            // Painted here rather than in an effect. The custom properties
-            // and `data-material` must be on the root before the first
-            // painted frame, which an effect would leave to React's batching.
+            // Painted here, not in an effect. The custom properties and
+            // `data-material` must be on the root before the first painted
+            // frame, which an effect would leave to React's batching.
             setGlassActive(paintAndStoreOverlayTheme(resolved.data));
           }
         } catch {
@@ -139,14 +138,13 @@ const RecordingOverlay: React.FC = () => {
       });
 
       // The theme can change while the overlay is visible (a token committed
-      // in the Appearance tab), so repaint on every push as well.
+      // in the Appearance tab), so repaint on every push too.
       const unlistenTheme = await events.resolvedOverlayTheme.listen((event) =>
         setGlassActive(paintAndStoreOverlayTheme(event.payload)),
       );
 
       // The same repaint for a theme still being edited. A draft arrives per
-      // animation frame while a slider is dragged, so this handler paints and
-      // does nothing else.
+      // animation frame while a slider is dragged, so this handler only paints.
       const unlistenDraft = await events.overlayThemeDraft.listen((event) =>
         setGlassActive(paintOverlayTheme(event.payload.resolved)),
       );
@@ -157,10 +155,9 @@ const RecordingOverlay: React.FC = () => {
         if (payload.kind) setWorkKind(payload.kind);
       });
 
-      // Tauri delivers an event only to webviews already listening for it, so
-      // every show emitted before this point was dropped. Saying so lets the
-      // backend re-run one it missed. Without this the first preview after a
-      // launch maps an empty overlay window.
+      // Tauri delivers events only to webviews already listening, so any
+      // show before this point was dropped. This lets the backend re-run a
+      // missed one, so the first preview after launch is not an empty window.
       void emit("overlay-webview-ready");
 
       return () => {
@@ -189,10 +186,9 @@ const RecordingOverlay: React.FC = () => {
 
   if (!isVisible) return null;
 
-  // The presentational markup, the `.ov-stage` / `.scard` tree, lives in
-  // OverlayCard so the Appearance tab's preview renders identically to a real
-  // dictation. This component owns only the Tauri listeners, the elapsed
-  // timer and the overlay position above.
+  // The `.ov-stage` / `.scard` markup lives in OverlayCard so the Appearance
+  // tab's preview renders identically to a real dictation. This component owns
+  // only the Tauri listeners, the elapsed timer and the overlay position above.
   return (
     <OverlayCard
       state={state}

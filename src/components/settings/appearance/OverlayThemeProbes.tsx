@@ -18,12 +18,11 @@ export interface OverlayThemeProbesProps {
 /**
  * Four invisible spans, one per colour token, each painted `var(--s-…)`.
  *
- * Reading `getComputedStyle(...).color` back off them is the only reliable way
- * to resolve a `color-mix()` custom property down to a hex, which is what an
- * unset colour field shows as its "resolved default". That default is the
- * theme-aware value it will actually inherit, rather than a hardcoded guess.
- * Nothing here is rendered, because this is a measuring device rather than a
- * preview.
+ * Reading `getComputedStyle(...).color` off them is the only reliable way to
+ * resolve a `color-mix()` custom property to a hex, what an unset colour field
+ * shows as its "resolved default". That default is the theme-aware value it
+ * will inherit, not a hardcoded guess. Nothing renders; this is a measuring
+ * device, not a preview.
  */
 const OverlayThemeProbesInner: React.FC<OverlayThemeProbesProps> = ({
   probeVars,
@@ -44,5 +43,5 @@ const OverlayThemeProbesInner: React.FC<OverlayThemeProbesProps> = ({
 );
 
 /** Memoised, because re-rendering the measuring device costs a style
- *  recalculation and only a colour change can move what it measures. */
+ *  recalculation and only a colour change moves what it measures. */
 export const OverlayThemeProbes = React.memo(OverlayThemeProbesInner);

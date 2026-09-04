@@ -880,18 +880,16 @@ pub fn run(cli_args: CliArgs) {
             } else if args.iter().any(|a| a == "--cancel") {
                 crate::utils::cancel_current_operation(app);
             } else if args.iter().any(|a| a == "--preview-overlay") {
-                // Runtime-only, like the flags above. It changes nothing that
-                // is persisted.
+                // Runtime-only, like the flags above. Nothing persisted changes.
                 //
-                // Runs on its own OS thread, never `async_runtime::spawn`.
-                // This callback runs on the runtime worker the single-instance
-                // plugin has parked in its blocking accept loop, so a task
-                // spawned from here lands in that worker's LIFO slot, which no
-                // other worker may steal. It would sit there until the next
-                // forwarded launch displaced it, so every preview would show
-                // the previous invocation's and the first one would never show
-                // at all. The preview driver is a plain thread throughout, so
-                // there is no runtime to enter.
+                // Runs on its own OS thread, never `async_runtime::spawn`. This
+                // callback runs on the runtime worker the single-instance plugin
+                // parks in its blocking accept loop, so a task spawned here lands
+                // in that worker's LIFO slot, which no other worker may steal. It
+                // would sit there until the next forwarded launch displaced it,
+                // so every preview would show the previous invocation's and the
+                // first would never show at all. The preview driver is a plain
+                // thread throughout, so there is no runtime to enter.
                 let handle = app.clone();
                 std::thread::spawn(move || {
                     if let Err(error) = overlay_preview::run_cli_preview(handle) {
@@ -992,13 +990,12 @@ pub fn run(cli_args: CliArgs) {
 
             let mut settings = get_settings(app.handle());
 
-            // Warm the theme-file cache before anything reads the overlay
-            // theme. The overlay window is created further down with the
-            // resolved size scale, so a file-supplied scale must already be
-            // known here or the first show would resize a window that was
-            // built for the settings' scale. Also puts the file's diagnostics
-            // in the log at startup, where a user looking for "why is my theme
-            // ignored" will find them.
+            // Warm the theme-file cache before anything reads the overlay theme.
+            // The overlay window is created further down with the resolved size
+            // scale, so a file-supplied scale must be known here or the first
+            // show would resize a window built for the settings' scale. Also
+            // logs the file's diagnostics at startup, where a user asking "why
+            // is my theme ignored" will find them.
             overlay_theme_file::read(app.handle());
 
             // Apply the persisted appearance theme to the native title bar before
@@ -1075,13 +1072,12 @@ pub fn run(cli_args: CliArgs) {
                 api.prevent_close();
                 let _res = window.hide();
 
-                // An overlay preview belongs to the Appearance tab, and the tab
-                // just went away with the window. Handled here rather than in
-                // the frontend because closing to the tray hides the window
-                // without unmounting anything. The webview keeps running, so
-                // React never learns it is off screen. The driver watches the
-                // window itself as well, for the hides that never reach this
-                // handler; this is the immediate half.
+                // An overlay preview belongs to the Appearance tab, which just
+                // went away with the window. Handled here, not in the frontend,
+                // because closing to the tray hides the window without
+                // unmounting anything. The webview keeps running, so React never
+                // learns it is off screen. The driver also watches the window for
+                // hides that never reach this handler; this is the immediate half.
                 overlay_preview::stop_preview();
 
                 #[cfg(target_os = "macos")]
@@ -1105,11 +1101,11 @@ pub fn run(cli_args: CliArgs) {
                 log::info!("Theme changed to: {:?}", theme);
                 // Re-apply the current tray state with the new theme's icon set
                 utils::refresh_tray_icon(window.app_handle());
-                // Same for the overlay's native Glass tint, which is composed
-                // from the window's effective appearance at the moment it is
-                // written. This is the System-theme half of the same fix
-                // `change_theme_setting` makes for an explicit Light/Dark pick.
-                // The OS switching under us has to move the glass too.
+                // Same for the overlay's native Glass tint, composed from the
+                // window's effective appearance when it is written. This is the
+                // System-theme half of the fix `change_theme_setting` makes for
+                // an explicit Light/Dark pick. The OS switching under us has to
+                // move the glass too.
                 overlay_glass::reapply_appearance(window.app_handle());
             }
             _ => {}

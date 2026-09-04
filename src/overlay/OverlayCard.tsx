@@ -4,12 +4,9 @@ import type { StreamPhase, StreamTextEvent, StreamWorkKind } from "@/bindings";
 import { liveCardState } from "./cardShape";
 
 /**
- * `inert` is a standard HTML boolean attribute, but this project's pinned
- * `@types/react` (18.3.26) does not type it on `HTMLAttributes` yet. Being a
- * boolean HTML attribute, its mere presence is what makes an element inert,
- * so a naive `inert={false}` risks React writing a falsy-looking value the
- * browser still treats as present. Spreading the attribute in only when
- * active sidesteps both problems.
+ * `inert` is a standard HTML boolean attribute, untyped on `HTMLAttributes` by the pinned
+ * `@types/react` (18.3.26). Presence alone makes an element inert, so `inert={false}` risks
+ * a falsy value the browser still treats as present. Spread it in only when active.
  */
 function inertAttribute(active: boolean): { inert?: string } {
   return active ? { inert: "" } : {};
@@ -35,9 +32,8 @@ export interface OverlayCardProps {
   session: number;
   direction: "ltr" | "rtl";
   /**
-   * True for a decorative, non-interactive rendering, which is the Appearance
-   * tab's preview. Applies the native `inert` attribute (no focus, no pointer
-   * events, hidden from assistive tech) to the whole card.
+   * True for a decorative, non-interactive rendering, the Appearance tab's preview. Puts
+   * native `inert` on the whole card (no focus, no pointer events, hidden from assistive tech).
    */
   inert?: boolean;
   /** Omitted (rather than a no-op) by the preview, which relies on `inert`. */
@@ -45,22 +41,17 @@ export interface OverlayCardProps {
 }
 
 /**
- * The overlay's presentational half, the `.ov-stage` / `.scard` tree for every
- * state. Extracted from `RecordingOverlay.tsx` (which keeps every Tauri
- * listener, the elapsed timer and the position fetch) so the Appearance tab's
- * preview can render the exact markup a real dictation does. A preview that
- * could drift from the overlay would be worse than none. This component owns
- * the DOM concerns that belong to the card itself: the live-text scroll pin
- * and the top-edge overflow fade.
+ * The overlay's presentational half, the `.ov-stage` / `.scard` tree for every state.
+ * Split from `RecordingOverlay.tsx`, which keeps every Tauri listener, the elapsed
+ * timer and the position fetch, so the Appearance tab's preview renders the exact
+ * markup a real dictation does and cannot drift from it. It owns the card's own DOM
+ * concerns, the live-text scroll pin and the top-edge overflow fade.
  *
- * The markup is verbatim except for the three class names that read
- * `isVisible`, which is state `RecordingOverlay` keeps and this component
- * never receives. All three were already constant at the point they ran,
- * because `RecordingOverlay` returns `null` before rendering the card when
- * `!isVisible`. `isVisible ? "" : "leaving"` was always `""` (the `.leaving`
- * rule was dead CSS and is deleted), and both `isVisible ? "show" : ""` and
- * `working && isVisible` were always their true branch. This file inlines all
- * three at those values.
+ * The markup is verbatim except the three class names reading `isVisible`, state
+ * `RecordingOverlay` keeps and never passes here. All three were constant, since
+ * `RecordingOverlay` returns `null` when `!isVisible`. `isVisible ? "" : "leaving"` was
+ * always `""` (the `.leaving` rule was dead CSS, deleted), `isVisible ? "show" : ""` and
+ * `working && isVisible` took their true branch. All three are inlined at those values.
  */
 const OverlayCard: React.FC<OverlayCardProps> = ({
   state,
@@ -78,21 +69,19 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
 }) => {
   const { t } = useTranslation();
   // True once live text overflows the cap. A top overlay fades its top edge only
-  // while overflowing, so the resting first line stays crisp flush under the pill.
+  // while overflowing, so the resting first line stays crisp under the pill.
   const [overflowing, setOverflowing] = useState(false);
-  // Live-text scroll-back: the text region "sticks" to the newest line while the
-  // user is at the bottom; if they scroll up to read history, auto-follow pauses
-  // until they scroll back down.
+  // Live-text scroll-back. The text sticks to the newest line while the user is at
+  // the bottom; scrolling up to read history pauses auto-follow until they return.
   const capRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
 
-  // Stick to the bottom as text streams in, but only while pinned, so a user
-  // who has scrolled up to read history isn't yanked back down by the next
-  // chunk.
+  // Stick to the bottom as text streams in, but only while pinned, so a user who
+  // scrolled up to read history isn't yanked back down by the next chunk.
   useLayoutEffect(() => {
     const el = capRef.current;
     if (!el) return;
-    // Fade the top edge only once text actually overflows the cap.
+    // Fade the top edge only once text overflows the cap.
     setOverflowing(el.scrollHeight > el.clientHeight + 1);
     if (pinnedRef.current) el.scrollTop = el.scrollHeight;
   }, [streamText]);
@@ -120,8 +109,8 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
         <i
           key={i}
           style={{
-            // The bar heights are computed here, so they are the one length
-            // the CSS cannot scale on its own. Multiply by --ov-scale inline.
+            // Bar heights are computed here, the one length the CSS cannot
+            // scale on its own, so multiply by --ov-scale inline.
             height: `calc(${Math.max(3, Math.min(18, 3 + Math.pow(v, 0.7) * 15))}px * var(--ov-scale))`,
           }}
         />
@@ -178,9 +167,8 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
     const hasText =
       streamText.committed.length > 0 || streamText.tentative.length > 0;
     const working = phase === "working";
-    // Shared with `cardShape`, which reports the same two flags to the backend
-    // so the native window under Glass morphs with the card rather than
-    // alongside it.
+    // Shared with `cardShape`, which reports the same two flags to the backend, so
+    // the native window under Glass morphs with the card, not alongside it.
     const { open, collapsed } = liveCardState(hasText, working);
 
     return (
@@ -205,8 +193,8 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
                     {streamText.committed ? streamText.committed + " " : ""}
                   </span>
                   <span className="tentative">{streamText.tentative}</span>
-                  {/* Drop the blinking caret once finalizing. It's no longer
-                      capturing, and a static spinner conveys the work. */}
+                  {/* Drop the blinking caret once finalizing. Nothing is being
+                      captured, and a static spinner conveys the work. */}
                   {!working && <span className="scaret" />}
                 </p>
               </div>
@@ -225,10 +213,9 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
     );
   }
 
-  // ---- Minimal overlay: exactly one row at a time. Waveform (recording), or
-  // a spinner + label (transcribing / processing). Never both. The pill
-  // animates its width between them; the cancel button is in both rows so it
-  // stays put.
+  // ---- Minimal overlay: exactly one row at a time. Waveform (recording), or a
+  // spinner + label (transcribing / processing). Never both. The pill animates
+  // its width between them; the cancel button is in both rows so it stays put.
   const working = state === "transcribing" || state === "processing";
   const workLabel =
     state === "processing"

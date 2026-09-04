@@ -1,32 +1,29 @@
-//! The frontend files this crate keeps constants in step with, read at compile
-//! time, and the small parsers that read a number out of them.
+//! The frontend files this crate pins constants against, read at compile time,
+//! and the small parsers that read a number out of them.
 //!
-//! Several Rust constants are a second copy of a value the frontend owns: the
-//! card geometry mirrors `RecordingOverlay.css`, the inherit surface mirrors the
-//! app palette, the token bounds mirror the apply layer's own table. Each of
-//! those pins lives in a test beside the constants it pins. They all need the
-//! same handful of "find this declaration, take the number" readers, so the
-//! readers live here rather than being copied into three test modules.
+//! Several Rust constants copy a frontend value: card geometry mirrors
+//! `RecordingOverlay.css`, the inherit surface the app palette, token bounds
+//! the apply layer's table. Each pin lives in a test beside its constants, and
+//! all need the same "find the declaration, take the number" readers, kept
+//! here rather than copied three times.
 //!
 //! Test-only. Nothing in a shipping build reads a stylesheet.
 
 /// The overlay's stylesheet: every `--ov-*` length and timing the native
 /// window is sized and animated from.
 pub(crate) const OVERLAY_CSS: &str = include_str!("../../src/overlay/RecordingOverlay.css");
-/// The overlay component: the geometry inputs that live in TypeScript rather
-/// than in the stylesheet.
+/// The overlay component: geometry inputs in TypeScript, not the stylesheet.
 pub(crate) const OVERLAY_TSX: &str = include_str!("../../src/overlay/RecordingOverlay.tsx");
-/// The app palette, which the overlay's inherited colours follow.
+/// The app palette the overlay's inherited colours follow.
 pub(crate) const THEME_CSS: &str = include_str!("../../src/styles/theme.css");
-/// The apply layer: the token contract as TypeScript sees it. It carries the
-/// bounds every slider is drawn from and every value is re-validated against.
+/// The apply layer, the token contract as TypeScript sees it. It carries the
+/// bounds every slider is drawn from and every value re-validated against.
 pub(crate) const APPLY_LAYER_TS: &str = include_str!("../../src/lib/overlayTheme.ts");
 
-/// The number a declaration is written with, in the unit it carries: the
+/// The number a declaration is written with, in the unit it carries, the
 /// digits immediately before the first `unit` after `<name>:`. The needle
-/// carries the colon, so only the declaration matches and a `var(--ov-work-w)`
-/// usage never does. Taking the digits from the right sees through a `calc(`
-/// or a `minmax(` the value is wrapped in.
+/// carries the colon, so a `var(--ov-work-w)` usage never matches. Taking the
+/// digits from the right sees through a `calc(` or `minmax(` wrapper.
 pub(crate) fn css_value(css: &str, name: &str, unit: &str) -> f64 {
     let needle = format!("{name}:");
     let start = css
@@ -57,10 +54,9 @@ pub(crate) fn css_number(css: &str, name: &str) -> f64 {
     css_value(css, name, ";")
 }
 
-/// The text a declaration is written with, verbatim: everything between
-/// `<name>:` and its semicolon. For the values that are not a number at all —
-/// a `calc()` of two other custom properties, say — the text itself is the
-/// thing worth pinning.
+/// The text a declaration is written with, verbatim, everything between
+/// `<name>:` and its semicolon. When a value is not a number at all, say a
+/// `calc()` of two other custom properties, the text itself is worth pinning.
 pub(crate) fn css_declaration<'a>(css: &'a str, name: &str) -> &'a str {
     let start = declaration_start(css, name).unwrap_or_else(|| panic!("{name} is not declared"));
     let rest = &css[start + name.len() + 1..];
@@ -70,14 +66,12 @@ pub(crate) fn css_declaration<'a>(css: &'a str, name: &str) -> &'a str {
     rest[..end].trim()
 }
 
-/// Where `name`'s own declaration starts: the first `<name>:` that begins a
+/// Where `name`'s own declaration starts, the first `<name>:` that begins a
 /// declaration rather than ending another property's name.
 ///
-/// A declaration begins at the start of the text, or after the `{`, `;` or
-/// `}` that closed the one before it, or after a comment, with only
-/// whitespace in between. Matching the bare `<name>:` anywhere would let a
-/// property latch onto a longer one the same rule happens to declare first:
-/// `height` would read `min-height`'s value, and read it silently.
+/// A declaration begins at the start of the text, or after the `{`, `;` or `}`
+/// that closed the one before, or after a comment, with only whitespace
+/// between. Otherwise `height` would silently read `min-height`'s value.
 fn declaration_start(css: &str, name: &str) -> Option<usize> {
     let needle = format!("{name}:");
     let mut searched = 0;
@@ -97,9 +91,8 @@ pub(crate) fn css_color(css: &str, name: &str) -> String {
     css_declaration(css, name).to_string()
 }
 
-/// One rule's body, so a declaration is read from the rule that carries it
-/// rather than from the first match anywhere in the stylesheet. `selector`
-/// includes the brace (`".swave {"`), which is what makes it unambiguous.
+/// One rule's body, so a declaration comes from the rule that carries it, not
+/// the first match anywhere. `selector` includes the brace, as in `".swave {"`.
 pub(crate) fn css_rule<'a>(css: &'a str, selector: &str) -> &'a str {
     let start = css
         .find(selector)
@@ -111,9 +104,8 @@ pub(crate) fn css_rule<'a>(css: &'a str, selector: &str) -> &'a str {
     &body[..end]
 }
 
-/// The number a `const NAME = <number>;` in a TypeScript source is declared
-/// with. `declaration` is everything up to and including the `= `, so it names
-/// the constant unambiguously.
+/// The number a TypeScript `const NAME = <number>;` declares. `declaration`
+/// runs up to and including the `= `, so it names the constant unambiguously.
 pub(crate) fn tsx_const(tsx: &str, declaration: &str) -> f64 {
     let start = tsx
         .find(declaration)
@@ -131,9 +123,8 @@ pub(crate) fn tsx_const(tsx: &str, declaration: &str) -> f64 {
 /// The body of a `const NAME … = { … }` declaration, braces balanced, so a
 /// nested object literal comes back whole.
 ///
-/// Anchored on the `= {` rather than on the first brace after the name,
-/// because a declaration's type often carries a block of its own
-/// (`Record<K, { min: number }>`) and that is not the value.
+/// Anchored on the `= {`, not the first brace, because a type often carries
+/// its own block (`Record<K, { min: number }>`) that is not the value.
 pub(crate) fn ts_declaration_block<'a>(ts: &'a str, name: &str) -> &'a str {
     let start = ts
         .find(name)
@@ -146,8 +137,7 @@ pub(crate) fn ts_declaration_block<'a>(ts: &'a str, name: &str) -> &'a str {
     balanced_block(ts, open, name)
 }
 
-/// The body of a `key: { … }` entry of an object literal. `body` is another
-/// block this module returned.
+/// The body of a `key: { … }` entry. `body` is a block this module returned.
 pub(crate) fn ts_entry_block<'a>(body: &'a str, key: &str) -> &'a str {
     let start = body
         .find(&format!("{key}:"))

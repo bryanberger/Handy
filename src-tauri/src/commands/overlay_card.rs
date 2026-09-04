@@ -1,12 +1,11 @@
 //! Tauri command for the overlay webview's card-shape reports.
 //!
 //! Under Glass the native window is the card (window slack is zero), and the
-//! Live panel's open/collapsed morph is a pure webview decision driven by
-//! streamed text and phase. Rust cannot see it any other way, so this is the
-//! one thing the overlay page tells the backend about itself. Under Flat, and
-//! off macOS where the effective Material is never Glass, the call is a
-//! deliberate no-op. `overlay::set_card_shape` records the shape and returns
-//! as soon as it sees the effective Material is not Glass.
+//! Live panel's open/collapsed morph is a webview decision driven by streamed
+//! text and phase. Rust cannot see it, so this is the one thing the overlay
+//! page tells the backend about itself. Under Flat, and off macOS where the
+//! effective Material is never Glass, it is a no-op. `overlay::set_card_shape`
+//! records the shape and returns once it sees the Material is not Glass.
 
 use crate::overlay;
 use crate::overlay_geometry::{OverlayCardShape, CARD_MORPH_MS, MAX_CARD_MORPH_MS};
@@ -15,15 +14,13 @@ use tauri::AppHandle;
 /// The overlay webview calls this whenever the card's shape changes.
 ///
 /// The payload is a symbolic shape plus a duration, never pixels. The backend
-/// recomputes the window size itself from its own constants and the resolved
-/// size scale. It coalesces reports by shape identity rather than debouncing
-/// them by time, so a repeated report costs nothing and a real change never
-/// waits.
+/// recomputes the window size from its own constants and the resolved size
+/// scale, and coalesces by shape identity rather than by time, so a repeated
+/// report costs nothing and a real change never waits.
 ///
-/// `durationMs` is how long the window may take to reach the new shape, and
-/// must be between 0 (snap) and 2000 milliseconds. Anything longer is rejected
-/// rather than clamped, because it would leave a native window animation
-/// running long after the card had settled.
+/// `durationMs` is how long the window may take to reach the new shape, 0
+/// (snap) to 2000 ms. Anything longer is rejected, not clamped, since it would
+/// leave a native window animation running long after the card settled.
 #[tauri::command]
 #[specta::specta]
 pub fn set_overlay_card_shape(
@@ -35,14 +32,13 @@ pub fn set_overlay_card_shape(
     Ok(())
 }
 
-/// The morph duration a report asked for, if it is one the overlay could
-/// plausibly want.
+/// The morph duration a report asked for, if the overlay could plausibly want
+/// it.
 ///
 /// Nothing downstream sanitises this. It becomes an `NSAnimationContext`
 /// duration on the main thread, so an absurd value is a window that keeps
-/// moving for a minute, not a slow animation. The bound is deliberately
-/// generous, several times the card's own morph, so it only ever catches a
-/// bug or a hostile caller, never a deliberately unhurried one.
+/// moving for a minute. The bound is several times the card's own morph, so it
+/// catches a bug or a hostile caller, never a deliberately unhurried one.
 fn checked_duration_ms(duration_ms: u32) -> Result<u32, String> {
     if duration_ms > MAX_CARD_MORPH_MS {
         return Err(format!(

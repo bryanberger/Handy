@@ -1,18 +1,14 @@
-/* Pulls in the overlay's own stylesheet so its `:root` block is defined in
-   the settings window too. That block holds the built-in, theme-aware value
-   behind every unset token (`--s-accent`, `--s-surface`, …). The colour
-   fields read those back off the probes to show what an unset token will
-   actually inherit, and with nothing defined there would be nothing to read.
-   Only that block is used here; every other selector in the file names a
-   class the settings window never renders. `RecordingOverlay.css`'s own
-   `@import "../styles/theme.css"` is already pulled into the main bundle by
-   `App.css`, so this duplicates those `:root` blocks. The declarations are
-   identical and the later one wins, so it is harmless. */
+/* Pulls in the overlay's stylesheet so its `:root` block exists in the settings window too.
+   That block holds the built-in, theme-aware value behind every unset token (`--s-accent`,
+   `--s-surface`, …). The colour fields read those off the probes to show what an unset token
+   inherits; with nothing defined there is nothing to read. Only that block is used; every
+   other selector names a class the settings window never renders. `RecordingOverlay.css` also
+   imports `../styles/theme.css`, already in the main bundle via `App.css`, so this duplicates
+   those `:root` blocks. Identical declarations, later wins, harmless. */
 @import "../../../overlay/RecordingOverlay.css";
 
-/* Measured, never seen. Laid out, so the properties resolve, but zero-sized,
-   clipped, and taken out of flow so it cannot add a gap between the groups it
-   sits among. */
+/* Measured, never seen. Laid out so the properties resolve, but zero-sized,
+   clipped and out of flow, so it adds no gap between the groups around it. */
 .ov-theme-probes {
   position: absolute;
   width: 0;

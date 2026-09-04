@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { normalizeHexInput } from "./ColorField";
 
 /**
- * Unit tests for the hex field's parsing rule. The token contract's colors
- * are `#RRGGBB` only: no alpha, no shorthand, no named colors (that leniency
- * is the theme file's, not the settings window's own text field).
+ * The hex field's parsing rule. The token contract's colors are `#RRGGBB`
+ * only: no alpha, no shorthand, no named colors (that leniency belongs to the
+ * theme file, not this text field).
  */
 
 describe("normalizeHexInput", () => {

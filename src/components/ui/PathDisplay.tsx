@@ -2,11 +2,10 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./Button";
 
-/** Padding for a button standing beside a path box. The box is `py-2` around
- *  `text-xs` inside a 1px border, so `size="sm"` on its own (`py-1`) renders
- *  8px shorter; `py-2` makes the two the same height. Exported so a caller
- *  that puts a second button in the same row matches Open instead of guessing
- *  at the number. */
+/** Padding for a button beside a path box. The box is `py-2` around `text-xs`
+ *  inside a 1px border, so `size="sm"` alone (`py-1`) renders 8px shorter;
+ *  `py-2` matches the heights. Exported so a caller adding a second button to
+ *  the row matches Open instead of guessing at the number. */
 export const PATH_ACTION_BUTTON_CLASS = "px-3 py-2";
 
 interface PathDisplayProps {

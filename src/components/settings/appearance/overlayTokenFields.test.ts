@@ -6,8 +6,7 @@ import {
 } from "./overlayTokenFields";
 
 /**
- * The descriptor table's own rules. Pure data and one filter, so nothing
- * renders here.
+ * The descriptor table's own rules. Pure data and one filter, no rendering.
  */
 
 const keysOf = (fields: readonly { key: string }[]) =>
@@ -44,7 +43,7 @@ describe("the token descriptors", () => {
     expect(tint?.descriptionKey).toBe(
       "settings.appearance.tokens.glassTint.description",
     );
-    // The bounds come from the apply layer's table, never a second copy.
+    // Bounds come from the apply layer's table, never a second copy.
     const bounds = OVERLAY_TOKEN_BOUNDS.glass_tint;
     expect(tint && "min" in tint ? tint.min : null).toBe(bounds.min);
     expect(tint && "max" in tint ? tint.max : null).toBe(bounds.max);
@@ -53,8 +52,8 @@ describe("the token descriptors", () => {
 });
 
 describe("overlayTokenFieldsFor", () => {
-  /** The whole point of the split. One control for the card's alpha, and it
-   *  is the one that paints the Material on screen. */
+  /** The point of the split. One control for the card's alpha, and it is the
+   *  one painting the Material on screen. */
   test("Flat shows the surface opacity and Glass the tint, never both", () => {
     const flat = keysOf(overlayTokenFieldsFor("color", "flat"));
     expect(flat).toContain("surface_opacity");
@@ -78,7 +77,7 @@ describe("overlayTokenFieldsFor", () => {
       const glass = keysOf(overlayTokenFieldsFor(group, "glass"));
       const shared = flat.filter((key) => glass.includes(key));
       expect(shared).toEqual(flat.filter((key) => key !== "surface_opacity"));
-      // The Material group in particular is untouched by the rule.
+      // The Material group is untouched by the rule.
       if (group === "material") expect(flat).toEqual(glass);
     }
   });

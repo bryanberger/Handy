@@ -1,11 +1,10 @@
 /**
- * Minimal ambient types for Bun's built-in test runner.
- *
- * The shim exists because `bun test` needs no dependency but `tsc` type-checks
- * everything under `src`, so `import { test } from "bun:test"` would not
- * resolve. It declares only the matchers the tests use. `@types/bun` would
- * pull `bun-types` into the frontend build, where it overrides DOM and Node
- * globals for every file.
+ * Minimal ambient types for Bun's built-in test runner. The shim exists
+ * because `bun test` needs no dependency but `tsc` type-checks everything
+ * under `src`, so `import { test } from "bun:test"` would not resolve. It
+ * declares only the matchers the tests use. `@types/bun` would pull
+ * `bun-types` into the frontend build, where it overrides DOM and Node globals
+ * for every file.
  */
 declare module "bun:test" {
   interface Matchers {

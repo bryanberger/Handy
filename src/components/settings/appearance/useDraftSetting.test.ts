@@ -18,11 +18,8 @@ function manualFrames() {
   };
 }
 
-/**
- * Unit tests for `DraftDebouncer`, the pure engine behind `useDraftSetting`.
- * Uses real (short) timers rather than a fake-timer library, so these assert
- * the actual debounce behaviour rather than a simulation of it.
- */
+/** Unit tests for `DraftDebouncer`, the pure engine behind `useDraftSetting`.
+ *  Real (short) timers, not a fake-timer library, so the debounce is real. */
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,14 +34,14 @@ describe("DraftDebouncer", () => {
         commits.push([key, value]);
       },
       (key) => settled.push(key),
-      30, // a short debounce so the test stays fast
+      30, // short debounce, so the test stays fast
     );
 
     debouncer.schedule("radius", 10);
     debouncer.schedule("radius", 20);
     debouncer.schedule("radius", 30);
 
-    // Nothing commits synchronously, and nothing before the window elapses.
+    // Nothing commits synchronously, nor before the window elapses.
     expect(commits).toEqual([]);
     expect(debouncer.isPending("radius")).toBe(true);
 
@@ -56,11 +53,10 @@ describe("DraftDebouncer", () => {
   });
 
   test("a whole color-picker drag collapses to one commit", async () => {
-    // The color swatch's rule, pinned here because this is where it lives.
-    // macOS's color panel is continuous and WebKit raises a form-control
-    // change event for every update it sends, so the swatch feeds the draft
-    // ~60 times a second and must never commit from that event itself. Sixty
-    // frames of a one-second drag have to reach the backend as one write.
+    // The color swatch's rule, pinned where it lives. macOS's color panel is
+    // continuous and WebKit raises a form-control change event per update, so
+    // the swatch feeds the draft ~60 times a second and must never commit from
+    // that event. Sixty frames of a one-second drag land as one write.
     const commits: Array<[string, string]> = [];
     const debouncer = new DraftDebouncer<string, string>(
       (key, value) => {
@@ -89,7 +85,7 @@ describe("DraftDebouncer", () => {
         commits.push([key, value]);
       },
       () => {},
-      10_000, // long enough that only an explicit flush could fire in time
+      10_000, // only an explicit flush can fire in time
     );
 
     debouncer.schedule("padding", 14);
@@ -133,10 +129,9 @@ describe("DraftDebouncer", () => {
   });
 
   test("a late-resolving commit cannot clear a newer edit's pending state", async () => {
-    // The first commit for "accent" takes a while to resolve (e.g. a slow
-    // IPC round trip); a second edit is scheduled and flushed before it
-    // finishes. onSettled must fire once per generation, and in an order
-    // that never marks the newer edit settled on behalf of the old one.
+    // The first commit for "accent" resolves slowly (a slow IPC round trip)
+    // while a second edit is scheduled and flushed. onSettled must fire once
+    // per generation, never marking the newer edit settled for the old one.
     let resolveFirst: (() => void) | undefined;
     const settled: string[] = [];
     let callCount = 0;
@@ -155,18 +150,17 @@ describe("DraftDebouncer", () => {
     );
 
     debouncer.schedule("accent", "#111111");
-    await sleep(20); // the first debounce fires and starts its slow commit
+    await sleep(20); // the first debounce fires, starting its slow commit
 
     debouncer.schedule("accent", "#222222");
-    await debouncer.flush("accent"); // the second commit resolves immediately
+    await debouncer.flush("accent"); // the second commit resolves at once
 
     expect(settled).toEqual(["accent"]); // only the second generation settled
 
     resolveFirst?.();
     await sleep(0);
 
-    // The stale first commit resolving afterwards must not add a second,
-    // misleading "settled" for a generation that is no longer current.
+    // The stale commit must not add a second "settled" for an old generation.
     expect(settled).toEqual(["accent"]);
   });
 
@@ -209,11 +203,9 @@ describe("DraftDebouncer", () => {
   });
 });
 
-/**
- * Unit tests for `FrameCoalescer`, the live-preview half of `useDraftSetting`.
- * The frame scheduler is injected, so these assert the coalescing rule itself
- * rather than a browser's timing.
- */
+/** Unit tests for `FrameCoalescer`, the live-preview half of `useDraftSetting`.
+ *  The frame scheduler is injected, so these assert the coalescing rule, not
+ *  a browser's timing. */
 describe("FrameCoalescer", () => {
   test("the first push after a quiet moment goes out immediately", () => {
     const frames = manualFrames();
@@ -255,7 +247,7 @@ describe("FrameCoalescer", () => {
     coalescer.push(1);
     frames.frame();
     expect(sent).toEqual([1]);
-    // Nothing more was queued, so the next push is a leading edge again.
+    // Nothing more queued, so the next push is a leading edge again.
     expect(frames.queued).toBe(0);
 
     coalescer.push(2);
@@ -289,11 +281,10 @@ describe("FrameCoalescer.flush and .cancel", () => {
     );
 
     coalescer.push(1);
-    coalescer.push(2); // held for the frame that has not come round yet
+    coalescer.push(2); // held for the frame still to come round
     expect(sent).toEqual([1]);
 
-    // What a commit does before it stores. 2 is the value about to be
-    // persisted, so it must also be the value last painted.
+    // A commit does this before storing, so the persisted 2 is painted last.
     coalescer.flush();
     expect(sent).toEqual([1, 2]);
 
@@ -314,18 +305,17 @@ describe("FrameCoalescer.flush and .cancel", () => {
     coalescer.push(2);
     coalescer.cancel();
 
-    // The abandoned value is gone, and the next push is immediate again
-    // rather than waiting for a frame that is no longer coming.
+    // The abandoned value is gone, and the next push is immediate again, not
+    // waiting on a frame that is no longer coming.
     coalescer.push(3);
     expect(sent).toEqual([1, 3]);
 
-    // The frame scheduled before the cancel must not deliver anything on its
-    // way past, and must not consume the new push's frame either.
+    // The pre-cancel frame delivers nothing and takes no new push's frame.
     frames.frame();
     expect(sent).toEqual([1, 3]);
 
-    // Ordinary coalescing carries on from there: 4 is a leading edge (the
-    // frame above found nothing and went quiet), 5 rides the frame after it.
+    // Coalescing carries on. 4 is a leading edge (the frame above found
+    // nothing and went quiet), 5 rides the frame after it.
     coalescer.push(4);
     coalescer.push(5);
     expect(sent).toEqual([1, 3, 4]);
@@ -347,22 +337,19 @@ describe("FrameCoalescer.flush and .cancel", () => {
   });
 });
 
-/**
- * Unit tests for `DraftEngine`, the ordering rules between the two clocks of
- * live editing, with React, Tauri and the browser all replaced by the injected
- * effects.
- */
+/** Unit tests for `DraftEngine`, the ordering rules between the two clocks of
+ *  live editing, with React, Tauri and the browser replaced by injected
+ *  effects. */
 describe("DraftEngine", () => {
-  /** A painted theme as the tokens it actually sets, which is all these tests
-   *  care about. */
+  /** A painted theme as the tokens it sets, all these tests care about. */
   function painted(theme: OverlayTheme): Record<string, unknown> {
     return Object.fromEntries(
       Object.entries(theme).filter(([, value]) => value !== null),
     );
   }
 
-  /** A store, an overlay and a display, all fake and all observable. The log
-   *  is one ordered list because ordering is what these tests are about. */
+  /** A store, an overlay and a display, all fake and observable. The log is
+   *  one ordered list because ordering is what these tests are about. */
   function harness(options: { canPaint?: () => boolean } = {}) {
     const frames = manualFrames();
     const log: Array<
@@ -389,26 +376,24 @@ describe("DraftEngine", () => {
   }
 
   test("a draft abandoned by a reset never lands: the overlay ends on the stored theme", () => {
-    // The bug this pins: dragging Size Scale and hitting that token's reset
-    // while the debounce is still pending. The commit is `null` over a token
-    // that was already inherit, so the backend has nothing to store, and the
-    // card was left showing whatever the finger last touched.
+    // The bug this pins. Reset Size Scale mid-drag, debounce still pending,
+    // and the commit is `null` over an already-inherit token, so the backend
+    // has nothing to store and the card kept whatever the finger last touched.
     const { engine, frames, log, storedTheme } = harness();
 
     engine.set("size_scale", 1.15); // leading edge, painted at once
-    engine.set("size_scale", 1.2); // held for the frame that has not come yet
+    engine.set("size_scale", 1.2); // held for the frame still to come
     engine.reset("size_scale");
     frames.frame(); // the frame the abandoned 1.2 would have ridden
 
     expect(log).toEqual([
       { paint: { size_scale: 1.15 } },
-      // The corrective frame: the theme the commit is about to store, painted
+      // The corrective frame, the theme the commit is about to store, painted
       // without waiting for the round trip. 1.2 never reaches the screen.
       { paint: {} },
       { commit: ["size_scale", null] },
     ]);
-    // Nothing was painted after the commit, and what is on screen is the
-    // inherit the store now holds.
+    // Nothing painted after the commit, and on screen is the store's inherit.
     expect(storedTheme().size_scale).toBe(null);
   });
 
@@ -416,8 +401,7 @@ describe("DraftEngine", () => {
     const { engine, log } = harness();
 
     engine.set("padding", 8);
-    // No frame comes round in between, so this one is only held, and it is
-    // the value about to be committed.
+    // No frame in between, so this one is only held and is committed next.
     engine.set("size_scale", 1.35);
     void engine.flush("size_scale");
 
@@ -451,7 +435,7 @@ describe("DraftEngine", () => {
 
     expect(log).toEqual([
       { paint: { radius: 12 } },
-      { paint: { radius: 16 } }, // flushed out of the coalescer by the commit
+      { paint: { radius: 16 } }, // flushed from the coalescer by the commit
       { commit: ["radius", 16] },
     ]);
   });

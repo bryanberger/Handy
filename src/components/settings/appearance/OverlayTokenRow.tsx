@@ -6,8 +6,8 @@ import type { OverlayThemeKey } from "@/lib/overlayTheme";
 import { ColorField } from "./ColorField";
 import type { OverlayTokenField } from "./overlayTokenFields";
 
-/** The row kinds this component renders: everything but the two enum tokens,
- *  which have their own selectors. */
+/** The row kinds this component renders: all but the two enum tokens, which
+ *  have their own selectors. */
 export type ValueTokenField = Extract<
   OverlayTokenField,
   { kind: "color" | "length" | "factor" }
@@ -15,8 +15,8 @@ export type ValueTokenField = Extract<
 
 export interface OverlayTokenRowProps {
   field: ValueTokenField;
-  /** For a colour row, the hex or `null` (inherit); for a numeric row, the
-   *  number the control shows, already defaulted. */
+  /** A colour row's hex or `null` (inherit); a numeric row's shown number,
+   *  already defaulted. */
   value: string | number | null;
   /** Colour rows only: the theme-aware value an unset token resolves to. */
   resolvedDefault?: string | null;
@@ -31,13 +31,12 @@ export interface OverlayTokenRowProps {
 /**
  * One overlay-theme token's row: a colour field, or a slider.
  *
- * Memoised, and that is the entire reason it exists as a component rather
- * than a `renderField` closure in the tab. A slider drag re-renders the tab on
- * every input event, and until this split that re-rendered all sixteen rows
- * with it. That was roughly 1200 row renders across a two-second drag, of
- * which sixteen were the row actually moving. The props here are the value,
- * three booleans/strings and three callbacks the tab holds stable, so every
- * row but the dragged one bails out.
+ * Memoised, the whole reason it is a component and not a `renderField` closure
+ * in the tab. A slider drag re-renders the tab per input event, which before
+ * this split re-rendered all sixteen rows, roughly 1200 row renders in a
+ * two-second drag, sixteen of them the row actually moving. Its props are the
+ * value, three booleans/strings and three callbacks the tab holds stable, so
+ * every row but the dragged one bails out.
  */
 const OverlayTokenRowInner: React.FC<OverlayTokenRowProps> = ({
   field,
@@ -73,9 +72,8 @@ const OverlayTokenRowInner: React.FC<OverlayTokenRowProps> = ({
   return (
     <div
       onPointerUp={() => onFlush(field.key)}
-      // React's synthetic onBlur bubbles (unlike the native `blur` event), so
-      // this fires when the range input inside loses focus, e.g. tabbing away
-      // mid-drag, which onPointerUp alone would miss.
+      // React's synthetic onBlur bubbles, unlike native `blur`, so a tab-away
+      // mid-drag blurs the range input and flushes, which onPointerUp misses.
       onBlur={() => onFlush(field.key)}
     >
       <Slider

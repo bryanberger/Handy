@@ -602,10 +602,9 @@ pub fn change_theme_setting(app: AppHandle, theme: String) -> Result<(), String>
     // live — they set `data-theme` on their own document and can't see this one.
     let _ = app.emit("theme-changed", parsed);
     // The overlay's native Glass carries half the card's surface tint, composed
-    // from the window's effective appearance when it was last written. The
-    // event above only reaches CSS, so without this the card repaints under the
-    // new theme while the glass behind it keeps the old tint, visible whenever
-    // the theme is switched with the Appearance tab's preview on screen.
+    // from the window's effective appearance when last written. The event above
+    // only reaches CSS, so without this the card repaints under the new theme
+    // while the glass keeps the old tint, visible in the Appearance tab's preview.
     crate::overlay_glass::reapply_appearance(&app);
     Ok(())
 }

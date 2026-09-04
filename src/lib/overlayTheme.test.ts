@@ -29,12 +29,11 @@ import {
 /**
  * Unit tests for the apply layer. Run with `bun test src`.
  *
- * Every expected value here is written out by hand from the token rules, the
- * README's worked example and the Glass neutrals, never read back off the
- * implementation.
+ * Every expected value is hand-written from the token rules, the README's
+ * worked example and the Glass neutrals, never read off the implementation.
  */
 
-/** A resolved payload with the given tokens; everything else inherits. */
+/** A resolved payload with the given tokens; the rest inherit. */
 function resolved(
   theme: Partial<OverlayTheme>,
   effective: Material = "flat",
@@ -55,14 +54,14 @@ function resolved(
       tokens: INHERIT_ALL,
       owned_keys: [],
       diagnostics: [],
-      // Added with the theme file, after this fixture was first written.
+      // Added with the theme file, after this fixture was written.
       diagnostics_total: 0,
       stale: false,
     },
   };
 }
 
-/** A stand-in for `document.documentElement` that records what was written. */
+/** A `document.documentElement` stand-in that records what was written. */
 function fakeRoot() {
   const properties = new Map<string, string>();
   const removed: string[] = [];
@@ -82,7 +81,7 @@ function fakeRoot() {
   return { element, properties, removed, dataset };
 }
 
-/** Run `body` against an in-memory localStorage holding `stored`. */
+/** Run `body` against in-memory localStorage holding `stored`. */
 function withStoredMirror(stored: string | null, body: () => void): void {
   const values = new Map<string, string>();
   if (stored !== null) values.set(OVERLAY_THEME_STORAGE_KEY, stored);
@@ -134,8 +133,7 @@ describe("inherit", () => {
     const writtenFirst = root.properties.size;
     root.removed.length = 0;
 
-    // Same accent, new radius. Only the radius is written again, and nothing
-    // is removed.
+    // Same accent, new radius. Only the radius is rewritten, nothing removed.
     applyOverlayTheme(
       root.element,
       resolved({ accent: "#7aa2f7", radius: 12 }),
@@ -144,17 +142,15 @@ describe("inherit", () => {
     expect(root.properties.get("--ov-radius")).toBe("12px");
     expect(root.properties.size).toBe(writtenFirst);
 
-    // Dropping the radius removes that one property and leaves the accent.
+    // Dropping the radius removes it and leaves the accent.
     applyOverlayTheme(root.element, resolved({ accent: "#7aa2f7" }));
     expect(root.removed).toEqual(["--ov-radius"]);
     expect(root.properties.get("--s-accent")).toBe("#7aa2f7");
   });
 
-  // The Appearance tab shows these numbers on a control while its token is
-  // unset, so they have to be what the overlay is actually painted with. The
-  // literals are transcribed from the `:root` block of RecordingOverlay.css,
-  // and a Rust test (`overlay_token_inherit_values_match_the_css`) reads both
-  // files and fails if either moves.
+  // The Appearance tab shows these while a token is unset, so they must be what
+  // the overlay paints, transcribed from `:root` in RecordingOverlay.css.
+  // `overlay_token_inherit_values_match_the_css` in Rust fails if either moves.
   test("every numeric token has the value the stylesheet inherits", () => {
     const lengths: Record<string, number> = {
       size_scale: 1,
@@ -172,7 +168,7 @@ describe("inherit", () => {
           "regular",
         ),
       ).toBe(expected);
-      // A length is one number on both Materials and both Glass styles.
+      // A length is one number on both Materials and Glass styles.
       expect(
         inheritedTokenValue(
           key as keyof typeof OVERLAY_TOKEN_BOUNDS,
@@ -188,17 +184,15 @@ describe("inherit", () => {
     expect(inheritedTokenValue("glass_tint", "glass", "regular")).toBe(
       GLASS_TINT_INHERIT,
     );
-    // The tint is one number for both Glass styles. Measured against
-    // Spotlight and left alone: see the constant's own doc.
+    // One tint for both Glass styles. Measured against Spotlight; see its doc.
     expect(inheritedTokenValue("glass_tint", "glass", "clear")).toBe(
       GLASS_TINT_INHERIT,
     );
   });
 
-  // The one token whose inherit is not one number. The card's edge is
-  // stronger over glass and stronger again over Clear glass, and asking for
-  // it per Material and Glass style is what keeps that rule out of every
-  // caller.
+  // The one token whose inherit is not a single number. The card's edge is
+  // stronger over glass and stronger again over Clear, so asking per Material
+  // and Glass style keeps that rule out of every caller.
   test("the border alpha inherits per Material and Glass style", () => {
     expect(inheritedTokenValue("border_opacity", "flat", "regular")).toBe(
       BORDER_OPACITY_INHERIT.flat,
@@ -215,10 +209,9 @@ describe("inherit", () => {
     );
   });
 
-  // Spotlight's capsule carries a bright rim in both appearances. Clear is
-  // the one surface of ours dark enough in both for a white edge to read, so
-  // it is the one that inherits white; Flat and Regular keep the foreground
-  // mix, which is what stays visible over their near-white Light card.
+  // Spotlight's capsule carries a bright rim in both appearances. Clear is our
+  // only surface dark enough in both for white to read, so only it inherits
+  // white. Flat and Regular keep the foreground mix their Light card shows.
   test("only Clear glass inherits a white rim", () => {
     expect(inheritedBorder("glass", "clear")).toEqual({
       color: BORDER_INHERIT_CLEAR,
@@ -238,9 +231,8 @@ describe("inherit", () => {
     }
   });
 
-  // Every bound has an inherit and every inherit has a bound. A token that
-  // gained one and not the other would be a slider with no value or a value
-  // no slider can show.
+  // Every bound has an inherit and every inherit has a bound. One without the
+  // other is a slider with no value, or a value no slider can show.
   test("every numeric token's inherit is inside its own bounds", () => {
     for (const key of Object.keys(
       OVERLAY_TOKEN_BOUNDS,
@@ -320,7 +312,7 @@ describe("derivations", () => {
   });
 
   test("a surface alone picks its foreground by WCAG contrast", () => {
-    // theme.css's two inks: #0f0f0f on a light card, #fbfbfb on a dark one.
+    // theme.css's two inks: #0f0f0f on light, #fbfbfb on dark.
     expect(autoForeground("#fbfbfb")).toBe("#0f0f0f");
     expect(autoForeground("#1a1b26")).toBe("#fbfbfb");
 
@@ -353,8 +345,8 @@ describe("derivations", () => {
   test("the numeric bounds are the contract's", () => {
     expect(OVERLAY_TOKEN_BOUNDS).toEqual({
       surface_opacity: { min: 0.3, max: 1.0, step: 0.01 },
-      // The Glass tint reaches zero, where the Flat opacity stops at 0.30.
-      // Untinted glass is a look; an invisible Flat card is not.
+      // The Glass tint reaches zero, the Flat opacity stops at 0.30. Untinted
+      // glass is a look; an invisible Flat card is not.
       glass_tint: { min: 0.0, max: 1.0, step: 0.01 },
       border_opacity: { min: 0.0, max: 1.0, step: 0.01 },
       size_scale: { min: 0.8, max: 1.5, step: 0.05 },
@@ -389,9 +381,8 @@ describe("derivations", () => {
   });
 
   test("a zero border width still writes the property", () => {
-    // 0 is a value, not "unset". Without the property the stylesheet's own
-    // 1px would come back and the native window would be two points wider
-    // than the card.
+    // 0 is a value, not "unset". Without the property the stylesheet's own 1px
+    // comes back and the native window is two points wider than the card.
     expect(
       resolveOverlayThemeVars(resolved({ border_width: 0 }))["--ov-border-w"],
     ).toBe("0px");
@@ -437,9 +428,8 @@ describe("the border", () => {
 
 describe("Glass", () => {
   test("writes the surface, the neutrals and the edge unconditionally", () => {
-    // The tint is thin enough for the blur to read as blur, and the edge is
-    // the same foreground mix Flat uses, only at a stronger alpha. Regular is
-    // the style an unset `glass_style` resolves to.
+    // The tint is thin enough for the blur to read as blur; the edge is Flat's
+    // foreground mix at a stronger alpha. Unset `glass_style` means Regular.
     expect(GLASS_TINT_INHERIT).toBe(0.45);
     expect(BORDER_OPACITY_INHERIT.glass).toBe(0.25);
 
@@ -454,9 +444,8 @@ describe("Glass", () => {
   });
 
   // Clear is the see-through style, so its card is dark enough in both app
-  // themes to carry the white highlight Spotlight's capsule carries. Only
-  // the edge moves: the tint, the neutrals and the surface are the style's
-  // business natively, not the card's.
+  // themes to carry Spotlight's white highlight. Only the edge moves. The
+  // tint, neutrals and surface are the native style's business, not the card's.
   test("Clear glass swaps the foreground hairline for a white rim", () => {
     const clear = resolveOverlayThemeVars(
       resolved({ glass_style: "clear" }, "glass"),
@@ -475,8 +464,8 @@ describe("Glass", () => {
     }
   });
 
-  // The rim is Glass's alone. Under Flat the style is a token with nothing to
-  // draw, so a stored `glass_style` cannot leak a white edge onto a Flat card.
+  // The rim is Glass's alone. Under Flat the style has nothing to draw, so a
+  // stored `glass_style` cannot leak a white edge onto a Flat card.
   test("the Glass style never reaches a Flat card's edge", () => {
     expect(
       resolveOverlayThemeVars(
@@ -485,8 +474,8 @@ describe("Glass", () => {
     ).toBe("color-mix(in srgb, var(--s-text) 40%, transparent)");
   });
 
-  // Rule 2 at the boundary: the localStorage mirror bypasses Rust, so a
-  // hand-edited style falls back to the one an unset token resolves to.
+  // Rule 2 at the boundary. The localStorage mirror bypasses Rust, so a
+  // hand-edited style falls back to what an unset token resolves to.
   test("an unreadable Glass style inherits Regular's edge", () => {
     expect(
       resolveOverlayThemeVars(
@@ -495,15 +484,13 @@ describe("Glass", () => {
     ).toBe("color-mix(in srgb, var(--s-text) 25%, transparent)");
   });
 
-  // The invariant the two constants above exist for: what an unset token
-  // resolves to is what the card is actually painted with, in every
-  // combination of Material and Glass style. A default that only the tab's
-  // slider knew about would be a number the overlay never draws.
+  // The invariant the two constants above exist for. What an unset token
+  // resolves to is what the card is painted with, for every Material and Glass
+  // style. A default only the tab's slider knew about would never be drawn.
   //
-  // Written out as literals rather than read back from `inheritedBorder`,
-  // because `inheritedTokenValue` delegates to that function: comparing the
-  // two would assert a function against its own body and pass whatever the
-  // defaults became.
+  // Literals rather than a read-back from `inheritedBorder`, because
+  // `inheritedTokenValue` delegates to it. Comparing the two would assert a
+  // function against its own body and pass whatever the defaults became.
   test("an all-unset theme paints exactly the inherited edge", () => {
     const edges = [
       {
@@ -536,14 +523,13 @@ describe("Glass", () => {
       },
     ] as const;
     for (const { material, glassStyle, color, opacity, painted } of edges) {
-      // What the tab shows on the two controls while both tokens are unset.
+      // What the tab shows on both controls while the tokens are unset.
       expect(inheritedBorder(material, glassStyle)).toEqual({ color, opacity });
       expect(inheritedTokenValue("border_opacity", material, glassStyle)).toBe(
         opacity,
       );
-      // And what the card is painted with. Flat writes no edge at all while
-      // every token is unset (the removal rule), so the alpha is handed back
-      // in to make both halves of one card observable in one string.
+      // And what the card paints. Flat writes no edge with all tokens unset
+      // (removal rule), so the alpha is handed back to show both halves.
       expect(
         resolveOverlayThemeVars(
           resolved(
@@ -563,11 +549,10 @@ describe("Glass", () => {
     ).toBe("color-mix(in srgb, #7aa2f7 50%, transparent)");
   });
 
-  /** Liquid Glass (macOS 26) paints the same card as the older blur. The
-   *  engine changes which native view draws behind it and which of the two
-   *  engine tokens applies, never what the card writes. Rust hands
-   *  `NSGlassEffectView` the same surface as its `tintColor`, composed from
-   *  the identical `surface`/`glass_tint` pair. */
+  /** Liquid Glass (macOS 26) paints the same card as the older blur. The engine
+   *  picks the native view behind it and which of the two engine tokens
+   *  applies, never what the card writes. Rust hands `NSGlassEffectView` that
+   *  surface as its `tintColor`, from the same `surface`/`glass_tint` pair. */
   test("the engine does not change what the card paints", () => {
     const older = resolveOverlayThemeVars(resolved({}, "glass"));
     const liquid = resolveOverlayThemeVars(resolved({}, "glass", "liquid"));
@@ -590,8 +575,8 @@ describe("Glass", () => {
 });
 
 describe("the two alphas", () => {
-  /** The bug the split exists for. A card set opaque under Flat used to
-   *  follow the user into Glass and paint an opaque pane. */
+  /** The bug the split exists for. An opaque Flat card used to follow the user
+   *  into Glass and paint an opaque pane. */
   test("an opaque Flat card is still glass the moment Glass renders", () => {
     const opaqueFlat: Partial<OverlayTheme> = {
       surface: "#000000",
@@ -601,8 +586,8 @@ describe("the two alphas", () => {
     expect(resolveOverlayThemeVars(resolved(opaqueFlat))["--s-surface"]).toBe(
       "color-mix(in srgb, #000000 100%, transparent)",
     );
-    // Same theme, Glass rendering. The opacity is not read, so the tint is
-    // the Glass default and the blur shows through.
+    // Same theme under Glass. The opacity is not read, so the tint is the
+    // Glass default and the blur shows through.
     expect(
       resolveOverlayThemeVars(resolved(opaqueFlat, "glass"))["--s-surface"],
     ).toBe("color-mix(in srgb, #000000 45%, transparent)");
@@ -620,7 +605,7 @@ describe("the two alphas", () => {
       )["--s-surface"],
     ).toBe("color-mix(in srgb, #1a1b26 60%, transparent)");
 
-    // A fully transparent tint is a value: untinted glass, Apple's own look.
+    // A fully transparent tint is a value. Untinted glass is Apple's own look.
     expect(
       resolveOverlayThemeVars(resolved({ glass_tint: 0 }, "glass"))[
         "--s-surface"
@@ -630,7 +615,7 @@ describe("the two alphas", () => {
 
   test("the Glass tint writes nothing under Flat", () => {
     // Not even the surface property. Under Flat an untouched card is the
-    // stylesheet's own 98%, and the tint token has no say in it.
+    // stylesheet's own 98%, and the tint has no say in it.
     expect(resolveOverlayThemeVars(resolved({ glass_tint: 0.15 }))).toEqual({});
   });
 
@@ -639,13 +624,13 @@ describe("the two alphas", () => {
     expect(resolveOverlayThemeVars(surfaceOnly)["--s-surface"]).toBe(
       "color-mix(in srgb, #1a1b26 45%, transparent)",
     );
-    // …and it still picks the foreground, as it does under Flat.
+    // …and it still picks the foreground, as under Flat.
     expect(resolveOverlayThemeVars(surfaceOnly)["--s-text"]).toBe("#fbfbfb");
   });
 });
 
 describe("the worked example", () => {
-  /** The README's "A full theme", every one of the sixteen tokens set. */
+  /** The README's "A full theme", all sixteen tokens set. */
   const FULL_THEME: Partial<OverlayTheme> = {
     accent: "#7aa2f7",
     surface: "#1a1b26",
@@ -666,15 +651,12 @@ describe("the worked example", () => {
   };
 
   // The README's full theme file and the CSS it resolves to. Its
-  // `material: "glass"` is read here with the Flat neutrals, so this is the
-  // rendering where Glass was requested and downgraded (the percentages in
-  // the Glass case are covered above), which is also why `--s-surface`
-  // carries the 92% Flat opacity rather than the 45% tint. `glass_material`
-  // and `glass_style` are the two tokens with no CSS at all, each setting a
-  // native view's property, so neither writes anything. The derivation rules
-  // mix the neutrals from `var(--s-text)`, which resolves to the `--s-text`
-  // written beside them, while the explicit `border` replaces that mix for
-  // the edge.
+  // `material: "glass"` is read with the Flat neutrals, so this is the
+  // downgraded rendering (Glass percentages are covered above) and why
+  // `--s-surface` carries the 92% Flat opacity, not the 45% tint.
+  // `glass_material` and `glass_style` write no CSS, each setting a native
+  // view property. The neutrals mix from `var(--s-text)`, resolving to the
+  // `--s-text` beside them, while a set `border` replaces it for the edge.
   test("resolves to exactly the fourteen properties listed", () => {
     expect(resolveOverlayThemeVars(resolved(FULL_THEME))).toEqual({
       "--s-accent": "#7aa2f7",
@@ -695,10 +677,9 @@ describe("the worked example", () => {
   });
 
   test("every property it writes is registered for removal", () => {
-    // With every token set at once the module writes everything it can write,
-    // so the two lists have to match exactly. A property missing from
-    // OVERLAY_THEME_CSS_PROPERTIES would keep painting after its token went
-    // back to inherit, and one listed but never written would be dead weight.
+    // Every token set means the module writes all it can, so the lists must
+    // match. One missing from OVERLAY_THEME_CSS_PROPERTIES paints on after its
+    // token returns to inherit; one listed but never written is dead weight.
     const written = Object.keys(
       resolveOverlayThemeVars(resolved(FULL_THEME, "glass")),
     );
@@ -734,7 +715,7 @@ describe("the removal rule", () => {
 
 describe("the boundary re-validation", () => {
   test("malformed values from a hand-edited mirror are treated as unset", () => {
-    // Shaped like a payload, but every value is one Rust would never produce.
+    // Payload-shaped, but every value is one Rust would never produce.
     const stale = JSON.parse(`{
       "theme": {
         "accent": "red",

@@ -5,20 +5,19 @@ import { Dialog } from "@/components/ui/Dialog";
 import ResetIcon from "@/components/icons/ResetIcon";
 
 export interface OverlayThemeResetProps {
-  /** Disabled once every overlay-theme token already equals the default
-   *  (every token inherits). */
+  /** Disabled once every overlay-theme token already inherits the default. */
   disabled: boolean;
   /** True when the theme file owns at least one token. The confirmation
-   *  wording changes because those values survive the reset. */
+   *  wording changes, since those values survive the reset. */
   hasThemeFileOwnership: boolean;
   onConfirm: () => void;
 }
 
 /**
- * The whole-theme reset: a small ghost button in the On-Screen Preview card,
- * confirmed with a dialog before it restores every overlay color, size and
- * spacing token to inherit. Overlay style and position are untouched, since
- * this only resets `overlay_theme`.
+ * The whole-theme reset. A small ghost button in the On-Screen Preview card
+ * that, after a confirming dialog, restores every overlay color, size and
+ * spacing token to inherit. Overlay style and position survive, since it
+ * resets `overlay_theme` only.
  */
 export const OverlayThemeReset: React.FC<OverlayThemeResetProps> = ({
   disabled,

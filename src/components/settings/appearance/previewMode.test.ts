@@ -14,10 +14,9 @@ import {
 } from "./previewMode";
 
 /**
- * Unit tests for preview mode's state machine, the tab's half of the
- * contract. The backend enforces the same rules for itself (a preview refuses
- * to start while recording, ends when a real recording takes the overlay);
- * these pin what the tab does about them.
+ * Unit tests for preview mode's state machine, the tab's half of the contract.
+ * The backend enforces the same rules itself (no start while recording, an end
+ * when a real recording takes the overlay); these pin the tab's half.
  */
 
 const running = (state: PreviewState = "cycle"): PreviewMode => ({
@@ -32,8 +31,8 @@ describe("previewChipsFor", () => {
   });
 
   test("each style offers only the states it actually has", () => {
-    // Capture is one state under two names: Live calls it listening (the
-    // panel is open, text arriving), Minimal calls it recording.
+    // Capture is one state under two names. Live calls it listening (the panel
+    // is open, text arriving), Minimal calls it recording.
     expect(previewChipsFor("live")).toEqual([
       "cycle",
       "arming",
@@ -160,9 +159,8 @@ describe("reducePreview", () => {
   });
 
   test("a real recording ends the preview without a call", () => {
-    // The backend already stopped driving, and deliberately left the overlay
-    // to the recording that took it. Telling it to stop would hide a session
-    // the user actually started.
+    // The backend already stopped driving and deliberately left the overlay to
+    // the recording. Telling it to stop would hide a session the user started.
     const { mode, call } = reducePreview(running("listening"), {
       kind: "preempted",
     });
@@ -199,7 +197,7 @@ describe("reducePreview", () => {
 });
 
 /** Nothing in the way: no preview on screen, an overlay to show it on, no
- *  recording, and a Mac that can actually draw glass right now. */
+ *  recording, and a Mac that can draw glass right now. */
 const IDLE_TAB: PreviewAutoStartState = {
   running: false,
   style: "live",
@@ -222,9 +220,8 @@ describe("autoStartFor", () => {
     });
   });
 
-  /** Flat is what the overlay looks like everywhere else already; there is
-   *  nothing new to show, and starting a preview for it would be a window
-   *  appearing in answer to "make it plain". */
+  /** Flat is already what the overlay looks like everywhere else; nothing new
+   *  to show, and a preview would be a window answering "make it plain". */
   test("picking Flat shows nothing", () => {
     expect(autoStartFor({ kind: "material", to: "flat" }, idle)).toBeNull();
   });
@@ -238,8 +235,8 @@ describe("autoStartFor", () => {
     ).toBeNull();
   });
 
-  /** The same refusals the Start button obeys. What may not be started by
-   *  hand may not be started on the user's behalf. */
+  /** The same refusals the Start button obeys. What may not be started by hand
+   *  may not be started on the user's behalf. */
   test("it refuses for every reason the button refuses", () => {
     expect(
       autoStartFor(
@@ -252,9 +249,9 @@ describe("autoStartFor", () => {
     ).toBeNull();
   });
 
-  /** Glass the machine supports but cannot draw right now renders Flat, so
-   *  starting a preview would answer "show me glass" with the card already
-   *  there. macOS Reduce Transparency is the case that prompted this. */
+  /** Glass the machine supports but cannot draw now renders Flat, so a preview
+   *  would answer "show me glass" with the card already there. macOS Reduce
+   *  Transparency is that case. */
   test("Glass that would not actually render shows nothing", () => {
     expect(
       autoStartFor(
@@ -301,8 +298,8 @@ describe("answerPreviewRequest", () => {
 
   test("a request already answered is never answered again", () => {
     expect(answerPreviewRequest(glass, glass.seq, IDLE_TAB)).toBeNull();
-    // Not even once the state around it moves. That is what keeps a later
-    // style, recording or availability change from re-firing an answered pick.
+    // Not even once the state around it moves. That keeps a later style,
+    // recording or availability change from re-firing an answered pick.
     expect(
       answerPreviewRequest(glass, glass.seq, {
         ...IDLE_TAB,
@@ -312,8 +309,8 @@ describe("answerPreviewRequest", () => {
   });
 
   test("an answer of 'leave the screen alone' still counts as answered", () => {
-    // Picking Flat starts nothing, but the pick was dealt with, so the next
-    // render must not reconsider it.
+    // Flat starts nothing, but the pick was dealt with, so the next render must
+    // not reconsider it.
     const flat: PreviewChangeRequest = {
       change: { kind: "material", to: "flat" },
       seq: 2,
@@ -375,11 +372,11 @@ describe("the auto-start transition", () => {
 describe("overlayAcceptsDrafts", () => {
   test("only a running preview with nothing recording may be repainted live", () => {
     expect(overlayAcceptsDrafts(running(), false)).toBe(true);
-    // Pre-empted: the tab still thinks its preview is running (it learns
-    // otherwise from the next poll), and the card belongs to the recording.
+    // Pre-empted. The tab still thinks its preview runs (the next poll tells it
+    // otherwise) and the card belongs to the recording.
     expect(overlayAcceptsDrafts(running(), true)).toBe(false);
-    // Stopped: there is nothing of the tab's on screen to paint, so a drag
-    // must not send one IPC message per frame for the backend to refuse.
+    // Stopped. Nothing of the tab's is on screen to paint, so a drag must not
+    // send one IPC message per frame for the backend to refuse.
     expect(overlayAcceptsDrafts(IDLE_PREVIEW, false)).toBe(false);
     expect(overlayAcceptsDrafts(IDLE_PREVIEW, true)).toBe(false);
   });

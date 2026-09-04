@@ -2,9 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { cardShape, liveCardState } from "./cardShape";
 
 /**
- * Unit tests for the Live card's shape derivation. It has two consumers:
- * `OverlayCard`, which renders the flags, and `cardShape`, which reports the
- * shape to the backend. The point of these tests is that both read one rule.
+ * Unit tests for the Live card's shape derivation. `OverlayCard` renders the
+ * flags, `cardShape` reports the shape to the backend, and both read one rule.
  */
 
 const NO_TEXT = { committed: "", tentative: "" };

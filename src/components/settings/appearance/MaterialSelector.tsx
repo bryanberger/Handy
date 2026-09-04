@@ -7,8 +7,8 @@ import type { GlassSupport, Material } from "@/bindings";
 export interface MaterialSelectorProps {
   value: Material;
   onSelect: (value: Material) => void;
-  /** From the resolved theme payload, never a platform check in TypeScript,
-   *  so the tab and the backend can never disagree about Glass. */
+  /** From the resolved theme payload, never a TypeScript platform check, so
+   *  the tab and the backend cannot disagree about Glass. */
   glassSupport: GlassSupport;
   locked?: boolean;
   lockedDescription?: string;
@@ -16,10 +16,9 @@ export interface MaterialSelectorProps {
 }
 
 /**
- * The Material row, always shown, everywhere. Off macOS, or wherever Glass
- * failed to install, the option stays selectable-but-disabled with a
- * "(macOS only)" label rather than hidden, because the token still exists in
- * the theme file and a hidden row would leave no explanation.
+ * The Material row is always shown. Where Glass is unsupported (off macOS, or a
+ * failed install) it is disabled and labelled "(macOS only)", not hidden,
+ * because the token exists in the theme file and hiding explains nothing.
  */
 const MaterialSelectorInner: React.FC<MaterialSelectorProps> = ({
   value,
@@ -42,16 +41,14 @@ const MaterialSelectorInner: React.FC<MaterialSelectorProps> = ({
     },
   ];
 
-  // Glass stays selectable on a Mac that can't render it right now, since
-  // disabling it would strand the user's preference for when the machine can
-  // again. The note explains why Flat renders instead, without naming a
-  // cause. The payload carries `supported` and `available` and nothing else,
-  // so asserting a cause (Reduce Transparency, say) would be a guess.
+  // Glass stays selectable when a Mac can't render it now. Disabling would
+  // strand the preference until the machine can again. The note says why Flat
+  // renders instead without naming a cause, since the payload carries only
+  // `supported` and `available`. A cause (Reduce Transparency, say) is a guess.
   const showUnavailableNote = glassSupport.supported && !glassSupport.available;
-  // When Glass is what the user is looking at, the line under the row is
-  // better spent pointing at the control that decides how glassy it is. The
-  // two are mutually exclusive by construction, so the row never grows two
-  // notes.
+  // While Glass is showing, the line under the row is better spent pointing
+  // at the control that decides how glassy it is. The two are mutually
+  // exclusive by construction, so the row never grows two notes.
   const showGlassHint = value === "glass" && glassSupport.available;
 
   return (
@@ -87,6 +84,6 @@ const MaterialSelectorInner: React.FC<MaterialSelectorProps> = ({
   );
 };
 
-/** Memoised, because the Appearance tab re-renders on every frame of a
- *  slider drag and a drag cannot have changed this row. */
+/** Memoised, because the Appearance tab re-renders every frame of a slider
+ *  drag, which cannot have changed this row. */
 export const MaterialSelector = React.memo(MaterialSelectorInner);

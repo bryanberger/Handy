@@ -8,9 +8,8 @@ interface CardShapeReporterOptions {
   isVisible: boolean;
   /**
    * Whether the effective Material is Glass. The caller already holds the
-   * resolved overlay theme, pulling one on every show and listening for
-   * changes, so the material arrives from there rather than being fetched
-   * a second time here.
+   * resolved overlay theme, pulling one on every show and listening for changes,
+   * so the material comes from there rather than a second fetch here.
    */
   glassActive: boolean;
   state: OverlayState;
@@ -21,15 +20,12 @@ interface CardShapeReporterOptions {
 /**
  * Reports the overlay card's shape to the backend on every change.
  *
- * Under Glass the native window is the card (window slack is zero), and the
- * Live panel's open/collapsed morph is a pure webview decision driven by
- * streamed text and phase, which the backend cannot see any other way. The
- * report also tells the backend that the card has painted, which is what
- * reveals the native blur, so the first report of a session matters even
- * when it repeats the shape the backend already assumed.
+ * Under Glass the native window is the card (window slack is zero), and the Live panel's
+ * open/collapsed morph is a webview decision from streamed text and phase the backend
+ * cannot otherwise see. The report also says the card has painted, revealing the native
+ * blur, so a session's first report matters even when it repeats the assumed shape.
  *
- * Under Flat, and off macOS where the effective Material is never Glass,
- * this sends no message at all.
+ * Under Flat, and off macOS where the effective Material is never Glass, this sends nothing.
  */
 export function useCardShapeReporter({
   isVisible,

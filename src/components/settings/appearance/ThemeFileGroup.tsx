@@ -21,14 +21,12 @@ import type {
   ThemeFileDiagnosticCode,
 } from "@/bindings";
 
-/** The settings-window theme as the v1 document a theming tool would read.
- *  Only set tokens are emitted, so an all-inherit theme copies as
- *  `{"version": 1}`. Keys come out in the contract's own order
- *  (`INHERIT_ALL` declares it) rather than whatever order the runtime object
- *  happens to carry, so the copied document is byte-identical to the
- *  contract's examples. `OnScreenPreview`'s "Copy theme as JSON" button
- *  calls this. It lives here, beside the rest of the theme-file contract,
- *  rather than in a component file that imports CSS. */
+/** The settings-window theme as the v1 document a theming tool reads. Only
+ *  set tokens are emitted, so an all-inherit theme copies as `{"version": 1}`.
+ *  Keys come out in the contract's order (`INHERIT_ALL` declares it), not the
+ *  runtime object's, so the copy is byte-identical to the contract's examples.
+ *  `OnScreenPreview`'s "Copy theme as JSON" button calls this. It sits with
+ *  the theme-file contract, away from CSS-importing components. */
 export function themeAsJsonDocument(theme: OverlayTheme): string {
   const doc: Record<string, unknown> = { version: 1 };
   (Object.keys(INHERIT_ALL) as OverlayThemeKey[]).forEach((key) => {
@@ -38,12 +36,11 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
   return JSON.stringify(doc, null, 2);
 }
 
-/** The tokens the Appearance tab has a row for under one Material. It asks
- *  for every group's rows the same way the groups themselves are rendered, so
- *  a token that gains, loses or shares a row is counted without a second edit.
- *  Two of the sixteen are always absent: `glass_material`, which drives the
- *  pre-macOS-26 fallback engine and is set from the theme file alone, and
- *  whichever alpha belongs to the other Material. */
+/** The tokens with a row in the Appearance tab under one Material. It asks
+ *  for rows exactly as the groups render them, so a token that gains, loses
+ *  or shares a row needs no second edit. Two of the sixteen never appear:
+ *  `glass_material`, which only drives the pre-macOS-26 fallback engine and
+ *  is set from the theme file, and the other Material's alpha. */
 function keysWithARow(material: Material): Set<OverlayThemeKey> {
   return new Set<OverlayThemeKey>(
     OVERLAY_TOKEN_GROUPS.flatMap((group) =>
@@ -53,15 +50,14 @@ function keysWithARow(material: Material): Set<OverlayThemeKey> {
 }
 
 /**
- * What the "this file sets N of M values" line counts: only the tokens the
+ * What the "this file sets N of M values" line counts. Only the tokens the
  * tab can show as locked right now, on the Material being painted.
  *
- * Otherwise a file that sets a token with no row on screen would count as
- * owning a value the user cannot find any control for, and the total would
- * promise rows that are not there. `glass_material` has none at all, and the
- * two alphas share one slot, so fourteen of the sixteen tokens are showing at
- * any moment. The tokens are still honoured. This is a counting rule for one
- * sentence, not a filter on the file.
+ * Otherwise a file setting a row-less token would count as owning a value
+ * with no control, and the total would promise rows that are not there.
+ * `glass_material` has no row and the two alphas share one slot, so fourteen
+ * of the sixteen ever show. The tokens still apply; this rule counts one
+ * sentence, not the file.
  */
 export function lockedTokenCounts(
   ownedKeys: readonly string[],
@@ -80,8 +76,8 @@ export function lockedTokenCounts(
 const DIAGNOSTIC_I18N_KEYS: Record<ThemeFileDiagnosticCode, string> = {
   malformed_document:
     "settings.appearance.themeFile.diagnostics.malformedDocument",
-  // Reuses the dedicated "newer version" copy rather than a near-duplicate
-  // string. One distinct code, one distinct message.
+  // Reuses the dedicated "newer version" copy, not a near-duplicate string.
+  // One distinct code, one distinct message.
   unsupported_version: "settings.appearance.themeFile.newerVersion",
   unknown_key: "settings.appearance.themeFile.diagnostics.unknownKey",
   wrong_type: "settings.appearance.themeFile.diagnostics.wrongType",
@@ -90,8 +86,8 @@ const DIAGNOSTIC_I18N_KEYS: Record<ThemeFileDiagnosticCode, string> = {
   unreadable: "settings.appearance.themeFile.diagnostics.unreadable",
 };
 
-/** The i18n key a diagnostic's stable `code` translates to; `key` (a token
- *  name, or a comma-joined list for `unknown_key`) is passed as `{{key}}`. */
+/** The i18n key a diagnostic's stable `code` maps to. `key` (a token name, or
+ *  a comma-joined list for `unknown_key`) is passed as `{{key}}`. */
 export function diagnosticI18nKey(code: ThemeFileDiagnosticCode): string {
   return DIAGNOSTIC_I18N_KEYS[code];
 }
@@ -105,8 +101,8 @@ const MAX_SHOWN_DIAGNOSTICS = 5;
 
 export interface ThemeFileGroupProps {
   file: ResolvedOverlayTheme["file"];
-  /** The effective Material, which decides how many rows are on screen for
-   *  the "sets N of M values" line. See [`lockedTokenCounts`]. */
+  /** The effective Material, which sets how many rows are on screen for the
+   *  "sets N of M values" line. See [`lockedTokenCounts`]. */
   material: Material;
   onReload: () => void;
   isReloading: boolean;
@@ -114,10 +110,10 @@ export interface ThemeFileGroupProps {
 }
 
 /**
- * The Theme File group: where the effective `overlay_theme.json` is, a
- * Reload button beside it, and a capped list of anything the reader had to
- * ignore or clamp. Each per-token lock note lives on that token's own
- * control (ColorField / Slider / MaterialSelector), not here.
+ * The Theme File group: where the effective `overlay_theme.json` is, a Reload
+ * button, and a capped list of what the reader ignored or clamped. Each
+ * token's lock note lives on its own control (ColorField / Slider /
+ * MaterialSelector), not here.
  */
 export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
   file,
@@ -128,16 +124,14 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // Two paths, because the app is only granted `opener:default`. That covers
-  // `reveal_item_in_dir` but not `open_path`, so revealing is all the
-  // frontend can do on its own. When the file exists, reveal it (Finder /
-  // Explorer opens its folder with the file selected). When it does not,
-  // there is no item to reveal and, more to the point, usually no folder
-  // either: the path shown is `~/.config/handy/`, which most users have never
-  // had a reason to create. So that case goes to Rust, which creates that one
-  // folder and opens it. Under `HANDY_OVERLAY_THEME_FILE` it creates nothing
-  // and opens the nearest folder that already exists, since that path is the
-  // user's, not Handy's.
+  // Two paths, because the app only has `opener:default`. That covers
+  // `reveal_item_in_dir` but not `open_path`, so the frontend can only reveal.
+  // If the file exists, reveal it (Finder / Explorer opens its folder with the
+  // file selected). If not, there is nothing to reveal and usually no folder
+  // either, since `~/.config/handy/` is one most users never had reason to
+  // create. That case goes to Rust, which creates that one folder and opens
+  // it. Under `HANDY_OVERLAY_THEME_FILE` it creates nothing and opens the
+  // nearest existing folder, since that path is the user's, not Handy's.
   const handleOpen = async () => {
     if (!file.path) return;
     try {

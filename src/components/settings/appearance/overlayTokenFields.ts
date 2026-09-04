@@ -5,9 +5,9 @@ import {
   type OverlayNumericKey,
 } from "@/lib/overlayTheme";
 
-/** The three groups the tab renders token rows in, in the order they appear.
- *  Listed once so that anything walking every row on screen, such as the
- *  theme file's "sets N of M values" line, cannot quietly miss a group. */
+/** The three groups the tab renders token rows in, in display order. Listed
+ *  once so anything walking every row on screen, like the theme file's
+ *  "sets N of M values" line, cannot miss a group. */
 export const OVERLAY_TOKEN_GROUPS = ["color", "material", "size"] as const;
 
 export type OverlayTokenGroup = (typeof OVERLAY_TOKEN_GROUPS)[number];
@@ -17,32 +17,28 @@ interface OverlayTokenFieldBase {
   labelKey: string;
   descriptionKey: string;
   /**
-   * The one Material this row belongs to, or absent for a row that belongs to
-   * both, which is all of them but the card's alpha. `surface_opacity`
-   * paints the Flat card and `glass_tint` tints the glass, so showing both at
-   * once would offer two controls for one line of CSS, one of which does
-   * nothing on the Material in front of the user. See
-   * [`overlayTokenFieldsFor`].
+   * The one Material this row belongs to; absent means both, true of every row
+   * but the card's alpha. `surface_opacity` paints the Flat card and
+   * `glass_tint` tints the glass, so showing both would give two controls for
+   * one line of CSS, one inert on screen. See [`overlayTokenFieldsFor`].
    */
   onlyUnder?: Material;
 }
 
 /**
- * The interface between the overlay-theme token contract and the Appearance
- * tab: one entry per token, published as data so `AppearanceSettings` can
- * render the Overlay Color / Overlay Material / Overlay Size & Spacing groups
- * as `fields.filter(f => f.group === …).map(renderField)` instead of
- * hardcoding a row per token by hand.
+ * The overlay-theme token contract as data for the Appearance tab, one entry
+ * per token. Instead of a hand-written row each, `AppearanceSettings` renders
+ * the Overlay Color / Overlay Material / Overlay Size & Spacing groups as
+ * `fields.filter(f => f.group === …).map(renderField)`.
  *
- * A discriminated union on `kind`, so the token's `key` narrows with it: a
- * color field's key is one of the four color tokens, a length/factor field's
- * is one of the nine numeric ones, and the two enum fields carry their own
- * kind each. That is what lets `renderField` read `effectiveValue(field.key)`
- * at the right type in each branch instead of asserting it back with a cast.
+ * A discriminated union on `kind`, so `key` narrows with it. A color field's
+ * key is one of the four color tokens, a length/factor field's one of the nine
+ * numeric ones, and the two enum fields carry their own kind, so `renderField`
+ * reads `effectiveValue(field.key)` at the right type per branch, not a cast.
  *
- * Numeric bounds are pulled from `OVERLAY_TOKEN_BOUNDS` (the apply layer's own
- * re-validation table, `src/lib/overlayTheme.ts`) rather than repeated here,
- * so there is exactly one place a bound can be typed wrong.
+ * Numeric bounds come from `OVERLAY_TOKEN_BOUNDS` (the apply layer's
+ * re-validation table, `src/lib/overlayTheme.ts`) rather than a copy here, so
+ * a bound can only be typed wrong in one place.
  */
 interface NumericTokenFieldBase extends OverlayTokenFieldBase {
   key: OverlayNumericKey;
@@ -62,13 +58,12 @@ const TOKENS = "settings.appearance.tokens";
 const MATERIAL = "settings.appearance.material";
 const GLASS_STYLE = "settings.appearance.glassStyle";
 
-/** Token order matches the contract's table, which is also the order the
- *  theme file's `TOKENS` table lists them in: accent, surface,
- *  surface_opacity, glass_tint, text, border, border_opacity, material,
- *  glass_material, glass_style, size_scale, radius, border_width, padding,
- *  waveform_gap, waveform_width. `glass_material` is the one token with no
- *  row, because it drives the pre-macOS-26 fallback engine only and is set
- *  from the theme file. */
+/** Token order matches the contract's table, the same order the theme file's
+ *  `TOKENS` table lists: accent, surface, surface_opacity, glass_tint, text,
+ *  border, border_opacity, material, glass_material, glass_style, size_scale,
+ *  radius, border_width, padding, waveform_gap, waveform_width.
+ *  `glass_material` is the only token with no row, since it drives the
+ *  pre-macOS-26 fallback engine alone and is set from the theme file. */
 export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
   {
     key: "accent",
@@ -93,9 +88,8 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
     labelKey: `${TOKENS}.surfaceOpacity.title`,
     descriptionKey: `${TOKENS}.surfaceOpacity.description`,
   },
-  // The Flat card's alpha and the Glass tint's, in that order and never both
-  // on screen at once. One is the other's counterpart on the Material the
-  // user is not looking at.
+  // The Flat card's alpha then the Glass tint's, in that order and never both
+  // on screen. Each is the other's counterpart on the Material not in view.
   {
     key: "glass_tint",
     group: "color",
@@ -127,11 +121,10 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
     labelKey: `${TOKENS}.borderOpacity.title`,
     descriptionKey: `${TOKENS}.borderOpacity.description`,
   },
-  // Material is a single enum token, but unlike the others a dedicated
-  // MaterialSelector renders it, and that selector owns the one declaration
-  // of the Flat/Glass options (platform gating and the unavailable note need
-  // them anyway). It still lives in this table so the "material" group is
-  // driven by the same filter/map as the others.
+  // Material is a single enum token, but a dedicated MaterialSelector renders
+  // it and owns the one declaration of the Flat/Glass options (platform
+  // gating and the unavailable note need them anyway). It stays in this table
+  // so the "material" group runs off the same filter/map as the others.
   {
     key: "material",
     group: "material",
@@ -139,9 +132,8 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
     labelKey: `${MATERIAL}.title`,
     descriptionKey: `${MATERIAL}.description`,
   },
-  // The Glass style only means anything while Material is Glass and Liquid
-  // Glass is the engine, so its own selector owns that rule as well as the
-  // two option labels.
+  // The Glass style matters only while Material is Glass and Liquid Glass is
+  // the engine, so its own selector owns that rule and the two option labels.
   {
     key: "glass_style",
     group: "material",
@@ -202,11 +194,9 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
 /**
  * The rows a group shows under one Material, in contract order.
  *
- * Keyed on the effective Material, meaning what is actually painted, rather
- * than on the token as requested. On a machine where Glass cannot render, the
- * Flat card is on screen, so Flat's own opacity is the control that means
- * something there. The apply layer picks which alpha it reads by the same
- * reasoning.
+ * Keyed on the effective Material, what is painted, not what was asked for.
+ * Where Glass cannot render, the Flat card is on screen, so Flat's opacity is
+ * the live control. The apply layer picks its alpha the same way.
  *
  * Pure, and the only place the "never both alphas" rule is written down.
  */

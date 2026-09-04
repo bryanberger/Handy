@@ -60,7 +60,7 @@ For detailed platform-specific build setup, see [BUILD.md](BUILD.md).
 
 Handy is a cross-platform desktop speech-to-text application built with Tauri 2.x (Rust backend + React/TypeScript frontend).
 
-[CONTEXT.md](CONTEXT.md) is the glossary. It gives the agreed name for each thing in the app's appearance and its recording overlay, and the words to avoid for it. Use those names in code, comments, commits and UI strings.
+[CONTEXT.md](CONTEXT.md) is the glossary. It names each thing in the app's appearance and its recording overlay, and the words to avoid. Use those names in code, comments, commits and UI strings.
 
 ### Backend Structure (src-tauri/src/)
 
@@ -77,15 +77,15 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `cli.rs` - CLI argument definitions (clap derive)
 - `shortcut.rs` - Global keyboard shortcut handling
 - `settings.rs` - Application settings management
-- `overlay.rs` - Recording overlay window (platform-specific): window creation, monitors, positioning, show and hide, the Glass reveal and mic levels
-- `overlay_geometry.rs` - The card's geometry, pure and platform-free: the card shapes, the card metrics (size scale, border width, radius), the window size and corner radius they produce, and the overlay window state the native window is configured from
-- `overlay_theme.rs` - Overlay theme tokens, the file/settings/inherit resolver, and delivery
+- `overlay.rs` - Recording overlay window (platform-specific): window creation, monitors, positioning, show and hide, the Glass reveal, mic levels
+- `overlay_geometry.rs` - Card geometry, pure and platform-free: card shapes, card metrics (size scale, border width, radius), the window size and corner radius they produce, and the overlay window state the native window is configured from
+- `overlay_theme.rs` - Overlay theme tokens, the file/settings/inherit resolver, delivery
 - `overlay_theme_file.rs` - Reads `overlay_theme.json` (see the README's Overlay Theme File section)
-- `overlay_glass.rs` - The macOS Glass material. One native view installed under the webview, `NSGlassEffectView` (Liquid Glass) on macOS 26 and later and `NSVisualEffectView` before it, plus the native frame morph. `glass_support.engine` reports which engine drew; `glass_style` and `glass_material` are its two live setters, one per engine
-- `overlay_preview.rs` - Preview mode. Drives the real overlay from synthetic audio, cycling or pinned to one state, until the Appearance tab stops it (also backs `--preview-overlay`, which stops itself); it also owns the cancel funnel every cancel path goes through
-- `frontend_source.rs` - Test-only readers for the overlay's stylesheet and its TypeScript, so Rust tests can pin their constants to the values the frontend actually paints
+- `overlay_glass.rs` - The macOS Glass material. One native view under the webview, `NSGlassEffectView` (Liquid Glass) on macOS 26 and later and `NSVisualEffectView` before it, plus the native frame morph. `glass_support.engine` reports which engine drew; `glass_style` and `glass_material` are its live setters, one per engine
+- `overlay_preview.rs` - Preview mode. Drives the real overlay from synthetic audio, cycling or pinned to one state, until the Appearance tab stops it. It also backs `--preview-overlay`, which stops itself, and owns the cancel funnel every cancel path goes through
+- `frontend_source.rs` - Test-only readers for the overlay's stylesheet and TypeScript, so Rust tests pin their constants to the values the frontend paints
 - `commands/overlay_theme.rs` - Persist, read and reload the overlay theme
-- `commands/overlay_preview.rs` - Three thin adapters onto `overlay_preview.rs`: start, set state, stop
+- `commands/overlay_preview.rs` - Thin adapters onto `overlay_preview.rs`: start, set state, stop
 - `commands/overlay_card.rs` - Receives the overlay page's card-shape reports
 - `signal_handle.rs` - `send_transcription_input()` reusable function
 - `utils.rs` - Platform detection helpers
@@ -225,8 +225,8 @@ Access debug features: `Cmd+Shift+D` (macOS) or `Ctrl+Shift+D` (Windows/Linux)
 - **Windows**: Vulkan acceleration, code signing
 - **Linux**: OpenBLAS + Vulkan, limited Wayland support, overlay uses GTK layer shell (disable with `HANDY_NO_GTK_LAYER_SHELL=1`)
 - **Nix/NixOS**: the Nix package sets `HANDY_DISABLE_UPDATER=1` to force-disable the self-updater at runtime without touching the persisted setting (self-update can't work against an immutable `/nix/store`)
-- **macOS Glass**: the overlay window snaps between card shapes, because the native frame animation leads WebKit's repaint and briefly shows a bare blurred rim. `HANDY_GLASS_MORPH=1` opts the animation back in for comparison on real hardware; macOS "Reduce motion" snaps either way. On macOS 26 and later the blur is `NSGlassEffectView` (Liquid Glass) and the `glass_style` overlay-theme token picks Regular or Clear; before that it is `NSVisualEffectView` and the file-only `glass_material` token picks the `NSVisualEffectMaterial`. Both are tokens rather than environment variables, so there is one source of truth; `glass_material` is read from the theme file only, since it has no row in the Appearance tab. Under Liquid Glass the surface tint is painted twice on purpose, natively as the glass's `tintColor` composed from `surface` and `glass_tint` so the glass lenses it, and again by the card as `--s-surface`. `glass_tint` sets the tint strength. `surface_opacity` is Flat's, and Glass ignores it, so a card set opaque under Flat is still glass the moment Glass is picked. Measured on macOS 26, `tintColor` alone left the card dark under a Light app theme, with the glass ignoring the tint's hue and not following the app appearance, and the transcript on it at 1.9:1; with the card's own tint the same case measures 6.5:1. Dropping the CSS half is a one-branch change if real hardware honours both. Under Glass the panel also turns macOS's own window shadow back on (`overlay_glass::window_shadow`), which Flat keeps off because there the window is larger than the card and transparent around it, and Clear's unset edge is a white highlight rather than a foreground hairline
-- **Overlay theme file**: `HANDY_OVERLAY_THEME_FILE=<path>` names the `overlay_theme.json` Handy reads. It takes a path, not a flag, and it is exclusive. When set, no other location is tried, and a missing target is a warning rather than a silent fallback
+- **macOS Glass**: the overlay window snaps between card shapes, because the native frame animation leads WebKit's repaint and briefly shows a bare blurred rim. `HANDY_GLASS_MORPH=1` opts the animation back in on real hardware; macOS "Reduce motion" snaps either way. On macOS 26 and later the blur is `NSGlassEffectView` (Liquid Glass) and the `glass_style` token picks Regular or Clear; before that it is `NSVisualEffectView` and the file-only `glass_material` token picks the `NSVisualEffectMaterial`. Both are tokens, not environment variables, so there is one source of truth, and `glass_material` is file-only because it has no row in the Appearance tab. Under Liquid Glass the surface tint is painted twice on purpose, natively as the glass's `tintColor` composed from `surface` and `glass_tint` so the glass lenses it, and again by the card as `--s-surface`. `glass_tint` sets the tint strength. `surface_opacity` is Flat's and Glass ignores it, so a card set opaque under Flat is still glass the moment Glass is picked. Measured on macOS 26, `tintColor` alone left the card dark under a Light app theme, the glass ignoring the tint's hue and not following the app appearance, with the transcript at 1.9:1; the card's own tint makes the same case 6.5:1. Dropping the CSS half is a one-branch change if real hardware honours both. Under Glass the panel also turns macOS's own window shadow back on (`overlay_glass::window_shadow`); Flat keeps it off because there the window is larger than the card and transparent around it. Clear's unset edge is a white highlight rather than a foreground hairline
+- **Overlay theme file**: `HANDY_OVERLAY_THEME_FILE=<path>` names the `overlay_theme.json` Handy reads. It takes a path, not a flag, and it is exclusive. When set, no other location is tried and a missing target is a warning, not a silent fallback
 
 ## Troubleshooting
 

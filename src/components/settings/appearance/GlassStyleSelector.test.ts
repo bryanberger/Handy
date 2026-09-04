@@ -8,8 +8,8 @@ import {
 import { OVERLAY_TOKEN_FIELDS } from "./overlayTokenFields";
 
 /**
- * The Glass style row's own rule, and the descriptor entry that puts it in
- * the Material group. Both are pure, so neither test renders anything.
+ * The Glass style row's rule and the descriptor entry that puts it in the
+ * Material group. Both are pure, so neither test renders anything.
  */
 
 const support = (
@@ -50,8 +50,8 @@ describe("glassStyleControlState", () => {
     );
   });
 
-  /** The same rule the Material row follows. A preference has to survive
-   *  Reduce Transparency being turned on and off again. */
+  /** The same rule the Material row follows. A preference must survive Reduce
+   *  Transparency going on and off again. */
   test("stays enabled on a Mac where Glass cannot render right now", () => {
     expect(
       glassStyleControlState("glass", support("liquid", false), false),
@@ -82,7 +82,7 @@ describe("glassStyleForKey", () => {
   });
 
   /** Anything else belongs to the browser. Tab has to leave the group, and a
-   *  control that has nothing to do with typing must not swallow it. */
+   *  non-typing control must not swallow it. */
   test("every other key is left alone", () => {
     for (const key of ["Tab", "Escape", "a", "Home", "PageDown"]) {
       expect(glassStyleForKey(key, "regular")).toBeNull();
@@ -122,11 +122,11 @@ describe("the Glass style descriptor", () => {
   });
 
   /** `glass_material` is a theme-file key only now. Its eight-option dropdown
-   *  with the subtitles left the tab when Liquid Glass arrived. */
+   *  with subtitles left the tab when Liquid Glass arrived. */
   test("the Glass material has no row of its own", () => {
-    // Widened to `string[]` deliberately. The descriptor's key union no
-    // longer contains `glass_material` at all, which is the stronger half of
-    // this guarantee; this only keeps it true if the union ever widens.
+    // Widened to `string[]` deliberately. The key union no longer contains
+    // `glass_material` at all, the stronger half of this guarantee; this only
+    // keeps it true if the union ever widens.
     const keys: string[] = OVERLAY_TOKEN_FIELDS.map(
       (candidate) => candidate.key,
     );

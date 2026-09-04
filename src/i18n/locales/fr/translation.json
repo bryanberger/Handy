@@ -266,7 +266,7 @@
         "preview": "Aperçu à l'écran",
         "color": "Couleur de l'overlay",
         "material": "Matériau de l'overlay",
-        "elements": "Overlay Elements",
+        "elements": "Éléments de l'overlay",
         "size": "Taille et espacements de l'overlay",
         "themeFile": "Fichier de thème"
       },
@@ -348,26 +348,26 @@
           "description": "À quel point le bord de la carte est visible."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Ombre",
+          "description": "L'intensité de l'ombre que la carte projette sur le bureau. Réduisez-la à zéro pour une carte posée à plat.",
+          "glassDescription": "Si l'overlay projette une ombre sur le bureau.",
+          "glassNote": "macOS dessine l'ombre d'un overlay en Verre : elle peut seulement être activée ou désactivée, et le décalage de l'ombre n'a aucun effet."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Décalage de l'ombre",
+          "description": "À quelle distance sous la carte son ombre tombe. L'overlay réserve de la place pour l'ombre : avec un décalage plus grand, la carte se place un peu plus loin du bord de l'écran."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Afficher la forme d'onde",
+          "description": "Affiche la forme d'onde pendant l'enregistrement. Masquée, l'overlay se réduit à une petite pilule."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Afficher le bouton Annuler",
+          "description": "Affiche le bouton Annuler sur l'overlay. Votre raccourci clavier annule de toute façon."
         },
         "sizeScale": {
           "title": "Échelle de taille",
-          "description": "Met à l'échelle toutes les longueurs de la carte d'un coup — largeurs, hauteurs, marges intérieures et texte. L'un des deux réglages qui changent la place que l'overlay occupe à l'écran ; l'autre est l'épaisseur de la bordure."
+          "description": "Met à l'échelle toutes les longueurs de la carte d'un coup — largeurs, hauteurs, marges intérieures et texte. L'un des réglages qui changent la place que l'overlay occupe à l'écran ; les autres sont la marge intérieure, l'épaisseur de la bordure et l'espacement des éléments."
         },
         "radius": {
           "title": "Rayon des coins",
@@ -382,8 +382,8 @@
           "description": "La marge intérieure de la carte sur les quatre côtés. La fenêtre de l'overlay s'agrandit d'autant."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Espacement des éléments",
+          "description": "Espace supplémentaire entre le point, la forme d'onde, le minuteur et le bouton Annuler de l'overlay. La fenêtre de l'overlay s'agrandit d'autant."
         },
         "waveformGap": {
           "title": "Espacement de la forme d'onde",

@@ -266,7 +266,7 @@
         "preview": "Предпросмотр на экране",
         "color": "Цвет наложения",
         "material": "Материал наложения",
-        "elements": "Overlay Elements",
+        "elements": "Элементы наложения",
         "size": "Размер и отступы наложения",
         "themeFile": "Файл темы"
       },
@@ -348,26 +348,26 @@
           "description": "Насколько заметен край карточки."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Тень",
+          "description": "Насколько густая тень, которую карточка отбрасывает на рабочий стол. Уменьшите её до нуля, чтобы карточка лежала плоско.",
+          "glassDescription": "Отбрасывает ли наложение тень на рабочий стол.",
+          "glassNote": "Тень наложения из Стекла рисует macOS, поэтому её можно только включить или выключить, а смещение тени ни на что не влияет."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Смещение тени",
+          "description": "Насколько низко под карточкой падает её тень. Наложение оставляет место для тени, поэтому при большем смещении карточка находится немного дальше от края экрана."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Показывать осциллограмму",
+          "description": "Показывать осциллограмму во время записи. Если она скрыта, наложение сжимается до небольшого индикатора."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Показывать кнопку отмены",
+          "description": "Показывать кнопку отмены на наложении. Сочетание клавиш отменяет запись в любом случае."
         },
         "sizeScale": {
           "title": "Масштаб размера",
-          "description": "Масштабирует все размеры карточки сразу — ширину, высоту, отступы и шрифт. Одно из двух значений, меняющих, сколько места наложение занимает на экране; второе — толщина границы."
+          "description": "Масштабирует все размеры карточки сразу — ширину, высоту, отступы и шрифт. Одно из значений, меняющих, сколько места наложение занимает на экране; остальные — внутренний отступ, толщина границы и промежуток между элементами."
         },
         "radius": {
           "title": "Радиус скругления",
@@ -382,8 +382,8 @@
           "description": "Внутренний отступ карточки со всех четырёх сторон. Окно наложения растёт вместе с ним."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Промежуток между элементами",
+          "description": "Дополнительный промежуток между точкой, осциллограммой, таймером и кнопкой отмены на наложении. Окно наложения растёт вместе с ним."
         },
         "waveformGap": {
           "title": "Промежуток осциллограммы",

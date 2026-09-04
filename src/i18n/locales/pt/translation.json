@@ -266,7 +266,7 @@
         "preview": "Pré-visualização na tela",
         "color": "Cor da sobreposição",
         "material": "Material da sobreposição",
-        "elements": "Overlay Elements",
+        "elements": "Elementos da sobreposição",
         "size": "Tamanho e espaçamento da sobreposição",
         "themeFile": "Arquivo de tema"
       },
@@ -348,26 +348,26 @@
           "description": "O quanto a borda do cartão aparece."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Sombra",
+          "description": "O quanto é forte a sombra que o cartão projeta na área de trabalho. Reduza a zero para um cartão que fica plano.",
+          "glassDescription": "Se a sobreposição projeta uma sombra na área de trabalho.",
+          "glassNote": "O macOS desenha a sombra de uma sobreposição de Vidro, então ela só pode ser ativada ou desativada, e o deslocamento da sombra não tem efeito."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Deslocamento da sombra",
+          "description": "O quanto a sombra do cartão cai abaixo dele. A sobreposição reserva espaço para a sombra, então com um deslocamento maior o cartão fica um pouco mais longe da borda da tela."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Mostrar a forma de onda",
+          "description": "Mostra a forma de onda durante a gravação. Com ela oculta, a sobreposição encolhe para um pequeno indicador."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Mostrar o botão de cancelar",
+          "description": "Mostra o botão de cancelar na sobreposição. Seu atalho de teclado cancela de qualquer forma."
         },
         "sizeScale": {
           "title": "Escala de tamanho",
-          "description": "Amplia todos os comprimentos do cartão de uma vez — larguras, alturas, espaçamento interno e texto. Um dos dois valores que mudam quanto espaço a sobreposição ocupa na tela; o outro é a espessura da borda."
+          "description": "Amplia todos os comprimentos do cartão de uma vez — larguras, alturas, espaçamento interno e texto. Um dos valores que mudam quanto espaço a sobreposição ocupa na tela; os outros são o espaçamento interno, a espessura da borda e o espaço entre elementos."
         },
         "radius": {
           "title": "Raio dos cantos",
@@ -382,8 +382,8 @@
           "description": "O espaçamento interno do cartão nos quatro lados. A janela da sobreposição cresce junto."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Espaço entre elementos",
+          "description": "Espaço adicional entre o ponto, a forma de onda, o cronômetro e o botão de cancelar da sobreposição. A janela da sobreposição cresce junto."
         },
         "waveformGap": {
           "title": "Espaço da forma de onda",

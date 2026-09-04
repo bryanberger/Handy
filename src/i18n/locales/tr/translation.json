@@ -266,7 +266,7 @@
         "preview": "Ekranda Önizleme",
         "color": "Ekran Katmanı Rengi",
         "material": "Ekran Katmanı Malzemesi",
-        "elements": "Overlay Elements",
+        "elements": "Ekran Katmanı Ögeleri",
         "size": "Ekran Katmanı Boyutu ve Boşlukları",
         "themeFile": "Tema Dosyası"
       },
@@ -348,26 +348,26 @@
           "description": "Kartın kenarının ne kadar görünür olduğu."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Gölge",
+          "description": "Kartın masaüstüne düşürdüğü gölgenin ne kadar güçlü olduğu. Kartın düz durması için sıfıra kadar azaltın.",
+          "glassDescription": "Ekran katmanının masaüstüne gölge düşürüp düşürmeyeceği.",
+          "glassNote": "Cam ekran katmanının gölgesini macOS çizer, bu yüzden yalnızca açılıp kapatılabilir ve gölge kayması bir etki yapmaz."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Gölge Kayması",
+          "description": "Kartın gölgesinin kartın ne kadar altına düştüğü. Ekran katmanı gölge için yer ayırır, bu yüzden kayma arttıkça kart ekran kenarından biraz daha uzakta durur."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Dalga Formunu Göster",
+          "description": "Kayıt sırasında dalga formunu gösterir. Gizlendiğinde ekran katmanı küçük bir göstergeye küçülür."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "İptal Düğmesini Göster",
+          "description": "Ekran katmanında iptal düğmesini gösterir. Klavye kısayolunuz her durumda iptal eder."
         },
         "sizeScale": {
           "title": "Boyut Ölçeği",
-          "description": "Karttaki tüm uzunlukları aynı anda ölçekler — genişlikler, yükseklikler, iç boşluklar ve yazı. Ekran katmanının ekranda ne kadar yer kapladığını değiştiren iki değerden biri; diğeri kenarlık kalınlığıdır."
+          "description": "Karttaki tüm uzunlukları aynı anda ölçekler — genişlikler, yükseklikler, iç boşluklar ve yazı. Ekran katmanının ekranda ne kadar yer kapladığını değiştiren değerlerden biri; diğerleri iç boşluk, kenarlık kalınlığı ve öge aralığıdır."
         },
         "radius": {
           "title": "Köşe Yarıçapı",
@@ -382,8 +382,8 @@
           "description": "Kartın dört tarafındaki iç boşluk. Ekran katmanı penceresi de onunla birlikte büyür."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Öge Aralığı",
+          "description": "Ekran katmanının noktası, dalga formu, sayacı ve iptal düğmesi arasındaki ek boşluk. Ekran katmanı penceresi de onunla birlikte büyür."
         },
         "waveformGap": {
           "title": "Dalga Formu Aralığı",

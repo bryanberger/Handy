@@ -266,7 +266,7 @@
         "preview": "Podgląd na ekranie",
         "color": "Kolor nakładki",
         "material": "Materiał nakładki",
-        "elements": "Overlay Elements",
+        "elements": "Elementy nakładki",
         "size": "Rozmiar i odstępy nakładki",
         "themeFile": "Plik motywu"
       },
@@ -348,26 +348,26 @@
           "description": "Jak bardzo widoczna jest krawędź karty."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Cień",
+          "description": "Jak mocny jest cień, który karta rzuca na pulpit. Zmniejsz go do zera, aby karta leżała płasko.",
+          "glassDescription": "Czy nakładka rzuca cień na pulpit.",
+          "glassNote": "Cień nakładki z materiału Szkło rysuje macOS, więc można go tylko włączyć lub wyłączyć, a przesunięcie cienia nie ma znaczenia."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Przesunięcie cienia",
+          "description": "Jak nisko pod kartą pada jej cień. Nakładka rezerwuje miejsce na cień, więc przy większym przesunięciu karta znajduje się nieco dalej od krawędzi ekranu."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Pokaż falę dźwiękową",
+          "description": "Pokazuje falę dźwiękową podczas nagrywania. Po jej ukryciu nakładka kurczy się do małego wskaźnika."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Pokaż przycisk anulowania",
+          "description": "Pokazuje przycisk anulowania na nakładce. Skrót klawiaturowy i tak anuluje nagrywanie."
         },
         "sizeScale": {
           "title": "Skala rozmiaru",
-          "description": "Skaluje wszystkie wymiary karty naraz — szerokości, wysokości, odstępy wewnętrzne i tekst. Jedna z dwóch wartości, które zmieniają ilość miejsca zajmowanego przez nakładkę na ekranie; drugą jest grubość obramowania."
+          "description": "Skaluje wszystkie wymiary karty naraz — szerokości, wysokości, odstępy wewnętrzne i tekst. Jedna z wartości, które zmieniają ilość miejsca zajmowanego przez nakładkę na ekranie; pozostałe to odstęp wewnętrzny, grubość obramowania i odstęp między elementami."
         },
         "radius": {
           "title": "Zaokrąglenie rogów",
@@ -382,8 +382,8 @@
           "description": "Odstęp wewnętrzny karty ze wszystkich czterech stron. Okno nakładki powiększa się razem z nim."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Odstęp między elementami",
+          "description": "Dodatkowy odstęp między kropką, falą dźwiękową, licznikiem czasu i przyciskiem anulowania na nakładce. Okno nakładki powiększa się razem z nim."
         },
         "waveformGap": {
           "title": "Odstęp fali",

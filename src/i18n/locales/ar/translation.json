@@ -243,7 +243,7 @@
         "preview": "المعاينة على الشاشة",
         "color": "لون التراكب",
         "material": "خامة التراكب",
-        "elements": "Overlay Elements",
+        "elements": "عناصر التراكب",
         "size": "حجم التراكب وتباعده",
         "themeFile": "ملف السمة"
       },
@@ -325,26 +325,26 @@
           "description": "مدى وضوح حافة البطاقة."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "الظل",
+          "description": "مدى ثِقل الظل الذي تلقيه البطاقة على سطح المكتب. اخفضه إلى الصفر لتستوي البطاقة بلا ظل.",
+          "glassDescription": "ما إذا كان التراكب يلقي ظلًا على سطح المكتب.",
+          "glassNote": "يرسم macOS ظل التراكب الزجاجي، لذا لا يمكن إلا تشغيله أو إيقافه، ولا تأثير لإزاحة الظل."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "إزاحة الظل",
+          "description": "مدى انخفاض ظل البطاقة تحتها. يفسح التراكب مجالًا للظل، لذا تبتعد البطاقة قليلًا عن حافة الشاشة كلما زادت الإزاحة."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "إظهار الموجة الصوتية",
+          "description": "إظهار الموجة الصوتية أثناء التسجيل. عند إخفائها يتقلّص التراكب إلى شارة صغيرة."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "إظهار زر الإلغاء",
+          "description": "إظهار زر الإلغاء على التراكب. يظل اختصار لوحة المفاتيح يلغي التسجيل في الحالتين."
         },
         "sizeScale": {
           "title": "مقياس الحجم",
-          "description": "يكبّر كل أبعاد البطاقة دفعة واحدة — العروض والارتفاعات والتباعد الداخلي والخط. واحدة من قيمتين تغيّران مساحة التراكب على الشاشة؛ والأخرى هي سُمك الحدّ."
+          "description": "يكبّر كل أبعاد البطاقة دفعة واحدة — العروض والارتفاعات والتباعد الداخلي والخط. واحدة من القيم التي تغيّر مساحة التراكب على الشاشة؛ والبقية هي التباعد الداخلي وسُمك الحدّ وتباعد العناصر."
         },
         "radius": {
           "title": "استدارة الزوايا",
@@ -359,8 +359,8 @@
           "description": "التباعد الداخلي للبطاقة من الجهات الأربع. تكبر نافذة التراكب معه."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "تباعد العناصر",
+          "description": "مسافة إضافية بين نقطة التراكب والموجة الصوتية والمؤقّت وزر الإلغاء. تكبر نافذة التراكب معها."
         },
         "waveformGap": {
           "title": "تباعد الموجة",

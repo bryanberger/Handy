@@ -266,7 +266,7 @@
         "preview": "Перегляд на екрані",
         "color": "Колір накладки",
         "material": "Матеріал накладки",
-        "elements": "Overlay Elements",
+        "elements": "Елементи накладки",
         "size": "Розмір і відступи накладки",
         "themeFile": "Файл теми"
       },
@@ -348,26 +348,26 @@
           "description": "Наскільки помітний край картки."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Тінь",
+          "description": "Наскільки густа тінь, яку картка відкидає на робочий стіл. Зменште її до нуля, щоб картка лежала пласко.",
+          "glassDescription": "Чи відкидає накладка тінь на робочий стіл.",
+          "glassNote": "Тінь накладки зі Скла малює macOS, тому її можна лише увімкнути або вимкнути, а зміщення тіні ні на що не впливає."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Зміщення тіні",
+          "description": "Наскільки низько під карткою падає її тінь. Накладка залишає місце для тіні, тому за більшого зміщення картка розташована трохи далі від краю екрана."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Показувати осцилограму",
+          "description": "Показувати осцилограму під час запису. Якщо її приховано, накладка стискається до невеликого індикатора."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Показувати кнопку скасування",
+          "description": "Показувати кнопку скасування на накладці. Комбінація клавіш скасовує запис у будь-якому разі."
         },
         "sizeScale": {
           "title": "Масштаб розміру",
-          "description": "Масштабує всі розміри картки одразу — ширину, висоту, внутрішні відступи та шрифт. Одне з двох значень, що змінюють, скільки місця накладка займає на екрані; друге — товщина рамки."
+          "description": "Масштабує всі розміри картки одразу — ширину, висоту, внутрішні відступи та шрифт. Одне зі значень, що змінюють, скільки місця накладка займає на екрані; решта — внутрішній відступ, товщина рамки та проміжок між елементами."
         },
         "radius": {
           "title": "Радіус заокруглення",
@@ -382,8 +382,8 @@
           "description": "Внутрішній відступ картки з усіх чотирьох боків. Вікно накладки росте разом із ним."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Проміжок між елементами",
+          "description": "Додатковий проміжок між крапкою, осцилограмою, таймером і кнопкою скасування на накладці. Вікно накладки росте разом із ним."
         },
         "waveformGap": {
           "title": "Проміжок осцилограми",

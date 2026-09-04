@@ -266,7 +266,7 @@
         "preview": "स्क्रिनमा पूर्वावलोकन",
         "color": "ओभरलेको रङ",
         "material": "ओभरलेको म्याटेरियल",
-        "elements": "Overlay Elements",
+        "elements": "ओभरलेका एलिमेन्ट",
         "size": "ओभरलेको आकार र खाली ठाउँ",
         "themeFile": "थिम फाइल"
       },
@@ -348,26 +348,26 @@
           "description": "कार्डको किनारा कति देखिन्छ।"
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "छाया",
+          "description": "कार्डले डेस्कटपमा पार्ने छाया कति गाढा हुन्छ। कार्ड सम्म देखियोस् भने यसलाई शून्यसम्म घटाउनुहोस्।",
+          "glassDescription": "ओभरलेले डेस्कटपमा छाया पार्ने कि नपार्ने।",
+          "glassNote": "ग्लास ओभरलेको छाया macOS आफैँले बनाउँछ, त्यसैले यसलाई अन वा अफ मात्र गर्न सकिन्छ, र छायाको अफसेटले केही असर गर्दैन।"
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "छायाको अफसेट",
+          "description": "कार्डको छाया त्यसभन्दा कति तल पर्छ। ओभरलेले छायाका लागि ठाउँ छाड्छ, त्यसैले अफसेट बढी हुँदा कार्ड स्क्रिनको किनाराबाट अलि टाढा बस्छ।"
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "वेभफर्म देखाउनुहोस्",
+          "description": "रेकर्डिङ हुँदा वेभफर्म देखाउँछ। यो लुकाएपछि ओभरले खुम्चिएर सानो पिल बन्छ।"
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "रद्द गर्ने बटन देखाउनुहोस्",
+          "description": "ओभरलेमा रद्द गर्ने बटन देखाउँछ। जे भए पनि तपाईंको किबोर्ड सर्टकटले रद्द गरिरहन्छ।"
         },
         "sizeScale": {
           "title": "साइज स्केल",
-          "description": "कार्डका सबै लम्बाइ एकैपटक ठूलो-सानो पार्छ — चौडाइ, उचाइ, प्याडिङ र अक्षर। ओभरलेलाई स्क्रिनमा कति ठाउँ चाहिन्छ भन्ने बदल्ने दुई मानमध्ये एक; अर्को चाहिँ बोर्डरको मोटाइ हो।"
+          "description": "कार्डका सबै लम्बाइ एकैपटक ठूलो-सानो पार्छ — चौडाइ, उचाइ, प्याडिङ र अक्षर। ओभरलेलाई स्क्रिनमा कति ठाउँ चाहिन्छ भन्ने बदल्ने मानहरूमध्ये एक; अरू चाहिँ प्याडिङ, बोर्डरको मोटाइ र एलिमेन्ट ग्याप हुन्।"
         },
         "radius": {
           "title": "कर्नर रेडियस",
@@ -382,8 +382,8 @@
           "description": "कार्डका चारै पट्टिको भित्री प्याडिङ। ओभरले विन्डो पनि सँगै ठूलो हुन्छ।"
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "एलिमेन्ट ग्याप",
+          "description": "ओभरलेको थोप्लो, वेभफर्म, टाइमर र रद्द गर्ने बटनबीचको थप ठाउँ। ओभरले विन्डो पनि सँगै ठूलो हुन्छ।"
         },
         "waveformGap": {
           "title": "वेभफर्म ग्याप",

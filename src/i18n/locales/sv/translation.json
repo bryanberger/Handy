@@ -266,7 +266,7 @@
         "preview": "Förhandsvisning på skärmen",
         "color": "Overlayfärg",
         "material": "Overlaymaterial",
-        "elements": "Overlay Elements",
+        "elements": "Overlayelement",
         "size": "Overlaystorlek och avstånd",
         "themeFile": "Temafil"
       },
@@ -348,26 +348,26 @@
           "description": "Hur synlig kortets kant är."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Skugga",
+          "description": "Hur kraftig skuggan är som kortet kastar på skrivbordet. Skruva ner den helt för ett kort som ligger platt.",
+          "glassDescription": "Om overlayen kastar en skugga på skrivbordet.",
+          "glassNote": "macOS ritar skuggan för en Glas-overlay, så den kan bara slås på eller av, och skuggförskjutningen har ingen effekt."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Skuggförskjutning",
+          "description": "Hur långt nedanför kortet dess skugga faller. Overlayen gör plats för skuggan, så vid en större förskjutning ligger kortet lite längre från skärmkanten."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Visa vågform",
+          "description": "Visar vågformen under inspelning. När den är dold krymper overlayen till en liten indikator."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Visa avbryt-knapp",
+          "description": "Visar avbryt-knappen på overlayen. Ditt kortkommando avbryter ändå."
         },
         "sizeScale": {
           "title": "Storleksskala",
-          "description": "Skalar alla mått i kortet på en gång — bredder, höjder, innermarginaler och text. Ett av de två värden som ändrar hur mycket plats overlayen behöver på skärmen; det andra är kanttjockleken."
+          "description": "Skalar alla mått i kortet på en gång — bredder, höjder, innermarginaler och text. Ett av de värden som ändrar hur mycket plats overlayen behöver på skärmen; de övriga är innermarginal, kanttjocklek och elementavstånd."
         },
         "radius": {
           "title": "Hörnradie",
@@ -382,8 +382,8 @@
           "description": "Kortets innermarginal på alla fyra sidor. Overlayfönstret växer med den."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Elementavstånd",
+          "description": "Extra avstånd mellan overlayens punkt, vågform, tidsvisning och avbryt-knapp. Overlayfönstret växer med det."
         },
         "waveformGap": {
           "title": "Vågformsavstånd",

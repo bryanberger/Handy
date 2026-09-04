@@ -266,7 +266,7 @@
         "preview": "화면 미리보기",
         "color": "오버레이 색상",
         "material": "오버레이 재질",
-        "elements": "Overlay Elements",
+        "elements": "오버레이 요소",
         "size": "오버레이 크기 및 간격",
         "themeFile": "테마 파일"
       },
@@ -348,26 +348,26 @@
           "description": "카드 가장자리가 얼마나 잘 보이는지입니다."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "그림자",
+          "description": "카드가 바탕 화면에 드리우는 그림자의 짙기입니다. 0으로 낮추면 카드가 평평하게 놓입니다.",
+          "glassDescription": "오버레이가 바탕 화면에 그림자를 드리울지 여부입니다.",
+          "glassNote": "유리 오버레이의 그림자는 macOS가 그리므로 켜거나 끄는 것만 가능하며, 그림자 오프셋은 적용되지 않습니다."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "그림자 오프셋",
+          "description": "카드 아래로 그림자가 얼마나 내려가는지입니다. 오버레이가 그림자를 위한 공간을 두므로, 오프셋이 클수록 카드가 화면 가장자리에서 조금 더 떨어집니다."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "파형 표시",
+          "description": "녹음 중에 파형을 표시합니다. 숨기면 오버레이가 작은 알약 모양으로 줄어듭니다."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "취소 버튼 표시",
+          "description": "오버레이에 취소 버튼을 표시합니다. 어느 쪽이든 키보드 단축키로 취소할 수 있습니다."
         },
         "sizeScale": {
           "title": "크기 배율",
-          "description": "카드의 모든 길이를 한 번에 조절합니다 — 너비, 높이, 여백, 글자 크기. 오버레이가 화면에서 차지하는 공간을 바꾸는 두 값 중 하나이며, 다른 하나는 테두리 두께입니다."
+          "description": "카드의 모든 길이를 한 번에 조절합니다 — 너비, 높이, 여백, 글자 크기. 오버레이가 화면에서 차지하는 공간을 바꾸는 값 중 하나이며, 나머지는 안쪽 여백, 테두리 두께, 요소 간격입니다."
         },
         "radius": {
           "title": "모서리 반경",
@@ -382,8 +382,8 @@
           "description": "카드 네 면의 안쪽 여백입니다. 오버레이 윈도우도 그만큼 커집니다."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "요소 간격",
+          "description": "오버레이의 점, 파형, 타이머, 취소 버튼 사이의 추가 간격입니다. 오버레이 윈도우도 그만큼 커집니다."
         },
         "waveformGap": {
           "title": "파형 간격",

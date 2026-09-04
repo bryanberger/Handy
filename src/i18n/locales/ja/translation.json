@@ -266,7 +266,7 @@
         "preview": "画面上のプレビュー",
         "color": "オーバーレイの色",
         "material": "オーバーレイのマテリアル",
-        "elements": "Overlay Elements",
+        "elements": "オーバーレイの要素",
         "size": "オーバーレイのサイズと余白",
         "themeFile": "テーマファイル"
       },
@@ -348,26 +348,26 @@
           "description": "カードの縁がどれだけはっきり見えるかです。"
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "影",
+          "description": "カードがデスクトップに落とす影の濃さです。ゼロまで下げると、カードは平らに置かれたように見えます。",
+          "glassDescription": "オーバーレイがデスクトップに影を落とすかどうかです。",
+          "glassNote": "ガラスのオーバーレイの影は macOS が描画するため、オンとオフの切り替えしかできず、影のオフセットは効果がありません。"
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "影のオフセット",
+          "description": "カードの影がどれだけ下に落ちるかです。オーバーレイは影のための余地を確保するため、オフセットを大きくするとカードは画面の端から少し離れて表示されます。"
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "波形を表示",
+          "description": "録音中に波形を表示します。非表示にすると、オーバーレイは小さなカプセル型まで縮みます。"
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "キャンセルボタンを表示",
+          "description": "オーバーレイにキャンセルボタンを表示します。どちらの場合でも、キーボードショートカットでキャンセルできます。"
         },
         "sizeScale": {
           "title": "サイズ倍率",
-          "description": "カード内のすべての長さを一度に拡大縮小します（幅、高さ、余白、文字サイズ）。オーバーレイが画面上で必要とする領域を変える 2 つの項目のうちの 1 つで、もう 1 つは境界線の太さです。"
+          "description": "カード内のすべての長さを一度に拡大縮小します（幅、高さ、余白、文字サイズ）。オーバーレイが画面上で必要とする領域を変える項目の 1 つで、ほかには余白、境界線の太さ、要素の間隔があります。"
         },
         "radius": {
           "title": "角の丸み",
@@ -382,8 +382,8 @@
           "description": "カードの四辺の内側の余白です。オーバーレイのウインドウもそれに合わせて大きくなります。"
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "要素の間隔",
+          "description": "オーバーレイのドット、波形、タイマー、キャンセルボタンのあいだの追加の間隔です。オーバーレイのウインドウもそれに合わせて大きくなります。"
         },
         "waveformGap": {
           "title": "波形の間隔",

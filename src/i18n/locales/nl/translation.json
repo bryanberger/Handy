@@ -266,7 +266,7 @@
         "preview": "Voorbeeld op het scherm",
         "color": "Overlaykleur",
         "material": "Overlaymateriaal",
-        "elements": "Overlay Elements",
+        "elements": "Overlayelementen",
         "size": "Overlaygrootte & afstanden",
         "themeFile": "Themabestand"
       },
@@ -348,26 +348,26 @@
           "description": "Hoe zichtbaar de rand van de kaart is."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Schaduw",
+          "description": "Hoe zwaar de schaduw is die de kaart op het bureaublad werpt. Zet hem helemaal uit voor een kaart die plat ligt.",
+          "glassDescription": "Of de overlay een schaduw op het bureaublad werpt.",
+          "glassNote": "macOS tekent de schaduw van een Glas-overlay, dus die kan alleen aan of uit en de schaduwverschuiving heeft geen effect."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Schaduwverschuiving",
+          "description": "Hoe ver onder de kaart de schaduw valt. De overlay maakt ruimte voor de schaduw, dus bij een grotere verschuiving ligt de kaart iets verder van de schermrand."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Golfvorm tonen",
+          "description": "Toont de golfvorm tijdens de opname. Verborgen krimpt de overlay tot een kleine balk."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Annuleerknop tonen",
+          "description": "Toont de annuleerknop op de overlay. Je sneltoets annuleert hoe dan ook."
         },
         "sizeScale": {
           "title": "Schaal",
-          "description": "Schaalt alle afmetingen van de kaart tegelijk — breedtes, hoogtes, binnenmarges en tekst. Een van de twee waarden die veranderen hoeveel ruimte de overlay op het scherm nodig heeft; de andere is de randdikte."
+          "description": "Schaalt alle afmetingen van de kaart tegelijk — breedtes, hoogtes, binnenmarges en tekst. Een van de waarden die veranderen hoeveel ruimte de overlay op het scherm nodig heeft; de andere zijn de binnenmarge, de randdikte en de elementafstand."
         },
         "radius": {
           "title": "Hoekradius",
@@ -382,8 +382,8 @@
           "description": "De binnenmarge van de kaart aan alle vier de zijden. Het overlayvenster groeit mee."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Elementafstand",
+          "description": "Extra ruimte tussen de stip, de golfvorm, de timer en de annuleerknop van de overlay. Het overlayvenster groeit mee."
         },
         "waveformGap": {
           "title": "Golfvormafstand",

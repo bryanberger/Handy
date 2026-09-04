@@ -266,7 +266,7 @@
         "preview": "Xem trước trên màn hình",
         "color": "Màu lớp phủ",
         "material": "Chất liệu lớp phủ",
-        "elements": "Overlay Elements",
+        "elements": "Các phần tử lớp phủ",
         "size": "Kích thước và khoảng cách lớp phủ",
         "themeFile": "Tệp giao diện"
       },
@@ -348,26 +348,26 @@
           "description": "Mức độ hiện rõ của viền thẻ."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Bóng đổ",
+          "description": "Bóng mà thẻ đổ xuống màn hình nền đậm đến mức nào. Giảm về 0 để thẻ nằm phẳng.",
+          "glassDescription": "Lớp phủ có đổ bóng xuống màn hình nền hay không.",
+          "glassNote": "macOS tự vẽ bóng cho lớp phủ Kính, nên chỉ có thể bật hoặc tắt, và độ lệch bóng không có tác dụng."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Độ lệch bóng",
+          "description": "Bóng của thẻ đổ xuống thấp bao nhiêu. Lớp phủ chừa chỗ cho bóng, nên độ lệch càng lớn thì thẻ càng nằm xa mép màn hình hơn một chút."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Hiện dạng sóng",
+          "description": "Hiện dạng sóng trong khi ghi âm. Khi ẩn, lớp phủ thu lại thành một chỉ báo nhỏ."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Hiện nút hủy",
+          "description": "Hiện nút hủy trên lớp phủ. Dù thế nào thì phím tắt của bạn vẫn hủy được."
         },
         "sizeScale": {
           "title": "Tỷ lệ kích thước",
-          "description": "Phóng to mọi kích thước trong thẻ cùng lúc — chiều rộng, chiều cao, đệm trong và cỡ chữ. Một trong hai giá trị làm thay đổi khoảng không mà lớp phủ chiếm trên màn hình; giá trị còn lại là độ dày viền."
+          "description": "Phóng to mọi kích thước trong thẻ cùng lúc — chiều rộng, chiều cao, đệm trong và cỡ chữ. Một trong những giá trị làm thay đổi khoảng không mà lớp phủ chiếm trên màn hình; những giá trị còn lại là đệm trong, độ dày viền và khoảng cách giữa các phần tử."
         },
         "radius": {
           "title": "Bo góc",
@@ -382,8 +382,8 @@
           "description": "Đệm trong của thẻ ở cả bốn phía. Cửa sổ lớp phủ cũng to ra theo."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Khoảng cách giữa các phần tử",
+          "description": "Khoảng cách thêm giữa chấm, dạng sóng, đồng hồ đếm giờ và nút hủy của lớp phủ. Cửa sổ lớp phủ cũng to ra theo."
         },
         "waveformGap": {
           "title": "Khoảng cách dạng sóng",

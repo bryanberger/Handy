@@ -266,7 +266,7 @@
         "preview": "Forhåndsvisning på skærmen",
         "color": "Overlayfarve",
         "material": "Overlaymateriale",
-        "elements": "Overlay Elements",
+        "elements": "Overlayelementer",
         "size": "Overlaystørrelse og afstande",
         "themeFile": "Temafil"
       },
@@ -348,26 +348,26 @@
           "description": "Hvor synlig kortets kant er."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Skygge",
+          "description": "Hvor kraftig den skygge, kortet kaster på skrivebordet, er. Skru den helt ned, hvis kortet skal ligge fladt.",
+          "glassDescription": "Om overlayet kaster en skygge på skrivebordet.",
+          "glassNote": "macOS tegner skyggen for et Glas-overlay, så den kan kun slås til eller fra, og skyggeforskydningen har ingen virkning."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Skyggeforskydning",
+          "description": "Hvor langt nede under kortet skyggen falder. Overlayet gør plads til skyggen, så kortet ved en større forskydning ligger lidt længere fra skærmkanten."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Vis bølgeform",
+          "description": "Vis bølgeformen under optagelse. Når den er skjult, skrumper overlayet til en lille pille."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Vis annuller-knap",
+          "description": "Vis annuller-knappen på overlayet. Din tastaturgenvej annullerer stadig uanset hvad."
         },
         "sizeScale": {
           "title": "Størrelsesskala",
-          "description": "Skalerer alle mål i kortet på én gang — bredder, højder, indvendige margener og tekst. Den ene af de to værdier, der ændrer, hvor meget plads overlayet fylder på skærmen; den anden er kanttykkelsen."
+          "description": "Skalerer alle mål i kortet på én gang — bredder, højder, indvendige margener og tekst. En af de værdier, der ændrer, hvor meget plads overlayet fylder på skærmen; de øvrige er indvendig margen, kanttykkelse og elementafstand."
         },
         "radius": {
           "title": "Hjørneradius",
@@ -382,8 +382,8 @@
           "description": "Kortets indvendige margen på alle fire sider. Overlayvinduet vokser med den."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Elementafstand",
+          "description": "Ekstra afstand mellem overlayets prik, bølgeform, tidsvisning og annuller-knap. Overlayvinduet vokser med den."
         },
         "waveformGap": {
           "title": "Bølgeformafstand",

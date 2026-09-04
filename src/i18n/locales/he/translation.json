@@ -266,7 +266,7 @@
         "preview": "תצוגה מקדימה על המסך",
         "color": "צבע שכבת-העל",
         "material": "חומר שכבת-העל",
-        "elements": "Overlay Elements",
+        "elements": "רכיבי שכבת-העל",
         "size": "גודל וריווח של שכבת-העל",
         "themeFile": "קובץ ערכת נושא"
       },
@@ -348,26 +348,26 @@
           "description": "עד כמה קצה הכרטיס בולט."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "צל",
+          "description": "עד כמה כבד הצל שהכרטיס מטיל על שולחן העבודה. הורידו אותו לאפס כדי שהכרטיס יישב שטוח.",
+          "glassDescription": "האם שכבת-העל מטילה צל על שולחן העבודה.",
+          "glassNote": "macOS מצייר את הצל של שכבת-על מזכוכית, ולכן אפשר רק להפעיל או לכבות אותו, ולהיסט הצל אין השפעה."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "היסט הצל",
+          "description": "עד כמה נמוך מתחת לכרטיס נופל הצל שלו. שכבת-העל משאירה מקום לצל, ולכן בהיסט גדול יותר הכרטיס יושב מעט רחוק יותר מקצה המסך."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "הצגת צורת הגל",
+          "description": "הצגת צורת הגל בזמן ההקלטה. כשהיא מוסתרת, שכבת-העל מתכווצת לסמן קטן."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "הצגת כפתור הביטול",
+          "description": "הצגת כפתור הביטול בשכבת-העל. קיצור המקלדת מבטל בכל מקרה."
         },
         "sizeScale": {
           "title": "קנה מידה",
-          "description": "משנה את כל המידות בכרטיס בבת אחת — רוחב, גובה, ריווח פנימי וגודל הטקסט. אחד משני הערכים שמשנים כמה מקום שכבת-העל תופסת על המסך; השני הוא עובי המסגרת."
+          "description": "משנה את כל המידות בכרטיס בבת אחת — רוחב, גובה, ריווח פנימי וגודל הטקסט. אחד מהערכים שמשנים כמה מקום שכבת-העל תופסת על המסך; האחרים הם הריווח הפנימי, עובי המסגרת והמרווח בין הרכיבים."
         },
         "radius": {
           "title": "רדיוס פינות",
@@ -382,8 +382,8 @@
           "description": "הריווח הפנימי של הכרטיס בכל ארבעת הצדדים. חלון שכבת-העל גדל יחד איתו."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "מרווח בין הרכיבים",
+          "description": "מרווח נוסף בין הנקודה, צורת הגל, הטיימר וכפתור הביטול של שכבת-העל. חלון שכבת-העל גדל יחד איתו."
         },
         "waveformGap": {
           "title": "מרווח צורת הגל",

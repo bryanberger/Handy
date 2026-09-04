@@ -266,7 +266,7 @@
         "preview": "螢幕上的預覽",
         "color": "懸浮窗顏色",
         "material": "懸浮窗材質",
-        "elements": "Overlay Elements",
+        "elements": "懸浮窗元素",
         "size": "懸浮窗尺寸與間距",
         "themeFile": "主題檔案"
       },
@@ -348,26 +348,26 @@
           "description": "卡片邊緣的明顯程度。"
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "陰影",
+          "description": "卡片投在桌面上的陰影有多重。調到最低可讓卡片平貼在桌面上。",
+          "glassDescription": "懸浮窗是否在桌面上投下陰影。",
+          "glassNote": "玻璃懸浮窗的陰影由 macOS 繪製，因此只能開啟或關閉，陰影偏移不會有作用。"
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "陰影偏移",
+          "description": "卡片的陰影落在其下方多遠處。懸浮窗會為陰影預留空間，因此偏移越大，卡片距離螢幕邊緣就越遠一些。"
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "顯示波形",
+          "description": "錄製時顯示波形。隱藏後，懸浮窗會縮成一個小膠囊。"
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "顯示取消按鈕",
+          "description": "在懸浮窗上顯示取消按鈕。無論顯示與否，您的鍵盤快捷鍵都可以取消。"
         },
         "sizeScale": {
           "title": "尺寸縮放",
-          "description": "一次縮放卡片中的所有尺寸——寬度、高度、內邊距與文字。這是會改變懸浮窗在螢幕上所佔空間的兩個項目之一，另一個是邊框寬度。"
+          "description": "一次縮放卡片中的所有尺寸——寬度、高度、內邊距與文字。這是會改變懸浮窗在螢幕上所佔空間的項目之一，其餘是內邊距、邊框寬度與元素間距。"
         },
         "radius": {
           "title": "圓角半徑",
@@ -382,8 +382,8 @@
           "description": "卡片四邊的內邊距。懸浮窗視窗也會隨之變大。"
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "元素間距",
+          "description": "懸浮窗的圓點、波形、計時器與取消按鈕之間的額外間距。懸浮窗視窗也會隨之變大。"
         },
         "waveformGap": {
           "title": "波形間距",

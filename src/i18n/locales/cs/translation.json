@@ -266,7 +266,7 @@
         "preview": "Náhled na obrazovce",
         "color": "Barva překryvu",
         "material": "Materiál překryvu",
-        "elements": "Overlay Elements",
+        "elements": "Prvky překryvu",
         "size": "Velikost a rozestupy překryvu",
         "themeFile": "Soubor motivu"
       },
@@ -348,26 +348,26 @@
           "description": "Jak výrazný je okraj karty."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Stín",
+          "description": "Jak výrazný stín karta vrhá na plochu. Snižte jej na nulu, aby karta ležela naplocho.",
+          "glassDescription": "Zda překryv vrhá stín na plochu.",
+          "glassNote": "Stín překryvu z materiálu Sklo vykresluje macOS, takže jej lze pouze zapnout nebo vypnout a posun stínu nemá žádný účinek."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Posun stínu",
+          "description": "Jak nízko pod kartu její stín dopadá. Překryv si na stín vyhradí místo, takže při větším posunu je karta o kousek dál od okraje obrazovky."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Zobrazit zvukovou křivku",
+          "description": "Zobrazí zvukovou křivku během nahrávání. Když je skrytá, překryv se zmenší na malý indikátor."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Zobrazit tlačítko zrušení",
+          "description": "Zobrazí na překryvu tlačítko zrušení. Klávesová zkratka nahrávání zruší tak jako tak."
         },
         "sizeScale": {
           "title": "Měřítko velikosti",
-          "description": "Zvětší všechny rozměry karty najednou — šířky, výšky, vnitřní okraje i písmo. Jedna ze dvou hodnot, které mění, kolik místa překryv na obrazovce potřebuje; tou druhou je tloušťka ohraničení."
+          "description": "Zvětší všechny rozměry karty najednou — šířky, výšky, vnitřní okraje i písmo. Jedna z hodnot, které mění, kolik místa překryv na obrazovce potřebuje; dalšími jsou vnitřní okraj, tloušťka ohraničení a rozestup prvků."
         },
         "radius": {
           "title": "Zaoblení rohů",
@@ -382,8 +382,8 @@
           "description": "Vnitřní okraj karty na všech čtyřech stranách. Okno překryvu se s ním zvětšuje."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Rozestup prvků",
+          "description": "Rozestup navíc mezi tečkou, zvukovou křivkou, časovačem a tlačítkem zrušení v překryvu. Okno překryvu se s ním zvětšuje."
         },
         "waveformGap": {
           "title": "Rozestup křivky",

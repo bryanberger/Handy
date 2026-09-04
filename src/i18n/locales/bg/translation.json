@@ -266,7 +266,7 @@
         "preview": "Преглед на екрана",
         "color": "Цвят на наслагването",
         "material": "Материал на наслагването",
-        "elements": "Overlay Elements",
+        "elements": "Елементи на наслагването",
         "size": "Размер и отстояния на наслагването",
         "themeFile": "Файл с тема"
       },
@@ -348,26 +348,26 @@
           "description": "Колко видим е ръбът на картата."
         },
         "shadowStrength": {
-          "title": "Shadow",
-          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
-          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
-          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+          "title": "Сянка",
+          "description": "Колко тежка е сянката, която картата хвърля върху работния плот. Свалете я до нула за карта, която лежи плоско.",
+          "glassDescription": "Дали наслагването хвърля сянка върху работния плот.",
+          "glassNote": "macOS изчертава сянката на наслагване от Стъкло, затова тя може само да се включва или изключва, а отместването на сянката няма ефект."
         },
         "shadowOffsetY": {
-          "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "title": "Отместване на сянката",
+          "description": "Колко надолу пада сянката под картата. Наслагването отделя място за сянката, затова при по-голямо отместване картата стои малко по-далеч от ръба на екрана."
         },
         "showWaveform": {
-          "title": "Show Waveform",
-          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+          "title": "Показване на вълновата форма",
+          "description": "Показва вълновата форма по време на запис. Когато е скрита, наслагването се смалява до малък индикатор."
         },
         "showCancel": {
-          "title": "Show Cancel Button",
-          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+          "title": "Показване на бутона за отказ",
+          "description": "Показва бутона за отказ върху наслагването. Клавишната комбинация отменя записа и в двата случая."
         },
         "sizeScale": {
           "title": "Мащаб на размера",
-          "description": "Мащабира всички размери на картата наведнъж — ширини, височини, вътрешни отстояния и шрифт. Една от двете стойности, които променят колко място заема наслагването на екрана; другата е дебелината на рамката."
+          "description": "Мащабира всички размери на картата наведнъж — ширини, височини, вътрешни отстояния и шрифт. Една от стойностите, които променят колко място заема наслагването на екрана; останалите са вътрешното отстояние, дебелината на рамката и разстоянието между елементите."
         },
         "radius": {
           "title": "Радиус на ъглите",
@@ -382,8 +382,8 @@
           "description": "Вътрешното отстояние на картата от всичките четири страни. Прозорецът на наслагването расте заедно с него."
         },
         "elementGap": {
-          "title": "Element Gap",
-          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
+          "title": "Разстояние между елементите",
+          "description": "Допълнително разстояние между точката, вълновата форма, таймера и бутона за отказ на наслагването. Прозорецът на наслагването расте заедно с него."
         },
         "waveformGap": {
           "title": "Разстояние във вълната",

@@ -41,12 +41,11 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
 /** The tokens with a row in the Appearance tab under one Material, one
  *  waveform switch and one overlay style. It asks for rows exactly as the
  *  groups render them, so a token that gains, loses or shares a row needs no
- *  second edit. Never shown: `glass_material`, which drives only the
- *  pre-macOS-26 fallback engine and has no control, the other Material's
- *  alpha, under Glass the shadow offset macOS owns, with the waveform hidden
- *  the whole Waveform group the tab drops with it, and with the overlay off
- *  the edge margin, which sits under Overlay Position with no edge to sit
- *  at. */
+ *  second edit. Never shown: `glass_material`, which drives the pre-macOS-26
+ *  fallback engine alone and has no control, the other Material's alpha, under
+ *  Glass the shadow offset macOS owns, with the waveform hidden the Waveform
+ *  group the tab drops with it, and with the overlay off the edge margin,
+ *  which sits under Overlay Position with no edge to sit at. */
 function keysWithARow(
   material: Material,
   showWaveform: boolean,
@@ -72,10 +71,9 @@ function keysWithARow(
  * Otherwise a file setting a row-less token would count as a value with no
  * control, promising rows that are not there. So the total follows what is on
  * screen: twenty-one of the twenty-three under Flat, twenty under Glass, with
- * no shadow offset, three fewer either way with the waveform hidden, whose
- * group leaves the tab, and one fewer again with the overlay off, the edge
- * margin's row going with it. The tokens still apply; this rule counts one
- * sentence, not the file.
+ * no shadow offset, three fewer either way with the waveform hidden, and one
+ * fewer again with the overlay off. The tokens still apply; this rule counts
+ * one sentence, not the file.
  */
 export function setTokenCounts(
   ownedKeys: readonly string[],
@@ -166,9 +164,9 @@ export interface ThemeFileGroupProps {
   /** `show_waveform`, which takes the Waveform group off the tab with it, so
    *  its three rows leave the same count. */
   showWaveform: boolean;
-  /** The overlay style in effect, for the same line: the edge margin's row
-   *  goes away with the overlay, so it is not one of the rows a file could
-   *  set on screen. */
+  /** The overlay style in effect, for the same line: the edge margin's row goes
+   *  away with the overlay, so it is not one of the rows a file could set on
+   *  screen. */
   style: OverlayStyle;
   /** Whether the file watcher is running. It is, on nearly every machine, and
    *  then a hand edit arrives on its own and Reload has nothing to do. */

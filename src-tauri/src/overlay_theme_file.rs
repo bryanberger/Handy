@@ -128,9 +128,9 @@ const fn token(
     TokenSpec { key, parser }
 }
 
-/// The twenty-three tokens in token-contract order, which the Appearance tab,
-/// [`ThemeFileState::owned_keys`] and the per-key diagnostics all follow, so
-/// the payload does not depend on `serde_json`'s key order.
+/// The twenty-three tokens in the token contract's order, followed by the
+/// Appearance tab, [`ThemeFileState::owned_keys`] and the per-key diagnostics,
+/// so the payload does not depend on `serde_json`'s key order.
 ///
 /// One table, not a key list beside a match on it. Key, parser and bounds are
 /// one fact; splitting them made a mismatch a runtime debug assertion.

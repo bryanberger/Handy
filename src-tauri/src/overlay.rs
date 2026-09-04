@@ -88,14 +88,12 @@ const EMIT_THROTTLE_MS: u64 = 33; // ~30 FPS
 /// The screen edge the overlay is anchored to, cached from the
 /// `overlay_position` setting.
 ///
-/// Read on the theme-draft path, which runs once per animation frame while the
-/// Appearance tab's sliders are dragged, so it cannot afford the full settings
-/// deserialize `settings::get_settings` costs. Same bargain as
-/// [`OVERLAY_ENABLED`], which the audio callback reads at ~24 Hz.
-///
-/// Seeded from the store in `lib.rs`'s setup, kept honest by
-/// `shortcut::change_overlay_position_setting` and refreshed on every
-/// placement, so a value that ever went stale corrects itself at the next show.
+/// The theme-draft path reads it once per animation frame while the Appearance
+/// tab's sliders are dragged, too often for the full settings deserialize
+/// `settings::get_settings` costs. Same bargain as [`OVERLAY_ENABLED`], read by
+/// the audio callback at ~24 Hz. Seeded from the store in `lib.rs`'s setup,
+/// kept honest by `shortcut::change_overlay_position_setting` and refreshed on
+/// every placement, so a stale value corrects itself at the next show.
 static OVERLAY_POSITION: AtomicU8 = AtomicU8::new(OverlayPosition::Bottom as u8);
 
 /// The edge the overlay is anchored to right now.
@@ -108,9 +106,9 @@ pub fn current_overlay_position() -> OverlayPosition {
     }
 }
 
-/// Update the cached anchored edge. Called from `lib.rs` at startup after the
-/// settings load, from `change_overlay_position_setting`, and from the two
-/// paths that place the window and have just read the setting anyway.
+/// Update the cached anchored edge, from `lib.rs`'s setup after the settings
+/// load, from `change_overlay_position_setting`, and from both placement paths,
+/// which have read the setting anyway.
 pub fn update_overlay_position_cache(position: OverlayPosition) {
     OVERLAY_POSITION.store(position as u8, Ordering::Relaxed);
 }
@@ -129,11 +127,10 @@ fn layer_shell_edge(edge: crate::overlay_geometry::ScreenEdge) -> Edge {
 /// mapped, so changing position does not require a manual hide/show cycle.
 ///
 /// The compositor measures the anchored margin from the area other clients'
-/// exclusive zones leave free, so `margin` is a distance from the *usable*
-/// edge here without Handy subtracting anything. That holds only while Handy's
-/// own exclusive zone stays 0 (`init_gtk_layer_shell`) and the automatic zone
-/// is never enabled; either would have the compositor count the margin twice
-/// and push every other window on the desktop by it.
+/// exclusive zones leave free, so `margin` is a distance from the *usable* edge
+/// with nothing subtracted here. That holds only while Handy's exclusive zone
+/// stays 0 (`init_gtk_layer_shell`) and the automatic one is off; either would
+/// count the margin twice and push every other desktop window by it.
 #[cfg(target_os = "linux")]
 fn configure_layer_shell_position(
     gtk_window: &gtk::ApplicationWindow,
@@ -309,16 +306,15 @@ fn is_mouse_within_monitor(
 /// (below the menu bar, above the Dock), `MONITORINFO.rcWork` on Windows
 /// (outside the taskbar and any registered app bar), `gdk_monitor_get_workarea`
 /// on Linux. It shares `position()`'s global coordinate space, so no monitor
-/// offset is added. Handy has been placing the macOS Bottom anchor from it
-/// since tauri 2.11's `work_area.position.y` fix (#14655), the bug that led
-/// PR #969 to abandon it for full monitor bounds; this is the same call for
-/// every edge.
+/// offset is added. Handy has placed the macOS Bottom anchor from it since
+/// tauri 2.11's `work_area.position.y` fix (#14655), the bug that led PR #969
+/// to abandon it for full monitor bounds; this is the same call for every edge.
 ///
-/// Where a platform reports no work area, the usable edges are the raw ones,
-/// which is what the fallback path already does today. GDK on Wayland is that
-/// case, never overriding `get_workarea` and so handing back the monitor
-/// geometry. It only reaches the screen without layer shell; under layer shell
-/// the compositor does the subtraction and this is never called.
+/// Where a platform reports no work area the usable edges are the raw ones, as
+/// the fallback path does today. GDK on Wayland is that case, never overriding
+/// `get_workarea` and handing back the monitor geometry. It only reaches the
+/// screen without layer shell; under it the compositor subtracts and this is
+/// never called.
 fn overlay_monitor_bounds(app_handle: &AppHandle) -> Option<MonitorBounds> {
     let monitor = get_monitor_with_cursor(app_handle)?;
     let work_area = monitor.work_area();
@@ -339,8 +335,8 @@ fn overlay_monitor_bounds(app_handle: &AppHandle) -> Option<MonitorBounds> {
 /// *currently* on, which is wrong when moving cross-monitor. Windows uses
 /// `place_windows_overlay` instead (no single logical space across mixed DPI).
 ///
-/// The arithmetic itself is `overlay_geometry::overlay_logical_origin`; this
-/// only supplies the monitor.
+/// The arithmetic is `overlay_geometry::overlay_logical_origin`; this only
+/// supplies the monitor.
 fn calculate_overlay_position(
     app_handle: &AppHandle,
     width: f64,
@@ -554,9 +550,9 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
     if settings.overlay_style == OverlayStyle::None {
         return;
     }
-    // Refreshed from the store on every show, so the edge the theme paths
-    // resolve `edge_margin` against cannot drift from the setting for longer
-    // than one recording.
+    // Refreshed on every show, so the edge the theme paths resolve
+    // `edge_margin` against cannot drift from the setting for longer than one
+    // recording.
     let anchor = settings.overlay_position;
     update_overlay_position_cache(anchor);
 
@@ -958,9 +954,9 @@ fn forget_window_state() {
 /// An accent or a padding edit changes nothing the native window is built from,
 /// and the overlay theme is now delivered on every frame of a slider drag.
 ///
-/// An `edge_margin` edit does move the window, which is why the margin and the
-/// anchored edge are part of [`OverlayWindowState`]: without them the skip
-/// would swallow every frame of that drag.
+/// An `edge_margin` edit does move the window, so the margin and the anchored
+/// edge are part of [`OverlayWindowState`]; without them the skip would swallow
+/// every frame of that drag.
 pub fn update_overlay_position_for_theme(
     app_handle: &AppHandle,
     resolved: &crate::overlay_theme::ResolvedOverlayTheme,
@@ -1006,10 +1002,10 @@ fn update_overlay_position_on_main(
         // a scale change resizes a visible window too. Without that the card
         // would repaint larger inside the old window and be clipped.
         // The cached edge, not the store: this runs on every frame of an
-        // `edge_margin` drag, where a full settings deserialize is the one cost
-        // the draft path cannot afford. It is also the edge `resolve` measured
-        // `effective_edge_margin` against, so reading it here once pairs the
-        // recorded state's edge with the margin belonging to it.
+        // `edge_margin` drag, where a full settings deserialize is a cost the
+        // draft path cannot afford. It is also the edge `resolve` measured
+        // `effective_edge_margin` against, so one read pairs the recorded
+        // state's edge with its margin.
         let anchor = current_overlay_position();
         let window = OverlayWindowState::new(current_card_shape(), &resolved, anchor);
         let (width, height) = window.window_size();
@@ -1034,9 +1030,9 @@ fn update_overlay_position_on_main(
         if LAYER_SHELL_ACTIVE.load(Ordering::SeqCst) {
             match overlay_window.gtk_window() {
                 // Layer surfaces size themselves from GTK's size request, so the
-                // full configure (size request + anchors) applies a new size,
+                // full configure (size request + anchors) applies a new size
                 // and forces the repaint gtk-layer-shell will not commit for a
-                // margin change on its own.
+                // margin change alone.
                 Ok(gtk_window) => configure_layer_shell_surface(
                     &gtk_window,
                     anchor,

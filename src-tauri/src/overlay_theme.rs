@@ -374,9 +374,9 @@ pub const RADIUS_MAX: u16 = 32;
 pub const PADDING_MAX: u16 = 20;
 /// Highest accepted `waveform_gap`, in px at scale 1.
 pub const WAVEFORM_GAP_MAX: u16 = 5;
-/// Highest accepted `edge_margin`, in points. Two hundred points is already a
-/// fifth of a laptop screen's height; past that the overlay reads as floating
-/// in the middle rather than sitting at an edge.
+/// Highest accepted `edge_margin`, in points. Two hundred is already a fifth of
+/// a laptop screen's height; past that the overlay reads as floating in the
+/// middle rather than sitting at an edge.
 pub const EDGE_MARGIN_MAX: u16 = 200;
 /// Lowest accepted `border_opacity`. Zero is legitimate. It is how a theme
 /// asks for a card with no visible edge without giving up the width.
@@ -613,9 +613,9 @@ pub struct OverlayTheme {
     /// Which edge it is measured from follows the `overlay_position` setting,
     /// so an unset value inherits per platform *and* per position, which the
     /// accessor of the same name resolves.
-    // Deliberately no intra-doc link to that accessor: specta copies this doc
-    // into `src/bindings.ts` verbatim, where `[`Self::edge_margin`]` would
-    // land as a link to nothing.
+    // No intra-doc link to that accessor: specta copies this doc into
+    // `src/bindings.ts` verbatim, where `[`Self::edge_margin`]` would land as a
+    // link to nothing.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub edge_margin: Option<u16>,
 }
@@ -739,9 +739,9 @@ impl OverlayTheme {
     /// card where it sits today ([`crate::overlay_geometry::inherit_edge_margin`]),
     /// otherwise clamped to `0..=EDGE_MARGIN_MAX`.
     ///
-    /// The single clamp, like [`Self::padding`]. The inherit table lives in
-    /// the geometry module with the placement formulas it belongs to, so the
-    /// six platform/position pairs are asserted on any host.
+    /// The single clamp, like [`Self::padding`]. The inherit table lives in the
+    /// geometry module with the placement formulas, so the six
+    /// platform/position pairs are asserted on any host.
     pub fn edge_margin(&self, position: crate::settings::OverlayPosition) -> u16 {
         match self.edge_margin {
             Some(margin) => margin.min(EDGE_MARGIN_MAX),
@@ -1122,8 +1122,7 @@ pub fn resolve_reloading(app: &AppHandle) -> ResolvedOverlayTheme {
 
 /// The whole resolution rule with nothing to look up: clamp the tokens once,
 /// decide the Material actually rendered, resolve the edge margin against the
-/// edge the overlay is anchored to, and work out how far the window may grow
-/// towards that edge.
+/// anchored edge, and work out how far the window may grow towards it.
 ///
 /// `theme` is normally `file.tokens`, the file being the theme; a draft passes
 /// its own, the file riding along as metadata. The margin is also the room the
@@ -1342,7 +1341,7 @@ mod tests {
         assert!(theme.show_waveform());
         assert!(theme.show_cancel());
         // The one accessor whose inherit is not a constant: it follows the
-        // platform and the edge the overlay is anchored to.
+        // platform and the anchored edge.
         for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
             assert_eq!(
                 theme.edge_margin(position),
@@ -2159,9 +2158,9 @@ mod tests {
     }
 
     /// The margin token's own rules: it clamps like the other lengths, and an
-    /// unset one is *not* one number. It follows the platform and the edge the
-    /// overlay is anchored to, so flipping Top/Bottom while nothing is set
-    /// keeps today's look on both.
+    /// unset one is *not* one number but follows the platform and the anchored
+    /// edge, so flipping Top/Bottom while nothing is set keeps today's look on
+    /// both.
     #[test]
     fn the_edge_margin_clamps_and_inherits_per_position() {
         let unset = OverlayTheme::default();
@@ -2176,7 +2175,7 @@ mod tests {
 
         // A set value is the same on either edge, and out of range is clamped
         // by the accessor as well as by `normalized`, so nothing downstream
-        // has to trust that the store was written through the clamp.
+        // trusts that the store was written through the clamp.
         let set = OverlayTheme {
             edge_margin: Some(64),
             ..Default::default()
@@ -2199,9 +2198,9 @@ mod tests {
         assert_eq!(flush.edge_margin(OverlayPosition::Top), 0);
     }
 
-    /// The number the Appearance tab's slider shows while the token is unset
-    /// is the number the window is placed from, because both come out of one
-    /// resolve. Without this the tab would need its own platform table.
+    /// The slider shows, while the token is unset, the number the window is
+    /// placed from, both coming out of one resolve. Without this the tab would
+    /// need its own platform table.
     #[test]
     fn the_resolved_theme_carries_the_margin_actually_in_effect() {
         let support = GlassSupport {

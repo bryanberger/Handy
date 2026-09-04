@@ -133,9 +133,9 @@ const AppearanceSettingsInner: React.FC = () => {
     vars.effectiveValue("show_waveform") ?? BOOLEAN_INHERIT.show_waveform;
   // What an unset `edge_margin` is worth here: Rust resolves it against the
   // platform and the anchored edge and ships the answer, so the slider shows
-  // the gap the overlay actually has. Null until that payload lands, and the
-  // row waits for it (see the Overlay group below) rather than flashing a
-  // number, since every stand-in would be a different platform's truth.
+  // the gap the overlay actually has. Null until that payload lands; the row
+  // waits for it (see the Overlay group below) rather than flash a number that
+  // would be some other platform's truth.
   const inheritedEdgeMargin = resolved?.effective_edge_margin ?? null;
   const handleSelectMaterial = useCallback(
     (next: Material) => {

@@ -10,12 +10,11 @@ import {
   STYLES_USING_WAVEFORM_WIDTH,
 } from "@/overlay/waveform/waveformStyles";
 
-/** The six groups of token rows the tab renders, in display order. Listed
- *  once so anything walking every row on screen, like the theme file's
- *  "sets N of M values" line, cannot miss a group. `position` is the odd one:
- *  its single row sits in the Overlay group beside the style and position
- *  dropdowns, not in a group of its own, because that is the question it
- *  answers. */
+/** The six groups of token rows the tab renders, in display order. Listed once
+ *  so anything walking every row on screen, like the theme file's "sets N of M
+ *  values" line, cannot miss a group. `position` is the odd one: its single row
+ *  sits in the Overlay group beside the style and position dropdowns rather
+ *  than a group of its own, that being the question it answers. */
 export const OVERLAY_TOKEN_GROUPS = [
   "position",
   "color",
@@ -99,20 +98,20 @@ const WAVEFORM_STYLE = "settings.appearance.waveformStyle";
  *  border, border_opacity, material, glass_material, glass_style,
  *  shadow_strength, shadow_offset_y, show_waveform, show_cancel, size_scale,
  *  radius, border_width, padding, element_gap, waveform_style, waveform_gap,
- *  waveform_width, edge_margin. Also the display order, once `edge_margin`
+ *  waveform_width, edge_margin. Also the display order once `edge_margin`
  *  leads: every group's rows are contiguous. `edge_margin` is out of contract
  *  sequence on purpose, its row being the first one on screen, under Overlay
- *  Position. `glass_material` alone has no row, driving only the
- *  pre-macOS-26 fallback engine and set from the theme file.
+ *  Position. `glass_material` is the only token with no row, driving the
+ *  pre-macOS-26 fallback engine alone and set from the theme file.
  *
- *  `shadow_strength` has two rows, one per Material, as the two card alphas
- *  do. Under Flat it is a slider over a CSS shadow this stylesheet draws;
- *  under Glass the shadow is macOS's own and `NSWindow` offers no strength,
- *  so the only honest control is a switch. */
+ *  `shadow_strength` has two rows, one per Material, as the two card alphas do.
+ *  Under Flat it is a slider over a CSS shadow the stylesheet draws; under
+ *  Glass the shadow is macOS's own and `NSWindow` offers no strength, so the
+ *  only honest control is a switch. */
 export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
   // The one token measured against the screen instead of the card, so it sits
-  // with Overlay Position rather than with the card's sizes, and its px are
-  // never multiplied by the size scale.
+  // with Overlay Position rather than the card's sizes, and its px are never
+  // multiplied by the size scale.
   {
     key: "edge_margin",
     group: "position",

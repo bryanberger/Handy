@@ -1056,8 +1056,8 @@ pub fn run(cli_args: CliArgs) {
                 settings.overlay_style != settings::OverlayStyle::None,
             );
 
-            // Same bargain for the anchored edge, which the overlay theme's
-            // draft path reads once per animation frame while the Appearance
+            // Same bargain for the anchored edge, read once per animation
+            // frame by the overlay theme's draft path while the Appearance
             // tab's edge-margin slider is dragged.
             overlay::update_overlay_position_cache(settings.overlay_position);
 

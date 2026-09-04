@@ -1,7 +1,14 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { StreamPhase, StreamTextEvent, StreamWorkKind } from "@/bindings";
+import type {
+  StreamPhase,
+  StreamTextEvent,
+  StreamWorkKind,
+  WaveformStyle,
+} from "@/bindings";
 import { liveCardState } from "./cardShape";
+import { WaveformCanvas } from "./waveform/WaveformCanvas";
+import { isCanvasWaveformStyle } from "./waveform/waveformStyles";
 
 /**
  * `inert` is a standard HTML boolean attribute, untyped on `HTMLAttributes` by the pinned
@@ -42,6 +49,28 @@ export interface OverlayCardProps {
    * needed.
    */
   showCancel?: boolean;
+  /**
+   * The `waveform_style` token. `bars` keeps today's DOM capsules; the other
+   * five draw on one canvas in the same lane, so the card's footprint is the
+   * same whichever is chosen.
+   */
+  waveformStyle?: WaveformStyle;
+  /**
+   * The 16 smoothed microphone buckets. A canvas style reads them inside its
+   * own loop, so a level frame costs no React render; the bars read `levels`
+   * above, which is a slice of the same numbers as state.
+   */
+  levelsRef?: React.MutableRefObject<number[]>;
+  /** Bumped whenever the apply layer repaints the card, so a canvas style
+   *  re-reads the colours and lengths it caches. */
+  themeRevision?: number;
+  /**
+   * Called once when the browser gives no 2D context. The overlay owns that
+   * fact, not the card: it decides which style is drawn and, with it, whether
+   * the bars' level state still has to flow. A card rendered without the
+   * handler keeps the empty canvas, which no caller does.
+   */
+  onCanvasUnavailable?: () => void;
   /** Bumped to remount the card fresh (replays the pop-in). */
   session: number;
   direction: "ltr" | "rtl";
@@ -78,6 +107,10 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
   position,
   showWaveform = true,
   showCancel = true,
+  waveformStyle = "bars",
+  levelsRef,
+  themeRevision = 0,
+  onCanvasUnavailable,
   session,
   direction,
   inert = false,
@@ -119,18 +152,34 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   // ---- Shared building blocks (one visual language, every overlay style) ----
+  // The five canvas styles need the levels ref; without it there is nothing to
+  // draw from, so the bars stand in, which is also the inherit. A failed 2D
+  // context is reported upward and comes back as `bars` on the next render.
+  const canvasStyle = isCanvasWaveformStyle(waveformStyle)
+    ? waveformStyle
+    : null;
   const waveform = (
     <div className={`swave ${captureReady ? "ready" : "arming"}`}>
-      {levels.map((v, i) => (
-        <i
-          key={i}
-          style={{
-            // Bar heights are computed here, the one length the CSS cannot
-            // scale on its own, so multiply by --ov-scale inline.
-            height: `calc(${Math.max(3, Math.min(18, 3 + Math.pow(v, 0.7) * 15))}px * var(--ov-scale))`,
-          }}
+      {canvasStyle && levelsRef ? (
+        <WaveformCanvas
+          style={canvasStyle}
+          levelsRef={levelsRef}
+          ready={captureReady}
+          themeRevision={themeRevision}
+          onUnavailable={onCanvasUnavailable}
         />
-      ))}
+      ) : (
+        levels.map((v, i) => (
+          <i
+            key={i}
+            style={{
+              // Bar heights are computed here, the one length the CSS cannot
+              // scale on its own, so multiply by --ov-scale inline.
+              height: `calc(${Math.max(3, Math.min(18, 3 + Math.pow(v, 0.7) * 15))}px * var(--ov-scale))`,
+            }}
+          />
+        ))
+      )}
     </div>
   );
 

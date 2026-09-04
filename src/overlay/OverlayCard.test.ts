@@ -4,9 +4,14 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { initReactI18next } from "react-i18next";
 import OverlayCard, { type OverlayCardProps } from "./OverlayCard";
+import {
+  drawnWaveformStyle,
+  isCanvasWaveformStyle,
+} from "./waveform/waveformStyles";
 
 /**
- * What the two visibility tokens do to the card's markup.
+ * What the two visibility tokens and the waveform style do to the card's
+ * markup.
  *
  * Rendered to static markup rather than into a DOM, which this repository has
  * no test renderer for. The card's own effects (the live-text scroll pin) do
@@ -115,6 +120,66 @@ function rowChildren(html: string): number {
   }
   return children;
 }
+
+describe("the waveform style", () => {
+  // The canvas needs the levels ref the overlay owns; a static render has no
+  // ref to give it, so the tests that want a canvas pass one.
+  const levelsRef = { current: Array(16).fill(0) as number[] };
+
+  test("bars keeps the nine capsules and adds no canvas", () => {
+    const html = render({ waveformStyle: "bars", levelsRef });
+    expect(html).not.toContain("canvas");
+    // Nine `<i>` children, exactly today's markup.
+    expect(html.split("<i ").length - 1).toBe(BASE.levels.length);
+  });
+
+  test("every other style is one canvas in the same lane", () => {
+    for (const style of [
+      "ribbon",
+      "bloom",
+      "motes",
+      "matrix",
+      "steps",
+    ] as const) {
+      const html = render({ waveformStyle: style, levelsRef });
+      expect(html).toContain('class="swave-canvas"');
+      expect(html).toContain('class="swave-probes"');
+      // The lane itself is unchanged, so the card's footprint cannot move.
+      expect(html).toContain('class="swave ready"');
+      expect(html).not.toContain("<i ");
+    }
+  });
+
+  test("without the levels ref a canvas style falls back to the bars", () => {
+    const html = render({ waveformStyle: "motes" });
+    expect(html).not.toContain("canvas");
+    expect(html.split("<i ").length - 1).toBe(BASE.levels.length);
+  });
+
+  test("a browser with no 2D context falls back to the bars, levels and all", () => {
+    // What the overlay passes down once the card has reported the failure.
+    // The bars are DOM elements fed from React state, and that state is
+    // skipped while a canvas is drawing, so the fallback has to leave the
+    // canvas path entirely or the bars sit frozen at zero.
+    const drawn = drawnWaveformStyle("motes", true);
+    expect(drawn).toBe("bars");
+    expect(isCanvasWaveformStyle(drawn)).toBe(false);
+    const html = render({ waveformStyle: drawn, levelsRef });
+    expect(html).not.toContain("canvas");
+    expect(html.split("<i ").length - 1).toBe(BASE.levels.length);
+    // And a canvas that was had is untouched by the same rule.
+    expect(drawnWaveformStyle("motes", false)).toBe("motes");
+  });
+
+  test("a hidden waveform draws neither", () => {
+    const html = render({
+      waveformStyle: "matrix",
+      levelsRef,
+      showWaveform: false,
+    });
+    expect(html).not.toContain("swave");
+  });
+});
 
 describe("the working pill", () => {
   test("never shows a waveform, and keeps its width whatever is hidden", () => {

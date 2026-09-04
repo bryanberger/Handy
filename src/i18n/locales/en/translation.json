@@ -268,6 +268,7 @@
         "material": "Overlay Material",
         "elements": "Overlay Elements",
         "size": "Overlay Size & Spacing",
+        "waveform": "Waveform",
         "themeFile": "Theme File"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "Regular",
           "clear": "Clear"
+        }
+      },
+      "waveformStyle": {
+        "title": "Waveform Style",
+        "description": "How the waveform is drawn while Handy records. Bars is Handy's own meter; the others are drawn on a canvas in the same space, so the overlay never changes size.",
+        "options": {
+          "bars": "Bars",
+          "ribbon": "Ribbon",
+          "bloom": "Bloom",
+          "motes": "Motes",
+          "matrix": "Matrix",
+          "steps": "Steps"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "Waveform Gap",
-          "description": "The gap between waveform bars."
+          "description": "The gap between the waveform's bars, or between the dots of the matrix style."
         },
         "waveformWidth": {
           "title": "Waveform Width",
-          "description": "The width of each waveform bar."
+          "description": "How wide the waveform's own shapes are: a bar, a mote, a matrix dot or a step."
         }
       },
       "themeFile": {

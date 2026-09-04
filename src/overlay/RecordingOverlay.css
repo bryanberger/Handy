@@ -528,6 +528,53 @@
     opacity: 0.7;
   }
 }
+/* The five canvas waveform styles. One element filling the lane, so the card's
+   footprint is the same whatever draws in it and the geometry needs no
+   per-style branch. */
+.swave-canvas {
+  display: block;
+  flex: none;
+  width: 100%;
+  height: 100%;
+}
+
+/* The canvas's measuring devices: the two colours it hands `fillStyle` (the
+   `--s-*` properties are `color-mix()` values, which a canvas rejects) and the
+   two waveform lengths after the size scale. Out of flow and zero-sized, so
+   the lane is still the canvas alone. */
+.swave-probes {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.swave-metric {
+  display: block;
+  width: calc(var(--ov-wave-w) * var(--ov-scale));
+  height: calc(var(--ov-wave-gap) * var(--ov-scale));
+}
+
+/* Reduced motion. Only decoration stops: the card's pop-in, the arming pulse
+   that travels along the bars, and the halo around the recording dot. Nothing
+   that carries information goes, so the bars still follow the levels and the
+   spinner still turns. The canvas styles read the same media query themselves
+   and drop their drift, travel and idle animation for the identical reason. */
+@media (prefers-reduced-motion: reduce) {
+  /* scard-pop scales the card in from 0.92, which is motion and nothing else:
+     the card simply appears instead. The width and radius morph is a
+     transition, not this animation, and stays. */
+  .scard {
+    animation: none;
+  }
+  .swave.arming i {
+    animation: none;
+  }
+  .sdot.ready {
+    animation: none;
+  }
+}
+
 .sx {
   width: calc(22px * var(--ov-scale));
   height: calc(22px * var(--ov-scale));

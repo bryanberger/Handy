@@ -3,6 +3,7 @@ import type {
   Material,
   OverlayTheme,
   ResolvedOverlayTheme,
+  WaveformStyle,
 } from "@/bindings";
 
 /**
@@ -52,6 +53,26 @@ export type OverlayNumericKey =
 export type OverlayBooleanKey = "show_waveform" | "show_cancel";
 
 /**
+ * The six waveform styles, in the contract's order, which is the order the
+ * Appearance tab's dropdown lists them and `WaveformStyle::ALL` declares them
+ * in `src-tauri/src/overlay_theme.rs`.
+ *
+ * Here rather than beside the renderers, because it is the token's value list:
+ * the same fact as [`OVERLAY_TOKEN_BOUNDS`] for a number, and the list the
+ * re-validation below checks against. Which of them draws on a canvas, and
+ * which lengths each reads, is renderer knowledge and lives in
+ * `src/overlay/waveform/waveformStyles.ts`.
+ */
+export const WAVEFORM_STYLES: readonly WaveformStyle[] = [
+  "bars",
+  "ribbon",
+  "bloom",
+  "motes",
+  "matrix",
+  "steps",
+];
+
+/**
  * The numeric tokens' bounds, the same numbers Rust clamps to. Read by the
  * re-validation below, which treats an out-of-range value as unset, and by the
  * Appearance tab's sliders. Every px value is at size scale 1; the scale
@@ -96,6 +117,7 @@ export const INHERIT_ALL: OverlayTheme = {
   border_width: null,
   padding: null,
   element_gap: null,
+  waveform_style: null,
   waveform_gap: null,
   waveform_width: null,
 };
@@ -332,6 +354,25 @@ export function switchToken(
 ): boolean {
   const value = theme[key];
   return typeof value === "boolean" ? value : BOOLEAN_INHERIT[key];
+}
+
+/** What an unset `waveform_style` resolves to: today's nine capsules, the one
+ *  style drawn as DOM elements, so an unset token costs nothing new. */
+export const WAVEFORM_STYLE_INHERIT: WaveformStyle = "bars";
+
+/**
+ * The waveform style, re-validated like the switches, the numbers and the
+ * colours are: anything outside [`WAVEFORM_STYLES`] inherits (rule 2). The
+ * overlay reads it out of the localStorage mirror at boot, which bypasses
+ * Rust, so a hand-edited value must not reach a renderer table that has no
+ * entry for it.
+ */
+export function waveformStyleToken(theme: OverlayTheme): WaveformStyle {
+  const value = theme.waveform_style;
+  return typeof value === "string" &&
+    (WAVEFORM_STYLES as readonly string[]).includes(value)
+    ? (value as WaveformStyle)
+    : WAVEFORM_STYLE_INHERIT;
 }
 
 /**

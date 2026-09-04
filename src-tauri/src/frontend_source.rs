@@ -19,6 +19,10 @@ pub(crate) const THEME_CSS: &str = include_str!("../../src/styles/theme.css");
 /// The apply layer, the token contract as TypeScript sees it. It carries the
 /// bounds every slider is drawn from and every value re-validated against.
 pub(crate) const APPLY_LAYER_TS: &str = include_str!("../../src/lib/overlayTheme.ts");
+/// The waveform styles' own table: which of the two waveform lengths each
+/// style reads, and so which rows the Appearance tab shows for it.
+pub(crate) const WAVEFORM_STYLES_TS: &str =
+    include_str!("../../src/overlay/waveform/waveformStyles.ts");
 
 /// The number a declaration is written with, in the unit it carries, the
 /// digits immediately before the first `unit` after `<name>:`. The needle

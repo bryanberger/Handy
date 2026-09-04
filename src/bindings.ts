@@ -1420,11 +1420,11 @@ export type OverlayPosition = "top" | "bottom"
  */
 export type OverlayStyle = "none" | "minimal" | "live"
 /**
- * The twenty-one overlay-theme tokens. `None` means inherit.
+ * The twenty-two overlay-theme tokens. `None` means inherit.
  * 
  * Field names are the theme-file keys, and every field deserializes
  * leniently: a wrong type or shape degrades to `None` with a `warn!`, so one
- * bad token never costs the other twenty, as `salvage_settings` does one
+ * bad token never costs the other twenty-one, as `salvage_settings` does one
  * level up. The store salvages silently (log only); the theme file applies
  * the same rules but reports diagnostics, so it runs its own per-key pass
  * instead of deserializing an `OverlayTheme`.
@@ -1554,6 +1554,15 @@ padding?: number | null;
  * card gains exactly what the two gaps take.
  */
 element_gap?: number | null; 
+/**
+ * How the waveform is drawn. Unset means today's bars, which is the
+ * enum's own default.
+ * 
+ * The only token nothing native reads: the waveform lane is the same
+ * width whatever draws in it, so a style can never move a window, and the
+ * card alone resolves the inherit. Hence no accessor beside the others.
+ */
+waveform_style?: WaveformStyle | null; 
 /**
  * Gap between waveform bars at scale 1, 0 to 5 px.
  */
@@ -1835,6 +1844,50 @@ stale: boolean }
 export type TranscribeAcceleratorSetting = "auto" | "cpu" | "gpu"
 export type TypingTool = "auto" | "wtype" | "kwtype" | "dotool" | "ydotool" | "xdotool"
 export type VadBackend = "silero" | "earshot"
+/**
+ * How the control row's waveform is drawn.
+ * 
+ * `Bars` is today's nine capsules, the inherit, and the only value drawn as
+ * DOM elements; the other five are drawn on one canvas in the waveform lane.
+ * The lane is the same width whatever draws in it, so the style never changes
+ * the card's footprint and no window is a function of it.
+ * 
+ * Four of the five read `waveform_width` and one reads `waveform_gap`; the
+ * Appearance tab hides the rows a style ignores. `WAVEFORM_STYLE_TOKENS` in
+ * `src/overlay/waveform/waveformStyles.ts` is the same table, pinned by
+ * `the_waveform_styles_match_the_frontends`.
+ */
+export type WaveformStyle = 
+/**
+ * Nine centred capsules, one per bucket, each as tall as its level.
+ * Handy's own meter, unchanged, and what an unset token inherits.
+ */
+"bars" | 
+/**
+ * One continuous ribbon mirrored about the centre line, its thickness
+ * following the levels while a slow drift carries it sideways.
+ */
+"ribbon" | 
+/**
+ * A single rounded lozenge whose outline deforms per bucket and breathes
+ * with the overall level: one living thing rather than a graph.
+ */
+"bloom" | 
+/**
+ * A field of soft round motes drifting up out of the lane, loudness
+ * lighting more of them and throwing them further.
+ */
+"motes" | 
+/**
+ * A dot-matrix VU: each bucket a column of square dots lit from the
+ * centre outward in quantised steps.
+ */
+"matrix" | 
+/**
+ * A contiguous stepped histogram, square corners and no gaps, heights
+ * quantised to fixed levels.
+ */
+"steps"
 export type WindowsMicrophonePermissionStatus = { supported: boolean; overall_access: PermissionAccess; device_access: PermissionAccess; app_access: PermissionAccess; desktop_app_access: PermissionAccess }
 
 /** tauri-specta globals **/

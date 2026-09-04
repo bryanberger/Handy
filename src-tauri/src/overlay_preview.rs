@@ -77,6 +77,28 @@ static PREVIEW_TARGET: AtomicU8 = AtomicU8::new(0);
 /// halve to ~50 ms.
 const FRAME_INTERVAL: Duration = Duration::from_millis(40);
 
+/// How many frames one loop of the synthetic loudness lasts. 120 frames at
+/// [`FRAME_INTERVAL`] is 4.8 s, so every preview step long enough to study
+/// shows the quiet half of a breath, and the cycle's burst lands inside the
+/// capture step of both sequences below.
+const LEVEL_CYCLE_FRAMES: u32 = 120;
+
+/// The loudest the breath alone gets, leaving the top of the range to the
+/// burst so the two read as different things.
+const BREATH_PEAK: f32 = 0.62;
+
+/// The quietest the preview ever gets. Not zero: an empty lane looks like a
+/// microphone that stopped, and every style needs something to draw.
+const QUIET_FLOOR: f32 = 0.02;
+
+/// Where the burst starts and ends in the cycle, and how much of it each of
+/// its two ramps takes. The plateau between them is 0.24 of the cycle, 29
+/// frames, which is longer than the travelling wave's own 25-frame sweep, so
+/// the burst always contains a frame where a bar reaches the top.
+const BURST_START: f32 = 0.55;
+const BURST_END: f32 = 0.95;
+const BURST_EDGE: f32 = 0.08;
+
 /// The Live panel receives another piece of the sample text this often while
 /// the preview is listening.
 const STREAM_CHUNK_INTERVAL: Duration = Duration::from_millis(240);
@@ -710,17 +732,46 @@ fn settle(app: &AppHandle) -> bool {
 }
 
 /// 16 synthetic microphone buckets for one frame, each in `0.0..=1.0`. A
-/// travelling wave under a fixed per-bar envelope. It reads as speech rather
-/// than as a test pattern, and every bar moves, so the accent is easy to judge.
+/// travelling wave under a fixed per-bar envelope, scaled by
+/// [`synthetic_loudness`]. It reads as speech rather than as a test pattern,
+/// and every bar moves, so the accent is easy to judge.
 fn synthetic_levels(frame: u32) -> Vec<f32> {
+    let loudness = synthetic_loudness(frame);
     (0..16)
         .map(|bucket| {
             let bar = bucket as f32;
             let travelling = ((frame as f32 * 0.25 - bar * 0.4).sin() + 1.0) * 0.5;
             let envelope = 0.45 + 0.55 * (bar * 0.55).cos().abs();
-            (travelling * envelope).clamp(0.0, 1.0)
+            (travelling * envelope * loudness).clamp(0.0, 1.0)
         })
         .collect()
+}
+
+/// How loud the whole waveform is on `frame`, `0.0..=1.0`: one slow breath and
+/// one burst per [`LEVEL_CYCLE_FRAMES`].
+///
+/// Without it the preview never goes quiet and never peaks, and a waveform
+/// style that lights up with loudness (`motes`, `matrix`) would only ever be
+/// judged at its middle. The breath takes the card from near silence to a
+/// speaking level and back; the burst is the one moment of full voice a cycle
+/// gets. A small floor keeps the card from looking like a dropped microphone.
+fn synthetic_loudness(frame: u32) -> f32 {
+    let phase = (frame % LEVEL_CYCLE_FRAMES) as f32 / LEVEL_CYCLE_FRAMES as f32;
+    let breath = 0.5 - 0.5 * (phase * std::f32::consts::TAU).cos();
+    let burst = plateau(phase, BURST_START, BURST_END, BURST_EDGE);
+    (BREATH_PEAK * breath).max(burst).max(QUIET_FLOOR)
+}
+
+/// A raised-cosine plateau: 0 outside `start..end`, 1 between the two `edge`
+/// ramps, and a smooth ramp across each. One shape, so the burst arrives and
+/// leaves rather than switching on.
+fn plateau(phase: f32, start: f32, end: f32, edge: f32) -> f32 {
+    if phase <= start || phase >= end {
+        return 0.0;
+    }
+    let ramp =
+        |travelled: f32| 0.5 - 0.5 * (travelled.clamp(0.0, 1.0) * std::f32::consts::PI).cos();
+    ramp((phase - start) / edge).min(ramp((end - phase) / edge))
 }
 
 /// `count` progressively longer word prefixes of `text`, the last one complete.
@@ -1550,6 +1601,53 @@ mod tests {
             format!("{:?}", synthetic_levels(4)),
             "the waveform must animate between frames"
         );
+    }
+
+    /// The preview has to walk the whole range, because a waveform style that
+    /// lights up with loudness (`motes`, `matrix`) is only judged by its
+    /// quiet frame and its loud one. One cycle must contain both.
+    #[test]
+    fn one_level_cycle_goes_quiet_and_bursts() {
+        let peak = |frame: u32| {
+            synthetic_levels(frame)
+                .into_iter()
+                .fold(0.0f32, |highest, level| highest.max(level))
+        };
+        let peaks: Vec<f32> = (0..LEVEL_CYCLE_FRAMES).map(peak).collect();
+        let quietest = peaks.iter().copied().fold(f32::MAX, f32::min);
+        let loudest = peaks.iter().copied().fold(0.0f32, f32::max);
+
+        assert!(quietest < 0.15, "no quiet frame in a cycle: {quietest}");
+        assert!(loudest > 0.85, "no loud frame in a cycle: {loudest}");
+        // Never silent, so no style ever draws an empty lane.
+        assert!(peaks.iter().all(|peak| *peak > 0.0));
+    }
+
+    /// The burst is a shape, not a switch: it ramps in, holds and ramps out.
+    #[test]
+    fn the_burst_ramps_in_and_out_of_its_plateau() {
+        assert_eq!(
+            plateau(BURST_START - 0.01, BURST_START, BURST_END, BURST_EDGE),
+            0.0
+        );
+        assert_eq!(
+            plateau(BURST_END + 0.01, BURST_START, BURST_END, BURST_EDGE),
+            0.0
+        );
+        let middle = plateau(
+            (BURST_START + BURST_END) / 2.0,
+            BURST_START,
+            BURST_END,
+            BURST_EDGE,
+        );
+        assert_eq!(middle, 1.0);
+        let entering = plateau(
+            BURST_START + BURST_EDGE / 2.0,
+            BURST_START,
+            BURST_END,
+            BURST_EDGE,
+        );
+        assert!(entering > 0.0 && entering < 1.0, "{entering}");
     }
 
     #[test]

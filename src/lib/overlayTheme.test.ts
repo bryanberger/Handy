@@ -28,6 +28,9 @@ import {
   storeOverlayTheme,
   SURFACE_OPACITY_INHERIT,
   switchToken,
+  WAVEFORM_STYLE_INHERIT,
+  WAVEFORM_STYLES,
+  waveformStyleToken,
 } from "./overlayTheme";
 
 /**
@@ -666,7 +669,7 @@ describe("the two alphas", () => {
 });
 
 describe("the worked example", () => {
-  /** The README's "A full theme", all twenty-one tokens set. */
+  /** The README's "A full theme", all twenty-two tokens set. */
   const FULL_THEME: Partial<OverlayTheme> = {
     accent: "#7aa2f7",
     surface: "#1a1b26",
@@ -687,6 +690,7 @@ describe("the worked example", () => {
     border_width: 1,
     padding: 14,
     element_gap: 8,
+    waveform_style: "ribbon",
     waveform_gap: 2,
     waveform_width: 4,
   };
@@ -696,7 +700,8 @@ describe("the worked example", () => {
   // downgraded rendering (Glass percentages are covered above) and why
   // `--s-surface` carries the 92% Flat opacity, not the 45% tint.
   // `glass_material` and `glass_style` write no CSS, each setting a native
-  // view property. The neutrals mix from `var(--s-text)`, resolving to the
+  // view property, and `waveform_style` writes none either, being a renderer
+  // the card picks rather than a value it paints. The neutrals mix from `var(--s-text)`, resolving to the
   // `--s-text` beside them, while a set `border` replaces it for the edge.
   test("resolves to exactly the nineteen properties listed", () => {
     expect(resolveOverlayThemeVars(resolved(FULL_THEME))).toEqual({
@@ -857,6 +862,21 @@ describe("the row's own tokens", () => {
       expect(switchToken(INHERIT_ALL, key)).toBe(BOOLEAN_INHERIT[key]);
     }
   });
+
+  test("the waveform style is markup only, and only ever one of the six", () => {
+    // Like the switches, the card reads it rather than a custom property, and
+    // a value the renderer table has no entry for would draw nothing at all.
+    for (const style of WAVEFORM_STYLES) {
+      expect(
+        resolveOverlayThemeVars(resolved({ waveform_style: style })),
+      ).toEqual({});
+      expect(
+        waveformStyleToken({ ...INHERIT_ALL, waveform_style: style }),
+      ).toBe(style);
+    }
+    expect(waveformStyleToken(INHERIT_ALL)).toBe(WAVEFORM_STYLE_INHERIT);
+    expect(WAVEFORM_STYLE_INHERIT).toBe("bars");
+  });
 });
 
 describe("the removal rule", () => {
@@ -902,7 +922,8 @@ describe("the boundary re-validation", () => {
         "shadow_strength": 9,
         "shadow_offset_y": "6px",
         "show_waveform": "false",
-        "show_cancel": 0
+        "show_cancel": 0,
+        "waveform_style": "spectrum"
       },
       "effective_material": "opaque",
       "glass_support": { "supported": true, "available": true, "engine": "liquid" },
@@ -916,6 +937,9 @@ describe("the boundary re-validation", () => {
     // and a 0 are not booleans, so both elements stay on the row.
     expect(switchToken(stale.theme, "show_waveform")).toBe(true);
     expect(switchToken(stale.theme, "show_cancel")).toBe(true);
+    // A style this build cannot draw inherits the bars rather than reaching
+    // for a renderer that is not there.
+    expect(waveformStyleToken(stale.theme)).toBe("bars");
 
     const root = fakeRoot();
     applyOverlayTheme(root.element, stale);

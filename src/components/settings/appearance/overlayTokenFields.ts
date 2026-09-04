@@ -1,12 +1,16 @@
-import type { Material } from "@/bindings";
+import type { Material, WaveformStyle } from "@/bindings";
 import {
   OVERLAY_TOKEN_BOUNDS,
   type OverlayBooleanKey,
   type OverlayColorKey,
   type OverlayNumericKey,
 } from "@/lib/overlayTheme";
+import {
+  STYLES_USING_WAVEFORM_GAP,
+  STYLES_USING_WAVEFORM_WIDTH,
+} from "@/overlay/waveform/waveformStyles";
 
-/** The four groups the tab renders token rows in, in display order. Listed
+/** The five groups the tab renders token rows in, in display order. Listed
  *  once so anything walking every row on screen, like the theme file's
  *  "sets N of M values" line, cannot miss a group. */
 export const OVERLAY_TOKEN_GROUPS = [
@@ -14,6 +18,7 @@ export const OVERLAY_TOKEN_GROUPS = [
   "material",
   "elements",
   "size",
+  "waveform",
 ] as const;
 
 export type OverlayTokenGroup = (typeof OVERLAY_TOKEN_GROUPS)[number];
@@ -29,17 +34,25 @@ interface OverlayTokenFieldBase {
    * one line of CSS, one inert on screen. See [`overlayTokenFieldsFor`].
    */
   onlyUnder?: Material;
+  /**
+   * The waveform styles this row means anything under; absent means every
+   * style. The two waveform lengths are the only rows that have one, since a
+   * style that draws no bar has no bar width to set. Derived from the
+   * renderers' own table, so the tab cannot claim a row a style ignores.
+   */
+  onlyForStyles?: readonly WaveformStyle[];
 }
 
 /**
  * The overlay-theme token contract as data for the Appearance tab, one entry
  * per token. Instead of a hand-written row each, `AppearanceSettings` renders
  * the Overlay Color / Overlay Material / Overlay Elements / Overlay Size &
- * Spacing groups as `fields.filter(f => f.group === …).map(renderField)`.
+ * Spacing / Waveform groups as
+ * `fields.filter(f => f.group === …).map(renderField)`.
  *
  * A discriminated union on `kind`, so `key` narrows with it. A color field's
  * key is one of the four color tokens, a length/factor field's one of the
- * twelve numeric ones, a toggle's one of the two switches, and the two enum
+ * twelve numeric ones, a toggle's one of the two switches, and the three enum
  * fields carry their own kind, so `renderField` reads `effectiveValue(field.key)`
  * at the right type per branch, not a cast.
  *
@@ -67,17 +80,23 @@ export type OverlayTokenField =
       noteKey: string;
     })
   | (OverlayTokenFieldBase & { kind: "material"; key: "material" })
-  | (OverlayTokenFieldBase & { kind: "glassStyle"; key: "glass_style" });
+  | (OverlayTokenFieldBase & { kind: "glassStyle"; key: "glass_style" })
+  | (OverlayTokenFieldBase & {
+      kind: "waveformStyle";
+      key: "waveform_style";
+    });
 
 const TOKENS = "settings.appearance.tokens";
 const MATERIAL = "settings.appearance.material";
 const GLASS_STYLE = "settings.appearance.glassStyle";
+const WAVEFORM_STYLE = "settings.appearance.waveformStyle";
 
 /** Token order matches the contract's table, the same order the theme file's
  *  `TOKENS` table lists: accent, surface, surface_opacity, glass_tint, text,
  *  border, border_opacity, material, glass_material, glass_style,
  *  shadow_strength, shadow_offset_y, show_waveform, show_cancel, size_scale,
- *  radius, border_width, padding, element_gap, waveform_gap, waveform_width.
+ *  radius, border_width, padding, element_gap, waveform_style, waveform_gap,
+ *  waveform_width.
  *  That is also the display order, since every group's rows are contiguous in
  *  it. `glass_material` is the only token with no row, since it drives the
  *  pre-macOS-26 fallback engine alone and is set from the theme file.
@@ -249,18 +268,29 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
     labelKey: `${TOKENS}.elementGap.title`,
     descriptionKey: `${TOKENS}.elementGap.description`,
   },
+  // The waveform's own group: how it is drawn, then the two lengths, each
+  // shown only for the styles that read it.
+  {
+    key: "waveform_style",
+    group: "waveform",
+    kind: "waveformStyle",
+    labelKey: `${WAVEFORM_STYLE}.title`,
+    descriptionKey: `${WAVEFORM_STYLE}.description`,
+  },
   {
     key: "waveform_gap",
-    group: "size",
+    group: "waveform",
     kind: "length",
+    onlyForStyles: STYLES_USING_WAVEFORM_GAP,
     ...OVERLAY_TOKEN_BOUNDS.waveform_gap,
     labelKey: `${TOKENS}.waveformGap.title`,
     descriptionKey: `${TOKENS}.waveformGap.description`,
   },
   {
     key: "waveform_width",
-    group: "size",
+    group: "waveform",
     kind: "length",
+    onlyForStyles: STYLES_USING_WAVEFORM_WIDTH,
     ...OVERLAY_TOKEN_BOUNDS.waveform_width,
     labelKey: `${TOKENS}.waveformWidth.title`,
     descriptionKey: `${TOKENS}.waveformWidth.description`,
@@ -268,21 +298,33 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
 ] as const;
 
 /**
- * The rows a group shows under one Material, in contract order.
+ * The rows a group shows under one Material and one waveform style, in
+ * contract order.
  *
  * Keyed on the effective Material, what is painted, not what was asked for.
  * Where Glass cannot render, the Flat card is on screen, so Flat's opacity is
  * the live control. The apply layer picks its alpha the same way.
  *
+ * `style` is optional, and omitting it keeps every style's rows. That is what
+ * the theme file's "sets N of M values" total asks for: the denominator is the
+ * rows this tab has under the Material, not the rows the style in effect
+ * happens to show, or it would move as the user picks a style.
+ *
  * Pure, and the only place the "never both alphas", "one shadow control per
- * Material" and "no shadow offset under Glass" rules are written down.
+ * Material", "no shadow offset under Glass" and "no bar width without bars"
+ * rules are written down.
  */
 export function overlayTokenFieldsFor(
   group: OverlayTokenGroup,
   material: Material,
+  style?: WaveformStyle,
 ): readonly OverlayTokenField[] {
   return OVERLAY_TOKEN_FIELDS.filter(
     (field) =>
-      field.group === group && (field.onlyUnder ?? material) === material,
+      field.group === group &&
+      (field.onlyUnder ?? material) === material &&
+      (style === undefined ||
+        field.onlyForStyles === undefined ||
+        field.onlyForStyles.includes(style)),
   );
 }

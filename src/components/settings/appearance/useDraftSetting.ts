@@ -155,7 +155,7 @@ export class DraftDebouncer<Key extends string, Value> {
  *
  * Reads the store's `overlay_theme` at call time, not a captured closure, so
  * two edits in flight compose instead of clobbering each other. It sends all
- * twenty-one tokens through the one `change_overlay_theme_setting` command, which
+ * twenty-two tokens through the one `change_overlay_theme_setting` command, which
  * keeps the store's optimistic write and rollback (keyed on the single
  * `overlay_theme` `AppSettings` field) working unchanged.
  */

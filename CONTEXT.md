@@ -92,6 +92,14 @@ _Avoid_: zoom, size, scale factor (bare), DPI, density
 The extra space between the elements of the card's control row. The row carries one on each side of its middle, so every card is twice the gap wider and the middle keeps the room it had.
 _Avoid_: spacing, item gap, column gap, padding (which insets the card)
 
+**Waveform style**:
+How the waveform is drawn: Bars (Handy's own meter, and what an unset theme draws), Ribbon, Bloom, Motes, Matrix or Steps. A look, not a layout: the lane it draws into is the same width whichever is chosen.
+_Avoid_: waveform type, visualizer, visualization, animation
+
+**Waveform lane**:
+The fixed slot the waveform occupies in the control row, sized from the waveform's width and gap and from nothing else. Bars fills it with capsules; every other style fills it with one canvas.
+_Avoid_: waveform area, canvas, slot, container
+
 **Resolved overlay theme**:
 The overlay theme after the per-token merge of theme file, then settings, then inherit, clamped. It also carries the material actually rendered, whether Glass is available, and the theme file's state. The single thing both windows read.
 _Avoid_: merged theme, effective theme, computed theme

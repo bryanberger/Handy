@@ -40,11 +40,18 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
  *  for rows exactly as the groups render them, so a token that gains, loses
  *  or shares a row needs no second edit. Never on screen: `glass_material`,
  *  which only drives the pre-macOS-26 fallback engine and is set from the
- *  theme file, the other Material's alpha, and, under Glass, the shadow
- *  offset macOS gives no say over. */
-function keysWithARow(material: Material): Set<OverlayThemeKey> {
+ *  theme file, the other Material's alpha, under Glass the shadow offset macOS
+ *  gives no say over, and with the waveform hidden the whole Waveform group,
+ *  which the tab drops with it. */
+function keysWithARow(
+  material: Material,
+  showWaveform: boolean,
+): Set<OverlayThemeKey> {
+  const groups = showWaveform
+    ? OVERLAY_TOKEN_GROUPS
+    : OVERLAY_TOKEN_GROUPS.filter((group) => group !== "waveform");
   return new Set<OverlayThemeKey>(
-    OVERLAY_TOKEN_GROUPS.flatMap((group) =>
+    groups.flatMap((group) =>
       overlayTokenFieldsFor(group, material).map((field) => field.key),
     ),
   );
@@ -56,18 +63,20 @@ function keysWithARow(material: Material): Set<OverlayThemeKey> {
  *
  * Otherwise a file setting a row-less token would count as owning a value
  * with no control, and the total would promise rows that are not there. So the
- * total differs per Material: nineteen of the twenty-one under Flat, eighteen
- * under Glass, which has no shadow offset. The tokens still apply; this rule
- * counts one sentence, not the file.
+ * total moves with what is on screen: twenty of the twenty-two under Flat,
+ * nineteen under Glass, which has no shadow offset, and three fewer either way
+ * with the waveform hidden, which takes its whole group off the tab. The
+ * tokens still apply; this rule counts one sentence, not the file.
  */
 export function lockedTokenCounts(
   ownedKeys: readonly string[],
   material: Material,
+  showWaveform: boolean,
 ): {
   count: number;
   total: number;
 } {
-  const shown = keysWithARow(material);
+  const shown = keysWithARow(material, showWaveform);
   return {
     count: ownedKeys.filter((key) => shown.has(key as OverlayThemeKey)).length,
     total: shown.size,
@@ -105,6 +114,9 @@ export interface ThemeFileGroupProps {
   /** The effective Material, which sets how many rows are on screen for the
    *  "sets N of M values" line. See [`lockedTokenCounts`]. */
   material: Material;
+  /** `show_waveform`, which takes the Waveform group off the tab with it, so
+   *  its three rows leave the same count. */
+  showWaveform: boolean;
   onReload: () => void;
   isReloading: boolean;
   grouped?: boolean;
@@ -119,6 +131,7 @@ export interface ThemeFileGroupProps {
 export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
   file,
   material,
+  showWaveform,
   onReload,
   isReloading,
   grouped = true,
@@ -154,7 +167,7 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
 
   const shown = file.diagnostics.slice(0, MAX_SHOWN_DIAGNOSTICS);
   const more = moreDiagnosticsCount(file.diagnostics_total, shown.length);
-  const owned = lockedTokenCounts(file.owned_keys, material);
+  const owned = lockedTokenCounts(file.owned_keys, material, showWaveform);
 
   return (
     <>

@@ -41,6 +41,7 @@ describe("the token descriptors", () => {
       "border_width",
       "padding",
       "element_gap",
+      "waveform_style",
       "waveform_gap",
       "waveform_width",
     ]);
@@ -59,6 +60,7 @@ describe("the token descriptors", () => {
       "material",
       "elements",
       "size",
+      "waveform",
     ]);
   });
 
@@ -159,8 +161,8 @@ describe("overlayTokenFieldsFor", () => {
     );
   });
 
-  test("the Elements and Size groups are the same under both Materials", () => {
-    for (const group of ["elements", "size"] as const) {
+  test("the Elements, Size and Waveform groups are the same under both Materials", () => {
+    for (const group of ["elements", "size", "waveform"] as const) {
       expect(keysOf(overlayTokenFieldsFor(group, "flat"))).toEqual(
         keysOf(overlayTokenFieldsFor(group, "glass")),
       );
@@ -172,6 +174,43 @@ describe("overlayTokenFieldsFor", () => {
       "padding",
       // The gap follows the padding it is a sibling of, not the waveform.
       "element_gap",
+    ]);
+  });
+
+  /** The two waveform lengths are the only rows a style can take away, and
+   *  the style row itself is never one of them. */
+  test("the Waveform group shows only the lengths the style reads", () => {
+    expect(keysOf(overlayTokenFieldsFor("waveform", "flat", "bars"))).toEqual([
+      "waveform_style",
+      "waveform_gap",
+      "waveform_width",
+    ]);
+    expect(keysOf(overlayTokenFieldsFor("waveform", "flat", "matrix"))).toEqual(
+      ["waveform_style", "waveform_gap", "waveform_width"],
+    );
+    // The ribbon's width is its thinnest point; it has nothing to gap.
+    expect(keysOf(overlayTokenFieldsFor("waveform", "flat", "ribbon"))).toEqual(
+      ["waveform_style", "waveform_width"],
+    );
+    expect(keysOf(overlayTokenFieldsFor("waveform", "flat", "motes"))).toEqual([
+      "waveform_style",
+      "waveform_width",
+    ]);
+    expect(keysOf(overlayTokenFieldsFor("waveform", "flat", "steps"))).toEqual([
+      "waveform_style",
+      "waveform_width",
+    ]);
+    // The bloom is sized by the lane, so it reads neither.
+    expect(keysOf(overlayTokenFieldsFor("waveform", "flat", "bloom"))).toEqual([
+      "waveform_style",
+    ]);
+  });
+
+  /** What the theme file's "sets N of M values" total asks for: a denominator
+   *  that does not move as the user picks a style. */
+  test("omitting the style keeps every row a Material has", () => {
+    expect(keysOf(overlayTokenFieldsFor("waveform", "flat"))).toEqual([
+      "waveform_style",
       "waveform_gap",
       "waveform_width",
     ]);
@@ -179,7 +218,13 @@ describe("overlayTokenFieldsFor", () => {
 
   test("a group only ever yields its own rows", () => {
     for (const material of ["flat", "glass"] as const) {
-      for (const group of ["color", "material", "elements", "size"] as const) {
+      for (const group of [
+        "color",
+        "material",
+        "elements",
+        "size",
+        "waveform",
+      ] as const) {
         for (const field of overlayTokenFieldsFor(group, material)) {
           expect(field.group).toBe(group);
         }
@@ -187,10 +232,10 @@ describe("overlayTokenFieldsFor", () => {
     }
   });
 
-  test("the four groups together are every row the Material has", () => {
+  test("the five groups together are every row the Material has", () => {
     const shown = (material: "flat" | "glass") =>
-      (["color", "material", "elements", "size"] as const).flatMap((group) =>
-        keysOf(overlayTokenFieldsFor(group, material)),
+      (["color", "material", "elements", "size", "waveform"] as const).flatMap(
+        (group) => keysOf(overlayTokenFieldsFor(group, material)),
       );
 
     expect(shown("flat")).toEqual([
@@ -211,6 +256,7 @@ describe("overlayTokenFieldsFor", () => {
       "border_width",
       "padding",
       "element_gap",
+      "waveform_style",
       "waveform_gap",
       "waveform_width",
     ]);
@@ -231,13 +277,14 @@ describe("overlayTokenFieldsFor", () => {
       "border_width",
       "padding",
       "element_gap",
+      "waveform_style",
       "waveform_gap",
       "waveform_width",
     ]);
-    // Nineteen rows under Flat, eighteen under Glass: `glass_material` never
+    // Twenty rows under Flat, nineteen under Glass: `glass_material` never
     // has one, the two alphas share a slot, the shadow's two rows share one,
     // and Glass has no shadow offset to show.
-    expect(shown("flat").length).toBe(19);
-    expect(shown("glass").length).toBe(18);
+    expect(shown("flat").length).toBe(20);
+    expect(shown("glass").length).toBe(19);
   });
 });

@@ -1,6 +1,6 @@
 //! Overlay theme: storage, per-key merge, and delivery.
 //!
-//! Twenty-one optional tokens decide how the recording overlay's card looks.
+//! Twenty-two optional tokens decide how the recording overlay's card looks.
 //! Absent means inherit, Handy's built-in theme-aware value, so a theme that
 //! sets nothing reproduces today's overlay exactly.
 //!
@@ -183,6 +183,67 @@ impl GlassStyle {
         match self {
             Self::Regular => "regular",
             Self::Clear => "clear",
+        }
+    }
+}
+
+/// How the control row's waveform is drawn.
+///
+/// `Bars` is today's nine capsules, the inherit, and the only value drawn as
+/// DOM elements; the other five are drawn on one canvas in the waveform lane.
+/// The lane is the same width whatever draws in it, so the style never changes
+/// the card's footprint and no window is a function of it.
+///
+/// Four of the five read `waveform_width` and one reads `waveform_gap`; the
+/// Appearance tab hides the rows a style ignores. `WAVEFORM_STYLE_TOKENS` in
+/// `src/overlay/waveform/waveformStyles.ts` is the same table, pinned by
+/// `the_waveform_styles_match_the_frontends`.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum WaveformStyle {
+    /// Nine centred capsules, one per bucket, each as tall as its level.
+    /// Handy's own meter, unchanged, and what an unset token inherits.
+    #[default]
+    Bars,
+    /// One continuous ribbon mirrored about the centre line, its thickness
+    /// following the levels while a slow drift carries it sideways.
+    Ribbon,
+    /// A single rounded lozenge whose outline deforms per bucket and breathes
+    /// with the overall level: one living thing rather than a graph.
+    Bloom,
+    /// A field of soft round motes drifting up out of the lane, loudness
+    /// lighting more of them and throwing them further.
+    Motes,
+    /// A dot-matrix VU: each bucket a column of square dots lit from the
+    /// centre outward in quantised steps.
+    Matrix,
+    /// A contiguous stepped histogram, square corners and no gaps, heights
+    /// quantised to fixed levels.
+    Steps,
+}
+
+impl WaveformStyle {
+    /// Declaration order, which is the order the Appearance tab's dropdown and
+    /// the theme file's documentation use.
+    pub const ALL: [WaveformStyle; 6] = [
+        Self::Bars,
+        Self::Ribbon,
+        Self::Bloom,
+        Self::Motes,
+        Self::Matrix,
+        Self::Steps,
+    ];
+
+    /// The theme-file spelling, also the serde representation and the value
+    /// the frontend's bindings carry.
+    pub fn as_key(self) -> &'static str {
+        match self {
+            Self::Bars => "bars",
+            Self::Ribbon => "ribbon",
+            Self::Bloom => "bloom",
+            Self::Motes => "motes",
+            Self::Matrix => "matrix",
+            Self::Steps => "steps",
         }
     }
 }
@@ -409,11 +470,11 @@ where
     }
 }
 
-/// The twenty-one overlay-theme tokens. `None` means inherit.
+/// The twenty-two overlay-theme tokens. `None` means inherit.
 ///
 /// Field names are the theme-file keys, and every field deserializes
 /// leniently: a wrong type or shape degrades to `None` with a `warn!`, so one
-/// bad token never costs the other twenty, as `salvage_settings` does one
+/// bad token never costs the other twenty-one, as `salvage_settings` does one
 /// level up. The store salvages silently (log only); the theme file applies
 /// the same rules but reports diagnostics, so it runs its own per-key pass
 /// instead of deserializing an `OverlayTheme`.
@@ -525,6 +586,14 @@ pub struct OverlayTheme {
     /// card gains exactly what the two gaps take.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub element_gap: Option<u16>,
+    /// How the waveform is drawn. Unset means today's bars, which is the
+    /// enum's own default.
+    ///
+    /// The only token nothing native reads: the waveform lane is the same
+    /// width whatever draws in it, so a style can never move a window, and the
+    /// card alone resolves the inherit. Hence no accessor beside the others.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub waveform_style: Option<WaveformStyle>,
     /// Gap between waveform bars at scale 1, 0 to 5 px.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub waveform_gap: Option<u16>,
@@ -702,6 +771,7 @@ impl OverlayTheme {
             border_width: self.border_width.map(|value| value.min(BORDER_WIDTH_MAX)),
             padding: self.padding.map(|value| value.min(PADDING_MAX)),
             element_gap: self.element_gap.map(|value| value.min(ELEMENT_GAP_MAX)),
+            waveform_style: self.waveform_style,
             waveform_gap: self.waveform_gap.map(|value| value.min(WAVEFORM_GAP_MAX)),
             waveform_width: self
                 .waveform_width
@@ -900,6 +970,7 @@ pub fn merge(file: &OverlayTheme, settings: &OverlayTheme) -> OverlayTheme {
         border_width: file.border_width.or(settings.border_width),
         padding: file.padding.or(settings.padding),
         element_gap: file.element_gap.or(settings.element_gap),
+        waveform_style: file.waveform_style.or(settings.waveform_style),
         waveform_gap: file.waveform_gap.or(settings.waveform_gap),
         waveform_width: file.waveform_width.or(settings.waveform_width),
     }
@@ -1056,7 +1127,7 @@ mod tests {
     use super::*;
     use crate::frontend_source::{
         css_color, css_number, css_px, ts_declaration_block, ts_entry_block, ts_number_field,
-        tsx_const, APPLY_LAYER_TS, OVERLAY_CSS, THEME_CSS,
+        tsx_const, APPLY_LAYER_TS, OVERLAY_CSS, THEME_CSS, WAVEFORM_STYLES_TS,
     };
     use serde_json::json;
 
@@ -1372,6 +1443,7 @@ mod tests {
             border_width: Some(99),
             padding: Some(99),
             element_gap: Some(99),
+            waveform_style: Some(WaveformStyle::Motes),
             waveform_gap: Some(99),
             waveform_width: Some(99),
         }
@@ -1392,6 +1464,7 @@ mod tests {
         // Booleans have no range to clamp; they only survive.
         assert_eq!(over.show_waveform, Some(false));
         assert_eq!(over.show_cancel, Some(false));
+        assert_eq!(over.waveform_style, Some(WaveformStyle::Motes));
         // Colours and the enum are already canonical; clamping leaves them be.
         assert_eq!(over.accent, hex("#7aa2f7"));
         assert_eq!(over.surface, hex("#1a1b26"));
@@ -1503,6 +1576,67 @@ mod tests {
         // The default is the measured pick, the most see-through of the eight
         // in both app themes.
         assert_eq!(GlassMaterial::default(), GlassMaterial::HudWindow);
+    }
+
+    /// The waveform style is the third closed enum, so it owes the same
+    /// round-trip: the key the theme file spells is the serde representation
+    /// is the value the bindings carry.
+    #[test]
+    fn waveform_style_keys_are_the_serde_spelling() {
+        for style in WaveformStyle::ALL {
+            let value = serde_json::to_value(style).expect("an enum serializes");
+            assert_eq!(value, json!(style.as_key()));
+            let parsed: WaveformStyle =
+                serde_json::from_value(value).expect("the spelling round-trips");
+            assert_eq!(parsed, style);
+        }
+
+        assert_eq!(
+            WaveformStyle::ALL.map(|style| style.as_key()),
+            ["bars", "ribbon", "bloom", "motes", "matrix", "steps"]
+        );
+        // Unset is today's card, so the default has to be the DOM bars.
+        assert_eq!(WaveformStyle::default(), WaveformStyle::Bars);
+        // No accessor beside the other tokens': this is the one token nothing
+        // native reads, so the frontend resolves the inherit itself
+        // (`waveformStyleToken` in `src/lib/overlayTheme.ts`) and Rust only
+        // carries and clamps it.
+        assert_eq!(OverlayTheme::default().waveform_style, None);
+    }
+
+    /// The six styles are declared three times: this enum, the apply layer's
+    /// value list (which re-validates a hand-edited localStorage mirror), and
+    /// the renderers' token table (which says which lengths each style reads
+    /// and so which rows the tab shows). A value added here alone would paint
+    /// an empty lane, so all three are pinned to each other.
+    #[test]
+    fn the_waveform_styles_match_the_frontends() {
+        let list = {
+            let start = APPLY_LAYER_TS
+                .find("export const WAVEFORM_STYLES")
+                .expect("the apply layer declares the style list");
+            let rest = &APPLY_LAYER_TS[start..];
+            let end = rest.find("];").expect("the style list is closed");
+            &rest[..end]
+        };
+        let table = ts_declaration_block(WAVEFORM_STYLES_TS, "WAVEFORM_STYLE_TOKENS");
+
+        // In order, so the dropdown lists them the way this enum declares them.
+        let mut searched = 0;
+        for style in WaveformStyle::ALL {
+            let quoted = format!("\"{}\"", style.as_key());
+            let at = list[searched..].find(&quoted).unwrap_or_else(|| {
+                panic!("{quoted} is missing from the apply layer's style list, or is out of order")
+            });
+            searched += at + quoted.len();
+
+            let entry = ts_entry_block(table, style.as_key());
+            assert!(
+                entry.contains("usesWidth:") && entry.contains("usesGap:"),
+                "{} has no width/gap entry in the renderers' table",
+                style.as_key()
+            );
+        }
     }
 
     #[test]

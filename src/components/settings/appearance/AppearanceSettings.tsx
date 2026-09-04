@@ -9,6 +9,7 @@ import {
   inheritedTokenValue,
   INHERIT_ALL,
   SHADOW_STRENGTH_INHERIT,
+  WAVEFORM_STYLE_INHERIT,
   type OverlayBooleanKey,
   type OverlayThemeKey,
 } from "@/lib/overlayTheme";
@@ -18,6 +19,7 @@ import type {
   Material,
   OverlayStyle,
   OverlayTheme,
+  WaveformStyle,
 } from "@/bindings";
 import { ShowOverlay } from "../ShowOverlay";
 import { ThemeSelector } from "../ThemeSelector";
@@ -32,6 +34,7 @@ import {
 import type { PreviewChange, PreviewChangeRequest } from "./previewMode";
 import { OverlayTokenRow } from "./OverlayTokenRow";
 import { ThemeFileGroup } from "./ThemeFileGroup";
+import { WaveformStyleSelector } from "./WaveformStyleSelector";
 import { setOverlayThemeToken, useDraftSetting } from "./useDraftSetting";
 import { EMPTY_FILE_STATE, useOverlayThemeVars } from "./useOverlayThemeVars";
 
@@ -71,9 +74,9 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
 /**
  * The Appearance tab. App theme picker, overlay style/position (both reused
  * unchanged from About/Advanced), on-screen preview, overlay-theme tokens as
- * Color / Material / Elements / Size & Spacing, and the Theme File group.
- * Groups 4 on read `OVERLAY_TOKEN_FIELDS` rather than hardcoded rows, so that
- * table alone declares a token's shape.
+ * Color / Material / Elements / Size & Spacing / Waveform, and the Theme File
+ * group. Groups 4 on read `OVERLAY_TOKEN_FIELDS` rather than hardcoded rows,
+ * so that table alone declares a token's shape.
  */
 export const AppearanceSettings: React.FC = () => (
   <ErrorBoundary context="Appearance tab">
@@ -116,6 +119,12 @@ const AppearanceSettingsInner: React.FC = () => {
   );
   const currentMaterial = vars.effectiveValue("material") ?? "flat";
   const currentGlassStyle = vars.effectiveValue("glass_style") ?? "regular";
+  const currentWaveformStyle =
+    vars.effectiveValue("waveform_style") ?? WAVEFORM_STYLE_INHERIT;
+  // The whole Waveform group goes with the waveform. None of its rows could
+  // change anything while the card draws no waveform at all.
+  const showsWaveform =
+    vars.effectiveValue("show_waveform") ?? BOOLEAN_INHERIT.show_waveform;
   const handleSelectMaterial = useCallback(
     (next: Material) => {
       if (next !== currentMaterial)
@@ -132,6 +141,11 @@ const AppearanceSettingsInner: React.FC = () => {
     },
     [currentGlassStyle, reportSurfaceChange],
   );
+  // An enum is one value, not the tail of a drag, so it commits straight
+  // through, as the Material and the Glass style do.
+  const handleSelectWaveformStyle = useCallback((next: WaveformStyle) => {
+    void setOverlayThemeToken("waveform_style", next);
+  }, []);
 
   const overlayTheme = settings?.overlay_theme ?? INHERIT_ALL;
   const resettingWhole = isUpdating("overlay_theme");
@@ -145,10 +159,11 @@ const AppearanceSettingsInner: React.FC = () => {
     const locked = vars.isLocked(field.key);
 
     switch (field.kind) {
-      // The two enum tokens with a row get their own selectors, not a generic
-      // dropdown. Material handles the Glass gating and the unavailable note,
-      // the Glass style its engine gating. Both still live in the descriptor
-      // table, so the group is driven like Color and Size & Spacing.
+      // The three enum tokens with a row get their own selectors, not one
+      // generic dropdown. Material handles the Glass gating and the
+      // unavailable note, the Glass style its engine gating, and the waveform
+      // style its six labels. All three still live in the descriptor table, so
+      // their groups are driven like Color and Size & Spacing.
       case "material":
         return (
           <MaterialSelector
@@ -169,6 +184,17 @@ const AppearanceSettingsInner: React.FC = () => {
             onSelect={handleSelectGlassStyle}
             material={currentMaterial}
             glassSupport={glassSupport}
+            locked={locked}
+            lockedDescription={lockedDescription}
+          />
+        );
+
+      case "waveformStyle":
+        return (
+          <WaveformStyleSelector
+            key={field.key}
+            value={currentWaveformStyle}
+            onSelect={handleSelectWaveformStyle}
             locked={locked}
             lockedDescription={lockedDescription}
           />
@@ -280,7 +306,9 @@ const AppearanceSettingsInner: React.FC = () => {
       {style !== "none" && (
         <>
           {/* Each group shows the rows its Material has: under Flat the surface
-              opacity, under Glass the tint strength in its place. */}
+              opacity, under Glass the tint strength in its place. Only the
+              Waveform group takes the style, the two lengths there being the
+              only rows a style can hide. */}
           <SettingsGroup title={t("settings.appearance.groups.color")}>
             {overlayTokenFieldsFor("color", vars.effectiveMaterial).map(
               renderField,
@@ -305,10 +333,21 @@ const AppearanceSettingsInner: React.FC = () => {
             )}
           </SettingsGroup>
 
+          {showsWaveform && (
+            <SettingsGroup title={t("settings.appearance.groups.waveform")}>
+              {overlayTokenFieldsFor(
+                "waveform",
+                vars.effectiveMaterial,
+                currentWaveformStyle,
+              ).map(renderField)}
+            </SettingsGroup>
+          )}
+
           <SettingsGroup title={t("settings.appearance.groups.themeFile")}>
             <ThemeFileGroup
               file={resolved?.file ?? EMPTY_FILE_STATE}
               material={vars.effectiveMaterial}
+              showWaveform={showsWaveform}
               onReload={() => void reload()}
               isReloading={isReloading}
             />

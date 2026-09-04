@@ -1,5 +1,5 @@
 import { emit, listen } from "@tauri-apps/api/event";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import "./RecordingOverlay.css";
 import { commands, events } from "@/bindings";
 import type {
@@ -8,6 +8,7 @@ import type {
   StreamPhaseEvent,
   StreamTextEvent,
   StreamWorkKind,
+  WaveformStyle,
 } from "@/bindings";
 import i18n, { syncLanguageFromSettings } from "@/i18n";
 import {
@@ -15,13 +16,21 @@ import {
   BOOLEAN_INHERIT,
   storeOverlayTheme,
   switchToken,
+  WAVEFORM_STYLE_INHERIT,
+  waveformStyleToken,
 } from "@/lib/overlayTheme";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 import OverlayCard, { type OverlayState } from "./OverlayCard";
 import { useCardShapeReporter } from "./useCardShapeReporter";
+import { LEVEL_BUCKETS } from "./waveform/waveformLane";
+import {
+  drawnWaveformStyle,
+  isCanvasWaveformStyle,
+} from "./waveform/waveformStyles";
 
 // Number of reactive bars in the waveform (the simple, smoothed style shared by
-// every overlay form). Mic levels arrive as 16 FFT buckets; we take the first N.
+// every overlay form). Mic levels arrive as LEVEL_BUCKETS FFT buckets; we take
+// the first N.
 const WAVE_BARS = 9;
 
 /** The theme facts this component keeps in state, because the card's markup
@@ -33,6 +42,8 @@ interface OverlayThemeFacts {
   showWaveform: boolean;
   /** `show_cancel`, unset meaning shown. */
   showCancel: boolean;
+  /** `waveform_style`, unset meaning today's bars. */
+  waveformStyle: WaveformStyle;
 }
 
 // The resolved theme can come from the localStorage mirror, which bypasses
@@ -42,6 +53,7 @@ const themeFacts = (resolved: ResolvedOverlayTheme): OverlayThemeFacts => ({
   glass: resolved.effective_material === "glass",
   showWaveform: switchToken(resolved.theme, "show_waveform"),
   showCancel: switchToken(resolved.theme, "show_cancel"),
+  waveformStyle: waveformStyleToken(resolved.theme),
 });
 
 // Paint a resolved overlay theme and report the facts the markup needs.
@@ -91,13 +103,51 @@ const RecordingOverlay: React.FC = () => {
     glass: false,
     showWaveform: BOOLEAN_INHERIT.show_waveform,
     showCancel: BOOLEAN_INHERIT.show_cancel,
+    waveformStyle: WAVEFORM_STYLE_INHERIT,
   });
+  // Bumped on every repaint, so a canvas waveform style re-reads the colours
+  // and the two waveform lengths it caches. A number rather than the facts
+  // object above, because a repaint that changes no fact still moves a colour.
+  const [themeRevision, setThemeRevision] = useState(0);
 
-  const smoothedLevelsRef = useRef<number[]>(Array(16).fill(0));
+  const smoothedLevelsRef = useRef<number[]>(Array(LEVEL_BUCKETS).fill(0));
+  // Whether the waveform is on a canvas, read by the microphone listener,
+  // which is registered once and cannot see the state above.
+  const canvasWaveformRef = useRef(false);
+  // The browser gave no 2D context, so every style falls back to the bars.
+  // Kept here rather than in the card, because the bars are fed from the level
+  // state above and a canvas style skips it: a card that fell back on its own
+  // would draw bars frozen at zero for the rest of the session. Cleared when
+  // the style changes, so one failure is not carried across a later choice.
+  const [canvasUnavailable, setCanvasUnavailable] = useState(false);
+  const canvasUnavailableRef = useRef(false);
+  const paintedStyleRef = useRef<WaveformStyle>(WAVEFORM_STYLE_INHERIT);
+  const reportCanvasUnavailable = useCallback(() => {
+    canvasUnavailableRef.current = true;
+    canvasWaveformRef.current = false;
+    setCanvasUnavailable(true);
+  }, []);
   const direction = getLanguageDirection(i18n.language);
 
   useEffect(() => {
     const setupEventListeners = async () => {
+      // Every repaint lands here: it holds the facts the markup reads, tells
+      // the microphone listener whether a canvas is drawing, and moves the
+      // revision a canvas style re-measures on.
+      const painted = (facts: OverlayThemeFacts) => {
+        // A style the user just picked deserves a fresh try at a canvas.
+        if (paintedStyleRef.current !== facts.waveformStyle) {
+          paintedStyleRef.current = facts.waveformStyle;
+          canvasUnavailableRef.current = false;
+          setCanvasUnavailable(false);
+        }
+        setTheme(facts);
+        canvasWaveformRef.current = isCanvasWaveformStyle(
+          drawnWaveformStyle(facts.waveformStyle, canvasUnavailableRef.current),
+        );
+        setThemeRevision((revision) => revision + 1);
+      };
+
       const unlistenShow = await listen("show-overlay", async (event) => {
         const overlayState = event.payload as OverlayState;
         // Reset synchronously before settings I/O. A fast microphone can emit
@@ -105,7 +155,7 @@ const RecordingOverlay: React.FC = () => {
         // them would overwrite that event and leave the overlay stuck arming.
         if (overlayState === "recording" || overlayState === "streaming") {
           setCaptureReady(false);
-          smoothedLevelsRef.current = Array(16).fill(0);
+          smoothedLevelsRef.current = Array(LEVEL_BUCKETS).fill(0);
           setLevels(Array(WAVE_BARS).fill(0));
           setStreamText({ committed: "", tentative: "" });
         }
@@ -129,7 +179,7 @@ const RecordingOverlay: React.FC = () => {
             // Painted here, not in an effect. The custom properties and
             // `data-material` must be on the root before the first painted
             // frame, which an effect would leave to React's batching.
-            setTheme(paintAndStoreOverlayTheme(resolved.data));
+            painted(paintAndStoreOverlayTheme(resolved.data));
           }
         } catch {
           // Keep the previous/default placement and theme if either read fails.
@@ -156,14 +206,17 @@ const RecordingOverlay: React.FC = () => {
 
       const unlistenLevel = await listen<number[]>("mic-level", (event) => {
         const newLevels = event.payload as number[];
-        // Exponential smoothing across the 16 buckets, then take the first N
+        // Exponential smoothing across every bucket, then take the first N
         // bars for the shared waveform.
         const smoothed = smoothedLevelsRef.current.map((prev, i) => {
           const target = newLevels[i] || 0;
           return prev * 0.7 + target * 0.3;
         });
         smoothedLevelsRef.current = smoothed;
-        setLevels(smoothed.slice(0, WAVE_BARS));
+        // A canvas style reads the ref inside its own animation loop, so it
+        // skips this state update: those styles cost fewer React renders than
+        // the bars, which are DOM elements and need one per frame.
+        if (!canvasWaveformRef.current) setLevels(smoothed.slice(0, WAVE_BARS));
       });
 
       const unlistenStream = await events.streamTextEvent.listen((event) => {
@@ -173,13 +226,20 @@ const RecordingOverlay: React.FC = () => {
       // The theme can change while the overlay is visible (a token committed
       // in the Appearance tab), so repaint on every push too.
       const unlistenTheme = await events.resolvedOverlayTheme.listen((event) =>
-        setTheme(paintAndStoreOverlayTheme(event.payload)),
+        painted(paintAndStoreOverlayTheme(event.payload)),
       );
 
       // The same repaint for a theme still being edited. A draft arrives per
       // animation frame while a slider is dragged, so this handler only paints.
       const unlistenDraft = await events.overlayThemeDraft.listen((event) =>
-        setTheme(paintOverlayTheme(event.payload.resolved)),
+        painted(paintOverlayTheme(event.payload.resolved)),
+      );
+
+      // The app theme is applied in `main.tsx`, which repaints no overlay
+      // token, so nothing above moves. A canvas style still has to re-read its
+      // colours: the accent follows the app palette.
+      const unlistenAppTheme = await listen("theme-changed", () =>
+        setThemeRevision((revision) => revision + 1),
       );
 
       const unlistenPhase = await events.streamPhaseEvent.listen((event) => {
@@ -201,6 +261,7 @@ const RecordingOverlay: React.FC = () => {
         unlistenStream();
         unlistenTheme();
         unlistenDraft();
+        unlistenAppTheme();
         unlistenPhase();
       };
     };
@@ -240,6 +301,10 @@ const RecordingOverlay: React.FC = () => {
       position={position}
       showWaveform={theme.showWaveform}
       showCancel={theme.showCancel}
+      waveformStyle={drawnWaveformStyle(theme.waveformStyle, canvasUnavailable)}
+      levelsRef={smoothedLevelsRef}
+      themeRevision={themeRevision}
+      onCanvasUnavailable={reportCanvasUnavailable}
       session={session}
       direction={direction}
       onCancel={() => commands.cancelOperation()}

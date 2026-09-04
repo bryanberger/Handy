@@ -5,8 +5,8 @@
 //! creates is `~/.config/handy/`, behind the Appearance tab's Open button,
 //! never a path [`THEME_FILE_ENV_VAR`] named. Only typed tokens come out:
 //! canonical `#rrggbb` colours, `flat | glass`, the eight macOS
-//! `glass_material` and two `glass_style` values, and numbers rounded and
-//! clamped to the token contract's bounds. No CSS, stylesheet, script, font,
+//! `glass_material`, two `glass_style` and six `waveform_style` values, and
+//! numbers rounded and clamped to the token contract's bounds. No CSS, stylesheet, script, font,
 //! path, URL or command is read, so a hostile file at worst costs one
 //! session's styling.
 //!
@@ -30,7 +30,7 @@
 
 use crate::overlay_theme::{
     GlassMaterial, GlassStyle, HexColor, Material, OverlayTheme, ThemeFileDiagnostic,
-    ThemeFileDiagnosticCode, ThemeFileState, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN,
+    ThemeFileDiagnosticCode, ThemeFileState, WaveformStyle, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN,
     BORDER_WIDTH_MAX, ELEMENT_GAP_MAX, GLASS_TINT_MAX, GLASS_TINT_MIN, PADDING_MAX, RADIUS_MAX,
     SHADOW_OFFSET_Y_MAX, SHADOW_STRENGTH_MAX, SHADOW_STRENGTH_MIN, SIZE_SCALE_MAX, SIZE_SCALE_MIN,
     SURFACE_OPACITY_MAX, SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX,
@@ -72,7 +72,7 @@ const CONFIG_SUBDIR: &str = "handy";
 /// lookup. Per XDG, empty is unset and a relative value invalid.
 const CONFIG_HOME_ENV_VAR: &str = "XDG_CONFIG_HOME";
 
-/// Anything larger than this is not a twenty-one-key document; refused unread.
+/// Anything larger than this is not a twenty-two-key document; refused unread.
 const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 
 /// Diagnostics carried in [`ThemeFileState`]. All reach the log; this bounds
@@ -108,13 +108,13 @@ const fn token(
     TokenSpec { key, parser }
 }
 
-/// The twenty-one tokens in the token contract's order, which the Appearance tab,
+/// The twenty-two tokens in the token contract's order, which the Appearance tab,
 /// [`ThemeFileState::owned_keys`] and the per-key diagnostics all follow, so
 /// the payload does not depend on `serde_json`'s key order.
 ///
 /// One table, not a key list beside a match on it. Key, parser and bounds are
 /// one fact; splitting them made a mismatch a runtime debug assertion.
-const TOKENS: [TokenSpec; 21] = [
+const TOKENS: [TokenSpec; 22] = [
     token("accent", |key, value, tokens, diagnostics| {
         tokens.accent = parse_color(key, value, diagnostics);
         tokens.accent.is_some()
@@ -160,11 +160,23 @@ const TOKENS: [TokenSpec; 21] = [
         tokens.material.is_some()
     }),
     token("glass_material", |key, value, tokens, diagnostics| {
-        tokens.glass_material = parse_glass_material(key, value, diagnostics);
+        tokens.glass_material = parse_choice(
+            key,
+            value,
+            &GlassMaterial::ALL,
+            GlassMaterial::as_key,
+            diagnostics,
+        );
         tokens.glass_material.is_some()
     }),
     token("glass_style", |key, value, tokens, diagnostics| {
-        tokens.glass_style = parse_glass_style(key, value, diagnostics);
+        tokens.glass_style = parse_choice(
+            key,
+            value,
+            &GlassStyle::ALL,
+            GlassStyle::as_key,
+            diagnostics,
+        );
         tokens.glass_style.is_some()
     }),
     token("shadow_strength", |key, value, tokens, diagnostics| {
@@ -208,6 +220,16 @@ const TOKENS: [TokenSpec; 21] = [
     token("element_gap", |key, value, tokens, diagnostics| {
         tokens.element_gap = parse_px(key, value, 0, ELEMENT_GAP_MAX, diagnostics);
         tokens.element_gap.is_some()
+    }),
+    token("waveform_style", |key, value, tokens, diagnostics| {
+        tokens.waveform_style = parse_choice(
+            key,
+            value,
+            &WaveformStyle::ALL,
+            WaveformStyle::as_key,
+            diagnostics,
+        );
+        tokens.waveform_style.is_some()
     }),
     token("waveform_gap", |key, value, tokens, diagnostics| {
         tokens.waveform_gap = parse_px(key, value, 0, WAVEFORM_GAP_MAX, diagnostics);
@@ -1002,15 +1024,22 @@ fn parse_material(
     }
 }
 
-/// `glass_material` is the closed enum of macOS materials, matched
-/// case-insensitively and ignoring `-`/` `, so `"HUD Window"`,
-/// `"hud-window"` and `"hud_window"` all land on one value. Hand-written and
-/// tool-written alike.
-fn parse_glass_material(
+/// One value of a closed enum (`glass_material`, `glass_style`,
+/// `waveform_style`), matched case-insensitively and ignoring everything that
+/// is not a letter or a digit, so `"HUD Window"`, `"hud-window"` and
+/// `"hud_window"` all land on one value. Hand-written and tool-written alike.
+///
+/// One reader for the three, since only the value list and the key differ.
+/// `material` keeps its own, its two values having no separator to be lenient
+/// about. An unknown spelling costs that one key and the diagnostic lists what
+/// the value could have been.
+fn parse_choice<T: Copy>(
     key: &str,
     value: &Value,
+    all: &[T],
+    as_key: fn(T) -> &'static str,
     diagnostics: &mut Vec<ThemeFileDiagnostic>,
-) -> Option<GlassMaterial> {
+) -> Option<T> {
     let raw = expect_string(key, value, diagnostics)?;
     let normalized: String = raw
         .trim()
@@ -1019,44 +1048,14 @@ fn parse_glass_material(
         .filter(|character| character.is_ascii_alphanumeric())
         .collect();
 
-    GlassMaterial::ALL
-        .into_iter()
-        .find(|material| material.as_key().replace('_', "") == normalized)
+    all.iter()
+        .copied()
+        .find(|choice| as_key(*choice).replace('_', "") == normalized)
         .or_else(|| {
-            let expected = GlassMaterial::ALL
-                .map(|material| format!("\"{}\"", material.as_key()))
-                .join(", ");
-            diagnostics.push(diagnostic(
-                ThemeFileDiagnosticCode::WrongType,
-                Some(key.to_string()),
-                format!("'{key}' is {raw:?}; expected one of {expected}"),
-            ));
-            None
-        })
-}
-
-/// `glass_style` takes one of the two Liquid Glass styles, matched
-/// case-insensitively and ignoring `-`/` ` like [`parse_glass_material`],
-/// so hand-written and tool-written documents spell them freely.
-fn parse_glass_style(
-    key: &str,
-    value: &Value,
-    diagnostics: &mut Vec<ThemeFileDiagnostic>,
-) -> Option<GlassStyle> {
-    let raw = expect_string(key, value, diagnostics)?;
-    let normalized: String = raw
-        .trim()
-        .to_ascii_lowercase()
-        .chars()
-        .filter(|character| character.is_ascii_alphanumeric())
-        .collect();
-
-    GlassStyle::ALL
-        .into_iter()
-        .find(|style| style.as_key() == normalized)
-        .or_else(|| {
-            let expected = GlassStyle::ALL
-                .map(|style| format!("\"{}\"", style.as_key()))
+            let expected = all
+                .iter()
+                .map(|choice| format!("\"{}\"", as_key(*choice)))
+                .collect::<Vec<_>>()
                 .join(", ");
             diagnostics.push(diagnostic(
                 ThemeFileDiagnosticCode::WrongType,
@@ -1286,6 +1285,7 @@ mod tests {
   "border_width": null,
   "padding": null,
   "element_gap": null,
+  "waveform_style": null,
   "waveform_gap": null,
   "waveform_width": null
 }"##;
@@ -1312,6 +1312,7 @@ mod tests {
   "border_width": 1,
   "padding": 14,
   "element_gap": 8,
+  "waveform_style": "ribbon",
   "waveform_gap": 2,
   "waveform_width": 4
 }"##;
@@ -1852,11 +1853,12 @@ mod tests {
                 border_width: Some(1),
                 padding: Some(14),
                 element_gap: Some(8),
+                waveform_style: Some(WaveformStyle::Ribbon),
                 waveform_gap: Some(2),
                 waveform_width: Some(4),
             }
         );
-        // Every key is owned, so the tab locks all twenty-one.
+        // Every key is owned, so the tab locks all twenty-two.
         assert_eq!(
             parsed.owned_keys,
             TOKENS.iter().map(|token| token.key).collect::<Vec<_>>()
@@ -1876,7 +1878,7 @@ mod tests {
         assert_eq!(parsed.tokens.surface_opacity, Some(1.0));
         assert_eq!(parsed.tokens.material, Some(Material::Flat));
 
-        // The sixteen tokens it does not mention still inherit.
+        // The seventeen tokens it does not mention still inherit.
         assert_eq!(parsed.tokens.glass_tint, None);
         assert_eq!(parsed.tokens.border, None);
         assert_eq!(parsed.tokens.border_opacity, None);
@@ -1891,6 +1893,7 @@ mod tests {
         assert_eq!(parsed.tokens.border_width, None);
         assert_eq!(parsed.tokens.padding, None);
         assert_eq!(parsed.tokens.element_gap, None);
+        assert_eq!(parsed.tokens.waveform_style, None);
         assert_eq!(parsed.tokens.waveform_gap, None);
         assert_eq!(parsed.tokens.waveform_width, None);
 
@@ -2258,6 +2261,48 @@ mod tests {
         // A wrong JSON type, not a wrong spelling, costs the same one key.
         let wrong_type = parse(r##"{ "glass_style": 1 }"##);
         assert_eq!(wrong_type.tokens.glass_style, None);
+        assert_eq!(
+            codes(&wrong_type.diagnostics),
+            vec![ThemeFileDiagnosticCode::WrongType]
+        );
+    }
+
+    /// `waveform_style` shares the enum reader, so it is as lenient about
+    /// spelling and as closed about values as the two Glass enums.
+    #[test]
+    fn waveform_style_spelling_is_lenient_but_closed() {
+        for spelling in ["motes", "MOTES", " Motes "] {
+            let parsed = parse(&format!(r##"{{ "waveform_style": "{spelling}" }}"##));
+            assert_eq!(
+                parsed.tokens.waveform_style,
+                Some(WaveformStyle::Motes),
+                "{spelling}"
+            );
+            assert!(parsed.diagnostics.is_empty(), "{spelling}");
+        }
+
+        assert_eq!(
+            parse(r##"{ "waveform_style": "bars" }"##)
+                .tokens
+                .waveform_style,
+            Some(WaveformStyle::Bars)
+        );
+
+        // A style this build does not draw is one bad key, not a bad file.
+        let unknown = parse(r##"{ "waveform_style": "spectrum", "radius": 12 }"##);
+        assert_eq!(unknown.tokens.waveform_style, None);
+        assert_eq!(unknown.tokens.radius, Some(12));
+        assert_eq!(unknown.owned_keys, vec!["radius"]);
+        assert_eq!(
+            codes(&unknown.diagnostics),
+            vec![ThemeFileDiagnosticCode::WrongType]
+        );
+        let message = messages(&unknown.diagnostics);
+        assert!(message.contains("\"ribbon\""), "{message}");
+
+        // A wrong JSON type, not a wrong spelling, costs the same one key.
+        let wrong_type = parse(r##"{ "waveform_style": true }"##);
+        assert_eq!(wrong_type.tokens.waveform_style, None);
         assert_eq!(
             codes(&wrong_type.diagnostics),
             vec![ThemeFileDiagnosticCode::WrongType]

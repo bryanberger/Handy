@@ -535,6 +535,25 @@
   opacity: 0.45;
   animation: none;
 }
+/* With no waveform beside it the dot is the only sign of life on the row, so
+   it breathes as well: a slow, small ease of scale and opacity under the ring
+   pulse, alive rather than alerting. Reduced motion stills it with the ring. */
+.scard.nowave .sdot.ready {
+  animation:
+    sdot-pulse 1.9s infinite,
+    sdot-breathe 2.4s ease-in-out infinite;
+}
+@keyframes sdot-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.86);
+    opacity: 0.72;
+  }
+}
 @keyframes sdot-pulse {
   0% {
     box-shadow: 0 0 0 0 var(--s-accent-soft);

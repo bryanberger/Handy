@@ -48,6 +48,10 @@ _Avoid_: overlay mode, overlay type, overlay form
 Which screen edge the overlay sits at: Top or Bottom.
 _Avoid_: placement, anchor, alignment
 
+**Edge margin**:
+How far the overlay sits from the usable screen edge it is anchored to, in points, 0 meaning flush. The one overlay-theme token measured against the screen rather than the card, so the size scale never multiplies it.
+_Avoid_: offset, inset, screen padding, gap
+
 **Overlay theme**:
 The tokens that decide how the overlay looks: accent, surface, text, border, material and the macOS material Glass is drawn with, size, radius, and spacing. Every token is optional, so a theme may set one value or all of them.
 _Avoid_: overlay skin, overlay colors, overlay CSS, customization

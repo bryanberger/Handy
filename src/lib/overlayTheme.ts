@@ -1,4 +1,9 @@
-import type { Material, OverlayTheme, ResolvedOverlayTheme } from "@/bindings";
+import type {
+  GlassStyle,
+  Material,
+  OverlayTheme,
+  ResolvedOverlayTheme,
+} from "@/bindings";
 
 /**
  * The apply layer, the one module that turns a resolved overlay theme into
@@ -114,6 +119,20 @@ export const SURFACE_OPACITY_INHERIT = 0.98;
  * identical number (`GLASS_TINT_INHERIT` in
  * `src-tauri/src/overlay_theme.rs`).
  *
+ * Measured a third time against Spotlight's own capsule on macOS 26, and
+ * kept, for both Glass styles. Spotlight sits between them: its own level over
+ * dark content is Clear's (34.6 against Clear's 39.4 at this value) while its
+ * transmission is Regular's (20.3 % against Clear's 38.8 %). Over dark content
+ * the tint barely moves the Clear card at all — 32 at 0.00 through 43 at 0.45,
+ * with Spotlight at 36 — so that half of the match does not choose a number,
+ * and the half that does, transmission, wants the tint *higher*: reaching
+ * Spotlight's 20 % would take about 0.77, which is not glass any more. Coming
+ * down to 0.25 instead would drop Clear's worst-case transcript contrast from
+ * 5.4:1 to 4.0:1, under WCAG AA. So the Spotlight-shaped frost is out of reach
+ * for a webview over `NSGlassEffectView`, and what Clear does take from
+ * Spotlight is its rim ([`BORDER_INHERIT_CLEAR`]) and its shadow
+ * (`overlay_glass::window_shadow`).
+ *
  * Why Glass has its own token. While the two Materials shared
  * `surface_opacity`, they were mutually exclusive in practice. A card set
  * opaque under Flat stayed opaque when the user picked Glass, so Glass looked
@@ -124,20 +143,40 @@ export const SURFACE_OPACITY_INHERIT = 0.98;
 export const GLASS_TINT_INHERIT = 0.45;
 
 /**
- * What an unset `border` mixes from. The foreground, on every Material.
+ * What an unset `border` mixes from, everywhere except Clear glass: the
+ * foreground.
  *
- * One value and not a per-Material pair, because the obvious Glass default,
- * a white rim of the kind an Apple HUD carries, was measured and rejected.
+ * One value and not a per-Material pair, because a white rim of the kind an
+ * Apple HUD carries was measured and rejected for Flat and for Regular glass.
  * It only works under a Dark app theme. Over a light card (Light theme, where
  * the tint is near-white) a white edge at 30 % moves the pixels by 3 levels,
  * which is no edge at all, against 27 for the foreground mix, and what the
  * default has to do is be visible in all four combinations of app theme and
- * backdrop. Only the alpha differs per Material; see
- * [`BORDER_OPACITY_INHERIT`]. A theme that wants the Apple rim can still ask
- * for it with `border: "#ffffff"` and `border_opacity: 0.35`, which is what
- * the token is for.
+ * backdrop. Clear glass is the one case where the card is dark enough in both
+ * app themes for a white edge to read, so it has its own; see
+ * [`BORDER_INHERIT_CLEAR`]. Only the alpha differs per Material otherwise;
+ * see [`BORDER_OPACITY_INHERIT`].
  */
 export const BORDER_INHERIT = "var(--s-text)";
+
+/**
+ * What an unset `border` mixes from under Clear glass: white, in both app
+ * themes, so the card carries a highlight rather than a hairline.
+ *
+ * Measured against Spotlight on macOS 26 over a split white/black desktop.
+ * Spotlight's capsule carries a 1 pt bright rim in both appearances: 113 over
+ * a panel of 36 under Dark, 238 over a panel of 183 under Light. That is a
+ * highlight in both, where the foreground mix above is a highlight under Dark
+ * and a *dark* hairline under Light — measured at 26 levels *below* the card,
+ * which is the opposite of what a glass edge does.
+ *
+ * Clear only. The rejection recorded in [`BORDER_INHERIT`] was measured on
+ * Flat and on Regular and is not revisited here; Clear is the style this was
+ * measured against Spotlight, and it is the one whose card is dark enough in
+ * both appearances for a white edge to register (133 over dark content under
+ * Light, against Regular's 151).
+ */
+export const BORDER_INHERIT_CLEAR = "#ffffff";
 
 /**
  * The alpha an unset `border_opacity` resolves to, per Material. The second
@@ -146,12 +185,68 @@ export const BORDER_INHERIT = "var(--s-text)";
  * card has, and the thinner tint above leaves it more work to do. Measured
  * again on Liquid Glass, where 0.25 lands as a single 2 px transition of
  * +45 levels over the card, reading as one hairline beside the glass's own
- * rim rather than a second line.
+ * rim rather than a second line. Clear glass takes
+ * [`BORDER_OPACITY_INHERIT_CLEAR`] instead.
  */
 export const BORDER_OPACITY_INHERIT: Record<Material, number> = {
   flat: 0.12,
   glass: 0.25,
 };
+
+/**
+ * The alpha an unset `border_opacity` resolves to under Clear glass, the
+ * second half of [`BORDER_INHERIT_CLEAR`].
+ *
+ * One number for both appearances, and a compromise, because the two pull
+ * opposite ways. Measured on macOS 26 over the split white/black desktop,
+ * against Spotlight's own rim over dark content, in levels above the card:
+ *
+ * | alpha | Dark (Spotlight +77) | Light (Spotlight +55) |
+ * | ----- | -------------------- | --------------------- |
+ * | 0.00  | +42 (the glass's own rim alone) | +3         |
+ * | 0.20  | +76                  | +25                   |
+ * | 0.25  | +85                  | +32                   |
+ * | 0.30  | +94                  | +37 (see below)       |
+ * | 0.35  | +103                 | +44                   |
+ *
+ * The Light 0.30 cell was filled in by a later session, which is why it
+ * carries a note: its own 0.25 and 0.35 anchors read +33 and +42 there,
+ * against +32 and +44 here, because the card's absolute level drifts between
+ * appearance sessions while the rim delta barely does. It settles the value
+ * rather than moving it: at 0.30 the Light rim is +37, the weaker of the two
+ * appearances losing 7 more levels, while the Dark rim still overshoots
+ * Spotlight by 17. So 0.35 stays.
+ *
+ * Dark alone would pick 0.20 and Light alone something past 0.50, because
+ * Handy's Clear card is lighter than Spotlight's panel under Dark (42 against
+ * 36) and darker under Light (136 against 183), so the same white edge has
+ * different room in each. 0.35 is the balance: a little hot under Dark, still
+ * short under Light, and a visible highlight in both — which the foreground
+ * mix is not.
+ */
+export const BORDER_OPACITY_INHERIT_CLEAR = 0.35;
+
+/** The Glass style an unset `glass_style` resolves to, re-validated. */
+function effectiveGlassStyleOf(theme: OverlayTheme): GlassStyle {
+  return theme.glass_style === "clear" ? "clear" : "regular";
+}
+
+/**
+ * The colour and alpha an unset `border` and `border_opacity` resolve to.
+ *
+ * One function rather than two tables because the two halves have to move
+ * together: Clear's white rim is only right at Clear's own alpha. The Glass
+ * style is asked for unconditionally, and ignored under Flat, so no caller
+ * has to know which Material reads it.
+ */
+export function inheritedBorder(
+  material: Material,
+  glassStyle: GlassStyle,
+): { color: string; opacity: number } {
+  return material === "glass" && glassStyle === "clear"
+    ? { color: BORDER_INHERIT_CLEAR, opacity: BORDER_OPACITY_INHERIT_CLEAR }
+    : { color: BORDER_INHERIT, opacity: BORDER_OPACITY_INHERIT[material] };
+}
 
 /** Each numeric token's single-number inherit, from `RecordingOverlay.css`. */
 const STATIC_NUMERIC_INHERIT: Record<
@@ -185,15 +280,16 @@ const STATIC_NUMERIC_INHERIT: Record<
  * showing the wrong number on a slider.
  *
  * Callers ask for `border_opacity` through this function rather than reading
- * it out of the table, because its inherit differs per Material; see
- * [`BORDER_OPACITY_INHERIT`].
+ * it out of a table, because its inherit differs per Material *and*, under
+ * Glass, per Glass style; see [`inheritedBorder`].
  */
 export function inheritedTokenValue(
   key: OverlayNumericKey,
   material: Material,
+  glassStyle: GlassStyle,
 ): number {
   return key === "border_opacity"
-    ? BORDER_OPACITY_INHERIT[material]
+    ? inheritedBorder(material, glassStyle).opacity
     : STATIC_NUMERIC_INHERIT[key];
 }
 
@@ -419,7 +515,11 @@ export function resolveOverlayThemeVars(
   // `text`/`surface`, because an edge derived from a foreground the theme has
   // replaced would be the one neutral left behind. Under Glass this writes it
   // unconditionally, and at a stronger alpha, because the edge is the only
-  // hard line a translucent card has against whatever it is blurring.
+  // hard line a translucent card has against whatever it is blurring. Under
+  // Clear glass it is a white highlight rather than a foreground hairline,
+  // which is what Spotlight's own capsule carries; see [`inheritedBorder`].
+  // Keyed on the `glass_style` token and not on the engine, so what the card
+  // paints stays a function of the theme alone.
   const border = validHex(theme.border);
   const borderOpacity = validToken(theme, "border_opacity");
   if (
@@ -429,9 +529,10 @@ export function resolveOverlayThemeVars(
     surface !== null ||
     glass
   ) {
+    const inherited = inheritedBorder(material, effectiveGlassStyleOf(theme));
     vars["--s-border"] = alphaMix(
-      border ?? BORDER_INHERIT,
-      (borderOpacity ?? BORDER_OPACITY_INHERIT[material]) * 100,
+      border ?? inherited.color,
+      (borderOpacity ?? inherited.opacity) * 100,
     );
   }
 

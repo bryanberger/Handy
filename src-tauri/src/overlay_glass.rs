@@ -139,6 +139,57 @@ pub fn glass_action(material: Material, request: GlassRequest) -> GlassAction {
     }
 }
 
+/// Whether the overlay window casts macOS's own drop shadow.
+///
+/// Only under Glass. The two Materials size the window differently, and that
+/// is the whole reason this is a rule rather than a build-time flag. Under
+/// Glass the window *is* the card, so the shadow the window server draws
+/// traces the card's own rounded rectangle, which is what every macOS glass
+/// panel has: Spotlight's capsule on macOS 26 darkens a white desktop by
+/// about 10 % just under its edge and fades out 14 pt away, and the overlay
+/// measures 15 pt with macOS drawing the same shadow for it. Under Flat the
+/// window is deliberately larger than the card and fully transparent around
+/// it, so that shadow would trace a rectangle nobody can see, floating away
+/// from the card's corners. Flat has never had one and keeps none.
+///
+/// Pure, so "Flat stays shadowless" is a test rather than a reading of the
+/// call sites.
+pub fn window_shadow(material: Material) -> bool {
+    matches!(material, Material::Glass)
+}
+
+/// Where a session has got to, as far as the window's shadow is concerned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShadowPhase {
+    /// A card is on screen, or is about to paint into the window, in this
+    /// Material: a show, a Material switch, a reveal, a frame morph.
+    Showing(Material),
+    /// The hide has started. The card and the blur are fading out together
+    /// and the window stays mapped for another 300 ms with nothing left in
+    /// it (`overlay::hide_recording_overlay`).
+    Leaving,
+}
+
+/// Whether the overlay window casts macOS's own drop shadow at this point in
+/// a session.
+///
+/// [`window_shadow`] is the Material half of the answer. The hide is the
+/// other half. AppKit's shadow is a shape cached from what the window paints,
+/// not something that follows an alpha ramp, so a Glass window that kept
+/// `hasShadow` through its exit would draw a full-strength shadow around a
+/// window the card has already faded out of, for the rest of the 300 ms the
+/// window stays mapped. The shadow goes out when the fade-out starts, and the
+/// next show turns it back on.
+///
+/// Pure, so both halves of that rule are a test rather than a reading of the
+/// call sites.
+pub fn window_shadow_at(phase: ShadowPhase) -> bool {
+    match phase {
+        ShadowPhase::Showing(material) => window_shadow(material),
+        ShadowPhase::Leaving => false,
+    }
+}
+
 /// Install the single glass view behind the webview, hidden. The class is
 /// whichever engine [`engine_for`] picks: `NSGlassEffectView` from macOS 26,
 /// `NSVisualEffectView` below it.
@@ -289,10 +340,15 @@ pub fn morph_frame(
 /// card, or hide it at once when `duration_ms` is 0 (the Live card is
 /// unmounted rather than faded, so its blur must go with it).
 ///
-/// Only the alpha changes. This deliberately leaves the view unhidden,
-/// because a deferred `setHidden` would need the same generation guard the
-/// delayed window unmap carries and would buy nothing. A hidden window paints
-/// nothing, and the next reveal fades the alpha back up from 0 anyway.
+/// The window's shadow goes with it, at once: the window stays mapped for
+/// 300 ms after the fade and AppKit's shadow is a cached shape rather than
+/// something that follows an alpha ramp (see [`window_shadow_at`]).
+///
+/// Otherwise only the alpha changes. This deliberately leaves the view
+/// unhidden, because a deferred `setHidden` would need the same generation
+/// guard the delayed window unmap carries and would buy nothing. A hidden
+/// window paints nothing, and the next reveal fades the alpha back up from 0
+/// anyway.
 #[cfg(target_os = "macos")]
 pub fn fade_out(app: &AppHandle, duration_ms: u32) {
     native::fade_out(app, duration_ms);
@@ -308,9 +364,11 @@ mod native {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Mutex;
 
+    use block2::RcBlock;
     use log::{debug, error, warn};
     use objc2::rc::Retained;
     use objc2::runtime::{AnyClass, NSObjectProtocol};
+    use objc2::Message;
     use objc2_app_kit::{
         NSAnimatablePropertyContainer, NSAnimationContext, NSAppearanceCustomization,
         NSAppearanceNameAqua, NSAppearanceNameDarkAqua, NSAutoresizingMaskOptions, NSColor,
@@ -322,7 +380,10 @@ mod native {
     use objc2_quartz_core::CAMediaTimingFunction;
     use tauri::{AppHandle, Manager};
 
-    use super::{engine_for, glass_action, GlassAction, GlassAppearance, GlassRequest};
+    use super::{
+        engine_for, glass_action, window_shadow_at, GlassAction, GlassAppearance, GlassRequest,
+        ShadowPhase,
+    };
     use crate::overlay_geometry::CARD_FADE_MS;
     use crate::overlay_theme::{
         liquid_tint, GlassEngine, GlassMaterial, GlassStyle, GlassSupport, Material, TintColor,
@@ -449,19 +510,24 @@ mod native {
 
     pub(super) fn apply_material(app: &AppHandle, material: Material, appearance: GlassAppearance) {
         on_window(app, move |window, _mtm| {
-            let Some(view) = glass_view() else {
-                return;
-            };
-            match glass_action(material, GlassRequest::ApplyMaterial) {
-                // Off screen unconditionally, in case a previous Glass session
-                // left the view visible behind a card that now has slack.
-                GlassAction::HideNow => hide_now(view.as_view()),
-                // Live property writes on the installed view; this arm
-                // deliberately leaves visibility alone, so the blur cannot
-                // appear before the card has painted. `ApplyMaterial` never
-                // asks for a reveal, so `RevealNow` cannot reach this arm.
-                _ => apply_appearance(window, &view, &appearance),
+            if let Some(view) = glass_view() {
+                match glass_action(material, GlassRequest::ApplyMaterial) {
+                    // Off screen unconditionally, in case a previous Glass
+                    // session left the view visible behind a card that now
+                    // has slack.
+                    GlassAction::HideNow => hide_now(view.as_view()),
+                    // Live property writes on the installed view; this arm
+                    // deliberately leaves visibility alone, so the blur cannot
+                    // appear before the card has painted. `ApplyMaterial` never
+                    // asks for a reveal, so `RevealNow` cannot reach this arm.
+                    _ => apply_appearance(window, &view, &appearance),
+                }
             }
+            // After the view work, so the invalidation re-derives the shadow
+            // from what the window paints now. Outside the lookup, so a
+            // machine where the install failed still stops casting a Glass
+            // shadow when it falls back to Flat.
+            sync_window_shadow(window, ShadowPhase::Showing(material));
         });
     }
 
@@ -540,18 +606,21 @@ mod native {
     }
 
     pub(super) fn show_glass(app: &AppHandle, material: Material, radius: f64) {
-        on_window(app, move |_window, _mtm| {
-            let Some(view) = glass_view() else {
-                return;
-            };
-            match glass_action(material, GlassRequest::Reveal) {
-                // A reveal that finds Flat in effect was decided under Glass
-                // and landed late. Ignoring it is not enough. Whatever hid
-                // the view may itself have run before this one was queued, so
-                // the safe answer is to hide again.
-                GlassAction::HideNow => hide_now(view.as_view()),
-                _ => reveal(&view, radius),
+        on_window(app, move |window, _mtm| {
+            if let Some(view) = glass_view() {
+                match glass_action(material, GlassRequest::Reveal) {
+                    // A reveal that finds Flat in effect was decided under
+                    // Glass and landed late. Ignoring it is not enough.
+                    // Whatever hid the view may itself have run before this
+                    // one was queued, so the safe answer is to hide again.
+                    GlassAction::HideNow => hide_now(view.as_view()),
+                    _ => reveal(&view, radius),
+                }
             }
+            // Last, because the shape the shadow traces has just changed —
+            // a reveal put content into an empty window, or the radius moved
+            // — and the invalidation inside has to see the new one.
+            sync_window_shadow(window, ShadowPhase::Showing(material));
         });
     }
 
@@ -594,7 +663,8 @@ mod native {
             );
             let new_frame = NSRect::new(origin, NSSize::new(width, height));
 
-            if duration_ms == 0 {
+            let snaps = duration_ms == 0;
+            if snaps {
                 window.setFrame_display(new_frame, true);
             } else {
                 NSAnimationContext::beginGrouping();
@@ -603,6 +673,16 @@ mod native {
                 context.setTimingFunction(Some(&CAMediaTimingFunction::functionWithControlPoints(
                     0.22, 1.0, 0.36, 1.0,
                 )));
+                // The shadow is re-derived when the animation lands, not when
+                // it is queued: the window is about to spend the whole
+                // duration between two shapes, and a shadow invalidated now
+                // would trace the one it is leaving. AppKit copies the block
+                // and runs it on the main thread when the group finishes.
+                let settled = window.retain();
+                let invalidate: RcBlock<dyn Fn()> = RcBlock::new(move || {
+                    sync_window_shadow(&settled, ShadowPhase::Showing(material));
+                });
+                context.setCompletionHandler(Some(&invalidate));
                 // A second `animator().setFrame_display:` on the same window
                 // while one is already running retargets from the current
                 // frame. An in-flight morph superseded by a newer shape is
@@ -614,11 +694,23 @@ mod native {
             if let Some(view) = glass_view() {
                 reveal(&view, radius);
             }
+            // Last again, and only for the snap: the frame and the radius are
+            // both where they will stay. An animated morph has handed the
+            // same call to its completion handler above.
+            if snaps {
+                sync_window_shadow(window, ShadowPhase::Showing(material));
+            }
         });
     }
 
     pub(super) fn fade_out(app: &AppHandle, duration_ms: u32) {
-        on_window(app, move |_window, _mtm| {
+        on_window(app, move |window, _mtm| {
+            // First, and whatever the glass view turns out to be doing. The
+            // window stays mapped for 300 ms after this and AppKit's cached
+            // shadow does not follow the fade, so the shadow has to be taken
+            // off here or it outlines an emptying window for the rest of the
+            // delay. The next show turns it back on (see [`window_shadow_at`]).
+            sync_window_shadow(window, ShadowPhase::Leaving);
             let Some(view) = glass_view() else {
                 return;
             };
@@ -632,6 +724,29 @@ mod native {
                 animate_alpha(view, 0.0, duration_ms);
             }
         });
+    }
+
+    /// Give the overlay window the drop shadow this point in a session calls
+    /// for, and re-derive the shape that shadow traces.
+    ///
+    /// **Called after the change it is reporting, never before.** The window
+    /// is borderless and transparent, so AppKit takes the shadow from what
+    /// the window actually paints and caches it; an invalidation that ran
+    /// before the reveal, the frame move or the fade would re-cache the shape
+    /// the window is leaving and the next one would never be asked for. Under
+    /// Flat what it paints is nothing outside the card, and
+    /// [`window_shadow_at`] answers `false` anyway. Under Glass it is the
+    /// glass view's rounded rectangle, which fills the window.
+    ///
+    /// The invalidation is unconditional because every caller reaches here
+    /// for exactly the reasons that shape changes: a Material switch, a
+    /// reveal, a settled frame morph, a hide.
+    fn sync_window_shadow(window: &NSWindow, phase: ShadowPhase) {
+        let wanted = window_shadow_at(phase);
+        if window.hasShadow() != wanted {
+            window.setHasShadow(wanted);
+        }
+        window.invalidateShadow();
     }
 
     /// Take the blur off screen in this frame, cancelling any fade still
@@ -964,7 +1079,10 @@ mod native {
 
 #[cfg(test)]
 mod tests {
-    use super::{engine_for, glass_action, GlassAction, GlassRequest};
+    use super::{
+        engine_for, glass_action, window_shadow, window_shadow_at, GlassAction, GlassRequest,
+        ShadowPhase,
+    };
     use crate::overlay_theme::{GlassEngine, Material};
 
     /// The version gate, stated as a table: Liquid Glass wherever
@@ -1032,5 +1150,27 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// The drop shadow follows the same line the blur does, and for the same
+    /// reason: only under Glass is the window the card, so only there does a
+    /// window shadow trace something the user can see. Flat's window is
+    /// bigger than its card and transparent around it, and Flat has been
+    /// shadowless since long before this feature.
+    #[test]
+    fn only_glass_casts_a_window_shadow() {
+        assert!(window_shadow(Material::Glass));
+        assert!(!window_shadow(Material::Flat));
+    }
+
+    /// The other half of the same rule, and the defect it was written for: a
+    /// hide fades the card and the blur out but leaves the window mapped for
+    /// another 300 ms, so a shadow that survived the fade would outline an
+    /// empty window. No Material carries one out.
+    #[test]
+    fn the_shadow_goes_out_with_the_card() {
+        assert!(window_shadow_at(ShadowPhase::Showing(Material::Glass)));
+        assert!(!window_shadow_at(ShadowPhase::Showing(Material::Flat)));
+        assert!(!window_shadow_at(ShadowPhase::Leaving));
     }
 }

@@ -177,8 +177,8 @@
 .ov-stage.top .stext-cap {
   /* Mirror of the bottom overlay, top and bottom swapped: the first line sits
      flush under the pill and the breathing room moves below the text. The top
-     fade is off at rest — at zero top padding it would dim the resting first line — and
-     switches on (below) only once text overflows. */
+     fade is off at rest — at zero top padding it would dim the resting first
+     line — and switches on (below) only once text overflows. */
   padding-top: 0;
   padding-bottom: calc(var(--ov-cap-pad-y) * var(--ov-scale));
   -webkit-mask-image: none;

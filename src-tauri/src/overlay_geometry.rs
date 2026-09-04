@@ -467,7 +467,7 @@ pub(crate) fn native_update_needed(
 mod tests {
     use super::*;
     use crate::frontend_source::{
-        css_ms, css_number, css_px, css_rule, tsx_const, OVERLAY_CSS, OVERLAY_TSX,
+        css_declaration, css_ms, css_number, css_px, css_rule, tsx_const, OVERLAY_CSS, OVERLAY_TSX,
     };
     use crate::overlay_glass::GlassAppearance;
     use crate::overlay_theme::{
@@ -1150,6 +1150,16 @@ mod tests {
             css_px(OVERLAY_CSS, "--ov-row-core-h") + 2.0 * css_padding,
             inherit_metrics().row_height()
         );
+        // That sum is only the row's real height if `.sbase` writes it the
+        // same way, so the rule itself is pinned: border-box, so the height
+        // declaration covers the padding rather than sitting inside it, and
+        // one padding on each of the two edges.
+        let sbase = css_rule(OVERLAY_CSS, ".sbase {");
+        assert_eq!(css_declaration(sbase, "box-sizing"), "border-box");
+        assert_eq!(
+            css_declaration(sbase, "height"),
+            "calc((var(--ov-row-core-h) + 2 * var(--ov-pad)) * var(--ov-scale))"
+        );
 
         // The Live card on top of it: the text region, and the inset above
         // the text, which the stylesheet also writes as a multiple of the
@@ -1158,6 +1168,13 @@ mod tests {
         assert_eq!(
             css_number(OVERLAY_CSS, "--ov-cap-pad-f"),
             CARD_CAP_PAD_FACTOR
+        );
+        // The factor only reaches the card through `--ov-cap-pad-y`, which is
+        // a product rather than a length, so the sum below would still add up
+        // if the stylesheet quietly gave the inset a size of its own.
+        assert_eq!(
+            css_declaration(OVERLAY_CSS, "--ov-cap-pad-y"),
+            "calc(var(--ov-pad) * var(--ov-cap-pad-f))"
         );
         assert_eq!(
             inherit_metrics().row_height()

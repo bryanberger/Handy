@@ -57,17 +57,44 @@ pub(crate) fn css_number(css: &str, name: &str) -> f64 {
     css_value(css, name, ";")
 }
 
-/// The colour a `--name: #rrggbb;` declaration is written with.
-pub(crate) fn css_color(css: &str, name: &str) -> String {
-    let needle = format!("{name}:");
-    let start = css
-        .find(&needle)
-        .unwrap_or_else(|| panic!("{name} is not declared"));
-    let rest = &css[start + needle.len()..];
+/// The text a declaration is written with, verbatim: everything between
+/// `<name>:` and its semicolon. For the values that are not a number at all —
+/// a `calc()` of two other custom properties, say — the text itself is the
+/// thing worth pinning.
+pub(crate) fn css_declaration<'a>(css: &'a str, name: &str) -> &'a str {
+    let start = declaration_start(css, name).unwrap_or_else(|| panic!("{name} is not declared"));
+    let rest = &css[start + name.len() + 1..];
     let end = rest
         .find(';')
         .unwrap_or_else(|| panic!("{name} is unclosed"));
-    rest[..end].trim().to_string()
+    rest[..end].trim()
+}
+
+/// Where `name`'s own declaration starts: the first `<name>:` that begins a
+/// declaration rather than ending another property's name.
+///
+/// A declaration begins at the start of the text, or after the `{`, `;` or
+/// `}` that closed the one before it, or after a comment, with only
+/// whitespace in between. Matching the bare `<name>:` anywhere would let a
+/// property latch onto a longer one the same rule happens to declare first:
+/// `height` would read `min-height`'s value, and read it silently.
+fn declaration_start(css: &str, name: &str) -> Option<usize> {
+    let needle = format!("{name}:");
+    let mut searched = 0;
+    while let Some(offset) = css[searched..].find(&needle) {
+        let at = searched + offset;
+        let before = css[..at].trim_end();
+        if before.is_empty() || before.ends_with(['{', ';', '}']) || before.ends_with("*/") {
+            return Some(at);
+        }
+        searched = at + needle.len();
+    }
+    None
+}
+
+/// The colour a `--name: #rrggbb;` declaration is written with.
+pub(crate) fn css_color(css: &str, name: &str) -> String {
+    css_declaration(css, name).to_string()
 }
 
 /// One rule's body, so a declaration is read from the rule that carries it

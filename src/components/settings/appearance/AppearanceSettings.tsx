@@ -180,7 +180,11 @@ const AppearanceSettingsInner: React.FC = () => {
             field={field}
             value={
               vars.effectiveValue(field.key) ??
-              inheritedTokenValue(field.key, vars.effectiveMaterial)
+              inheritedTokenValue(
+                field.key,
+                vars.effectiveMaterial,
+                currentGlassStyle,
+              )
             }
             locked={locked}
             lockedDescription={lockedDescription}

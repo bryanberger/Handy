@@ -1637,6 +1637,22 @@ mod tests {
             GLASS_TINT_INHERIT
         );
 
+        // Clear glass's rim. Rust paints no border, so these two are a pin
+        // rather than a twin: they are the numbers the README quotes and the
+        // ones measured against Spotlight's own capsule, and this is what
+        // stops them drifting out of the one file that composes them.
+        assert!(
+            APPLY_LAYER_TS.contains("export const BORDER_INHERIT_CLEAR = \"#ffffff\";"),
+            "Clear glass no longer inherits a white rim"
+        );
+        assert_eq!(
+            tsx_const(
+                APPLY_LAYER_TS,
+                "export const BORDER_OPACITY_INHERIT_CLEAR = "
+            ),
+            0.35
+        );
+
         // The three Rust also owns, because the native geometry is built
         // from them.
         assert_eq!(

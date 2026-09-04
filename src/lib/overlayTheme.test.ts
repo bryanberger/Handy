@@ -9,9 +9,12 @@ import {
   applyOverlayTheme,
   autoForeground,
   BORDER_INHERIT,
+  BORDER_INHERIT_CLEAR,
   BORDER_OPACITY_INHERIT,
+  BORDER_OPACITY_INHERIT_CLEAR,
   getStoredOverlayTheme,
   GLASS_TINT_INHERIT,
+  inheritedBorder,
   inheritedTokenValue,
   INHERIT_ALL,
   OVERLAY_THEME_CSS_PROPERTIES,
@@ -163,30 +166,76 @@ describe("inherit", () => {
     };
     for (const [key, expected] of Object.entries(lengths)) {
       expect(
-        inheritedTokenValue(key as keyof typeof OVERLAY_TOKEN_BOUNDS, "flat"),
+        inheritedTokenValue(
+          key as keyof typeof OVERLAY_TOKEN_BOUNDS,
+          "flat",
+          "regular",
+        ),
       ).toBe(expected);
-      // A length is one number on both Materials.
+      // A length is one number on both Materials and both Glass styles.
       expect(
-        inheritedTokenValue(key as keyof typeof OVERLAY_TOKEN_BOUNDS, "glass"),
+        inheritedTokenValue(
+          key as keyof typeof OVERLAY_TOKEN_BOUNDS,
+          "glass",
+          "clear",
+        ),
       ).toBe(expected);
     }
 
-    expect(inheritedTokenValue("surface_opacity", "flat")).toBe(
+    expect(inheritedTokenValue("surface_opacity", "flat", "regular")).toBe(
       SURFACE_OPACITY_INHERIT,
     );
-    expect(inheritedTokenValue("glass_tint", "glass")).toBe(GLASS_TINT_INHERIT);
+    expect(inheritedTokenValue("glass_tint", "glass", "regular")).toBe(
+      GLASS_TINT_INHERIT,
+    );
+    // The tint is one number for both Glass styles. Measured against
+    // Spotlight and left alone: see the constant's own doc.
+    expect(inheritedTokenValue("glass_tint", "glass", "clear")).toBe(
+      GLASS_TINT_INHERIT,
+    );
   });
 
   // The one token whose inherit is not one number. The card's edge is
-  // stronger over glass, and asking for it per Material is what keeps that
-  // rule out of every caller.
-  test("the border alpha inherits per Material", () => {
-    expect(inheritedTokenValue("border_opacity", "flat")).toBe(
+  // stronger over glass and stronger again over Clear glass, and asking for
+  // it per Material and Glass style is what keeps that rule out of every
+  // caller.
+  test("the border alpha inherits per Material and Glass style", () => {
+    expect(inheritedTokenValue("border_opacity", "flat", "regular")).toBe(
       BORDER_OPACITY_INHERIT.flat,
     );
-    expect(inheritedTokenValue("border_opacity", "glass")).toBe(
+    expect(inheritedTokenValue("border_opacity", "glass", "regular")).toBe(
       BORDER_OPACITY_INHERIT.glass,
     );
+    expect(inheritedTokenValue("border_opacity", "glass", "clear")).toBe(
+      BORDER_OPACITY_INHERIT_CLEAR,
+    );
+    // The Glass style never reaches Flat's edge.
+    expect(inheritedTokenValue("border_opacity", "flat", "clear")).toBe(
+      BORDER_OPACITY_INHERIT.flat,
+    );
+  });
+
+  // Spotlight's capsule carries a bright rim in both appearances. Clear is
+  // the one surface of ours dark enough in both for a white edge to read, so
+  // it is the one that inherits white; Flat and Regular keep the foreground
+  // mix, which is what stays visible over their near-white Light card.
+  test("only Clear glass inherits a white rim", () => {
+    expect(inheritedBorder("glass", "clear")).toEqual({
+      color: BORDER_INHERIT_CLEAR,
+      opacity: BORDER_OPACITY_INHERIT_CLEAR,
+    });
+    expect(BORDER_INHERIT_CLEAR).toBe("#ffffff");
+    expect(BORDER_OPACITY_INHERIT_CLEAR).toBe(0.35);
+    for (const [material, glassStyle] of [
+      ["glass", "regular"],
+      ["flat", "regular"],
+      ["flat", "clear"],
+    ] as const) {
+      expect(inheritedBorder(material, glassStyle)).toEqual({
+        color: BORDER_INHERIT,
+        opacity: BORDER_OPACITY_INHERIT[material],
+      });
+    }
   });
 
   // Every bound has an inherit and every inherit has a bound. A token that
@@ -198,9 +247,11 @@ describe("inherit", () => {
     ) as (keyof typeof OVERLAY_TOKEN_BOUNDS)[]) {
       const { min, max } = OVERLAY_TOKEN_BOUNDS[key];
       for (const material of ["flat", "glass"] as const) {
-        const value = inheritedTokenValue(key, material);
-        expect(value).toBeGreaterThanOrEqual(min);
-        expect(value).toBeLessThanOrEqual(max);
+        for (const glassStyle of ["regular", "clear"] as const) {
+          const value = inheritedTokenValue(key, material, glassStyle);
+          expect(value).toBeGreaterThanOrEqual(min);
+          expect(value).toBeLessThanOrEqual(max);
+        }
       }
     }
   });
@@ -387,7 +438,8 @@ describe("the border", () => {
 describe("Glass", () => {
   test("writes the surface, the neutrals and the edge unconditionally", () => {
     // The tint is thin enough for the blur to read as blur, and the edge is
-    // the same foreground mix Flat uses, only at a stronger alpha.
+    // the same foreground mix Flat uses, only at a stronger alpha. Regular is
+    // the style an unset `glass_style` resolves to.
     expect(GLASS_TINT_INHERIT).toBe(0.45);
     expect(BORDER_OPACITY_INHERIT.glass).toBe(0.25);
 
@@ -399,6 +451,108 @@ describe("Glass", () => {
       "--s-hair": "color-mix(in srgb, var(--s-text) 12%, transparent)",
       "--s-border": "color-mix(in srgb, var(--s-text) 25%, transparent)",
     });
+  });
+
+  // Clear is the see-through style, so its card is dark enough in both app
+  // themes to carry the white highlight Spotlight's capsule carries. Only
+  // the edge moves: the tint, the neutrals and the surface are the style's
+  // business natively, not the card's.
+  test("Clear glass swaps the foreground hairline for a white rim", () => {
+    const clear = resolveOverlayThemeVars(
+      resolved({ glass_style: "clear" }, "glass"),
+    );
+    expect(clear["--s-border"]).toBe(
+      "color-mix(in srgb, #ffffff 35%, transparent)",
+    );
+    const regular = resolveOverlayThemeVars(resolved({}, "glass"));
+    for (const property of [
+      "--s-surface",
+      "--s-muted",
+      "--s-faint",
+      "--s-hair",
+    ]) {
+      expect(clear[property]).toBe(regular[property]);
+    }
+  });
+
+  // The rim is Glass's alone. Under Flat the style is a token with nothing to
+  // draw, so a stored `glass_style` cannot leak a white edge onto a Flat card.
+  test("the Glass style never reaches a Flat card's edge", () => {
+    expect(
+      resolveOverlayThemeVars(
+        resolved({ glass_style: "clear", border_opacity: 0.4 }),
+      )["--s-border"],
+    ).toBe("color-mix(in srgb, var(--s-text) 40%, transparent)");
+  });
+
+  // Rule 2 at the boundary: the localStorage mirror bypasses Rust, so a
+  // hand-edited style falls back to the one an unset token resolves to.
+  test("an unreadable Glass style inherits Regular's edge", () => {
+    expect(
+      resolveOverlayThemeVars(
+        resolved({ glass_style: "CLEAR" as never }, "glass"),
+      )["--s-border"],
+    ).toBe("color-mix(in srgb, var(--s-text) 25%, transparent)");
+  });
+
+  // The invariant the two constants above exist for: what an unset token
+  // resolves to is what the card is actually painted with, in every
+  // combination of Material and Glass style. A default that only the tab's
+  // slider knew about would be a number the overlay never draws.
+  //
+  // Written out as literals rather than read back from `inheritedBorder`,
+  // because `inheritedTokenValue` delegates to that function: comparing the
+  // two would assert a function against its own body and pass whatever the
+  // defaults became.
+  test("an all-unset theme paints exactly the inherited edge", () => {
+    const edges = [
+      {
+        material: "flat",
+        glassStyle: "regular",
+        color: "var(--s-text)",
+        opacity: 0.12,
+        painted: "color-mix(in srgb, var(--s-text) 12%, transparent)",
+      },
+      {
+        material: "flat",
+        glassStyle: "clear",
+        color: "var(--s-text)",
+        opacity: 0.12,
+        painted: "color-mix(in srgb, var(--s-text) 12%, transparent)",
+      },
+      {
+        material: "glass",
+        glassStyle: "regular",
+        color: "var(--s-text)",
+        opacity: 0.25,
+        painted: "color-mix(in srgb, var(--s-text) 25%, transparent)",
+      },
+      {
+        material: "glass",
+        glassStyle: "clear",
+        color: "#ffffff",
+        opacity: 0.35,
+        painted: "color-mix(in srgb, #ffffff 35%, transparent)",
+      },
+    ] as const;
+    for (const { material, glassStyle, color, opacity, painted } of edges) {
+      // What the tab shows on the two controls while both tokens are unset.
+      expect(inheritedBorder(material, glassStyle)).toEqual({ color, opacity });
+      expect(inheritedTokenValue("border_opacity", material, glassStyle)).toBe(
+        opacity,
+      );
+      // And what the card is painted with. Flat writes no edge at all while
+      // every token is unset (the removal rule), so the alpha is handed back
+      // in to make both halves of one card observable in one string.
+      expect(
+        resolveOverlayThemeVars(
+          resolved(
+            { glass_style: glassStyle, border_opacity: opacity },
+            material,
+          ),
+        )["--s-border"],
+      ).toBe(painted);
+    }
   });
 
   test("a set border still wins over the Glass edge", () => {

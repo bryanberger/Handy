@@ -469,6 +469,11 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
             .position(tauri::Position::Logical(tauri::LogicalPosition { x, y }))
             .level(PanelLevel::Status)
             .size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
+            // Flat's starting point, and Flat's forever: the window is
+            // larger than the card and transparent around it, so a window
+            // shadow would trace a rectangle nobody can see. Glass turns it
+            // back on at runtime, where the window is the card exactly
+            // (`overlay_glass::window_shadow`).
             .has_shadow(false)
             .transparent(true)
             .no_activate(true)

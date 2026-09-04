@@ -160,6 +160,10 @@ objc2-service-management = "0.3.2"
 # NSAnimationContext's timing-function setter, so this only turns the
 # existing locked 0.3.2 into a direct, typed dependency.
 objc2-quartz-core = "0.3"
+# Same story: objc2-app-kit's default features already build against block2
+# for NSAnimationContext's completion handler, which the animated frame morph
+# invalidates the window shadow from. This only makes the locked 0.6.2 direct.
+block2 = "0.6"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk-layer-shell = { version = "0.8", features = ["v0_6"] }

@@ -1526,8 +1526,8 @@ waveform_width?: number | null;
  * is *not* multiplied by `size_scale`: the screen does not zoom, and the
  * card's distance from the edge stays what the user chose at every scale.
  * Which edge it is measured from follows the `overlay_position` setting,
- * so an unset value inherits per platform *and* per position; see
- * [`Self::edge_margin`].
+ * so an unset value inherits per platform *and* per position, which the
+ * accessor of the same name resolves.
  */
 edge_margin?: number | null }
 /**
@@ -1601,11 +1601,6 @@ effective_material: Material;
  */
 glass_support: GlassSupport; 
 /**
- * What the theme file contributed, including which tokens it owns and what
- * the reader had to ignore.
- */
-file: ThemeFileState; 
-/**
  * The gap to the usable screen edge actually in effect, in points: the
  * `edge_margin` token, or the per-platform, per-position value an unset
  * one inherits. Concrete, never `None`.
@@ -1616,7 +1611,12 @@ file: ThemeFileState;
  * six-cell platform table out of TypeScript, where it could disagree with
  * the one the window is placed from.
  */
-effective_edge_margin: number }
+effective_edge_margin: number; 
+/**
+ * What the theme file contributed, including which tokens it owns and what
+ * the reader had to ignore.
+ */
+file: ThemeFileState }
 export type SecretMap = Partial<{ [key in string]: string }>
 export type SecureInputStatus = { 
 /**

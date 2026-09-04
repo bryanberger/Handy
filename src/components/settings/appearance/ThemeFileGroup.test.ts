@@ -31,40 +31,59 @@ describe("lockedTokenCounts", () => {
     // the two alphas share one slot, Flat's surface opacity or Glass's tint,
     // never both.
     for (const material of ["flat", "glass"] as const) {
-      const { total } = lockedTokenCounts([], material);
+      const { total } = lockedTokenCounts([], material, "live");
       expect(total).toBe(15);
       expect(total).toBe(OVERLAY_TOKEN_FIELDS.length - 1);
       expect(total).toBe(Object.keys(INHERIT_ALL).length - 2);
     }
   });
 
+  test("the edge margin's row goes with the overlay it anchors", () => {
+    // With no overlay there is no edge to sit at, so that row is gone, and
+    // counting it would promise a control the tab is not showing.
+    for (const material of ["flat", "glass"] as const) {
+      expect(lockedTokenCounts([], material, "none").total).toBe(14);
+      expect(lockedTokenCounts(["edge_margin"], material, "none").count).toBe(
+        0,
+      );
+      expect(lockedTokenCounts(["edge_margin"], material, "live").count).toBe(
+        1,
+      );
+      expect(
+        lockedTokenCounts(["edge_margin"], material, "minimal").count,
+      ).toBe(1);
+    }
+  });
+
   test("counts the owned tokens the tab can show as locked", () => {
     expect(
-      lockedTokenCounts(["accent", "radius", "material"], "flat").count,
+      lockedTokenCounts(["accent", "radius", "material"], "flat", "live").count,
     ).toBe(3);
   });
 
   test("a tab-less token the file owns is not counted", () => {
-    expect(lockedTokenCounts(["glass_material"], "flat").count).toBe(0);
-    expect(lockedTokenCounts(["accent", "glass_material"], "flat").count).toBe(
-      1,
-    );
+    expect(lockedTokenCounts(["glass_material"], "flat", "live").count).toBe(0);
+    expect(
+      lockedTokenCounts(["accent", "glass_material"], "flat", "live").count,
+    ).toBe(1);
   });
 
   test("nor is the alpha belonging to the other Material", () => {
     // A file pinning both alphas fills exactly one row, whichever Material is
     // painted; the other control is not on screen to be locked.
     const bothAlphas = ["surface_opacity", "glass_tint"];
-    expect(lockedTokenCounts(bothAlphas, "flat")).toEqual({
+    expect(lockedTokenCounts(bothAlphas, "flat", "live")).toEqual({
       count: 1,
       total: 15,
     });
-    expect(lockedTokenCounts(bothAlphas, "glass")).toEqual({
+    expect(lockedTokenCounts(bothAlphas, "glass", "live")).toEqual({
       count: 1,
       total: 15,
     });
-    expect(lockedTokenCounts(["glass_tint"], "flat").count).toBe(0);
-    expect(lockedTokenCounts(["surface_opacity"], "glass").count).toBe(0);
+    expect(lockedTokenCounts(["glass_tint"], "flat", "live").count).toBe(0);
+    expect(lockedTokenCounts(["surface_opacity"], "glass", "live").count).toBe(
+      0,
+    );
   });
 });
 

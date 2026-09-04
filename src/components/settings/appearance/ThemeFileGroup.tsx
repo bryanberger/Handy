@@ -16,6 +16,7 @@ import {
 import { commands } from "@/bindings";
 import type {
   Material,
+  OverlayStyle,
   OverlayTheme,
   ResolvedOverlayTheme,
   ThemeFileDiagnosticCode,
@@ -36,14 +37,22 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
   return JSON.stringify(doc, null, 2);
 }
 
-/** The tokens with a row in the Appearance tab under one Material. It asks
- *  for rows exactly as the groups render them, so a token that gains, loses
- *  or shares a row needs no second edit. Two of the sixteen never appear:
- *  `glass_material`, which only drives the pre-macOS-26 fallback engine and
- *  is set from the theme file, and the other Material's alpha. */
-function keysWithARow(material: Material): Set<OverlayThemeKey> {
+/** The tokens with a row in the Appearance tab under one Material and one
+ *  overlay style. It asks for rows exactly as the groups render them, so a
+ *  token that gains, loses or shares a row needs no second edit. Two of the
+ *  seventeen never appear: `glass_material`, which only drives the
+ *  pre-macOS-26 fallback engine and is set from the theme file, and the other
+ *  Material's alpha. The `position` group is the one whose rows come and go:
+ *  the edge margin sits under Overlay Position and is hidden with the overlay
+ *  itself, there being no edge for an absent card to sit at. */
+function keysWithARow(
+  material: Material,
+  style: OverlayStyle,
+): Set<OverlayThemeKey> {
   return new Set<OverlayThemeKey>(
-    OVERLAY_TOKEN_GROUPS.flatMap((group) =>
+    OVERLAY_TOKEN_GROUPS.filter(
+      (group) => group !== "position" || style !== "none",
+    ).flatMap((group) =>
       overlayTokenFieldsFor(group, material).map((field) => field.key),
     ),
   );
@@ -51,22 +60,25 @@ function keysWithARow(material: Material): Set<OverlayThemeKey> {
 
 /**
  * What the "this file sets N of M values" line counts. Only the tokens the
- * tab can show as locked right now, on the Material being painted.
+ * tab can show as locked right now, on the Material being painted and at the
+ * overlay style in effect.
  *
  * Otherwise a file setting a row-less token would count as owning a value
  * with no control, and the total would promise rows that are not there.
- * `glass_material` has no row and the two alphas share one slot, so fourteen
- * of the sixteen ever show. The tokens still apply; this rule counts one
+ * `glass_material` has no row and the two alphas share one slot, so fifteen of
+ * the seventeen ever show, fourteen with the overlay switched off and the edge
+ * margin's row gone with it. The tokens still apply; this rule counts one
  * sentence, not the file.
  */
 export function lockedTokenCounts(
   ownedKeys: readonly string[],
   material: Material,
+  style: OverlayStyle,
 ): {
   count: number;
   total: number;
 } {
-  const shown = keysWithARow(material);
+  const shown = keysWithARow(material, style);
   return {
     count: ownedKeys.filter((key) => shown.has(key as OverlayThemeKey)).length,
     total: shown.size,
@@ -104,6 +116,10 @@ export interface ThemeFileGroupProps {
   /** The effective Material, which sets how many rows are on screen for the
    *  "sets N of M values" line. See [`lockedTokenCounts`]. */
   material: Material;
+  /** The overlay style in effect, for the same line: the edge margin's row
+   *  goes away with the overlay, so it cannot be counted as one of the rows a
+   *  file could lock. */
+  style: OverlayStyle;
   onReload: () => void;
   isReloading: boolean;
   grouped?: boolean;
@@ -118,6 +134,7 @@ export interface ThemeFileGroupProps {
 export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
   file,
   material,
+  style,
   onReload,
   isReloading,
   grouped = true,
@@ -153,7 +170,7 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
 
   const shown = file.diagnostics.slice(0, MAX_SHOWN_DIAGNOSTICS);
   const more = moreDiagnosticsCount(file.diagnostics_total, shown.length);
-  const owned = lockedTokenCounts(file.owned_keys, material);
+  const owned = lockedTokenCounts(file.owned_keys, material, style);
 
   return (
     <>

@@ -255,7 +255,10 @@ const STATIC_NUMERIC_INHERIT: Record<
  *
  * `edgeMargin` is `effective_edge_margin` off the resolved theme, the same
  * number the native window is placed from, so the slider cannot show a gap the
- * overlay does not have. Passing anything else here is a lie about the screen.
+ * overlay does not have. Passing anything else here is a lie about the screen,
+ * so `null` (no resolved theme yet) comes back out as `null` for that token
+ * alone: the caller has nothing true to show and holds the row back until it
+ * does. Every other token's inherit is a constant and never null.
  *
  * The numbers live here beside the two alphas above, not in the Appearance
  * tab, so one module answers "what does an unset token inherit".
@@ -271,8 +274,8 @@ export function inheritedTokenValue(
   key: OverlayNumericKey,
   material: Material,
   glassStyle: GlassStyle,
-  edgeMargin: number,
-): number {
+  edgeMargin: number | null,
+): number | null {
   if (key === "border_opacity")
     return inheritedBorder(material, glassStyle).opacity;
   if (key === "edge_margin") return edgeMargin;

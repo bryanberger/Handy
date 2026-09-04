@@ -430,9 +430,15 @@ impl Platform {
 /// - **macOS Top, 21.** Today's placement is the raw display top plus 46, and
 ///   the menu bar plus its 1 pt separator is 25 of that on a non-notched Mac,
 ///   so 46 - 25 = 21. Nothing reproduces today's pixels on *every* Mac, since
-///   that 25 is 38 on a notched laptop and moves with the display-scaling
-///   setting; 21 keeps the commonest display identical and moves the others
-///   further from the menu bar, never under it. The constant was born
+///   that 25 is 38 on a notched laptop, 30 on Tahoe (measured as
+///   `frame.maxY - visibleFrame.maxY` on macOS 26.6.1, so the Top card lands
+///   at 30 + 21 = 51, five points below today's 46), and moves with the
+///   display-scaling setting; 21 keeps Big Sur through Sequoia identical and
+///   moves the others further from the menu bar, never under it. Deliberately
+///   one number and not a version-conditional table: the shift is always
+///   *away* from the bar, so it costs a few points of margin and never
+///   legibility, while a per-version default would put the inherit back where
+///   it was, dependent on the display it is read on. The constant was born
 ///   work-area-relative and lost the reference in PR #969; this restores it.
 /// - **macOS Bottom, 15.** Already measured from `visibleFrame`, so this is
 ///   today's number unchanged, on every display and with any Dock setting.
@@ -516,8 +522,8 @@ pub(crate) fn overlay_edge_y(
 /// a cross-monitor move. On macOS a logical unit is an AppKit point, so one
 /// unit of margin is one point at any Retina factor.
 ///
-/// Where the platform reports no work area — GDK on Wayland returns the
-/// monitor geometry — this degrades to the raw monitor edge, which is exactly
+/// Where the platform reports no work area, GDK on Wayland returning the
+/// monitor geometry, this degrades to the raw monitor edge, which is exactly
 /// what the fallback path does today.
 #[allow(dead_code)] // Windows places through `windows_overlay_bounds`; both are tested everywhere.
 pub(crate) fn overlay_logical_origin(
@@ -598,7 +604,7 @@ impl ScreenEdge {
 /// the surface is pinned to one edge and free at the other. The compositor
 /// measures an anchored margin from the area other clients' exclusive zones
 /// leave free, which is what makes `0` flush with the *usable* edge on Wayland
-/// without Handy computing anything — provided Handy keeps its own exclusive
+/// without Handy computing anything, provided Handy keeps its own exclusive
 /// zone at 0 and never enables the automatic one, which would push every other
 /// window on the desktop by the user's margin.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1736,8 +1742,8 @@ mod tests {
         assert_eq!(bottom, 1080.0 - HEIGHT - 40.0);
     }
 
-    /// The logical path's three landmarks — flush, inherited, and the far end
-    /// of the slider — on both edges, as literals.
+    /// The logical path's three landmarks on both edges, as literals. Flush,
+    /// inherited, and the far end of the slider.
     #[test]
     fn the_logical_placement_lands_where_the_arithmetic_says() {
         let mac = display(MACOS_MENU_BAR, 70);
@@ -1756,6 +1762,45 @@ mod tests {
                 overlay_logical_origin(&mac, 256.0, height, OverlayPosition::Bottom, margin);
             assert_eq!(y, bottom_y);
         }
+    }
+
+    /// Retina: `MonitorBounds` arrives in the monitor's physical pixels and
+    /// the origin goes out in logical points, so every rectangle is divided by
+    /// the scale while the margin, already a point count, is not.
+    ///
+    /// The same display at 1x and at 2x therefore places the card on the same
+    /// points. Only the logical path needs this; Windows never leaves physical
+    /// pixels, which is what `windows_scales_the_margin_and_not_the_work_area`
+    /// covers.
+    #[test]
+    fn the_logical_origin_divides_the_physical_rectangles_by_the_scale() {
+        let height = 46.0;
+        // The same 1920x1080 pt display twice: a 1x panel, and a 2x panel whose
+        // rectangles are all doubled, menu bar and Dock included.
+        let one_x = display(MACOS_MENU_BAR, 70);
+        let retina = scaled_display(MACOS_MENU_BAR * 2, 70 * 2, 2.0);
+
+        for margin in [0u16, 15, 21, 200] {
+            for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+                assert_eq!(
+                    overlay_logical_origin(&retina, 256.0, height, position, margin),
+                    overlay_logical_origin(&one_x, 256.0, height, position, margin),
+                    "at margin {margin} on {position:?}"
+                );
+            }
+        }
+
+        // The literals too, so a divide dropped from both branches fails here
+        // rather than passing the comparison above. The 3840x2160 panel's work
+        // area, 50..2020 in pixels, is 25..1010 in points.
+        assert_eq!(
+            overlay_logical_origin(&retina, 256.0, height, OverlayPosition::Top, 21),
+            ((1920.0 - 256.0) / 2.0, 46.0)
+        );
+        assert_eq!(
+            overlay_logical_origin(&retina, 256.0, height, OverlayPosition::Bottom, 15).1,
+            1010.0 - height - 15.0
+        );
     }
 
     /// x is centred on the *display*, not the work area, so a Dock or taskbar

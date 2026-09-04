@@ -529,6 +529,7 @@ mod tests {
             waveform_style: Some(WaveformStyle::Ribbon),
             waveform_gap: Some(2),
             waveform_width: Some(4),
+            edge_margin: Some(24),
         }
         .normalized();
 
@@ -539,8 +540,8 @@ mod tests {
         );
         assert_eq!(
             text.matches('\n').count(),
-            25,
-            "an opening brace, twenty-three rows and a closing brace"
+            26,
+            "an opening brace, twenty-four rows and a closing brace"
         );
     }
 

@@ -194,6 +194,10 @@ export function useOverlayThemeVars(
             engine: "none" as const,
           },
           file: EMPTY_FILE_STATE,
+          // Flush, the one margin that means the same thing everywhere. Only
+          // reached before the first resolved payload, and the apply layer
+          // never reads it: the token is native, not CSS.
+          effective_edge_margin: 0,
           watching: false,
         };
   }, [resolved, draft]);

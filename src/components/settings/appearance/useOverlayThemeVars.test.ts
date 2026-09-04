@@ -188,6 +188,7 @@ describe("sameStringMap", () => {
       shadow_edge_slack: 15,
       glass_support: { supported: true, available: true, engine: "liquid" },
       file: EMPTY_FILE_STATE,
+      effective_edge_margin: 15,
       watching: true,
     });
     const first = resolveOverlayThemeVars(withScale(0.85));

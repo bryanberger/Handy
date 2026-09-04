@@ -63,8 +63,8 @@ function keysWithARow(
  *
  * Otherwise a file setting a row-less token would count as a value with no
  * control, promising rows that are not there. So the total follows what is on
- * screen: twenty of the twenty-two under Flat, nineteen under Glass, with no
- * shadow offset, and three fewer either way with the waveform hidden, whose
+ * screen: twenty-one of the twenty-three under Flat, twenty under Glass, with
+ * no shadow offset, and three fewer either way with the waveform hidden, whose
  * group leaves the tab. The tokens still apply; this rule counts one sentence,
  * not the file.
  */

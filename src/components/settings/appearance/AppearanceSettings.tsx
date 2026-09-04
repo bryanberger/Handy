@@ -67,6 +67,12 @@ const handleGlassShadow = (next: boolean) => {
   void setOverlayThemeToken("shadow_strength", next ? 1 : 0);
 };
 
+/** Shown on the edge-margin slider before the first resolved payload arrives,
+ *  which carries the platform's own inherited margin. Zero rather than a guess
+ *  at one platform's number: it is the one value that is meaningful everywhere
+ *  ("flush"), and the real one replaces it on the next render. */
+const INHERITED_EDGE_MARGIN_UNKNOWN = 0;
+
 function isOverlayThemeDefault(theme: OverlayTheme): boolean {
   return (Object.values(theme) as unknown[]).every(
     (value) => value === null || value === undefined,
@@ -131,6 +137,12 @@ const AppearanceSettingsInner: React.FC = () => {
   // change anything while the card draws none.
   const showsWaveform =
     vars.effectiveValue("show_waveform") ?? BOOLEAN_INHERIT.show_waveform;
+  // What an unset `edge_margin` is worth here: Rust resolves it against the
+  // platform and the anchored edge and ships the answer, so the slider shows
+  // the gap the overlay actually has. `INHERITED_EDGE_MARGIN_UNKNOWN` only
+  // shows before the first resolved payload, for one frame.
+  const inheritedEdgeMargin =
+    resolved?.effective_edge_margin ?? INHERITED_EDGE_MARGIN_UNKNOWN;
   const handleSelectMaterial = useCallback(
     (next: Material) => {
       if (next !== currentMaterial)
@@ -265,6 +277,7 @@ const AppearanceSettingsInner: React.FC = () => {
                 field.key,
                 vars.effectiveMaterial,
                 currentGlassStyle,
+                inheritedEdgeMargin,
               )
             }
             locked={locked}
@@ -286,6 +299,13 @@ const AppearanceSettingsInner: React.FC = () => {
 
       <SettingsGroup title={t("settings.appearance.groups.overlay")}>
         <ShowOverlay descriptionMode="tooltip" grouped={true} />
+        {/* The edge margin belongs to the position, not to the card's sizes,
+            so its row sits here under Overlay Position. Hidden with that
+            dropdown when the overlay is off, there being no edge to sit at. */}
+        {style !== "none" &&
+          overlayTokenFieldsFor("position", vars.effectiveMaterial).map(
+            renderField,
+          )}
       </SettingsGroup>
 
       <SettingsGroup title={t("settings.appearance.groups.preview")}>

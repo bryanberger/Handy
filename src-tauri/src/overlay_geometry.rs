@@ -1,19 +1,29 @@
-//! The card's footprint, and the native window built around it.
+//! The card's footprint, the native window built around it, and where on the
+//! screen that window goes.
 //!
-//! Everything the overlay window's size and its blur's corner radius are a
-//! function of lives here: the card's shapes, the transparent slack around
-//! them, the room a Flat card's drop shadow needs, and the tokens that size it.
-//! It is pure code, with no `AppHandle`, no platform `cfg` and no AppKit, so
-//! the arithmetic deciding whether a card fits its window is tested on its
-//! own, not through the window creation, monitor queries and show/hide
+//! Everything the overlay window's size, its blur's corner radius and its
+//! screen position are a function of lives here: the card's shapes, the
+//! transparent slack around them, the room a Flat card's drop shadow needs,
+//! the theme tokens that change how much room the card needs, and the edge
+//! margin that decides how far the card sits from the usable screen edge. It
+//! is pure code, with no `AppHandle`, no platform `cfg` and no AppKit, so the
+//! arithmetic deciding whether a card fits its window, and where that window
+//! lands, is tested on its own, on any host, rather than through the window
+//! creation, monitor queries and show/hide
 //! sequencing in [`crate::overlay`], its only caller.
+//!
+//! All three platforms' placement lives here for that reason: each one only
+//! runs in its own build, so a `#[cfg]`-gated formula is a formula nobody's
+//! CI ever checks.
 //!
 //! The card constants mirror the `--ov-*` block in `RecordingOverlay.css`, and
 //! `overlay_window_constants_match_overlay_css` fails if either side drifts.
 
 use crate::overlay_glass::GlassAppearance;
 use crate::overlay_theme::{Material, OverlayTheme, ResolvedOverlayTheme};
+use crate::settings::OverlayPosition;
 use serde::{Deserialize, Serialize};
+use tauri::{PhysicalPosition, PhysicalSize};
 
 /// The card's border at size_scale 1, both sides. `.scard` is content-box and
 /// strokes `border_width` px per edge, so the footprint is
@@ -631,35 +641,298 @@ impl CardMetrics {
 ///
 /// The placement rule: the window takes the full [`CardMetrics::shadow_slack`]
 /// on the three sides away from that edge, and here only `room`, the gap the
-/// card already has to the usable edge (the bottom offset above the Dock, or
-/// the top offset below the menu bar). So the card keeps the screen position it
-/// has with no shadow, the window stops at the usable edge, and the shadow's
-/// faint tail is clipped by the window boundary there.
+/// card already has to the usable edge. That gap is the effective
+/// `edge_margin`, so the card keeps the screen position it has with no shadow,
+/// the window stops at the usable edge, and the shadow's faint tail is clipped
+/// by the window boundary there.
 ///
 /// Its result travels to the overlay page on the resolved theme, so `.ov-stage`
 /// insets the card by the same number and the two cannot disagree about where
-/// the card lands. `room` is the one thing the geometry cannot know: it comes
-/// from `overlay::anchored_edge_room`, which owns the per-platform offsets.
+/// the card lands. `room` comes from `overlay_theme::resolve_from`, which has
+/// already resolved the margin the placement below measures from.
 pub(crate) fn shadow_edge_slack(theme: &OverlayTheme, material: Material, room: f64) -> f64 {
     CardMetrics::from_theme(theme)
         .shadow_slack(material, ShadowMetrics::from_theme(theme, material))
         .min(room.max(0.0))
 }
 
-/// Everything a theme configures the native overlay window from.
+/// Which platform's placement rules apply.
 ///
-/// Its size, the blur's macOS material and the blur's corner radius are
-/// functions of these values and nothing else, so two theme deliveries that
-/// agree on all of them ask the window for what it already is. That is what
-/// [`native_update_needed`] tests, and what lets a colour edit skip the
-/// main-thread hop, the AppKit material write and the resize.
+/// A value rather than a `#[cfg]` so every platform's edge margins are
+/// asserted on every host. [`Self::current`] is the one line that reads the
+/// build target.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(dead_code)] // Two of the three are always the other builds'.
+pub(crate) enum Platform {
+    MacOs,
+    Windows,
+    Linux,
+}
+
+impl Platform {
+    /// The platform this build runs on. Linux stands in for every other Unix,
+    /// as it does everywhere else in the overlay.
+    pub(crate) fn current() -> Self {
+        #[cfg(target_os = "macos")]
+        {
+            Self::MacOs
+        }
+        #[cfg(target_os = "windows")]
+        {
+            Self::Windows
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        {
+            Self::Linux
+        }
+    }
+}
+
+/// The margin an unset `edge_margin` inherits, in logical points, per platform
+/// and per anchored edge.
 ///
-/// Its position is not. It also follows the `overlay_position` setting and the
-/// monitor the card is placed on, neither of which a theme can move and
-/// neither of which reaches the window through here. Position and style
-/// commands go through the unconditional `update_overlay_position`, and every
-/// show repositions anyway, so skipping a theme delivery leaves the window
-/// where the last show or position update put it.
+/// Every one of these reproduces where the overlay sits today, on that
+/// platform's usual configuration, now that the margin is measured from the
+/// *usable* edge rather than the raw monitor edge:
+///
+/// - **macOS Top, 21.** Today's placement is the raw display top plus 46, and
+///   the menu bar plus its 1 pt separator is 25 of that on a non-notched Mac,
+///   so 46 - 25 = 21. Nothing reproduces today's pixels on *every* Mac, since
+///   that 25 is 38 on a notched laptop and moves with the display-scaling
+///   setting; 21 keeps the commonest display identical and moves the others
+///   further from the menu bar, never under it. The constant was born
+///   work-area-relative and lost the reference in PR #969; this restores it.
+/// - **macOS Bottom, 15.** Already measured from `visibleFrame`, so this is
+///   today's number unchanged, on every display and with any Dock setting.
+/// - **Windows Top, 4.** Today's 4 from the raw top, which equals the work
+///   area's top for any bottom- or side-docked taskbar. A top-docked taskbar
+///   is the one case that moves: the card now clears it instead of sitting on
+///   it.
+/// - **Windows Bottom, 0.** Today's 40 from the raw bottom is exactly a
+///   Windows 10 taskbar's height, i.e. flush with the work area. Windows 11's
+///   48 pt bar makes the card sit on the taskbar rather than overlap it, and
+///   an auto-hidden taskbar leaves no work-area inset at all, so the card goes
+///   to the screen edge, as it already does on macOS beside a hidden Dock.
+/// - **Linux Top 4 / Bottom 40.** Layer shell already measures its margins
+///   from the area panels leave (the exclusive zone stays 0), so these are
+///   today's numbers unchanged. On the X11 fallback the reference becomes the
+///   work area, so the card clears a panel it used to hide behind.
+pub(crate) fn inherit_edge_margin(platform: Platform, position: OverlayPosition) -> u16 {
+    match (platform, position) {
+        (Platform::MacOs, OverlayPosition::Top) => 21,
+        (Platform::MacOs, OverlayPosition::Bottom) => 15,
+        (Platform::Windows, OverlayPosition::Top) => 4,
+        (Platform::Windows, OverlayPosition::Bottom) => 0,
+        (Platform::Linux, OverlayPosition::Top) => 4,
+        (Platform::Linux, OverlayPosition::Bottom) => 40,
+    }
+}
+
+/// One monitor's rectangles, as the placement below needs them.
+///
+/// `position` and `size` are the full display, because the card is centred on
+/// the display and always has been: centring on the work area instead would
+/// slide it sideways whenever a Dock or taskbar is docked left or right.
+/// `work_top` and `work_bottom` are the usable edges, the ones `edge_margin`
+/// is measured from. Every field is in that monitor's physical pixels, the
+/// coordinate space Tauri reports both rectangles in, with `scale` the factor
+/// back to logical points.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct MonitorBounds {
+    pub(crate) position: PhysicalPosition<i32>,
+    pub(crate) size: PhysicalSize<u32>,
+    /// The work area's top edge: below the macOS menu bar, below a top-docked
+    /// Windows taskbar, below an X11 top panel. Equal to `position.y` wherever
+    /// the platform reports no work area (Wayland without layer shell).
+    pub(crate) work_top: i32,
+    /// The work area's bottom edge: above the Dock, above the taskbar.
+    pub(crate) work_bottom: i32,
+    pub(crate) scale: f64,
+}
+
+/// The overlay window's edge-anchored coordinate: its top for a Top overlay,
+/// and the top that puts its *bottom* `margin` above the usable bottom edge.
+///
+/// The one formula every platform places through, so "0 is flush with the
+/// usable edge" is one assertion rather than three. Unit-agnostic: pass
+/// logical points throughout for macOS and Linux, physical pixels throughout
+/// for Windows.
+///
+/// It is the *card* that keeps `margin`, on both anchors and every platform,
+/// whatever its shadow does. Under Flat a shadowed card is inset from every
+/// window edge (`.ov-stage`'s padding): the full shadow slack on the three
+/// sides away from the anchored edge, `edge_slack` on the anchored side.
+/// Giving that back here lands the card exactly where it sits with no shadow.
+/// Otherwise the card is flush against the window's anchored side (`.ov-stage`
+/// pins it with `align-items: flex-start` / `flex-end` and `.scard` carries no
+/// margin) and the window slack lies inward, so the card's visible gap is
+/// `margin` at every card shape, every `size_scale` and both Materials, which
+/// is why no other term here mentions slack or Material.
+///
+/// `edge_slack` is capped at the margin itself by [`shadow_edge_slack`], so
+/// the window never passes the usable edge and never swallows a click meant
+/// for the Dock, the taskbar or the menu bar; the shadow's faint tail is
+/// clipped at that boundary instead.
+pub(crate) fn overlay_edge_y(
+    position: OverlayPosition,
+    usable_top: f64,
+    usable_bottom: f64,
+    window_height: f64,
+    margin: f64,
+    edge_slack: f64,
+) -> f64 {
+    match position {
+        OverlayPosition::Top => usable_top + margin - edge_slack,
+        OverlayPosition::Bottom => usable_bottom - window_height - margin + edge_slack,
+    }
+}
+
+/// Where the overlay window goes in logical points: macOS, and Linux without
+/// layer shell.
+///
+/// Logical rather than physical because tao converts a `PhysicalPosition`
+/// using the scale of the monitor the window is *currently* on, which mislands
+/// a cross-monitor move. On macOS a logical unit is an AppKit point, so one
+/// unit of margin is one point at any Retina factor.
+///
+/// Where the platform reports no work area — GDK on Wayland returns the
+/// monitor geometry — this degrades to the raw monitor edge, which is exactly
+/// what the fallback path does today.
+#[allow(dead_code)] // Windows places through `windows_overlay_bounds`; both are tested everywhere.
+pub(crate) fn overlay_logical_origin(
+    monitor: &MonitorBounds,
+    logical_width: f64,
+    logical_height: f64,
+    position: OverlayPosition,
+    margin: u16,
+    edge_slack: f64,
+) -> (f64, f64) {
+    let x = monitor.position.x as f64 / monitor.scale
+        + (monitor.size.width as f64 / monitor.scale - logical_width) / 2.0;
+    let y = overlay_edge_y(
+        position,
+        monitor.work_top as f64 / monitor.scale,
+        monitor.work_bottom as f64 / monitor.scale,
+        logical_height,
+        f64::from(margin),
+        edge_slack,
+    );
+    (x, y)
+}
+
+/// The overlay rectangle in the destination monitor's physical pixels, for the
+/// single `SetWindowPos` Windows places with.
+///
+/// Windows does not take the logical path at all: there is no one logical
+/// space across mixed-DPI displays, so everything is converted against the
+/// destination monitor's own scale here and issued as physical pixels. The
+/// work area is already physical (`MONITORINFO.rcWork`), so only the margin,
+/// the shadow's edge slack and the window are scaled.
+#[allow(dead_code)] // Only Windows places through this; the tests run on every host.
+pub(crate) fn windows_overlay_bounds(
+    monitor: &MonitorBounds,
+    logical_width: f64,
+    logical_height: f64,
+    position: OverlayPosition,
+    margin: u16,
+    edge_slack: f64,
+) -> (i32, i32, i32, i32) {
+    let width = (logical_width * monitor.scale).round().max(1.0) as i32;
+    let height = (logical_height * monitor.scale).round().max(1.0) as i32;
+    let x = (monitor.position.x as f64 + (monitor.size.width as f64 - width as f64) / 2.0).round()
+        as i32;
+    let y = overlay_edge_y(
+        position,
+        monitor.work_top as f64,
+        monitor.work_bottom as f64,
+        height as f64,
+        f64::from(margin) * monitor.scale,
+        edge_slack * monitor.scale,
+    )
+    .round() as i32;
+
+    (x, y, width, height)
+}
+
+/// A screen edge the overlay can anchor to. The layer-shell half of
+/// [`OverlayPosition`], kept apart from `gtk_layer_shell::Edge` so the rule is
+/// testable off Linux.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(dead_code)] // Linux-only in production; asserted on every host.
+pub(crate) enum ScreenEdge {
+    Top,
+    Bottom,
+}
+
+impl ScreenEdge {
+    /// The edge across the screen, the one the surface must *not* anchor to.
+    #[allow(dead_code)] // Linux-only in production; asserted on every host.
+    pub(crate) fn opposite(self) -> Self {
+        match self {
+            Self::Top => Self::Bottom,
+            Self::Bottom => Self::Top,
+        }
+    }
+}
+
+/// How a layer surface is anchored and inset.
+///
+/// The margin goes on the anchored edge and the opposite edge gets zero, so
+/// the surface is pinned to one edge and free at the other. The compositor
+/// measures an anchored margin from the area other clients' exclusive zones
+/// leave free, which is what makes `0` flush with the *usable* edge on Wayland
+/// without Handy computing anything — provided Handy keeps its own exclusive
+/// zone at 0 and never enables the automatic one, which would push every other
+/// window on the desktop by the user's margin.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(dead_code)] // Linux-only in production; asserted on every host.
+pub(crate) struct LayerShellPlacement {
+    /// The edge the surface is anchored to.
+    pub(crate) anchor: ScreenEdge,
+    /// The margin on the anchored edge, in logical GTK pixels (gtk-layer-shell
+    /// passes them to the protocol unscaled).
+    pub(crate) margin: i32,
+    /// The margin on the opposite edge. Always zero.
+    pub(crate) opposite_margin: i32,
+}
+
+/// The anchor and margins a position, an edge margin and a shadow ask for.
+///
+/// The surface grew towards the anchored edge by `edge_slack`, so the margin
+/// gives that back and the card stays where it sits with no shadow. Never past
+/// the edge itself: `edge_slack` is capped at the margin, and the `max(0)` is
+/// belt and braces for a rounding step.
+#[allow(dead_code)] // Linux-only in production; asserted on every host.
+pub(crate) fn layer_shell_placement(
+    position: OverlayPosition,
+    margin: u16,
+    edge_slack: f64,
+) -> LayerShellPlacement {
+    LayerShellPlacement {
+        anchor: match position {
+            OverlayPosition::Top => ScreenEdge::Top,
+            OverlayPosition::Bottom => ScreenEdge::Bottom,
+        },
+        margin: (f64::from(margin) - edge_slack).max(0.0).round() as i32,
+        opposite_margin: 0,
+    }
+}
+
+/// Everything the native overlay window is configured from.
+///
+/// Its size, the blur's macOS material, the blur's corner radius and where on
+/// the screen it sits are functions of these values and nothing else, so two
+/// theme deliveries that agree on all of them ask the window for what it
+/// already is. That is what [`native_update_needed`] tests, and what lets a
+/// colour edit skip the main-thread hop, the AppKit material write, the resize
+/// and the move.
+///
+/// The anchored edge and the margin off it are part of it because a theme
+/// *can* move the window: `edge_margin` is a token, dragged live while the
+/// on-screen preview runs. Without them here the skip check would swallow
+/// every frame of that drag and the card would not move until the next show.
+/// What is still outside: which monitor the card lands on, which follows the
+/// cursor and is re-read on every placement.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct OverlayWindowState {
     shape: OverlayCardShape,
@@ -667,17 +940,25 @@ pub(crate) struct OverlayWindowState {
     glass: GlassAppearance,
     metrics: CardMetrics,
     shadow: ShadowMetrics,
+    position: OverlayPosition,
+    edge_margin: u16,
     /// The anchored screen edge's share of the shadow slack, resolved once by
     /// [`shadow_edge_slack`] and carried so the window and the overlay page
     /// inset the card by the same number. A field rather than recomputed here,
-    /// because the room it is capped by belongs to the screen, not the theme.
+    /// because the room it is capped by is the margin the screen, not the card,
+    /// is measured against.
     edge_slack: f64,
 }
 
 impl OverlayWindowState {
-    /// The state `resolved` asks for, at the card shape on screen right now.
-    pub(crate) fn new(shape: OverlayCardShape, resolved: &ResolvedOverlayTheme) -> Self {
-        Self::for_material(shape, resolved, resolved.effective_material)
+    /// The state `resolved` asks for, at the card shape on screen right now,
+    /// anchored to `position`.
+    pub(crate) fn new(
+        shape: OverlayCardShape,
+        resolved: &ResolvedOverlayTheme,
+        position: OverlayPosition,
+    ) -> Self {
+        Self::for_material(shape, resolved, resolved.effective_material, position)
     }
 
     /// The state a window being created starts in: the resting compact pill
@@ -689,14 +970,20 @@ impl OverlayWindowState {
     /// for the same reason, which `window_size` clamps against rather than
     /// reads, so this window is at worst one shadow-slack short on its anchored
     /// side until that first show.
-    pub(crate) fn initial(resolved: &ResolvedOverlayTheme) -> Self {
-        Self::for_material(OverlayCardShape::CompactRest, resolved, Material::Flat)
+    pub(crate) fn initial(resolved: &ResolvedOverlayTheme, position: OverlayPosition) -> Self {
+        Self::for_material(
+            OverlayCardShape::CompactRest,
+            resolved,
+            Material::Flat,
+            position,
+        )
     }
 
     fn for_material(
         shape: OverlayCardShape,
         resolved: &ResolvedOverlayTheme,
         material: Material,
+        position: OverlayPosition,
     ) -> Self {
         Self {
             shape,
@@ -704,6 +991,8 @@ impl OverlayWindowState {
             glass: GlassAppearance::from_theme(&resolved.theme),
             metrics: CardMetrics::from_theme(&resolved.theme),
             shadow: ShadowMetrics::from_theme(&resolved.theme, material),
+            position,
+            edge_margin: resolved.effective_edge_margin,
             edge_slack: resolved.shadow_edge_slack,
         }
     }
@@ -711,14 +1000,24 @@ impl OverlayWindowState {
     /// The window this state wants, in logical points.
     pub(crate) fn window_size(&self) -> (f64, f64) {
         self.metrics
-            .window_size(self.shape, self.material, self.shadow, self.edge_slack)
+            .window_size(self.shape, self.material, self.shadow, self.edge_slack())
     }
 
     /// This window's reach past the card towards the anchored screen edge. The
-    /// placement subtracts it, so the card lands where it would with no shadow.
+    /// placement gives it back, so the card lands where it would with no
+    /// shadow.
+    ///
+    /// Capped here rather than trusted, at the shadow this Material actually
+    /// casts and at the edge margin, so the two invariants hold whatever a
+    /// caller hands in: the card never moves under a shadow, and the window
+    /// never reaches past the usable edge.
     pub(crate) fn edge_slack(&self) -> f64 {
-        self.edge_slack
-            .clamp(0.0, self.metrics.shadow_slack(self.material, self.shadow))
+        self.edge_slack.clamp(
+            0.0,
+            self.metrics
+                .shadow_slack(self.material, self.shadow)
+                .min(f64::from(self.edge_margin)),
+        )
     }
 
     /// The `shadow_strength` the native window shadow is switched from.
@@ -729,6 +1028,13 @@ impl OverlayWindowState {
     /// The corner radius the native blur has to take to match the card.
     pub(crate) fn corner_radius(&self) -> f64 {
         self.metrics.corner_radius(self.shape)
+    }
+
+    /// The gap between that edge and the card, in logical points. Not scaled
+    /// by `size_scale`: it is a distance to a screen edge, not a card length,
+    /// and the screen does not zoom.
+    pub(crate) fn edge_margin(&self) -> u16 {
+        self.edge_margin
     }
 }
 
@@ -839,6 +1145,8 @@ mod tests {
             },
             metrics: inherit_metrics(),
             shadow: inherit_shadow(Material::Flat),
+            position: OverlayPosition::Bottom,
+            edge_margin: inherit_edge_margin(Platform::MacOs, OverlayPosition::Bottom),
             edge_slack: 0.0,
         }
     }
@@ -891,6 +1199,8 @@ mod tests {
                     radius_px,
                 },
             shadow: ShadowMetrics { strength, offset_y },
+            position,
+            edge_margin,
             edge_slack,
         } = base.clone();
 
@@ -1010,6 +1320,19 @@ mod tests {
                 },
                 ..base.glass.clone()
             }),
+            // The two placement fields. A margin drag delivers a theme per
+            // animation frame, and every one of them has to move the window.
+            OverlayWindowState {
+                position: match position {
+                    OverlayPosition::Top => OverlayPosition::Bottom,
+                    OverlayPosition::Bottom => OverlayPosition::Top,
+                },
+                ..base.clone()
+            },
+            OverlayWindowState {
+                edge_margin: edge_margin + 1,
+                ..base.clone()
+            },
         ];
         for variant in variants {
             assert!(
@@ -1712,9 +2035,9 @@ mod tests {
     /// there, so the card keeps the position it has with no shadow at all.
     #[test]
     fn the_shadow_takes_only_the_room_the_card_has_at_the_anchored_edge() {
-        // (scale, offset, the full slack, and the edge slack at each of the
-        // three rooms the placement can offer: macOS Bottom's 15, macOS Top's
-        // 46 less a 30 point menu bar, and Windows and Linux's flush 4).
+        // (scale, offset, the full slack, and the edge slack at each of three
+        // edge margins: macOS Bottom's inherited 15, one point more, and
+        // Windows' and Linux's inherited Top margin of 4).
         for (scale, offset, slack, at_15, at_16, at_4) in [
             (1.00, 4, 24.0, 15.0, 16.0, 4.0),
             (1.00, 16, 36.0, 15.0, 16.0, 4.0),
@@ -1771,9 +2094,8 @@ mod tests {
     /// full slack on the side away from the anchored screen edge and the edge
     /// slack on the anchored side, and `.ov-stage` insets the card by those
     /// numbers, so the card's height and its distance from both window edges
-    /// are what they were. `overlay.rs`'s
-    /// `the_card_keeps_its_screen_position_when_a_shadow_is_added` completes it
-    /// by placing that window on a screen.
+    /// are what they were. `a_shadow_never_moves_the_card_off_its_margin`
+    /// below completes it by placing that window on a screen.
     #[test]
     fn a_shadow_moves_the_window_around_the_card_not_the_card() {
         let theme = OverlayTheme {
@@ -2524,5 +2846,739 @@ mod tests {
             tsx_const(APPLY_LAYER_TS, "export const SHADOW_BLUR_PX = "),
             CARD_SHADOW_BLUR
         );
+    }
+
+    // ---------------------------------------------------------------- placement
+
+    /// A 1920x1080 display at the origin, scale 1, with `top_inset` and
+    /// `bottom_inset` of its height taken by a menu bar, a taskbar, a panel or
+    /// the Dock. `display(0, 0)` is a bare screen, and what every platform
+    /// reports where it has no work area to give.
+    fn display(top_inset: i32, bottom_inset: i32) -> MonitorBounds {
+        scaled_display(top_inset, bottom_inset, 1.0)
+    }
+
+    /// The same at an arbitrary scale factor, with the insets still in that
+    /// monitor's physical pixels, as `work_area()` reports them.
+    fn scaled_display(top_inset: i32, bottom_inset: i32, scale: f64) -> MonitorBounds {
+        let height = (1080.0 * scale) as i32;
+        MonitorBounds {
+            position: PhysicalPosition::new(0, 0),
+            size: PhysicalSize::new((1920.0 * scale) as u32, height as u32),
+            work_top: top_inset,
+            work_bottom: height - bottom_inset,
+            scale,
+        }
+    }
+
+    /// Today's macOS menu bar plus the 1 pt separator `visibleFrame` also
+    /// excludes, on a display without a camera housing.
+    const MACOS_MENU_BAR: i32 = 25;
+    /// A visible Windows 10 taskbar at 100 %, the height today's 40 pt bottom
+    /// offset was chosen against.
+    const WINDOWS_10_TASKBAR: i32 = 40;
+
+    /// The whole promise of the token, on the only formula that decides it:
+    /// zero puts the window's anchored edge exactly on the usable edge.
+    #[test]
+    fn a_zero_edge_margin_is_flush_with_the_usable_edge() {
+        let (top, bottom) = (25.0, 1055.0);
+
+        assert_eq!(
+            overlay_edge_y(OverlayPosition::Top, top, bottom, 46.0, 0.0, 0.0),
+            top
+        );
+        assert_eq!(
+            overlay_edge_y(OverlayPosition::Bottom, top, bottom, 46.0, 0.0, 0.0) + 46.0,
+            bottom
+        );
+    }
+
+    /// And every other value is that same gap, in points, on both edges.
+    #[test]
+    fn the_edge_margin_is_the_gap_from_the_usable_edge() {
+        let (top, bottom, height) = (25.0, 1055.0, 46.0);
+        for margin in [0.0, 15.0, 21.0, 200.0] {
+            assert_eq!(
+                overlay_edge_y(OverlayPosition::Top, top, bottom, height, margin, 0.0) - top,
+                margin
+            );
+            assert_eq!(
+                bottom
+                    - (overlay_edge_y(OverlayPosition::Bottom, top, bottom, height, margin, 0.0)
+                        + height),
+                margin
+            );
+        }
+    }
+
+    /// The asymmetry the formula exists to hide: a Top window is placed by its
+    /// own top edge, so its height never enters, while a Bottom one moves up
+    /// point for point as it grows.
+    #[test]
+    fn only_a_bottom_overlay_moves_with_its_height() {
+        let (top, bottom, margin) = (25.0, 1055.0, 15.0);
+        let small = overlay_edge_y(OverlayPosition::Top, top, bottom, 46.0, margin, 0.0);
+        let large = overlay_edge_y(OverlayPosition::Top, top, bottom, 120.0, margin, 0.0);
+        assert_eq!(small, large);
+
+        let small = overlay_edge_y(OverlayPosition::Bottom, top, bottom, 46.0, margin, 0.0);
+        let large = overlay_edge_y(OverlayPosition::Bottom, top, bottom, 120.0, margin, 0.0);
+        assert_eq!(small - large, 120.0 - 46.0);
+    }
+
+    /// Why `edge_margin` needs no Material branch and no slack term.
+    ///
+    /// The card is flush against the window's anchored side and every point of
+    /// slack lies inward, so the window's anchored edge *is* the card's, for
+    /// each of the five shapes, both Materials (Flat's 38x4 / 6x2 slack and
+    /// Glass's zero) and every size scale. If slack ever moved to the anchored
+    /// side, the gap would stop being what the user asked for and this fails.
+    #[test]
+    fn the_margin_is_the_gap_at_every_shape_material_and_scale() {
+        let (top, bottom) = (25.0, 1055.0);
+        for margin in [0.0, 15.0, 200.0] {
+            for scale in [0.80, 1.00, 1.50] {
+                for material in [Material::Flat, Material::Glass] {
+                    for shape in OverlayCardShape::ALL {
+                        let (_, height) = metrics_for(scale, BORDER_WIDTH_INHERIT).window_size(
+                            shape,
+                            material,
+                            inherit_shadow(material),
+                            0.0,
+                        );
+
+                        let y =
+                            overlay_edge_y(OverlayPosition::Top, top, bottom, height, margin, 0.0);
+                        assert_eq!(y - top, margin, "{shape:?} {material:?} at {scale}");
+
+                        let y = overlay_edge_y(
+                            OverlayPosition::Bottom,
+                            top,
+                            bottom,
+                            height,
+                            margin,
+                            0.0,
+                        );
+                        assert_eq!(
+                            bottom - (y + height),
+                            margin,
+                            "{shape:?} {material:?} at {scale}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// The six inherit values, asserted on any host. Each is the number that
+    /// reproduces today's placement on that platform's usual configuration;
+    /// `todays_placement_survives_the_switch_to_the_usable_edge` below proves
+    /// it rather than restating it.
+    #[test]
+    fn every_platform_and_position_inherits_its_own_margin() {
+        use OverlayPosition::{Bottom, Top};
+        use Platform::{Linux, MacOs, Windows};
+
+        assert_eq!(inherit_edge_margin(MacOs, Top), 21);
+        assert_eq!(inherit_edge_margin(MacOs, Bottom), 15);
+        assert_eq!(inherit_edge_margin(Windows, Top), 4);
+        assert_eq!(inherit_edge_margin(Windows, Bottom), 0);
+        assert_eq!(inherit_edge_margin(Linux, Top), 4);
+        assert_eq!(inherit_edge_margin(Linux, Bottom), 40);
+
+        // Every one of them is a value the token itself accepts, or an unset
+        // slider would show a number the user could not dial back to.
+        for platform in [MacOs, Windows, Linux] {
+            for position in [Top, Bottom] {
+                assert!(
+                    inherit_edge_margin(platform, position)
+                        <= crate::overlay_theme::EDGE_MARGIN_MAX
+                );
+            }
+        }
+    }
+
+    /// One line reads the build target, and this is it.
+    #[test]
+    fn the_current_platform_is_this_build() {
+        let expected = if cfg!(target_os = "macos") {
+            Platform::MacOs
+        } else if cfg!(target_os = "windows") {
+            Platform::Windows
+        } else {
+            Platform::Linux
+        };
+        assert_eq!(Platform::current(), expected);
+    }
+
+    /// **The all-inherit invariant.** A user who never touches the slider sees
+    /// the overlay exactly where it has always been, on each platform's own
+    /// formula, in that platform's usual configuration.
+    ///
+    /// Each `today` below is the arithmetic this branch replaced, spelled out
+    /// with the constant it used, and each `now` is the new placement at the
+    /// inherited margin. They are compared as numbers, not as formulas.
+    #[test]
+    fn todays_placement_survives_the_switch_to_the_usable_edge() {
+        const HEIGHT: f64 = 46.0;
+
+        // macOS Top: a non-notched display, where `visibleFrame` starts 25 pt
+        // down. Today: the raw display top plus OVERLAY_TOP_OFFSET 46.
+        let mac = display(MACOS_MENU_BAR, 0);
+        let today = 0.0 + 46.0;
+        let (_, now) = overlay_logical_origin(
+            &mac,
+            256.0,
+            HEIGHT,
+            OverlayPosition::Top,
+            inherit_edge_margin(Platform::MacOs, OverlayPosition::Top),
+            0.0,
+        );
+        assert_eq!(now, today);
+        assert_eq!(now, 46.0);
+
+        // macOS Bottom: already measured from `visibleFrame`, with or without
+        // a Dock. Today: work bottom - height - OVERLAY_BOTTOM_OFFSET 15.
+        for dock in [0, 70] {
+            let mac = display(MACOS_MENU_BAR, dock);
+            let today = f64::from(mac.work_bottom) - HEIGHT - 15.0;
+            let (_, now) = overlay_logical_origin(
+                &mac,
+                256.0,
+                HEIGHT,
+                OverlayPosition::Bottom,
+                inherit_edge_margin(Platform::MacOs, OverlayPosition::Bottom),
+                0.0,
+            );
+            assert_eq!(now, today);
+        }
+
+        // Windows Top, a bottom-docked taskbar so the work area starts at the
+        // display top. Today: the raw top plus OVERLAY_TOP_OFFSET 4 x scale.
+        for scale in [1.0, 1.25, 1.5] {
+            let win = scaled_display(0, (WINDOWS_10_TASKBAR as f64 * scale) as i32, scale);
+            let today = (0.0 + 4.0 * scale).round() as i32;
+            let (_, now, _, _) = windows_overlay_bounds(
+                &win,
+                256.0,
+                HEIGHT,
+                OverlayPosition::Top,
+                inherit_edge_margin(Platform::Windows, OverlayPosition::Top),
+                0.0,
+            );
+            assert_eq!(now, today);
+
+            // Windows Bottom, the same 40 pt Windows 10 taskbar today's
+            // OVERLAY_BOTTOM_OFFSET was chosen against. Today: the raw bottom
+            // minus the window minus 40 x scale.
+            let height_px = (HEIGHT * scale).round();
+            let today =
+                (f64::from(win.size.height as i32) - height_px - 40.0 * scale).round() as i32;
+            let (_, now, _, _) = windows_overlay_bounds(
+                &win,
+                256.0,
+                HEIGHT,
+                OverlayPosition::Bottom,
+                inherit_edge_margin(Platform::Windows, OverlayPosition::Bottom),
+                0.0,
+            );
+            assert_eq!(now, today, "at scale {scale}");
+        }
+
+        // Linux under layer shell: the compositor places the surface, and
+        // today's numbers are already margins off the usable edge.
+        assert_eq!(
+            layer_shell_placement(
+                OverlayPosition::Top,
+                inherit_edge_margin(Platform::Linux, OverlayPosition::Top),
+                0.0
+            ),
+            LayerShellPlacement {
+                anchor: ScreenEdge::Top,
+                margin: 4,
+                opposite_margin: 0,
+            }
+        );
+        assert_eq!(
+            layer_shell_placement(
+                OverlayPosition::Bottom,
+                inherit_edge_margin(Platform::Linux, OverlayPosition::Bottom),
+                0.0
+            ),
+            LayerShellPlacement {
+                anchor: ScreenEdge::Bottom,
+                margin: 40,
+                opposite_margin: 0,
+            }
+        );
+
+        // Linux without layer shell, on a desktop with no panels, where the
+        // work area is the whole screen. Today: raw top + 4, raw bottom - 40.
+        let x11 = display(0, 0);
+        let (_, top) = overlay_logical_origin(
+            &x11,
+            256.0,
+            HEIGHT,
+            OverlayPosition::Top,
+            inherit_edge_margin(Platform::Linux, OverlayPosition::Top),
+            0.0,
+        );
+        assert_eq!(top, 4.0);
+        let (_, bottom) = overlay_logical_origin(
+            &x11,
+            256.0,
+            HEIGHT,
+            OverlayPosition::Bottom,
+            inherit_edge_margin(Platform::Linux, OverlayPosition::Bottom),
+            0.0,
+        );
+        assert_eq!(bottom, 1080.0 - HEIGHT - 40.0);
+    }
+
+    /// The logical path's three landmarks — flush, inherited, and the far end
+    /// of the slider — on both edges, as literals.
+    #[test]
+    fn the_logical_placement_lands_where_the_arithmetic_says() {
+        let mac = display(MACOS_MENU_BAR, 70);
+        let height = 46.0;
+
+        for (margin, top_y, bottom_y) in [
+            (0u16, 25.0, 1010.0 - height),
+            (21, 46.0, 989.0 - height),
+            (15, 40.0, 995.0 - height),
+            (200, 225.0, 810.0 - height),
+        ] {
+            let (x, y) =
+                overlay_logical_origin(&mac, 256.0, height, OverlayPosition::Top, margin, 0.0);
+            assert_eq!((x, y), ((1920.0 - 256.0) / 2.0, top_y));
+
+            let (_, y) =
+                overlay_logical_origin(&mac, 256.0, height, OverlayPosition::Bottom, margin, 0.0);
+            assert_eq!(y, bottom_y);
+        }
+    }
+
+    /// x is centred on the *display*, not the work area, so a Dock or taskbar
+    /// docked left or right never slides the card sideways.
+    #[test]
+    fn the_card_stays_centred_on_the_display() {
+        let mut side_docked = display(MACOS_MENU_BAR, 0);
+        side_docked.position = PhysicalPosition::new(-2560, -200);
+        side_docked.size = PhysicalSize::new(2560, 1440);
+        side_docked.work_top = -200 + MACOS_MENU_BAR;
+        side_docked.work_bottom = -200 + 1440;
+
+        let (x, _) =
+            overlay_logical_origin(&side_docked, 400.0, 120.0, OverlayPosition::Top, 21, 0.0);
+        assert_eq!(x, -2560.0 + (2560.0 - 400.0) / 2.0);
+    }
+
+    /// Windows converts against the destination monitor's own scale, so the
+    /// window and the margin both land in that monitor's physical pixels. The
+    /// work area here is the whole display (an auto-hidden taskbar reports
+    /// exactly that), so these are the same numbers as before the switch, at
+    /// the margins that reproduce them.
+    #[test]
+    fn windows_overlay_bounds_use_destination_monitor_scale() {
+        let monitor = MonitorBounds {
+            position: PhysicalPosition::new(1920, 0),
+            size: PhysicalSize::new(3840, 2160),
+            work_top: 0,
+            work_bottom: 2160,
+            scale: 1.5,
+        };
+
+        assert_eq!(
+            windows_overlay_bounds(
+                &monitor,
+                OVERLAY_WIDTH,
+                OVERLAY_HEIGHT,
+                OverlayPosition::Bottom,
+                40,
+                0.0,
+            ),
+            (3648, 2031, 384, 69)
+        );
+        assert_eq!(
+            windows_overlay_bounds(
+                &monitor,
+                OVERLAY_WIDTH,
+                OVERLAY_HEIGHT,
+                OverlayPosition::Top,
+                4,
+                0.0,
+            ),
+            (3648, 6, 384, 69)
+        );
+
+        // A scaled window converts to physical pixels the same way and still
+        // lands on the bottom margin: 2160 - 269 - 40 * 1.5 = 1831.
+        let (width, height) = CardMetrics::from_theme(&crate::overlay_theme::OverlayTheme {
+            size_scale: Some(1.5),
+            ..Default::default()
+        })
+        .window_size(
+            OverlayCardShape::LiveOpen,
+            Material::Flat,
+            inherit_shadow(Material::Flat),
+            0.0,
+        );
+        assert_eq!(
+            windows_overlay_bounds(&monitor, width, height, OverlayPosition::Bottom, 40, 0.0),
+            (3392, 1831, 896, 269)
+        );
+    }
+
+    #[test]
+    fn windows_overlay_bounds_support_negative_monitor_origins() {
+        let monitor = MonitorBounds {
+            position: PhysicalPosition::new(-2560, -200),
+            size: PhysicalSize::new(2560, 1440),
+            work_top: -200,
+            work_bottom: -200 + 1440,
+            scale: 1.25,
+        };
+        assert_eq!(
+            windows_overlay_bounds(
+                &monitor,
+                OVERLAY_STREAM_WIDTH,
+                OVERLAY_STREAM_HEIGHT,
+                OverlayPosition::Bottom,
+                40,
+                0.0,
+            ),
+            (-1530, 1040, 500, 150)
+        );
+    }
+
+    /// The reference edge, which nothing checked before: y comes off the work
+    /// area, so a taskbar moves the card and a wider display does not.
+    #[test]
+    fn windows_overlay_bounds_measure_y_from_the_work_area() {
+        let taskbar = MonitorBounds {
+            position: PhysicalPosition::new(0, 0),
+            size: PhysicalSize::new(1920, 1080),
+            work_top: 0,
+            work_bottom: 1080 - 48, // a Windows 11 taskbar at 100 %
+            scale: 1.0,
+        };
+        let (_, y, _, height) =
+            windows_overlay_bounds(&taskbar, 256.0, 46.0, OverlayPosition::Bottom, 0, 0.0);
+        assert_eq!(y + height, 1080 - 48);
+
+        // Top-docked instead: the card clears the bar rather than sitting on it.
+        let top_docked = MonitorBounds {
+            work_top: 48,
+            work_bottom: 1080,
+            ..taskbar
+        };
+        let (_, y, _, _) =
+            windows_overlay_bounds(&top_docked, 256.0, 46.0, OverlayPosition::Top, 4, 0.0);
+        assert_eq!(y, 52);
+    }
+
+    /// The margin is in points, so it is scaled with the window; the work area
+    /// is not, being physical already.
+    #[test]
+    fn windows_scales_the_margin_and_not_the_work_area() {
+        for scale in [1.0, 1.25, 1.5] {
+            let monitor = MonitorBounds {
+                position: PhysicalPosition::new(0, 0),
+                size: PhysicalSize::new(1920, 1080),
+                work_top: 30,
+                work_bottom: 1040,
+                scale,
+            };
+            for margin in [0u16, 4, 8, 200] {
+                let (_, y, _, height) = windows_overlay_bounds(
+                    &monitor,
+                    256.0,
+                    46.0,
+                    OverlayPosition::Top,
+                    margin,
+                    0.0,
+                );
+                assert_eq!(y, (30.0 + f64::from(margin) * scale).round() as i32);
+
+                let (_, y, _, height_bottom) = windows_overlay_bounds(
+                    &monitor,
+                    256.0,
+                    46.0,
+                    OverlayPosition::Bottom,
+                    margin,
+                    0.0,
+                );
+                assert_eq!(
+                    y,
+                    (1040.0 - f64::from(height_bottom) - f64::from(margin) * scale).round() as i32
+                );
+                assert_eq!(height, height_bottom);
+            }
+        }
+    }
+
+    /// The layer-shell rule, the only test the Linux branch can have off
+    /// Linux: the margin goes on the anchored edge, the opposite edge gets
+    /// zero, and the anchor follows the position.
+    #[test]
+    fn layer_shell_puts_the_margin_on_the_anchored_edge_alone() {
+        for margin in [0u16, 4, 40, 200] {
+            let top = layer_shell_placement(OverlayPosition::Top, margin, 0.0);
+            assert_eq!(top.anchor, ScreenEdge::Top);
+            assert_eq!(top.margin, i32::from(margin));
+            assert_eq!(top.opposite_margin, 0);
+
+            let bottom = layer_shell_placement(OverlayPosition::Bottom, margin, 0.0);
+            assert_eq!(bottom.anchor, ScreenEdge::Bottom);
+            assert_eq!(bottom.margin, i32::from(margin));
+            assert_eq!(bottom.opposite_margin, 0);
+        }
+
+        assert_eq!(ScreenEdge::Top.opposite(), ScreenEdge::Bottom);
+        assert_eq!(ScreenEdge::Bottom.opposite(), ScreenEdge::Top);
+    }
+
+    /// Where the two stacks meet: the room a Flat shadow may grow the window
+    /// by towards the anchored screen edge is the edge margin itself, because
+    /// the margin *is* the gap between the card and the usable edge.
+    ///
+    /// Asserted as `min(shadow_slack, margin)` at every platform's own
+    /// inherit and at both ends of the slider, so no platform table is needed
+    /// and none can drift.
+    #[test]
+    fn the_shadows_room_is_the_edge_margin() {
+        for scale in [0.80, 1.00, 1.50] {
+            for offset in [0u16, 4, 16] {
+                let theme = OverlayTheme {
+                    size_scale: Some(scale),
+                    shadow_strength: Some(0.5),
+                    shadow_offset_y: Some(offset),
+                    ..OverlayTheme::default()
+                };
+                let slack = CardMetrics::from_theme(&theme).shadow_slack(
+                    Material::Flat,
+                    ShadowMetrics::from_theme(&theme, Material::Flat),
+                );
+
+                for platform in [Platform::MacOs, Platform::Windows, Platform::Linux] {
+                    for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+                        let margins = [0, inherit_edge_margin(platform, position), 200];
+                        for margin in margins {
+                            assert_eq!(
+                                shadow_edge_slack(&theme, Material::Flat, f64::from(margin)),
+                                slack.min(f64::from(margin)),
+                                "{platform:?} {position:?} at margin {margin}, scale {scale}, offset {offset}"
+                            );
+                            // Glass draws no CSS shadow, so it takes no room
+                            // out of any margin.
+                            assert_eq!(
+                                shadow_edge_slack(&theme, Material::Glass, f64::from(margin)),
+                                0.0
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The card's own edges, recovered from the window that holds it: the
+    /// window less the slack it grew by on each side. `.ov-stage`'s padding is
+    /// these two numbers, so the page and the placement cannot disagree.
+    fn card_edges(
+        window_y: f64,
+        window_height: f64,
+        slack: f64,
+        edge_slack: f64,
+        position: OverlayPosition,
+    ) -> (f64, f64) {
+        match position {
+            OverlayPosition::Top => (window_y + edge_slack, window_y + window_height - slack),
+            OverlayPosition::Bottom => (window_y + slack, window_y + window_height - edge_slack),
+        }
+    }
+
+    /// Every slack a Flat shadow can ask for: none, the inherit reach, and
+    /// `ceil((20 + 16) * 1.5)`, the largest there is.
+    const SHADOW_SLACKS: [f64; 6] = [0.0, 16.0, 20.0, 24.0, 36.0, 54.0];
+
+    /// **The rule this branch and the shadow's meet on: the card never moves.**
+    /// Its screen rectangle is byte-identical with and without a shadow, at
+    /// each platform's inherited margin and at both ends of the slider, on
+    /// both anchors, on the logical path macOS and X11 place through.
+    #[test]
+    fn a_shadow_never_moves_the_card_off_its_margin() {
+        let screen = display(MACOS_MENU_BAR, 70);
+
+        for platform in [Platform::MacOs, Platform::Windows, Platform::Linux] {
+            for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+                for margin in [0, inherit_edge_margin(platform, position), 200] {
+                    let (_, bare_y) =
+                        overlay_logical_origin(&screen, 256.0, 46.0, position, margin, 0.0);
+                    let bare = card_edges(bare_y, 46.0, 0.0, 0.0, position);
+
+                    for slack in SHADOW_SLACKS {
+                        let edge_slack = slack.min(f64::from(margin));
+                        let height = 46.0 + slack + edge_slack;
+                        let (_, y) = overlay_logical_origin(
+                            &screen,
+                            256.0 + 2.0 * slack,
+                            height,
+                            position,
+                            margin,
+                            edge_slack,
+                        );
+
+                        assert_eq!(
+                            card_edges(y, height, slack, edge_slack, position),
+                            bare,
+                            "{platform:?} {position:?} at margin {margin}, slack {slack}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// The same on Windows, which places in the destination monitor's physical
+    /// pixels, so the margin and the slack are scaled and the window is
+    /// rounded. Exact at whole scale factors; at 1.25 and 1.5 an odd margin
+    /// can round the window one pixel either way, which is checked to stay
+    /// within that pixel rather than pretended away.
+    #[test]
+    fn a_windows_shadow_never_moves_the_card_off_its_margin() {
+        for scale in [1.0, 2.0, 1.25, 1.5] {
+            let monitor = MonitorBounds {
+                position: PhysicalPosition::new(0, 0),
+                size: PhysicalSize::new((1920.0 * scale) as u32, (1080.0 * scale) as u32),
+                work_top: (30.0 * scale) as i32,
+                work_bottom: (1040.0 * scale) as i32,
+                scale,
+            };
+
+            for platform in [Platform::MacOs, Platform::Windows, Platform::Linux] {
+                for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+                    for margin in [0, inherit_edge_margin(platform, position), 200] {
+                        let (_, bare_y, _, bare_h) =
+                            windows_overlay_bounds(&monitor, 256.0, 46.0, position, margin, 0.0);
+                        let bare =
+                            card_edges(f64::from(bare_y), f64::from(bare_h), 0.0, 0.0, position);
+
+                        for slack in SHADOW_SLACKS {
+                            let edge_slack = slack.min(f64::from(margin));
+                            let (_, y, _, height) = windows_overlay_bounds(
+                                &monitor,
+                                256.0 + 2.0 * slack,
+                                46.0 + slack + edge_slack,
+                                position,
+                                margin,
+                                edge_slack,
+                            );
+                            let card = card_edges(
+                                f64::from(y),
+                                f64::from(height),
+                                slack * scale,
+                                edge_slack * scale,
+                                position,
+                            );
+
+                            let drift = (card.0 - bare.0).abs().max((card.1 - bare.1).abs());
+                            let allowed = if scale.fract() == 0.0 { 0.0 } else { 1.0 };
+                            assert!(
+                                drift <= allowed,
+                                "{platform:?} {position:?} at margin {margin}, slack {slack}, scale {scale}: {card:?} against {bare:?}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// And under layer shell, where the compositor places the surface: the
+    /// margin it is given is the user's less what the surface grew by towards
+    /// that edge, so the card sits at the margin and the surface never reaches
+    /// past the usable edge.
+    #[test]
+    fn a_layer_surface_gives_the_shadow_back_out_of_its_margin() {
+        for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+            for margin in [0, inherit_edge_margin(Platform::Linux, position), 200] {
+                for slack in SHADOW_SLACKS {
+                    let edge_slack = slack.min(f64::from(margin));
+                    let placement = layer_shell_placement(position, margin, edge_slack);
+
+                    assert_eq!(
+                        f64::from(placement.margin) + edge_slack,
+                        f64::from(margin),
+                        "{position:?} at margin {margin}, slack {slack}"
+                    );
+                    assert!(placement.margin >= 0);
+                    assert_eq!(placement.opposite_margin, 0);
+                }
+            }
+        }
+    }
+
+    /// …and the window that moved still stops at the usable edge, so a click
+    /// meant for the Dock, the taskbar or the menu bar still reaches it. The
+    /// shadow's faint tail is clipped there instead.
+    #[test]
+    fn the_window_never_passes_the_usable_edge() {
+        let screen = display(MACOS_MENU_BAR, 70);
+        let usable_top = f64::from(screen.work_top);
+        let usable_bottom = f64::from(screen.work_bottom);
+
+        let windows_monitor = MonitorBounds {
+            position: PhysicalPosition::new(0, 0),
+            size: PhysicalSize::new(1920, 1080),
+            work_top: 30,
+            work_bottom: 1040,
+            scale: 1.0,
+        };
+
+        for platform in [Platform::MacOs, Platform::Windows, Platform::Linux] {
+            for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+                for margin in [0, inherit_edge_margin(platform, position), 200] {
+                    for slack in SHADOW_SLACKS {
+                        // More slack than the margin can hold is capped, which
+                        // is what keeps the window inside the usable area.
+                        let edge_slack = slack.min(f64::from(margin));
+                        let width = 256.0 + 2.0 * slack;
+                        let height = 46.0 + slack + edge_slack;
+
+                        let (_, y) = overlay_logical_origin(
+                            &screen, width, height, position, margin, edge_slack,
+                        );
+                        let (_, win_y, _, win_h) = windows_overlay_bounds(
+                            &windows_monitor,
+                            width,
+                            height,
+                            position,
+                            margin,
+                            edge_slack,
+                        );
+
+                        match position {
+                            OverlayPosition::Top => {
+                                assert!(
+                                    y >= usable_top,
+                                    "{platform:?} at margin {margin}, slack {slack}: {y} is above {usable_top}"
+                                );
+                                assert!(f64::from(win_y) >= 30.0);
+                            }
+                            OverlayPosition::Bottom => {
+                                assert!(
+                                    y + height <= usable_bottom,
+                                    "{platform:?} at margin {margin}, slack {slack}: {} is below {usable_bottom}",
+                                    y + height
+                                );
+                                assert!(f64::from(win_y + win_h) <= 1040.0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

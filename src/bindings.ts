@@ -1623,7 +1623,19 @@ waveform_gap?: number | null;
 /**
  * Width of each waveform bar at scale 1, 2 to 6 px.
  */
-waveform_width?: number | null }
+waveform_width?: number | null; 
+/**
+ * The gap between the usable screen edge and the card, in points, 0 to
+ * 200. Zero sits the card flush against that edge.
+ * 
+ * The one token measured against the screen rather than the card, so it
+ * is *not* multiplied by `size_scale`: the screen does not zoom, and the
+ * card's distance from the edge stays what the user chose at every scale.
+ * Which edge it is measured from follows the `overlay_position` setting,
+ * so an unset value inherits per platform *and* per position; see
+ * [`Self::edge_margin`].
+ */
+edge_margin?: number | null }
 /**
  * A theme being edited, on its way to the overlay window alone.
  * 
@@ -1712,6 +1724,18 @@ shadow_edge_slack?: number;
  * which tokens it sets and what the reader had to ignore.
  */
 file: ThemeFileState; 
+/**
+ * The gap to the usable screen edge actually in effect, in points: the
+ * `edge_margin` token, or the per-platform, per-position value an unset
+ * one inherits. Concrete, never `None`.
+ * 
+ * Carried for the same reason as `glass_support`: the number depends on
+ * the platform and on the anchored edge, and the Appearance tab's slider
+ * has to show it while the token is unset. Shipping the answer keeps a
+ * six-cell platform table out of TypeScript, where it could disagree with
+ * the one the window is placed from.
+ */
+effective_edge_margin: number; 
 /**
  * Whether a file watcher is delivering changes to that file. False means
  * the Appearance tab keeps its Reload button, the only way a hand edit

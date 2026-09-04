@@ -123,36 +123,36 @@ describe("moreDiagnosticsCount", () => {
 
 describe("setTokenCounts", () => {
   test("the total is the rows on screen, not every token there is", () => {
-    // Twenty of the contract's twenty-two under Flat. `glass_material`
+    // Twenty-one of the contract's twenty-three under Flat. `glass_material`
     // drives the pre-macOS-26 fallback engine and has no row; the two alphas
     // share one slot, Flat's surface opacity or Glass's tint, never both.
-    expect(setTokenCounts([], "flat", true).total).toBe(20);
-    expect(Object.keys(INHERIT_ALL).length).toBe(22);
+    expect(setTokenCounts([], "flat", true).total).toBe(21);
+    expect(Object.keys(INHERIT_ALL).length).toBe(23);
 
     // One fewer under Glass: macOS places its own window shadow and takes no
     // offset, so that row is not on screen to be counted.
-    expect(setTokenCounts([], "glass", true).total).toBe(19);
+    expect(setTokenCounts([], "glass", true).total).toBe(20);
 
     // The two shadow rows are one token, so the table has one entry more than
     // the tokens it covers. The two waveform lengths count under every style,
     // so the total does not move as the user picks one.
-    expect(OVERLAY_TOKEN_FIELDS.length).toBe(22);
+    expect(OVERLAY_TOKEN_FIELDS.length).toBe(23);
   });
 
   test("a hidden waveform takes its whole group out of the total", () => {
     // The tab drops the Waveform group with the waveform, so its three rows
     // (the style and the two lengths) are not there to be counted.
-    expect(setTokenCounts([], "flat", false).total).toBe(17);
-    expect(setTokenCounts([], "glass", false).total).toBe(16);
+    expect(setTokenCounts([], "flat", false).total).toBe(18);
+    expect(setTokenCounts([], "glass", false).total).toBe(17);
     // A file owning one of them counts nothing while the group is gone.
     const waveformOwned = ["waveform_style", "accent"];
     expect(setTokenCounts(waveformOwned, "flat", false)).toEqual({
       count: 1,
-      total: 17,
+      total: 18,
     });
     expect(setTokenCounts(waveformOwned, "flat", true)).toEqual({
       count: 2,
-      total: 20,
+      total: 21,
     });
   });
 
@@ -175,11 +175,11 @@ describe("setTokenCounts", () => {
     const bothAlphas = ["surface_opacity", "glass_tint"];
     expect(setTokenCounts(bothAlphas, "flat", true)).toEqual({
       count: 1,
-      total: 20,
+      total: 21,
     });
     expect(setTokenCounts(bothAlphas, "glass", true)).toEqual({
       count: 1,
-      total: 19,
+      total: 20,
     });
     expect(setTokenCounts(["glass_tint"], "flat", true).count).toBe(0);
     expect(setTokenCounts(["surface_opacity"], "glass", true).count).toBe(0);

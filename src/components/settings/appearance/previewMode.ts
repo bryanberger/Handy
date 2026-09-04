@@ -57,6 +57,27 @@ export interface PreviewMode {
 
 export const IDLE_PREVIEW: PreviewMode = { running: false, state: "cycle" };
 
+/**
+ * Whether the overlay on screen is the tab's to repaint with an uncommitted
+ * draft.
+ *
+ * The same rule the backend enforces (`draft_allowed` in
+ * `commands/overlay_preview.rs`), asked here as well so a drag does not send
+ * an IPC message per animation frame for a command that will refuse it. The
+ * tab is not the authority — the backend is, and it re-checks — but it is the
+ * one paying for the call.
+ *
+ * `isRecording` is in the rule rather than assumed away: the tab learns about
+ * a pre-emption from its own poll, so there is a window in which it still
+ * believes its preview is running while a real session already owns the card.
+ */
+export function overlayAcceptsDrafts(
+  mode: PreviewMode,
+  isRecording: boolean,
+): boolean {
+  return mode.running && !isRecording;
+}
+
 export type PreviewAction =
   | { kind: "start" }
   /** Start because a Material or Glass style change wants to be seen, rather

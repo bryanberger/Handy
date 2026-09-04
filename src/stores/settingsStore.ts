@@ -195,11 +195,27 @@ const settingUpdaters: {
     commands.changeTranscribeGpuDevice(value as string | null),
   extra_recording_buffer_ms: (value) =>
     commands.changeExtraRecordingBufferSetting(value as number),
-  // One key for all nine tokens: the whole object is sent every time, so the
+  // One key for all sixteen tokens: the whole object is sent every time, so the
   // store's optimistic write and rollback work unchanged and a whole-theme
   // reset is `resetSetting("overlay_theme")`.
-  overlay_theme: (value) =>
-    commands.changeOverlayThemeSetting(value as OverlayTheme),
+  //
+  // The command answers with the theme it actually stored, which can differ
+  // from what was optimistically written because Rust clamps. Folding that
+  // answer straight back in is what replaces the full `refreshSettings()` the
+  // `settings-changed` listener below used to run for this key: same
+  // correction, without re-reading every setting there is.
+  overlay_theme: async (value) => {
+    const result = await commands.changeOverlayThemeSetting(
+      value as OverlayTheme,
+    );
+    if (result.status === "error") throw new Error(result.error);
+    useSettingsStore.setState((state) =>
+      state.settings
+        ? { settings: { ...state.settings, overlay_theme: result.data } }
+        : {},
+    );
+    return result;
+  },
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -658,7 +674,15 @@ export const useSettingsStore = create<SettingsStore>()(
         get().refreshSettings();
       });
       listen<{ setting?: string }>("settings-changed", (event) => {
-        get().refreshSettings();
+        // The overlay theme is the one setting whose command hands back what
+        // it stored (see `settingUpdaters.overlay_theme`), so re-reading all
+        // of `AppSettings` here would only re-derive a value the store
+        // already holds — on a path that can fire several times a second
+        // while the Appearance tab is being dragged. The event is still
+        // emitted, for anything outside this store that listens for it.
+        if (event.payload.setting !== "overlay_theme") {
+          get().refreshSettings();
+        }
         if (event.payload.setting === "selected_microphone") {
           get().refreshAudioDevices();
         }

@@ -917,11 +917,37 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
  * field — working unchanged.
  * 
  * Values are clamped before they are stored, so nothing out of range ever
- * reaches the store, the native geometry or the frontend.
+ * reaches the store, the native geometry or the frontend. The clamped theme
+ * is returned rather than left for the caller to re-read: that is what lets
+ * the settings store correct its own optimistic write without a round trip
+ * back through `get_app_settings`.
  */
-async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<null, string>> {
+async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<OverlayTheme, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_overlay_theme_setting", { theme }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Paint a theme the user is still dragging, without persisting anything.
+ * 
+ * The Appearance tab commits on a debounce, which is right for the store and
+ * far too slow for the eye: nothing reached the overlay until the drag
+ * stopped. So the tab also sends the draft here, coalesced to one call per
+ * animation frame, and this puts it on the overlay — no settings read, no
+ * settings write, no `settings-changed`, and no native window work unless a
+ * token the window is actually built from moved.
+ * 
+ * A no-op unless a preview is on screen: outside preview mode the overlay
+ * belongs to whatever is recording, and a draft has no business repainting
+ * it. That also means a preview pre-empted by a real recording stops
+ * receiving drafts the moment it loses the overlay.
+ */
+async previewOverlayThemeDraft(theme: OverlayTheme) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_overlay_theme_draft", { theme }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1043,11 +1069,13 @@ async isLaptop() : Promise<Result<boolean, string>> {
 
 export const events = __makeEvents__<{
 historyUpdatePayload: HistoryUpdatePayload,
+overlayThemeDraft: OverlayThemeDraft,
 resolvedOverlayTheme: ResolvedOverlayTheme,
 streamPhaseEvent: StreamPhaseEvent,
 streamTextEvent: StreamTextEvent
 }>({
 historyUpdatePayload: "history-update-payload",
+overlayThemeDraft: "overlay-theme-draft",
 resolvedOverlayTheme: "resolved-overlay-theme",
 streamPhaseEvent: "stream-phase-event",
 streamTextEvent: "stream-text-event"
@@ -1483,6 +1511,17 @@ waveform_gap?: number | null;
  * Width of each waveform bar at scale 1, 2–6 px.
  */
 waveform_width?: number | null }
+/**
+ * A theme being edited, on its way to the overlay window alone.
+ * 
+ * The same payload as [`ResolvedOverlayTheme`] under a second name, because
+ * the name is the whole distinction: a draft has not been persisted, so the
+ * overlay paints it but does not mirror it to localStorage, and the
+ * Appearance tab — which listens for the delivered theme to keep its own
+ * controls honest — ignores it. Wrapped rather than aliased so the two
+ * events stay two types in the generated bindings.
+ */
+export type OverlayThemeDraft = { resolved: ResolvedOverlayTheme }
 export type PaginatedHistory = { entries: HistoryEntry[]; has_more: boolean }
 export type PasteMethod = "ctrl_v" | "direct" | "none" | "shift_insert" | "ctrl_shift_v" | "external_script"
 export type PermissionAccess = "allowed" | "denied" | "unknown"

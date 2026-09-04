@@ -16,6 +16,7 @@ import {
   OVERLAY_THEME_CSS_PROPERTIES,
   OVERLAY_THEME_STORAGE_KEY,
   OVERLAY_TOKEN_BOUNDS,
+  overlayThemeStyleDelta,
   resolveOverlayThemeVars,
   storeOverlayTheme,
   SURFACE_OPACITY_INHERIT,
@@ -121,6 +122,67 @@ describe("inherit", () => {
     applyOverlayTheme(root.element, null);
     expect(root.removed).toEqual([...OVERLAY_THEME_CSS_PROPERTIES]);
     expect(root.dataset.material).toBe("flat");
+  });
+
+  test("a second apply only touches what actually moved", () => {
+    const root = fakeRoot();
+    applyOverlayTheme(root.element, resolved({ accent: "#7aa2f7", radius: 8 }));
+    const writtenFirst = root.properties.size;
+    root.removed.length = 0;
+
+    // Same accent, new radius: only the radius is written again, and nothing
+    // is removed.
+    applyOverlayTheme(
+      root.element,
+      resolved({ accent: "#7aa2f7", radius: 12 }),
+    );
+    expect(root.removed).toEqual([]);
+    expect(root.properties.get("--ov-radius")).toBe("12px");
+    expect(root.properties.size).toBe(writtenFirst);
+
+    // Dropping the radius removes that one property and leaves the accent.
+    applyOverlayTheme(root.element, resolved({ accent: "#7aa2f7" }));
+    expect(root.removed).toEqual(["--ov-radius"]);
+    expect(root.properties.get("--s-accent")).toBe("#7aa2f7");
+  });
+});
+
+describe("overlayThemeStyleDelta", () => {
+  test("an unknown previous state clears every property this module may write", () => {
+    const { set, remove } = overlayThemeStyleDelta(null, {
+      "--s-accent": "#7aa2f7",
+    });
+    expect(set).toEqual([["--s-accent", "#7aa2f7"]]);
+    expect(remove).toEqual(
+      OVERLAY_THEME_CSS_PROPERTIES.filter((p) => p !== "--s-accent"),
+    );
+  });
+
+  test("a known previous state only removes what it actually wrote", () => {
+    const { set, remove } = overlayThemeStyleDelta(
+      { "--s-accent": "#7aa2f7", "--ov-radius": "8px" },
+      { "--s-accent": "#7aa2f7" },
+    );
+    expect(set).toEqual([]);
+    expect(remove).toEqual(["--ov-radius"]);
+  });
+
+  test("an unchanged property is not rewritten", () => {
+    const { set, remove } = overlayThemeStyleDelta(
+      { "--s-accent": "#7aa2f7", "--ov-pad-x": "10px" },
+      { "--s-accent": "#7aa2f7", "--ov-pad-x": "11px" },
+    );
+    expect(set).toEqual([["--ov-pad-x", "11px"]]);
+    expect(remove).toEqual([]);
+  });
+
+  test("nothing to do is nothing to do", () => {
+    expect(
+      overlayThemeStyleDelta(
+        { "--s-accent": "#7aa2f7" },
+        { "--s-accent": "#7aa2f7" },
+      ),
+    ).toEqual({ set: [], remove: [] });
   });
 });
 

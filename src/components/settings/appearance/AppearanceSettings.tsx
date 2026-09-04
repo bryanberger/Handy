@@ -2,7 +2,6 @@ import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
-import { Slider } from "@/components/ui/Slider";
 import { useResolvedOverlayTheme } from "@/hooks/useResolvedOverlayTheme";
 import { useSettings } from "@/hooks/useSettings";
 import {
@@ -11,8 +10,10 @@ import {
   INHERIT_ALL,
   SURFACE_OPACITY_INHERIT,
   type OverlayNumericKey,
+  type OverlayThemeKey,
 } from "@/lib/overlayTheme";
 import type {
+  GlassStyle,
   GlassSupport,
   Material,
   OverlayStyle,
@@ -20,7 +21,6 @@ import type {
 } from "@/bindings";
 import { ShowOverlay } from "../ShowOverlay";
 import { ThemeSelector } from "../ThemeSelector";
-import { ColorField } from "./ColorField";
 import { GlassStyleSelector } from "./GlassStyleSelector";
 import { MaterialSelector } from "./MaterialSelector";
 import { OnScreenPreview } from "./OnScreenPreview";
@@ -30,6 +30,7 @@ import {
 } from "./overlayTokenFields";
 import type { PreviewChange, PreviewChangeRequest } from "./previewMode";
 import { OverlayThemeProbes } from "./OverlayThemeProbes";
+import { OverlayTokenRow } from "./OverlayTokenRow";
 import { ThemeFileGroup } from "./ThemeFileGroup";
 import { setOverlayThemeToken, useDraftSetting } from "./useDraftSetting";
 import { EMPTY_FILE_STATE, useOverlayThemeVars } from "./useOverlayThemeVars";
@@ -87,7 +88,12 @@ const AppearanceSettingsInner: React.FC = () => {
   const { t } = useTranslation();
   const { settings, isUpdating, resetSetting } = useSettings();
   const { resolved, isReloading, reload } = useResolvedOverlayTheme();
-  const { draft, setDraft, flush, flushAll, reset } = useDraftSetting();
+  // Whether the overlay on screen is this tab's to repaint live. Owned by the
+  // preview card below, which is the only thing that knows; without it a drag
+  // would send a draft to the backend every frame for it to refuse.
+  const [overlayIsOurs, setOverlayIsOurs] = useState(false);
+  const { draft, setDraft, flush, flushAll, reset } =
+    useDraftSetting(overlayIsOurs);
 
   const style: OverlayStyle = settings?.overlay_style ?? "live";
 
@@ -106,6 +112,33 @@ const AppearanceSettingsInner: React.FC = () => {
   const vars = useOverlayThemeVars(resolved, draft, settings?.theme);
   const glassSupport = resolved?.glass_support ?? NO_GLASS;
 
+  // Stable for the tab's lifetime, so a memoised row's props only change when
+  // its own value does — see `OverlayTokenRow`. `setDraft`, `flush` and
+  // `reset` are already stable (`useDraftSetting`); these only drop the
+  // promises the two async ones return, which no caller here awaits.
+  const handleFlush = useCallback(
+    (key: OverlayThemeKey) => void flush(key),
+    [flush],
+  );
+  const currentMaterial = vars.effectiveValue("material") ?? "flat";
+  const currentGlassStyle = vars.effectiveValue("glass_style") ?? "regular";
+  const handleSelectMaterial = useCallback(
+    (next: Material) => {
+      if (next !== currentMaterial)
+        reportSurfaceChange({ kind: "material", to: next });
+      void setOverlayThemeToken("material", next);
+    },
+    [currentMaterial, reportSurfaceChange],
+  );
+  const handleSelectGlassStyle = useCallback(
+    (next: GlassStyle) => {
+      if (next !== currentGlassStyle)
+        reportSurfaceChange({ kind: "glassStyle" });
+      void setOverlayThemeToken("glass_style", next);
+    },
+    [currentGlassStyle, reportSurfaceChange],
+  );
+
   const overlayTheme = settings?.overlay_theme ?? INHERIT_ALL;
   const resettingWhole = isUpdating("overlay_theme");
   const resetDisabled = isOverlayThemeDefault(overlayTheme) || resettingWhole;
@@ -118,99 +151,70 @@ const AppearanceSettingsInner: React.FC = () => {
     const locked = vars.isLocked(field.key);
 
     switch (field.kind) {
-      case "color":
-        return (
-          <ColorField
-            key={field.key}
-            label={t(field.labelKey)}
-            description={t(field.descriptionKey)}
-            value={vars.effectiveValue(field.key)}
-            resolvedDefault={vars.resolvedDefaults[field.key]}
-            onChange={(hex) => setDraft(field.key, hex)}
-            onCommitNow={() => void flush(field.key)}
-            onReset={() => reset(field.key)}
-            locked={locked}
-            lockedDescription={lockedDescription}
-            isResetting={resettingWhole}
-          />
-        );
-
-      case "length":
-      case "factor": {
-        const isLength = field.kind === "length";
-        const value =
-          vars.effectiveValue(field.key) ??
-          numericDefault(field.key, vars.effectiveMaterial);
-        return (
-          <div
-            key={field.key}
-            onPointerUp={() => void flush(field.key)}
-            // React's synthetic onBlur bubbles (unlike the native `blur`
-            // event), so this fires when the range input inside loses focus —
-            // e.g. tabbing away mid-drag, which onPointerUp alone would miss.
-            onBlur={() => void flush(field.key)}
-          >
-            <Slider
-              grouped
-              descriptionMode="tooltip"
-              label={t(field.labelKey)}
-              description={locked ? lockedDescription : t(field.descriptionKey)}
-              value={value}
-              onChange={(next) => setDraft(field.key, next)}
-              min={field.min}
-              max={field.max}
-              step={field.step}
-              disabled={locked}
-              formatValue={(v) =>
-                isLength ? `${Math.round(v)}px` : `${v.toFixed(2)}×`
-              }
-              onReset={() => reset(field.key)}
-              isResetting={resettingWhole}
-            />
-          </div>
-        );
-      }
-
       // The two enum tokens with a row get their own selectors — Material for
       // the Glass gating and the unavailable note, the Glass style for its
       // engine gating — rather than a generic dropdown, but both still live in
       // the descriptor table so the group is driven the same way as Color and
       // Size & Spacing.
-      case "material": {
-        const current = vars.effectiveValue(field.key) ?? "flat";
+      case "material":
         return (
           <MaterialSelector
             key={field.key}
-            value={current}
-            onSelect={(next) => {
-              if (next !== current)
-                reportSurfaceChange({ kind: "material", to: next });
-              void setOverlayThemeToken(field.key, next);
-            }}
+            value={currentMaterial}
+            onSelect={handleSelectMaterial}
             glassSupport={glassSupport}
             locked={locked}
             lockedDescription={lockedDescription}
           />
         );
-      }
 
-      case "glassStyle": {
-        const current = vars.effectiveValue(field.key) ?? "regular";
+      case "glassStyle":
         return (
           <GlassStyleSelector
             key={field.key}
-            value={current}
-            onSelect={(next) => {
-              if (next !== current) reportSurfaceChange({ kind: "glassStyle" });
-              void setOverlayThemeToken(field.key, next);
-            }}
-            material={vars.effectiveValue("material") ?? "flat"}
+            value={currentGlassStyle}
+            onSelect={handleSelectGlassStyle}
+            material={currentMaterial}
             glassSupport={glassSupport}
             locked={locked}
             lockedDescription={lockedDescription}
           />
         );
-      }
+
+      case "color":
+        return (
+          <OverlayTokenRow
+            key={field.key}
+            field={field}
+            value={vars.effectiveValue(field.key)}
+            resolvedDefault={vars.resolvedDefaults[field.key]}
+            locked={locked}
+            lockedDescription={lockedDescription}
+            isResetting={resettingWhole}
+            onDraft={setDraft}
+            onFlush={handleFlush}
+            onReset={reset}
+          />
+        );
+
+      case "length":
+      case "factor":
+        return (
+          <OverlayTokenRow
+            key={field.key}
+            field={field}
+            value={
+              vars.effectiveValue(field.key) ??
+              numericDefault(field.key, vars.effectiveMaterial)
+            }
+            locked={locked}
+            lockedDescription={lockedDescription}
+            isResetting={resettingWhole}
+            onDraft={setDraft}
+            onFlush={handleFlush}
+            onReset={reset}
+          />
+        );
     }
   };
 
@@ -234,6 +238,7 @@ const AppearanceSettingsInner: React.FC = () => {
           onFlushDrafts={flushAll}
           lastSurfaceChange={lastSurfaceChange}
           glassAvailable={glassSupport.available}
+          onAcceptsDraftsChange={setOverlayIsOurs}
         />
       </SettingsGroup>
 
@@ -242,7 +247,7 @@ const AppearanceSettingsInner: React.FC = () => {
           the refs are attached before the fields below ask for a reading —
           and it costs nothing while the overlay is off and they are hidden. */}
       <OverlayThemeProbes
-        themeVars={vars.themeVars}
+        probeVars={vars.probeVars}
         effectiveMaterial={vars.effectiveMaterial}
         probeRefs={vars.colorProbeRefs}
       />

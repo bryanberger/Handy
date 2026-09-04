@@ -13,7 +13,59 @@
 
 use crate::overlay_theme::{self, OverlayTheme, ResolvedOverlayTheme};
 use crate::settings::{get_settings, write_settings};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter};
+
+/// Whether the overlay is currently painted with a value nobody has stored.
+///
+/// Set by [`preview_overlay_theme_draft`], cleared by the commit below. It
+/// exists because the two paths can disagree about what is on screen: a draft
+/// paints the overlay without touching the store, so the *stored* theme is no
+/// longer what the user is looking at, and a commit that happens to store what
+/// was already stored would otherwise have nothing to do and leave the
+/// abandoned draft on screen for good. The clearest case is a reset in the
+/// middle of a drag — the debounce is cancelled, the token was already
+/// inherit, and the commit is a no-op — which used to strand the overlay at
+/// whatever the finger last touched.
+static OVERLAY_DRAFTED: AtomicBool = AtomicBool::new(false);
+
+/// Remember that the overlay is showing an uncommitted value.
+fn mark_overlay_drafted() {
+    OVERLAY_DRAFTED.store(true, Ordering::SeqCst);
+}
+
+/// Read and clear the mark: after a commit the overlay is repainted from the
+/// store either way, so no draft is outstanding once this has been asked.
+fn take_overlay_drafted() -> bool {
+    OVERLAY_DRAFTED.swap(false, Ordering::SeqCst)
+}
+
+/// What a commit owes the overlay and the store.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CommitEffect {
+    /// The store already holds this theme and the overlay is already painting
+    /// it: no write, no broadcast, no repaint.
+    Nothing,
+    /// The store already holds this theme, but the overlay is showing a draft
+    /// on top of it. Nothing to persist — and still a frame to send, because
+    /// the screen has to end on the value that is actually stored.
+    RepaintOnly,
+    /// The ordinary commit: persist, tell everyone, repaint.
+    PersistAndRepaint,
+}
+
+/// The commit rule, as a pure function of the two facts it turns on.
+///
+/// The rule in one line: **a commit always leaves the overlay showing the
+/// committed theme.** "Nothing changed" is only permission to skip the work
+/// when nothing was changed *on screen* either.
+fn commit_effect(theme_changed: bool, overlay_drafted: bool) -> CommitEffect {
+    match (theme_changed, overlay_drafted) {
+        (true, _) => CommitEffect::PersistAndRepaint,
+        (false, true) => CommitEffect::RepaintOnly,
+        (false, false) => CommitEffect::Nothing,
+    }
+}
 
 /// Persist the whole overlay theme.
 ///
@@ -24,27 +76,82 @@ use tauri::{AppHandle, Emitter};
 /// field — working unchanged.
 ///
 /// Values are clamped before they are stored, so nothing out of range ever
-/// reaches the store, the native geometry or the frontend.
+/// reaches the store, the native geometry or the frontend. The clamped theme
+/// is returned rather than left for the caller to re-read: that is what lets
+/// the settings store correct its own optimistic write without a round trip
+/// back through `get_app_settings`.
 #[tauri::command]
 #[specta::specta]
-pub fn change_overlay_theme_setting(app: AppHandle, theme: OverlayTheme) -> Result<(), String> {
+pub fn change_overlay_theme_setting(
+    app: AppHandle,
+    theme: OverlayTheme,
+) -> Result<OverlayTheme, String> {
+    let normalized = theme.normalized();
     let mut settings = get_settings(&app);
-    settings.overlay_theme = theme.normalized();
-    write_settings(&app, settings);
+    // A commit that stores what is already stored has nothing to persist, and
+    // nothing to tell anyone about. This is not a rare case: a debounced drag
+    // settles on a value an earlier commit in the same drag already wrote, and
+    // a reset re-sends the theme it just reset to. What it may still owe is a
+    // frame — see [`OVERLAY_DRAFTED`].
+    let effect = commit_effect(settings.overlay_theme != normalized, take_overlay_drafted());
+    if effect == CommitEffect::Nothing {
+        return Ok(normalized);
+    }
 
-    // Clamping happens behind the frontend's back, so what was stored can differ
-    // from what the settings store optimistically wrote. `settings-changed`
-    // makes it re-read `AppSettings`, which is the only thing that pulls a
-    // control back to the value that was actually kept. The cost is a full
-    // settings re-fetch per commit, so the tab's controls must stay debounced —
-    // an undebounced slider would fetch on every frame and could snap mid-drag.
-    let _ = app.emit(
-        "settings-changed",
-        serde_json::json!({ "setting": "overlay_theme" }),
-    );
+    if effect == CommitEffect::PersistAndRepaint {
+        settings.overlay_theme = normalized.clone();
+        write_settings(&app, settings);
 
-    let resolved = overlay_theme::resolve(&app);
+        // Everything else that reads `AppSettings` — the tray, another tab —
+        // still has to hear that the store moved. The settings store
+        // deliberately does *not* re-read on this one, because the normalized
+        // theme returned above is the same value that re-read would fetch.
+        let _ = app.emit(
+            "settings-changed",
+            serde_json::json!({ "setting": "overlay_theme" }),
+        );
+    }
+
+    // Resolved from the theme just written rather than read back out of the
+    // store: this command is the one place that already knows it. Delivered on
+    // the `RepaintOnly` path too — that path exists precisely to take an
+    // abandoned draft off the screen.
+    let resolved = overlay_theme::resolve_with(&app, normalized.clone());
     overlay_theme::deliver(&app, &resolved);
+
+    Ok(normalized)
+}
+
+/// Paint a theme the user is still dragging, without persisting anything.
+///
+/// The Appearance tab commits on a debounce, which is right for the store and
+/// far too slow for the eye: nothing reached the overlay until the drag
+/// stopped. So the tab also sends the draft here, coalesced to one call per
+/// animation frame, and this puts it on the overlay — no settings read, no
+/// settings write, no `settings-changed`, and no native window work unless a
+/// token the window is actually built from moved.
+///
+/// A no-op unless a preview is *running* and nothing is recording — see
+/// `overlay_preview::draft_allowed`. Outside preview mode the overlay belongs
+/// to whatever is recording, and a draft has no business repainting it; the
+/// same goes for a preview that has been told to stop, and for one a real
+/// recording has taken, both of which own an overlay that is no longer the
+/// tab's to paint.
+///
+/// Every draft that does get through leaves a mark, which
+/// [`change_overlay_theme_setting`] clears: that is what guarantees the screen
+/// ends on a stored value even when the commit that follows has nothing to
+/// store.
+#[tauri::command]
+#[specta::specta]
+pub fn preview_overlay_theme_draft(app: AppHandle, theme: OverlayTheme) -> Result<(), String> {
+    if !crate::commands::overlay_preview::accepts_theme_drafts(&app) {
+        return Ok(());
+    }
+
+    let resolved = overlay_theme::resolve_with(&app, theme.normalized());
+    overlay_theme::deliver_draft(&app, &resolved);
+    mark_overlay_drafted();
 
     Ok(())
 }
@@ -84,4 +191,45 @@ pub async fn reload_overlay_theme_file(app: AppHandle) -> Result<ResolvedOverlay
     })
     .await
     .map_err(|error| format!("Failed to read the overlay theme file: {error}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The ordinary case, and the one the early return exists for: a commit
+    /// that changes the store always repaints; one that changes nothing, over
+    /// an overlay nobody drafted onto, does nothing at all.
+    #[test]
+    fn a_commit_that_changes_nothing_over_an_undrafted_overlay_does_nothing() {
+        assert_eq!(commit_effect(false, false), CommitEffect::Nothing);
+        assert_eq!(commit_effect(true, false), CommitEffect::PersistAndRepaint);
+        assert_eq!(commit_effect(true, true), CommitEffect::PersistAndRepaint);
+    }
+
+    /// The fix: a reset in the middle of a drag cancels the debounce and
+    /// commits `null` over a token that was already inherit, so there is
+    /// nothing to persist — and the overlay is still showing the abandoned
+    /// draft. It has to be repainted from the store anyway.
+    #[test]
+    fn a_commit_over_a_drafted_overlay_repaints_even_with_nothing_to_store() {
+        assert_eq!(commit_effect(false, true), CommitEffect::RepaintOnly);
+    }
+
+    /// The mark is a one-shot: the commit that reads it is the commit that
+    /// repaints, so a second commit right behind it has nothing left to undo.
+    #[test]
+    fn taking_the_draft_mark_clears_it() {
+        // Left exactly as found: this static is process-wide.
+        let previous = OVERLAY_DRAFTED.load(Ordering::SeqCst);
+
+        OVERLAY_DRAFTED.store(false, Ordering::SeqCst);
+        assert!(!take_overlay_drafted(), "no draft, nothing to correct");
+
+        mark_overlay_drafted();
+        assert!(take_overlay_drafted(), "the draft is outstanding");
+        assert!(!take_overlay_drafted(), "and only outstanding once");
+
+        OVERLAY_DRAFTED.store(previous, Ordering::SeqCst);
+    }
 }

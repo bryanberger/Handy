@@ -8,9 +8,9 @@ const PROBE_STYLE = (cssVar: string): CSSProperties => ({
 });
 
 export interface OverlayThemeProbesProps {
-  /** The overlay theme's custom properties, spread as inline style so the
-   *  probes resolve exactly what the overlay would paint. */
-  themeVars: CSSProperties;
+  /** The overlay theme's colour custom properties, spread as inline style so
+   *  the probes resolve exactly what the overlay would paint. */
+  probeVars: CSSProperties;
   effectiveMaterial: Material;
   probeRefs: Record<OverlayColorKey, React.RefObject<HTMLSpanElement>>;
 }
@@ -24,8 +24,8 @@ export interface OverlayThemeProbesProps {
  * it will actually inherit, rather than a hardcoded guess. Nothing is
  * rendered: this is a measuring device, not a preview.
  */
-export const OverlayThemeProbes: React.FC<OverlayThemeProbesProps> = ({
-  themeVars,
+const OverlayThemeProbesInner: React.FC<OverlayThemeProbesProps> = ({
+  probeVars,
   effectiveMaterial,
   probeRefs,
 }) => (
@@ -33,7 +33,7 @@ export const OverlayThemeProbes: React.FC<OverlayThemeProbesProps> = ({
     aria-hidden="true"
     className="ov-theme-probes"
     data-material={effectiveMaterial}
-    style={themeVars}
+    style={probeVars}
   >
     <span style={PROBE_STYLE("--s-accent")} ref={probeRefs.accent} />
     <span style={PROBE_STYLE("--s-surface")} ref={probeRefs.surface} />
@@ -41,3 +41,7 @@ export const OverlayThemeProbes: React.FC<OverlayThemeProbesProps> = ({
     <span style={PROBE_STYLE("--s-border")} ref={probeRefs.border} />
   </div>
 );
+
+/** Memoised: re-rendering the measuring device costs a style recalculation,
+ *  and only a colour change can move what it measures. */
+export const OverlayThemeProbes = React.memo(OverlayThemeProbesInner);

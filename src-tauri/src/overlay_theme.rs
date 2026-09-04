@@ -783,6 +783,19 @@ pub fn resolve(app: &AppHandle) -> ResolvedOverlayTheme {
     )
 }
 
+/// [`resolve`] for a caller that already holds the stored tokens.
+///
+/// The commit and live-preview paths both have the settings-level theme in
+/// hand — one just wrote it, the other was handed a draft that never reaches
+/// the store — so neither has any reason to read it back.
+pub fn resolve_with(app: &AppHandle, settings_theme: OverlayTheme) -> ResolvedOverlayTheme {
+    resolve_from(
+        settings_theme,
+        crate::overlay_theme_file::cached(app),
+        glass_support(app),
+    )
+}
+
 /// [`resolve`], preceded by a fresh read of the theme file.
 ///
 /// The authoritative resolve: whatever the file says right now is what the
@@ -813,7 +826,7 @@ pub fn resolve_reloading_for(
 
 /// The overlay theme as persisted, before the theme file and the clamping.
 fn settings_theme(app: &AppHandle) -> OverlayTheme {
-    crate::settings::get_settings(app).overlay_theme
+    crate::settings::get_overlay_theme(app)
 }
 
 /// The whole resolution rule with nothing to look up: merge the file over the
@@ -837,15 +850,27 @@ pub fn resolve_from(
     }
 }
 
+/// A theme being edited, on its way to the overlay window alone.
+///
+/// The same payload as [`ResolvedOverlayTheme`] under a second name, because
+/// the name is the whole distinction: a draft has not been persisted, so the
+/// overlay paints it but does not mirror it to localStorage, and the
+/// Appearance tab — which listens for the delivered theme to keep its own
+/// controls honest — ignores it. Wrapped rather than aliased so the two
+/// events stay two types in the generated bindings.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Type, tauri_specta::Event)]
+pub struct OverlayThemeDraft {
+    pub resolved: ResolvedOverlayTheme,
+}
+
 /// Broadcast the resolved theme and apply its native side effects.
 ///
 /// Order matters: the webviews are told first because a repaint is the slowest
 /// link, then the native window is resized, because a change to `size_scale`
-/// changes how much room the card needs. The resize takes the scale from the
-/// theme already resolved here, so nothing is resolved twice. It runs
-/// unconditionally rather than only when the scale changed: skipping it would
-/// need a previous-resolved snapshot to diff against, and what it costs is one
-/// main-thread hop and a native move on a window that is usually hidden.
+/// changes how much room the card needs. The resize takes the theme already
+/// resolved here, so nothing is resolved twice, and it happens only when
+/// something the window is built from actually changed — see
+/// [`crate::overlay::update_overlay_position_for_theme`].
 ///
 /// Never call this from inside a `run_on_main_thread` closure: every native
 /// call it reaches hops to the main thread itself.
@@ -865,10 +890,35 @@ pub fn deliver(app: &AppHandle, resolved: &ResolvedOverlayTheme) {
         warn!("Failed to emit the resolved overlay theme: {error}");
     }
 
-    // One hop that both applies the Material's native window effect and
-    // resizes the window. They cannot be separated: window slack — and so the
-    // window size — is what the Material sets to zero under Glass.
-    crate::utils::update_overlay_position_with_scale(app, resolved.theme.size_scale());
+    deliver_native(app, resolved);
+}
+
+/// Put a draft on the overlay without persisting it.
+///
+/// What makes live editing live: the Appearance tab sends the token it is
+/// dragging on every animation frame, and this paints it, while the settling
+/// debounce still owns the store. Only the overlay window hears it — the tab
+/// is already showing the draft it sent, and a push back into its own state
+/// would fight the control under the user's finger.
+pub fn deliver_draft(app: &AppHandle, resolved: &ResolvedOverlayTheme) {
+    use tauri_specta::Event;
+
+    let draft = OverlayThemeDraft {
+        resolved: resolved.clone(),
+    };
+    if let Err(error) = draft.emit_to(app, "recording_overlay") {
+        warn!("Failed to emit the overlay theme draft: {error}");
+    }
+
+    deliver_native(app, resolved);
+}
+
+/// The native half of a delivery: one main-thread hop that both applies the
+/// Material's window effect and resizes the window, skipped outright when
+/// neither could have changed. They cannot be separated: window slack — and
+/// so the window size — is what the Material sets to zero under Glass.
+fn deliver_native(app: &AppHandle, resolved: &ResolvedOverlayTheme) {
+    crate::overlay::update_overlay_position_for_theme(app, resolved);
 }
 
 #[cfg(test)]
@@ -1130,6 +1180,26 @@ mod tests {
         assert_eq!(scaled(Some(f64::NAN)).size_scale(), 1.0);
         assert_eq!(scaled(Some(f64::INFINITY)).size_scale(), 1.0);
         assert_eq!(scaled(Some(f64::NEG_INFINITY)).size_scale(), 1.0);
+    }
+
+    /// `change_overlay_theme_setting` skips the write, the broadcast and the
+    /// delivery when what it is handed is already what is stored. That rests
+    /// entirely on clamping being idempotent: if `normalized` moved a value a
+    /// second time, a re-sent theme would never compare equal and the skip
+    /// would never fire — or worse, an out-of-range value would be stored
+    /// once and then "changed" on every later commit.
+    #[test]
+    fn normalizing_an_already_stored_theme_changes_nothing() {
+        let raw = OverlayTheme {
+            accent: hex("#7AA2F7"),
+            surface_opacity: Some(2.0),
+            size_scale: Some(3.0),
+            radius: Some(99),
+            ..Default::default()
+        };
+        let stored = raw.normalized();
+        assert_eq!(stored.normalized(), stored);
+        assert_ne!(raw, stored, "the test value must actually be clamped");
     }
 
     #[test]

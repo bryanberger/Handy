@@ -8,6 +8,7 @@ import { themeAsJsonDocument } from "./ThemeFileGroup";
 import {
   answerPreviewRequest,
   IDLE_PREVIEW,
+  overlayAcceptsDrafts,
   previewBlocker,
   previewChipsFor,
   reducePreview,
@@ -44,6 +45,11 @@ export interface OnScreenPreviewProps {
    *  the overlay would actually draw. A change to Glass on a Mac that cannot
    *  render it right now has nothing to show, so it starts nothing. */
   glassAvailable: boolean;
+  /** Told whenever the overlay becomes (or stops being) the tab's to repaint
+   *  live — see `overlayAcceptsDrafts`. This card owns the preview, so it is
+   *  the only thing that knows; the token rows above need it to decide
+   *  whether dragging one is worth an IPC message per frame. */
+  onAcceptsDraftsChange?: (accepts: boolean) => void;
 }
 
 /**
@@ -65,6 +71,7 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
   onFlushDrafts,
   lastSurfaceChange = null,
   glassAvailable,
+  onAcceptsDraftsChange,
 }) => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<PreviewMode>(IDLE_PREVIEW);
@@ -204,6 +211,14 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
   useEffect(() => {
     if (isRecording && modeRef.current.running) dispatch({ kind: "preempted" });
   }, [isRecording, dispatch]);
+
+  // Whether a draft may go out at all, reported up as one boolean rather than
+  // as the mode: what the rows need to know is the decision, not the state
+  // machine behind it.
+  const acceptsDrafts = overlayAcceptsDrafts(mode, isRecording);
+  useEffect(() => {
+    onAcceptsDraftsChange?.(acceptsDrafts);
+  }, [acceptsDrafts, onAcceptsDraftsChange]);
 
   // Leaving the tab stops the preview. Through the reducer like every other
   // action, so what a departure sends stays in the state machine — but not

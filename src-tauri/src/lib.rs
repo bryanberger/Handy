@@ -770,6 +770,7 @@ pub fn run(cli_args: CliArgs) {
             commands::history::update_history_limit,
             commands::history::update_recording_retention_period,
             commands::overlay_theme::change_overlay_theme_setting,
+            commands::overlay_theme::preview_overlay_theme_draft,
             commands::overlay_theme::get_resolved_overlay_theme,
             commands::overlay_theme::reload_overlay_theme_file,
             commands::overlay_preview::start_overlay_preview,
@@ -783,6 +784,7 @@ pub fn run(cli_args: CliArgs) {
             managers::transcription::StreamTextEvent,
             managers::transcription::StreamPhaseEvent,
             overlay_theme::ResolvedOverlayTheme,
+            overlay_theme::OverlayThemeDraft,
         ]);
 
     #[cfg(debug_assertions)] // <- Only export on non-release builds

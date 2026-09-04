@@ -4,6 +4,7 @@ import {
   answerPreviewRequest,
   autoStartFor,
   IDLE_PREVIEW,
+  overlayAcceptsDrafts,
   previewBlocker,
   previewChipsFor,
   reducePreview,
@@ -368,5 +369,24 @@ describe("the auto-start transition", () => {
       mode: { running: false, state: "cycle" },
       call: "stop",
     });
+  });
+});
+
+describe("overlayAcceptsDrafts", () => {
+  test("only a running preview with nothing recording may be repainted live", () => {
+    expect(overlayAcceptsDrafts(running(), false)).toBe(true);
+    // Pre-empted: the tab still thinks its preview is running (it learns
+    // otherwise from the next poll), and the card belongs to the recording.
+    expect(overlayAcceptsDrafts(running(), true)).toBe(false);
+    // Stopped: there is nothing of the tab's on screen to paint, so a drag
+    // must not send one IPC message per frame for the backend to refuse.
+    expect(overlayAcceptsDrafts(IDLE_PREVIEW, false)).toBe(false);
+    expect(overlayAcceptsDrafts(IDLE_PREVIEW, true)).toBe(false);
+  });
+
+  test("the pinned state has no say in it", () => {
+    for (const state of previewChipsFor("live")) {
+      expect(overlayAcceptsDrafts(running(state), false)).toBe(true);
+    }
   });
 });

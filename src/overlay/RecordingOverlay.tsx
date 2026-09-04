@@ -19,14 +19,21 @@ import { useCardShapeReporter } from "./useCardShapeReporter";
 // every overlay form). Mic levels arrive as 16 FFT buckets; we take the first N.
 const WAVE_BARS = 9;
 
-// Paint a resolved overlay theme and remember it for the next boot. Both the
-// pull on show and the push on change do exactly this. Returns whether the
-// effective Material is Glass, the one thing about the theme this component
-// has to keep in state.
+// Paint a resolved overlay theme. Returns whether the effective Material is
+// Glass, the one thing about the theme this component has to keep in state.
 const paintOverlayTheme = (resolved: ResolvedOverlayTheme): boolean => {
   applyOverlayTheme(document.documentElement, resolved);
-  storeOverlayTheme(resolved);
   return resolved.effective_material === "glass";
+};
+
+// Paint a persisted theme and remember it for the next boot. Both the pull on
+// show and the push on change do exactly this. A *draft* deliberately does
+// not: it has not been persisted, so mirroring it would let a theme the user
+// never settled on paint the first frame after a restart.
+const paintAndStoreOverlayTheme = (resolved: ResolvedOverlayTheme): boolean => {
+  const glass = paintOverlayTheme(resolved);
+  storeOverlayTheme(resolved);
+  return glass;
 };
 
 const RecordingOverlay: React.FC = () => {
@@ -90,7 +97,7 @@ const RecordingOverlay: React.FC = () => {
             // Imperative, not an effect: the custom properties and
             // `data-material` must be on the root before the first painted
             // frame, which an effect would leave to React's batching.
-            setGlassActive(paintOverlayTheme(resolved.data));
+            setGlassActive(paintAndStoreOverlayTheme(resolved.data));
           }
         } catch {
           // Keep the previous/default placement and theme if either read fails.
@@ -131,10 +138,17 @@ const RecordingOverlay: React.FC = () => {
         setStreamText(event.payload);
       });
 
-      // The theme can change while the overlay is visible (a slider drag in the
-      // Appearance tab), so repaint on every push as well.
+      // The theme can change while the overlay is visible (a token committed
+      // in the Appearance tab), so repaint on every push as well.
       const unlistenTheme = await events.resolvedOverlayTheme.listen((event) =>
-        setGlassActive(paintOverlayTheme(event.payload)),
+        setGlassActive(paintAndStoreOverlayTheme(event.payload)),
+      );
+
+      // The same repaint for a theme still being edited. It arrives per
+      // animation frame while a slider is dragged, so it does the least it
+      // can: paint, and nothing else.
+      const unlistenDraft = await events.overlayThemeDraft.listen((event) =>
+        setGlassActive(paintOverlayTheme(event.payload.resolved)),
       );
 
       const unlistenPhase = await events.streamPhaseEvent.listen((event) => {
@@ -156,6 +170,7 @@ const RecordingOverlay: React.FC = () => {
         unlistenLevel();
         unlistenStream();
         unlistenTheme();
+        unlistenDraft();
         unlistenPhase();
       };
     };

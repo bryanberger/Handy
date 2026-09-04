@@ -117,7 +117,7 @@ export interface GlassStyleSelectorProps {
  * half the answer behind a click. No option carries a subtitle — the row's own
  * description says what the pair means.
  */
-export const GlassStyleSelector: React.FC<GlassStyleSelectorProps> = ({
+const GlassStyleSelectorInner: React.FC<GlassStyleSelectorProps> = ({
   value,
   onSelect,
   material,
@@ -199,3 +199,7 @@ export const GlassStyleSelector: React.FC<GlassStyleSelectorProps> = ({
     </SettingContainer>
   );
 };
+
+/** Memoised: the Appearance tab re-renders on every frame of a slider drag,
+ *  and this row cannot have changed because of one. */
+export const GlassStyleSelector = React.memo(GlassStyleSelectorInner);

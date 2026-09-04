@@ -541,6 +541,34 @@ fn stop_requested() -> bool {
     PREVIEW_GUARD.load(Ordering::SeqCst) == GUARD_STOPPING
 }
 
+/// Whether a preview is driving the overlay *and* has not been told to let go.
+///
+/// Deliberately stricter than [`is_previewing`], which answers "who owns the
+/// overlay" and so counts a preview on its way out. This one answers "may the
+/// Appearance tab still paint it", and a preview that is going away may not
+/// be: its driver is about to hide the window.
+fn preview_running() -> bool {
+    PREVIEW_GUARD.load(Ordering::SeqCst) == GUARD_RUNNING
+}
+
+/// May a theme draft repaint the overlay, given the two facts it depends on?
+///
+/// Pure, because this is the whole safety rule of the live-editing path and it
+/// has to be readable as one line rather than reconstructed from a call site:
+/// a draft is an *unsaved* value the tab is showing the user, so it may only
+/// ever reach an overlay the tab actually owns. A stopping preview no longer
+/// counts (the card is about to come off screen), and a real recording outranks
+/// everything — it can take the overlay from a preview at any moment, and the
+/// card it puts up belongs to the session, not to a slider.
+pub fn draft_allowed(preview_running: bool, is_recording: bool) -> bool {
+    preview_running && !is_recording
+}
+
+/// [`draft_allowed`] against the live guard and the recording manager.
+pub fn accepts_theme_drafts(app: &AppHandle) -> bool {
+    draft_allowed(preview_running(), recording_now(app))
+}
+
 /// End the running preview, if there is one.
 ///
 /// The driver notices within one frame and hides the overlay itself, so
@@ -1119,6 +1147,19 @@ mod tests {
         );
     }
 
+    /// A draft only ever repaints an overlay the tab still owns: not one a
+    /// recording has taken, and not one whose preview is on its way out (the
+    /// `false` column, which `preview_running` supplies for a stopping guard).
+    #[test]
+    fn a_draft_may_only_repaint_a_running_preview_nothing_is_recording_over() {
+        assert!(draft_allowed(true, false));
+        // Pre-empted: the recording owns the overlay from this moment on.
+        assert!(!draft_allowed(true, true));
+        // Idle or stopping: there is nothing of the tab's on screen to paint.
+        assert!(!draft_allowed(false, false));
+        assert!(!draft_allowed(false, true));
+    }
+
     /// The guard is process-wide, so everything that touches it is one test
     /// rather than several racing each other, and it is left exactly as found.
     #[test]
@@ -1130,7 +1171,16 @@ mod tests {
         {
             PREVIEW_GUARD.store(GUARD_RUNNING, Ordering::SeqCst);
             let _guard = PreviewGuard;
+            // A running preview is the one state the Appearance tab may paint.
+            assert!(preview_running());
             stop_preview();
+            // ...and a stopping one is not: the driver is about to hide the
+            // window, so a draft sent now would paint a card on its way out.
+            assert!(!preview_running());
+            assert!(
+                is_previewing(),
+                "a stopping preview still owns the overlay, it just cannot be drafted onto"
+            );
             // A stop is recorded by the same atomic that says a preview is
             // running, so it cannot be cleared by a start that is claiming.
             assert!(stop_requested());

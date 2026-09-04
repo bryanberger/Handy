@@ -713,6 +713,8 @@ fn place_windows_overlay(
 /// Creates the recording overlay window and keeps it hidden by default
 #[cfg(not(target_os = "macos"))]
 pub fn create_recording_overlay(app_handle: &AppHandle) {
+    // A brand-new window is configured by nothing yet.
+    forget_window_state();
     // Created at the compact size for the scale in effect. Every show resizes
     // the window anyway; starting at the right size saves the first show one
     // pointless resize.
@@ -786,6 +788,8 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
 /// Creates the recording overlay panel and keeps it hidden by default (macOS)
 #[cfg(target_os = "macos")]
 pub fn create_recording_overlay(app_handle: &AppHandle) {
+    // A brand-new panel is configured by nothing yet.
+    forget_window_state();
     // Created at the compact size for the scale in effect. Every show resizes
     // the panel anyway; starting at the right size saves the first show one
     // pointless resize.
@@ -885,6 +889,10 @@ fn show_overlay_state_on_main(
     );
 
     let (width, height) = overlay_dimensions(shape, scale, material, resolved.theme.border_width());
+    // A show configures the window from the same inputs a reposition does, so
+    // it keeps the same record — otherwise the first theme edit of a session
+    // would always repeat work the show had just done.
+    record_window_state(overlay_window_state(&resolved));
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
         // Invalidate any delayed hide still in flight from a previous session
         // (see `hide_recording_overlay`).
@@ -1185,31 +1193,120 @@ pub fn show_processing_overlay(app_handle: &AppHandle) {
 /// For callers that changed something other than the overlay theme — the
 /// position and style commands — and therefore have no resolved scale in hand.
 pub fn update_overlay_position(app_handle: &AppHandle) {
-    update_overlay_window(app_handle, None);
+    update_overlay_window(app_handle);
 }
 
-/// [`update_overlay_position`] with the size scale the caller already resolved.
+/// Everything the native overlay window is configured from *by a theme*.
 ///
-/// The overlay-theme delivery path holds the resolved theme, so passing the
-/// scale here keeps the main-thread hop from resolving it a second time.
-pub fn update_overlay_position_with_scale(app_handle: &AppHandle, scale: f64) {
-    update_overlay_window(app_handle, Some(scale));
+/// Its size, the blur's macOS material and the blur's corner radius are
+/// functions of these values and of nothing else, so two theme deliveries that
+/// agree on all of them would ask the window for exactly what it already is.
+/// That is what [`native_update_needed`] tests, and what lets a colour edit
+/// skip the main-thread hop, the AppKit material write and the resize
+/// entirely.
+///
+/// Its **position** is not a function of this state alone: it also follows the
+/// `overlay_position` setting and the monitor the card is placed on. Neither
+/// is anything a theme can move, and neither reaches the window through here —
+/// the position and style commands go through the unconditional
+/// [`update_overlay_position`], and every show repositions anyway. So skipping
+/// a theme delivery can leave the window where the last show or position
+/// update put it, which is exactly where it belongs.
+#[derive(Debug, Clone, PartialEq)]
+struct OverlayWindowState {
+    shape: OverlayCardShape,
+    material: Material,
+    glass: crate::overlay_glass::GlassAppearance,
+    scale: f64,
+    border_width: u16,
+    radius_px: f64,
 }
 
-fn update_overlay_window(app_handle: &AppHandle, scale: Option<f64>) {
+/// The state `resolved` asks for, at the card shape on screen right now.
+fn overlay_window_state(
+    resolved: &crate::overlay_theme::ResolvedOverlayTheme,
+) -> OverlayWindowState {
+    OverlayWindowState {
+        shape: current_card_shape(),
+        material: resolved.effective_material,
+        glass: crate::overlay_glass::GlassAppearance::from_theme(&resolved.theme),
+        scale: resolved.theme.size_scale(),
+        border_width: resolved.theme.border_width(),
+        radius_px: radius_token_px(&resolved.theme),
+    }
+}
+
+/// What the native window was last configured for, or `None` when that is
+/// unknown (before the first configure, and after the window is re-created).
+static LAST_WINDOW_STATE: Mutex<Option<OverlayWindowState>> = Mutex::new(None);
+
+/// Whether the native window has to be touched at all.
+///
+/// Pure, so "only a change to something the window is actually built from"
+/// is a test rather than a reading of the call site. An unknown previous
+/// state always needs the update: the window may have just been created.
+fn native_update_needed(previous: Option<&OverlayWindowState>, next: &OverlayWindowState) -> bool {
+    previous != Some(next)
+}
+
+/// Remember what the window has just been configured for. Called by both
+/// paths that size and place it, so the cache describes the window rather
+/// than one caller's view of it.
+fn record_window_state(state: OverlayWindowState) {
+    if let Ok(mut last) = LAST_WINDOW_STATE.lock() {
+        *last = Some(state);
+    }
+}
+
+/// Forget what the window was configured for — the window is new.
+fn forget_window_state() {
+    if let Ok(mut last) = LAST_WINDOW_STATE.lock() {
+        *last = None;
+    }
+}
+
+/// Reposition the overlay for a theme the caller has already resolved, unless
+/// the window is already configured exactly that way.
+///
+/// The skip is the point: an accent or a padding edit changes nothing the
+/// native window is built from, and the overlay theme is now delivered on
+/// every frame of a slider drag.
+pub fn update_overlay_position_for_theme(
+    app_handle: &AppHandle,
+    resolved: &crate::overlay_theme::ResolvedOverlayTheme,
+) {
+    let next = overlay_window_state(resolved);
+    let unchanged = LAST_WINDOW_STATE
+        .lock()
+        .is_ok_and(|last| !native_update_needed(last.as_ref(), &next));
+    if unchanged {
+        return;
+    }
+
     // Positioning queries monitors/cursor (GDK/Xlib on Linux) and moves the
     // window, so it must run on the main thread — see show_overlay_state.
     let handle = app_handle.clone();
-    let _ = app_handle.run_on_main_thread(move || update_overlay_position_on_main(&handle, scale));
+    let resolved = resolved.clone();
+    let _ = app_handle
+        .run_on_main_thread(move || update_overlay_position_on_main(&handle, Some(resolved)));
 }
 
-fn update_overlay_position_on_main(app_handle: &AppHandle, scale: Option<f64>) {
+fn update_overlay_window(app_handle: &AppHandle) {
+    // Positioning queries monitors/cursor (GDK/Xlib on Linux) and moves the
+    // window, so it must run on the main thread — see show_overlay_state.
+    let handle = app_handle.clone();
+    let _ = app_handle.run_on_main_thread(move || update_overlay_position_on_main(&handle, None));
+}
+
+fn update_overlay_position_on_main(
+    app_handle: &AppHandle,
+    resolved: Option<crate::overlay_theme::ResolvedOverlayTheme>,
+) {
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
-        // Resolved fresh on every reposition (cache-only, no filesystem IO,
-        // safe on the main thread) so the Material is always current — this
-        // path is reached from the position and style commands too, which
-        // hand in no scale and have no resolved theme of their own to pass.
-        let resolved = crate::overlay_theme::resolve(app_handle);
+        // Resolved here only for the callers that have no theme of their own
+        // to pass — the position and style commands. Cache-only, no filesystem
+        // IO, safe on the main thread.
+        let resolved = resolved.unwrap_or_else(|| crate::overlay_theme::resolve(app_handle));
         let material = resolved.effective_material;
         // Hides the glass view when this reposition lands on Flat (in case a
         // previous Glass session left it visible); under Glass it applies the
@@ -1227,10 +1324,16 @@ fn update_overlay_position_on_main(app_handle: &AppHandle, scale: Option<f64>) {
         // the OS. A scale change therefore resizes the window even while it is
         // visible — without it the card would repaint larger inside the old
         // window and be clipped.
-        let scale = scale.unwrap_or_else(|| resolved.theme.size_scale());
+        let scale = resolved.theme.size_scale();
         let shape = current_card_shape();
         let (width, height) =
             overlay_dimensions(shape, scale, material, resolved.theme.border_width());
+
+        // Recorded before the placement rather than after it, so the one
+        // platform branch that returns early (layer shell) is covered too. A
+        // placement that fails is only logged today; the next theme change
+        // carries a different state and tries again.
+        record_window_state(overlay_window_state(&resolved));
 
         #[cfg(target_os = "linux")]
         if LAYER_SHELL_ACTIVE.load(Ordering::SeqCst) {
@@ -1462,6 +1565,148 @@ mod tests {
     /// at compile time. Every frontend number the tests below need is parsed
     /// out of these rather than copied into this file, so a change over there
     /// fails a test here instead of shipping a clipped card.
+    use crate::overlay_glass::GlassAppearance;
+    use crate::overlay_theme::{GlassMaterial, GlassStyle, HexColor};
+
+    fn window_state() -> OverlayWindowState {
+        OverlayWindowState {
+            shape: OverlayCardShape::LivePill,
+            material: Material::Flat,
+            glass: GlassAppearance {
+                glass_material: GlassMaterial::HudWindow,
+                glass_style: GlassStyle::Regular,
+                surface: None,
+                glass_tint: None,
+            },
+            scale: 1.0,
+            border_width: BORDER_WIDTH_INHERIT,
+            radius_px: 24.0,
+        }
+    }
+
+    /// The rule that makes live editing cheap: an accent, a text colour or a
+    /// padding cannot move the native window, so a delivery carrying only
+    /// those must not hop to the main thread at all.
+    #[test]
+    fn a_theme_that_cannot_move_the_window_needs_no_native_update() {
+        let state = window_state();
+        assert!(!native_update_needed(Some(&state), &state.clone()));
+    }
+
+    /// ...and everything the window *is* built from still gets through, one
+    /// field at a time.
+    ///
+    /// The state is destructured exhaustively — no `..` — and every binding it
+    /// produces is then used to derive the variant that changes that one
+    /// field, under a local `deny(unused_variables)`. So a field added to
+    /// `OverlayWindowState` or to `GlassAppearance` stops this test compiling
+    /// until it is named here, and naming it without using it is an error too.
+    ///
+    /// What that cannot catch: a value the native window is built from that
+    /// never became a field of this state at all. Nothing but reading
+    /// `update_overlay_position_on_main` and `overlay_glass` will tell you
+    /// that — the state is a claim about those two, and this test only keeps
+    /// the claim internally honest.
+    #[test]
+    #[deny(unused_variables)]
+    fn every_token_the_window_is_built_from_forces_a_native_update() {
+        let base = window_state();
+        let OverlayWindowState {
+            shape,
+            material,
+            glass:
+                GlassAppearance {
+                    glass_material,
+                    glass_style,
+                    surface,
+                    glass_tint,
+                },
+            scale,
+            border_width,
+            radius_px,
+        } = base.clone();
+
+        // Each variant differs from `base` in exactly the field it names, and
+        // is derived from that field's own value so it cannot accidentally
+        // equal it.
+        let glass_variant = |glass: GlassAppearance| OverlayWindowState {
+            glass,
+            ..base.clone()
+        };
+        let variants = [
+            OverlayWindowState {
+                shape: match shape {
+                    OverlayCardShape::LiveOpen => OverlayCardShape::LivePill,
+                    _ => OverlayCardShape::LiveOpen,
+                },
+                ..base.clone()
+            },
+            OverlayWindowState {
+                material: match material {
+                    Material::Flat => Material::Glass,
+                    Material::Glass => Material::Flat,
+                },
+                ..base.clone()
+            },
+            OverlayWindowState {
+                scale: scale + 0.25,
+                ..base.clone()
+            },
+            OverlayWindowState {
+                border_width: border_width + 1,
+                ..base.clone()
+            },
+            OverlayWindowState {
+                radius_px: radius_px + 12.0,
+                ..base.clone()
+            },
+            // The four Glass-only tokens: only the liquid engine reads the
+            // style and the tint, but all of them are live property writes on
+            // the installed view, so a change to any has to reach it.
+            glass_variant(GlassAppearance {
+                glass_material: match glass_material {
+                    GlassMaterial::Popover => GlassMaterial::HudWindow,
+                    _ => GlassMaterial::Popover,
+                },
+                ..base.glass.clone()
+            }),
+            glass_variant(GlassAppearance {
+                glass_style: match glass_style {
+                    GlassStyle::Clear => GlassStyle::Regular,
+                    _ => GlassStyle::Clear,
+                },
+                ..base.glass.clone()
+            }),
+            glass_variant(GlassAppearance {
+                surface: match surface {
+                    Some(_) => None,
+                    None => HexColor::parse("#101020"),
+                },
+                ..base.glass.clone()
+            }),
+            glass_variant(GlassAppearance {
+                glass_tint: match glass_tint {
+                    Some(tint) => Some(tint / 2.0),
+                    None => Some(0.2),
+                },
+                ..base.glass.clone()
+            }),
+        ];
+        for variant in variants {
+            assert!(
+                native_update_needed(Some(&base), &variant),
+                "{variant:?} must reach the native window"
+            );
+        }
+    }
+
+    /// A window nothing has configured yet — freshly created, or re-created —
+    /// always needs the update, whatever the theme says.
+    #[test]
+    fn an_unconfigured_window_always_needs_the_native_update() {
+        assert!(native_update_needed(None, &window_state()));
+    }
+
     const OVERLAY_CSS: &str = include_str!("../../src/overlay/RecordingOverlay.css");
     const OVERLAY_TSX: &str = include_str!("../../src/overlay/RecordingOverlay.tsx");
     const THEME_CSS: &str = include_str!("../../src/styles/theme.css");

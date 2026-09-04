@@ -21,7 +21,7 @@ export interface MaterialSelectorProps {
  * "(macOS only)" label rather than hidden, because the token still exists in
  * the theme file and a hidden row would leave no explanation.
  */
-export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
+const MaterialSelectorInner: React.FC<MaterialSelectorProps> = ({
   value,
   onSelect,
   glassSupport,
@@ -86,3 +86,7 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
     </div>
   );
 };
+
+/** Memoised: the Appearance tab re-renders on every frame of a slider drag,
+ *  and this row cannot have changed because of one. */
+export const MaterialSelector = React.memo(MaterialSelectorInner);

@@ -186,12 +186,15 @@ const INK_DARK = "#0f0f0f";
 const INK_LIGHT = "#fbfbfb";
 
 /**
- * The custom properties this module may write.
+ * The custom properties that carry a colour.
  *
- * [`applyOverlayTheme`] removes every one of them that the current theme does
- * not produce, which is what makes a reset to inherit actually reset.
+ * Named apart from the lengths below because a colour is the only kind of
+ * property whose *computed* value has to be read back off the page: the
+ * Appearance tab's probes resolve these to a hex to show what an unset token
+ * inherits, and there is no point re-measuring after a change that could only
+ * have touched a length.
  */
-export const OVERLAY_THEME_CSS_PROPERTIES: readonly string[] = [
+export const OVERLAY_THEME_COLOR_PROPERTIES: readonly string[] = [
   "--s-accent",
   "--s-accent-soft",
   "--s-surface",
@@ -200,12 +203,27 @@ export const OVERLAY_THEME_CSS_PROPERTIES: readonly string[] = [
   "--s-faint",
   "--s-border",
   "--s-hair",
+];
+
+/** The custom properties that carry a length or a plain number. */
+export const OVERLAY_THEME_LENGTH_PROPERTIES: readonly string[] = [
   "--ov-scale",
   "--ov-radius",
   "--ov-border-w",
   "--ov-pad-x",
   "--ov-wave-gap",
   "--ov-wave-w",
+];
+
+/**
+ * The custom properties this module may write.
+ *
+ * [`applyOverlayTheme`] removes every one of them that the current theme does
+ * not produce, which is what makes a reset to inherit actually reset.
+ */
+export const OVERLAY_THEME_CSS_PROPERTIES: readonly string[] = [
+  ...OVERLAY_THEME_COLOR_PROPERTIES,
+  ...OVERLAY_THEME_LENGTH_PROPERTIES,
 ];
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -398,6 +416,64 @@ export function resolveOverlayThemeVars(
   return vars;
 }
 
+/** The writes and removals that take an element from one set of overlay theme
+ *  properties to another. */
+export interface OverlayThemeStyleDelta {
+  set: readonly (readonly [property: string, value: string])[];
+  remove: readonly string[];
+}
+
+/**
+ * Pure: the smallest set of style operations that turns `previous` into
+ * `next`.
+ *
+ * `previous` is what this module last wrote onto the element, or `null` when
+ * that is unknown — the first apply, where every property this module may
+ * write has to be cleared in case something else left one behind. After that,
+ * only what was actually written is worth removing, and only what actually
+ * changed is worth writing: the overlay theme is now applied on every frame
+ * of a slider drag, and each `setProperty` on the document element
+ * invalidates style for the whole card.
+ */
+export function overlayThemeStyleDelta(
+  previous: Record<string, string> | null,
+  next: Record<string, string>,
+): OverlayThemeStyleDelta {
+  const set: [string, string][] = [];
+  const remove: string[] = [];
+  for (const property of previous
+    ? Object.keys(previous)
+    : OVERLAY_THEME_CSS_PROPERTIES) {
+    if (next[property] === undefined) remove.push(property);
+  }
+  for (const [property, value] of Object.entries(next)) {
+    if (previous?.[property] !== value) set.push([property, value]);
+  }
+  return { set, remove };
+}
+
+/**
+ * What [`applyOverlayTheme`] last wrote onto each element it was given.
+ *
+ * **The assumption this rests on:** after the first apply, this module is the
+ * only writer of the `--s-*` and `--ov-*` inline properties on that element.
+ * Nobody else may set or remove one — not the overlay component, not the tab,
+ * not a devtools poke that expects to survive. If something else did, the
+ * removal rule would go blind: the map would still list a property this module
+ * no longer controls, and a token going back to inherit would be "removed"
+ * from a value it never wrote.
+ *
+ * It holds today because the two callers pass elements they own (the overlay's
+ * `document.documentElement`, the tab's own probe host) and every write to
+ * these properties in this repository goes through here — a `grep` for
+ * `--ov-` and `--s-` outside this module and the two stylesheets that declare
+ * the inherited values finds nothing.
+ *
+ * A `WeakMap` and not a field on the element so an element that goes away
+ * takes its record with it, and so nothing user-visible is stored on the DOM.
+ */
+const lastApplied = new WeakMap<HTMLElement, Record<string, string>>();
+
 /**
  * Write a resolved overlay theme onto an element, and remove every property it
  * does not set.
@@ -407,21 +483,34 @@ export function resolveOverlayThemeVars(
  * lives in. `data-material` is always set; a `null` theme removes every
  * property in [`OVERLAY_THEME_CSS_PROPERTIES`] and leaves
  * `data-material="flat"`.
+ *
+ * Only the differences are actually written — see [`overlayThemeStyleDelta`]
+ * — which is invisible from the outside: the element ends up carrying exactly
+ * the properties `resolveOverlayThemeVars` produced, either way.
  */
 export function applyOverlayTheme(
   root: HTMLElement,
   resolved: ResolvedOverlayTheme | null,
 ): void {
   const vars = resolved ? resolveOverlayThemeVars(resolved) : {};
-  for (const property of OVERLAY_THEME_CSS_PROPERTIES) {
-    const value = vars[property];
-    if (value === undefined) {
-      root.style.removeProperty(property);
-    } else {
-      root.style.setProperty(property, value);
-    }
-  }
-  root.dataset.material = resolved ? effectiveMaterialOf(resolved) : "flat";
+  // The first apply onto this element has no record to diff against, and
+  // `undefined` from the map means exactly that. It is passed on as an
+  // explicit `null` — the delta's own name for "assume nothing, clear every
+  // property this module could have written" — so the first apply is a full
+  // reset even if a previous page load, a hot reload or a hand-edited
+  // inline style left one behind.
+  const previous = lastApplied.get(root);
+  const firstApply = previous === undefined;
+  const { set, remove } = overlayThemeStyleDelta(
+    firstApply ? null : previous,
+    vars,
+  );
+  for (const property of remove) root.style.removeProperty(property);
+  for (const [property, value] of set) root.style.setProperty(property, value);
+  lastApplied.set(root, vars);
+
+  const material = resolved ? effectiveMaterialOf(resolved) : "flat";
+  if (root.dataset.material !== material) root.dataset.material = material;
 }
 
 export const OVERLAY_THEME_STORAGE_KEY = "handy.overlayTheme";

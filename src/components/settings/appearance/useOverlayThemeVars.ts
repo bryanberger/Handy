@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import type { Material, OverlayTheme, ResolvedOverlayTheme } from "@/bindings";
 import {
   INHERIT_ALL,
+  OVERLAY_THEME_COLOR_PROPERTIES,
   resolveOverlayThemeVars,
   type OverlayColorKey,
   type OverlayThemeKey,
@@ -133,9 +134,12 @@ function useStableMap<T extends Record<string, string | null>>(next: T): T {
 }
 
 export interface UseOverlayThemeVarsResult {
-  /** `resolveOverlayThemeVars(theme ∪ draft)`, ready to spread as inline
-   *  style on the probe host. */
-  themeVars: CSSProperties;
+  /** The *colour* half of `resolveOverlayThemeVars(theme ∪ draft)`, ready to
+   *  spread as inline style on the probe host. Only the colours, because the
+   *  probes read colours back: a length written there would re-style the host
+   *  on every frame of a Size Scale drag to measure four values that cannot
+   *  have moved. */
+  probeVars: CSSProperties;
   effectiveMaterial: Material;
   /** Attach one to a 0×0 `aria-hidden` span per color token inside the probe
    *  host, `style={{ color: "var(--s-accent)" }}` etc. — the only reliable
@@ -191,11 +195,23 @@ export function useOverlayThemeVars(
         };
   }, [resolved, draft]);
 
-  // What the readback layout effect below depends on, so its reference must
-  // change if and only if a custom property actually changed.
-  const themeVars = useStableMap(
-    useMemo(() => resolveOverlayThemeVars(mergedTheme), [mergedTheme]),
-  ) as unknown as CSSProperties;
+  // What the probe host wears and what the readback layout effect below
+  // depends on, so its reference must change if and only if a custom property
+  // the probes could resolve *differently* actually changed. The lengths are
+  // left out on purpose: no `--s-…` colour is derived from `--ov-scale` or
+  // `--ov-radius`, so carrying them would re-style the host and force four
+  // style recalculations on every frame of a Size Scale drag for nothing.
+  const colorVars = useStableMap(
+    useMemo(() => {
+      const vars = resolveOverlayThemeVars(mergedTheme);
+      return Object.fromEntries(
+        OVERLAY_THEME_COLOR_PROPERTIES.filter(
+          (property) => vars[property] !== undefined,
+        ).map((property) => [property, vars[property]]),
+      );
+    }, [mergedTheme]),
+  );
+  const probeVars = colorVars as unknown as CSSProperties;
 
   const accentRef = useRef<HTMLSpanElement>(null);
   const surfaceRef = useRef<HTMLSpanElement>(null);
@@ -244,11 +260,13 @@ export function useOverlayThemeVars(
     }
     lastMeasured.current = measured;
     setResolvedDefaults(measured);
-    // `themeVars` only gets a new identity when a custom property actually
-    // changed (`useStableMap`, above), which is exactly the "on any token
-    // change" trigger this effect wants; the four refs are stable for the
-    // component's lifetime and do not need to be listed.
-  }, [themeVars, remeasureSignal]);
+    // `colorVars` only gets a new identity when a colour custom property
+    // actually changed (`useStableMap`, above), which is exactly the trigger
+    // this effect wants; `effectiveMaterial` is listed because it is written
+    // onto the probe host and the neutrals are mixed per Material. The four
+    // refs are stable for the component's lifetime and do not need to be
+    // listed.
+  }, [colorVars, mergedTheme.effective_material, remeasureSignal]);
 
   const ownedKeys = useMemo(() => resolved?.file.owned_keys ?? [], [resolved]);
   const isLocked = useCallback(
@@ -271,7 +289,7 @@ export function useOverlayThemeVars(
   );
 
   return {
-    themeVars,
+    probeVars,
     effectiveMaterial: mergedTheme.effective_material,
     colorProbeRefs,
     resolvedDefaults,

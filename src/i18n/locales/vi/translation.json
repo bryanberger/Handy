@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Đệm trong",
-          "description": "Đệm ngang của hàng điều khiển."
+          "description": "Đệm trong của thẻ ở cả bốn phía. Cửa sổ lớp phủ cũng to ra theo."
         },
         "waveformGap": {
           "title": "Khoảng cách dạng sóng",

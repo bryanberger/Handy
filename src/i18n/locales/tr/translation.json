@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "İç Boşluk",
-          "description": "Denetim satırının yatay iç boşluğu."
+          "description": "Kartın dört tarafındaki iç boşluk. Ekran katmanı penceresi de onunla birlikte büyür."
         },
         "waveformGap": {
           "title": "Dalga Formu Aralığı",

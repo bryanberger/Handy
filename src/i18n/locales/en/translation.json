@@ -348,7 +348,7 @@
         },
         "sizeScale": {
           "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. One of the two tokens that change how much room the overlay needs on screen; border width is the other."
+          "description": "Zooms every length in the card at once — widths, heights, padding and type. One of the three tokens that change how much room the overlay needs on screen; padding and border width are the others."
         },
         "radius": {
           "title": "Corner Radius",
@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Padding",
-          "description": "The control row's horizontal padding."
+          "description": "The card's inner padding on all four sides. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "Waveform Gap",

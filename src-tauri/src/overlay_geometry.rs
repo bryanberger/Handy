@@ -2,7 +2,7 @@
 //!
 //! Everything the overlay window's size and its blur's corner radius are a
 //! function of lives here: the card's shapes, the transparent slack the window
-//! keeps around them, and the two theme tokens that change how much room the
+//! keeps around them, and the three theme tokens that change how much room the
 //! card needs. It is pure code, with no `AppHandle`, no platform `cfg` and no
 //! AppKit, so the arithmetic that decides whether a card fits its window is
 //! read and tested on its own, rather than through the window creation, the
@@ -22,9 +22,9 @@ use serde::{Deserialize, Serialize};
 /// else, so the card's footprint is `(content + card_border(width)) × scale`.
 ///
 /// A function rather than a constant because `border_width` is a token
-/// (0-4 px, inherit 1). It is, with `size_scale`, one of the only two tokens
-/// that change how much room the card needs. At the inherit width this is
-/// 2.0, today's hairline on both edges.
+/// (0-4 px, inherit 1). It is, with `size_scale` and `padding`, one of the
+/// only three tokens that change how much room the card needs. At the inherit
+/// width this is 2.0, today's hairline on both edges.
 const fn card_border(border_width: u16) -> f64 {
     2.0 * border_width as f64
 }
@@ -34,9 +34,11 @@ const fn card_border(border_width: u16) -> f64 {
 /// from `--ov-rest-w` 172 and expands from its centre, so the window must fit
 /// this widest state.
 const CARD_COMPACT_CONTENT_W: f64 = 216.0;
-/// Compact card content height at size_scale 1: `--ov-base-h` 40, the control
-/// row.
-const CARD_COMPACT_CONTENT_H: f64 = 40.0;
+/// What the control row measures at size_scale 1 before its padding:
+/// `--ov-row-core-h` 20. The row itself is this plus one `padding` above and
+/// below, which [`CardMetrics::row_height`] computes, so at the inherit
+/// padding of 10 it is the 40 px row this overlay has always drawn.
+const CARD_ROW_CORE_H: f64 = 20.0;
 /// Resting compact card content (Minimal at rest) at size_scale 1:
 /// `--ov-rest-w` 172. Only [`OverlayCardShape::CompactRest`] uses this. Under
 /// Flat the window still covers [`CARD_COMPACT_CONTENT_W`], the widest card
@@ -51,9 +53,14 @@ const CARD_LIVE_CONTENT_W: f64 = 392.0;
 /// Flat the window still covers [`CARD_LIVE_CONTENT_W`], the widest card the
 /// panel can reach.
 const CARD_LIVE_PILL_CONTENT_W: f64 = 184.0;
-/// Tallest Live card content at size_scale 1: the control row `--ov-base-h`
-/// 40, the live-text region `--ov-cap-max-h` 64 and its `--ov-cap-pad-y` 12.
-const CARD_LIVE_CONTENT_H: f64 = 40.0 + 64.0 + 12.0;
+/// The live-text region's own height at size_scale 1: `--ov-cap-max-h` 64.
+/// The Live card is the control row, this, and the inset above it.
+const CARD_CAP_MAX_H: f64 = 64.0;
+/// The inset above the live text, as a multiple of `padding`:
+/// `--ov-cap-pad-f`. Written as a factor rather than a length so the Live
+/// card's breathing room follows the padding token; at the inherit padding of
+/// 10 it is today's 12 px.
+const CARD_CAP_PAD_FACTOR: f64 = 1.2;
 
 /// How long the card's morph between two shapes takes, in milliseconds:
 /// `--ov-morph-ms`, the duration of `.scard`'s width and border-radius
@@ -89,14 +96,24 @@ const LIVE_SLACK: (f64, f64) = (6.0, 2.0);
 /// below. Today's card, hairline included.
 #[cfg(test)]
 const CARD_BORDER_INHERIT: f64 = card_border(crate::overlay_theme::BORDER_WIDTH_INHERIT);
+/// The padding an unset token inherits, as the float the fixtures below do
+/// their arithmetic in.
+#[cfg(test)]
+const CARD_PADDING_INHERIT: f64 = crate::overlay_theme::PADDING_INHERIT as f64;
+/// The control row at the inherit padding: today's 40 px.
+#[cfg(test)]
+const CARD_ROW_H_INHERIT: f64 = CARD_ROW_CORE_H + 2.0 * CARD_PADDING_INHERIT;
+/// The Live card's content at the inherit padding: today's 116 px.
+#[cfg(test)]
+const CARD_LIVE_CONTENT_H_INHERIT: f64 =
+    CARD_ROW_H_INHERIT + CARD_CAP_MAX_H + CARD_CAP_PAD_FACTOR * CARD_PADDING_INHERIT;
 /// Compact window width at size_scale 1.
 #[cfg(test)]
 pub(crate) const OVERLAY_WIDTH: f64 =
     CARD_COMPACT_CONTENT_W + CARD_BORDER_INHERIT + COMPACT_SLACK.0;
 /// Compact window height at size_scale 1.
 #[cfg(test)]
-pub(crate) const OVERLAY_HEIGHT: f64 =
-    CARD_COMPACT_CONTENT_H + CARD_BORDER_INHERIT + COMPACT_SLACK.1;
+pub(crate) const OVERLAY_HEIGHT: f64 = CARD_ROW_H_INHERIT + CARD_BORDER_INHERIT + COMPACT_SLACK.1;
 /// Live window width at size_scale 1.
 #[cfg(test)]
 pub(crate) const OVERLAY_STREAM_WIDTH: f64 =
@@ -104,7 +121,7 @@ pub(crate) const OVERLAY_STREAM_WIDTH: f64 =
 /// Live window height at size_scale 1.
 #[cfg(test)]
 pub(crate) const OVERLAY_STREAM_HEIGHT: f64 =
-    CARD_LIVE_CONTENT_H + CARD_BORDER_INHERIT + LIVE_SLACK.1;
+    CARD_LIVE_CONTENT_H_INHERIT + CARD_BORDER_INHERIT + LIVE_SLACK.1;
 
 /// Which card an [`OverlayCardShape`] is a shape of: the pill, or the panel
 /// that opens out of one.
@@ -123,19 +140,27 @@ enum Card {
 }
 
 impl Card {
-    /// The widest footprint this card can reach at size_scale 1, borders
-    /// included. What the window covers under Flat, where the CSS morph
-    /// happens inside a window sized for the widest card. Under Glass the
-    /// window instead equals the exact current [`OverlayCardShape`], never
+    /// The widest footprint this card can reach at size_scale 1, border and
+    /// padding included. What the window covers under Flat, where the CSS
+    /// morph happens inside a window sized for the widest card. Under Glass
+    /// the window instead equals the exact current [`OverlayCardShape`], never
     /// a maximum.
-    fn widest_footprint(self, border_width: u16) -> (f64, f64) {
-        let border = card_border(border_width);
+    ///
+    /// It takes the whole [`CardMetrics`] because the height follows the
+    /// padding token as well as the border. Only those two are read here; the
+    /// scale is applied by the caller, so every number this returns is at
+    /// size_scale 1.
+    fn widest_footprint(self, metrics: &CardMetrics) -> (f64, f64) {
+        let border = card_border(metrics.border_width);
         match self {
             Self::Pill => (
                 CARD_COMPACT_CONTENT_W + border,
-                CARD_COMPACT_CONTENT_H + border,
+                metrics.row_height() + border,
             ),
-            Self::Panel => (CARD_LIVE_CONTENT_W + border, CARD_LIVE_CONTENT_H + border),
+            Self::Panel => (
+                CARD_LIVE_CONTENT_W + border,
+                metrics.live_content_height() + border,
+            ),
         }
     }
 
@@ -231,17 +256,20 @@ impl OverlayCardShape {
         }
     }
 
-    /// This shape's own exact footprint at size_scale 1, border included. The
-    /// window must equal it under Glass, where the window is the card. Every
-    /// number comes from the `--ov-*` block in RecordingOverlay.css.
-    fn card_footprint(self, border_width: u16) -> (f64, f64) {
-        let border = card_border(border_width);
+    /// This shape's own exact footprint at size_scale 1, border and padding
+    /// included. The window must equal it under Glass, where the window is
+    /// the card. Every number comes from the `--ov-*` block in
+    /// RecordingOverlay.css; the four pill shapes are the control row, and
+    /// the open panel adds the live-text region and its inset.
+    fn card_footprint(self, metrics: &CardMetrics) -> (f64, f64) {
+        let border = card_border(metrics.border_width);
+        let row = metrics.row_height();
         let (content_width, content_height) = match self {
-            Self::CompactRest => (CARD_COMPACT_REST_CONTENT_W, CARD_COMPACT_CONTENT_H),
-            Self::CompactWorking => (CARD_COMPACT_CONTENT_W, CARD_COMPACT_CONTENT_H),
-            Self::LivePill => (CARD_LIVE_PILL_CONTENT_W, CARD_COMPACT_CONTENT_H),
-            Self::LiveWorking => (CARD_COMPACT_CONTENT_W, CARD_COMPACT_CONTENT_H),
-            Self::LiveOpen => (CARD_LIVE_CONTENT_W, CARD_LIVE_CONTENT_H),
+            Self::CompactRest => (CARD_COMPACT_REST_CONTENT_W, row),
+            Self::CompactWorking => (CARD_COMPACT_CONTENT_W, row),
+            Self::LivePill => (CARD_LIVE_PILL_CONTENT_W, row),
+            Self::LiveWorking => (CARD_COMPACT_CONTENT_W, row),
+            Self::LiveOpen => (CARD_LIVE_CONTENT_W, metrics.live_content_height()),
         };
         (content_width + border, content_height + border)
     }
@@ -282,24 +310,27 @@ impl OverlayCardShape {
     }
 }
 
-/// The three theme tokens the card's rectangle is a function of, clamped once.
+/// The four theme tokens the card's rectangle is a function of, clamped once.
 ///
 /// They always travel together. The size scale zooms every length, the border
-/// width adds two strokes to every footprint, and the radius rounds the corners
-/// the blur has to match. So `from_theme` builds all three once from the
-/// resolved theme and callers ask the result for a window size or a corner
-/// radius, rather than passing them one at a time to free functions that each
-/// have to remember which of them were already clamped.
+/// width adds two strokes to every footprint, the padding insets the control
+/// row on every edge and carries the Live card's own breathing room with it,
+/// and the radius rounds the corners the blur has to match. So `from_theme`
+/// builds all four once from the resolved theme and callers ask the result for
+/// a window size or a corner radius, rather than passing them one at a time to
+/// free functions that each have to remember which of them were already
+/// clamped.
 ///
 /// The constructor clamps, so no caller has to. The geometry must never trust
 /// a number that reached it unclamped, and it uses the same bounds as
-/// [`OverlayTheme::size_scale`] and [`OverlayTheme::border_width`], so the
-/// window and the card can never disagree about how far a token was allowed to
-/// go.
+/// [`OverlayTheme::size_scale`], [`OverlayTheme::border_width`] and
+/// [`OverlayTheme::padding`], so the window and the card can never disagree
+/// about how far a token was allowed to go.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct CardMetrics {
     scale: f64,
     border_width: u16,
+    padding: u16,
     radius_px: f64,
 }
 
@@ -311,13 +342,14 @@ impl CardMetrics {
 
     /// The metrics a resolved theme asks for.
     ///
-    /// `size_scale` and `border_width` come through the theme's own accessors,
-    /// which already clamp. `OverlayTheme` carries no accessor for `radius`,
-    /// so this reads the public field and clamps it here.
+    /// `size_scale`, `border_width` and `padding` come through the theme's own
+    /// accessors, which already clamp. `OverlayTheme` carries no accessor for
+    /// `radius`, so this reads the public field and clamps it here.
     pub(crate) fn from_theme(theme: &OverlayTheme) -> Self {
         Self {
             scale: theme.size_scale(),
             border_width: theme.border_width(),
+            padding: theme.padding(),
             radius_px: theme
                 .radius
                 .map(f64::from)
@@ -338,8 +370,8 @@ impl CardMetrics {
     /// result is a whole number of points.
     pub(crate) fn window_size(&self, shape: OverlayCardShape, material: Material) -> (f64, f64) {
         let (card_width, card_height) = match material {
-            Material::Glass => shape.card_footprint(self.border_width),
-            Material::Flat => shape.card().widest_footprint(self.border_width),
+            Material::Glass => shape.card_footprint(self),
+            Material::Flat => shape.card().widest_footprint(self),
         };
         let (slack_width, slack_height) = shape.card().slack(material);
 
@@ -347,6 +379,20 @@ impl CardMetrics {
             (card_width * self.scale).ceil() + slack_width,
             (card_height * self.scale).ceil() + slack_height,
         )
+    }
+
+    /// The control row's height at size_scale 1: the core the stylesheet
+    /// declares plus one `padding` above and below, which is what `.sbase`'s
+    /// `height` and its four-sided `padding` add up to.
+    fn row_height(&self) -> f64 {
+        CARD_ROW_CORE_H + 2.0 * f64::from(self.padding)
+    }
+
+    /// The Live card's content height at size_scale 1: the control row, the
+    /// live-text region, and the inset above the text, which is a multiple of
+    /// `padding` rather than a length of its own.
+    fn live_content_height(&self) -> f64 {
+        self.row_height() + CARD_CAP_MAX_H + CARD_CAP_PAD_FACTOR * f64::from(self.padding)
     }
 
     /// A shape's corner radius in px, mirroring the CSS
@@ -420,11 +466,13 @@ pub(crate) fn native_update_needed(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::frontend_source::{css_ms, css_px, css_rule, tsx_const, OVERLAY_CSS, OVERLAY_TSX};
+    use crate::frontend_source::{
+        css_ms, css_number, css_px, css_rule, tsx_const, OVERLAY_CSS, OVERLAY_TSX,
+    };
     use crate::overlay_glass::GlassAppearance;
     use crate::overlay_theme::{
-        GlassMaterial, GlassStyle, HexColor, BORDER_WIDTH_INHERIT, BORDER_WIDTH_MAX, PADDING_MAX,
-        WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
+        GlassMaterial, GlassStyle, HexColor, BORDER_WIDTH_INHERIT, BORDER_WIDTH_MAX,
+        PADDING_INHERIT, PADDING_MAX, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
     };
 
     /// The metrics of today's card: nothing set, everything inherited.
@@ -458,6 +506,23 @@ mod tests {
         })
     }
 
+    /// The window `shape` gets at `scale` under `material` with `padding` set,
+    /// the third token the window follows. The border stays at its inherit
+    /// width, so only the padding moves the result.
+    fn window_padded(
+        shape: OverlayCardShape,
+        scale: f64,
+        material: Material,
+        padding: u16,
+    ) -> (f64, f64) {
+        CardMetrics::from_theme(&OverlayTheme {
+            size_scale: Some(scale),
+            padding: Some(padding),
+            ..OverlayTheme::default()
+        })
+        .window_size(shape, material)
+    }
+
     fn window_state() -> OverlayWindowState {
         OverlayWindowState {
             shape: OverlayCardShape::LivePill,
@@ -473,7 +538,7 @@ mod tests {
     }
 
     /// The rule that makes live editing cheap: an accent, a text colour or a
-    /// padding cannot move the native window, so a delivery carrying only
+    /// waveform gap cannot move the native window, so a delivery carrying only
     /// those must not hop to the main thread at all.
     #[test]
     fn a_theme_that_cannot_move_the_window_needs_no_native_update() {
@@ -514,6 +579,7 @@ mod tests {
                 CardMetrics {
                     scale,
                     border_width,
+                    padding,
                     radius_px,
                 },
         } = base.clone();
@@ -550,6 +616,10 @@ mod tests {
             }),
             metrics_variant(CardMetrics {
                 border_width: border_width + 1,
+                ..base.metrics
+            }),
+            metrics_variant(CardMetrics {
+                padding: padding + 2,
                 ..base.metrics
             }),
             metrics_variant(CardMetrics {
@@ -824,7 +894,7 @@ mod tests {
                 let scale = f64::from(80 + step * 5) / 100.0;
                 for shape in OverlayCardShape::ALL {
                     let (glass_w, glass_h) = window_at(shape, scale, Material::Glass, width);
-                    let (card_w, card_h) = shape.card_footprint(width);
+                    let (card_w, card_h) = shape.card_footprint(&metrics_for(scale, width));
                     assert_eq!(
                         (glass_w, glass_h),
                         ((card_w * scale).ceil(), (card_h * scale).ceil()),
@@ -852,6 +922,95 @@ mod tests {
                 BORDER_WIDTH_MAX
             )
         );
+    }
+
+    /// `padding` is the third token that moves the native window, and the
+    /// only one that moves it on one axis alone: the card grows taller, never
+    /// wider. The expectations are the spacing model written out. The control
+    /// row is a 20 px core plus one padding above and below, the Live card
+    /// adds the 64 px text region and an inset of 1.2 paddings, both carry the
+    /// inherit hairline on each edge, and the Flat slack goes on after the
+    /// scale.
+    #[test]
+    fn overlay_dimensions_follow_the_padding() {
+        for (padding, scale, compact, live) in [
+            (0, 0.80, (213.0, 22.0), (322.0, 71.0)),
+            (0, 1.00, (256.0, 26.0), (400.0, 88.0)),
+            (0, 1.50, (365.0, 37.0), (597.0, 131.0)),
+            (10, 0.80, (213.0, 38.0), (322.0, 97.0)),
+            (10, 1.00, (256.0, 46.0), (400.0, 120.0)),
+            (10, 1.50, (365.0, 67.0), (597.0, 179.0)),
+            (20, 0.80, (213.0, 54.0), (322.0, 122.0)),
+            (20, 1.00, (256.0, 66.0), (400.0, 152.0)),
+            (20, 1.50, (365.0, 97.0), (597.0, 227.0)),
+        ] {
+            assert_eq!(
+                window_padded(
+                    OverlayCardShape::CompactRest,
+                    scale,
+                    Material::Flat,
+                    padding
+                ),
+                compact,
+                "compact at padding {padding}, scale {scale}"
+            );
+            assert_eq!(
+                window_padded(OverlayCardShape::LiveOpen, scale, Material::Flat, padding),
+                live,
+                "Live at padding {padding}, scale {scale}"
+            );
+        }
+
+        // Under Glass the window is the card, so the same growth shows
+        // without the slack: the Live panel's content is 40 + 64 + 12 at the
+        // inherit padding, 20 + 64 at zero and 60 + 64 + 24 at the bound.
+        for (padding, expected) in [
+            (0, (394.0, 86.0)),
+            (10, (394.0, 118.0)),
+            (20, (394.0, 150.0)),
+        ] {
+            assert_eq!(
+                window_padded(OverlayCardShape::LiveOpen, 1.0, Material::Glass, padding),
+                expected,
+                "Glass at padding {padding}"
+            );
+        }
+
+        // Setting the padding to its inherit value by hand is the window an
+        // unset padding already gets: today's card, exactly.
+        for shape in OverlayCardShape::ALL {
+            assert_eq!(
+                window_padded(shape, 1.0, Material::Flat, PADDING_INHERIT),
+                window(shape, 1.0, Material::Flat),
+                "{shape:?}"
+            );
+        }
+
+        // A padding that reached the geometry unclamped is treated as the
+        // bound, exactly as an out-of-range scale or border width is.
+        assert_eq!(
+            window_padded(OverlayCardShape::LiveOpen, 1.0, Material::Glass, 99),
+            window_padded(
+                OverlayCardShape::LiveOpen,
+                1.0,
+                Material::Glass,
+                PADDING_MAX
+            )
+        );
+
+        // And whatever the padding, Glass's window equals its card and Flat's
+        // covers it, the invariant zero slack rests on.
+        for padding in [0, PADDING_INHERIT, PADDING_MAX] {
+            for shape in OverlayCardShape::ALL {
+                let (glass_w, glass_h) = window_padded(shape, 1.0, Material::Glass, padding);
+                let (flat_w, flat_h) = window_padded(shape, 1.0, Material::Flat, padding);
+                assert!(
+                    flat_w >= glass_w && flat_h >= glass_h,
+                    "{shape:?} at padding {padding}: Flat window \
+                     {flat_w}x{flat_h} does not cover the card {glass_w}x{glass_h}"
+                );
+            }
+        }
     }
 
     /// The corner radius follows the CSS `calc()` exactly, including the
@@ -883,8 +1042,9 @@ mod tests {
 
     /// Why `waveform_width` stops at 6 and `padding` at 20: at every token's
     /// maximum the control row's content still fits the working pill, so no
-    /// combination of the spacing tokens can force the native window to grow.
-    /// Only `size_scale` and `border_width` do that.
+    /// combination of the spacing tokens can force the native window wider.
+    /// Only `size_scale` and `border_width` do that. The padding does make the
+    /// window taller, which `overlay_dimensions_follow_the_padding` pins.
     #[test]
     fn the_waveform_never_outgrows_the_working_pill() {
         // The three inputs the frontend owns, read from the frontend: the bar
@@ -978,14 +1138,37 @@ mod tests {
         // The card's content lengths, which the footprints above are built
         // from before the border is added.
         assert_eq!(css_px(OVERLAY_CSS, "--ov-work-w"), CARD_COMPACT_CONTENT_W);
-        assert_eq!(css_px(OVERLAY_CSS, "--ov-base-h"), CARD_COMPACT_CONTENT_H);
         assert_eq!(css_px(OVERLAY_CSS, "--ov-open-w"), CARD_LIVE_CONTENT_W);
+
+        // The control row, as the stylesheet builds it: `.sbase`'s core plus
+        // the padding token on every edge. The CSS declares the inherit
+        // padding, and both sides put the same two of them into the height.
+        let css_padding = css_px(OVERLAY_CSS, "--ov-pad");
+        assert_eq!(css_padding, f64::from(PADDING_INHERIT));
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-row-core-h"), CARD_ROW_CORE_H);
         assert_eq!(
-            css_px(OVERLAY_CSS, "--ov-base-h")
-                + css_px(OVERLAY_CSS, "--ov-cap-max-h")
-                + css_px(OVERLAY_CSS, "--ov-cap-pad-y"),
-            CARD_LIVE_CONTENT_H
+            css_px(OVERLAY_CSS, "--ov-row-core-h") + 2.0 * css_padding,
+            inherit_metrics().row_height()
         );
+
+        // The Live card on top of it: the text region, and the inset above
+        // the text, which the stylesheet also writes as a multiple of the
+        // padding rather than a length of its own.
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-cap-max-h"), CARD_CAP_MAX_H);
+        assert_eq!(
+            css_number(OVERLAY_CSS, "--ov-cap-pad-f"),
+            CARD_CAP_PAD_FACTOR
+        );
+        assert_eq!(
+            inherit_metrics().row_height()
+                + css_px(OVERLAY_CSS, "--ov-cap-max-h")
+                + css_number(OVERLAY_CSS, "--ov-cap-pad-f") * css_padding,
+            inherit_metrics().live_content_height()
+        );
+        // And the two heights they add up to at the inherit padding are the
+        // ones this overlay has always drawn.
+        assert_eq!(inherit_metrics().row_height(), 40.0);
+        assert_eq!(inherit_metrics().live_content_height(), 116.0);
         // The two shapes only Glass sizes to exactly: the resting compact
         // pill and the Live pill before it opens or collapses.
         assert_eq!(

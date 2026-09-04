@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "안쪽 여백",
-          "description": "컨트롤 행의 좌우 안쪽 여백입니다."
+          "description": "카드 네 면의 안쪽 여백입니다. 오버레이 윈도우도 그만큼 커집니다."
         },
         "waveformGap": {
           "title": "파형 간격",

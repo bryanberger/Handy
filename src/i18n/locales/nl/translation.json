@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Binnenmarge",
-          "description": "De horizontale binnenmarge van de knoppenrij."
+          "description": "De binnenmarge van de kaart aan alle vier de zijden. Het overlayvenster groeit mee."
         },
         "waveformGap": {
           "title": "Golfvormafstand",

@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Vnitřní okraj",
-          "description": "Vodorovný vnitřní okraj řádku s ovládacími prvky."
+          "description": "Vnitřní okraj karty na všech čtyřech stranách. Okno překryvu se s ním zvětšuje."
         },
         "waveformGap": {
           "title": "Rozestup křivky",

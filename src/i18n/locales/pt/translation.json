@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Espaçamento interno",
-          "description": "O espaçamento interno horizontal da linha de controles."
+          "description": "O espaçamento interno do cartão nos quatro lados. A janela da sobreposição cresce junto."
         },
         "waveformGap": {
           "title": "Espaço da forma de onda",

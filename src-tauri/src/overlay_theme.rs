@@ -352,15 +352,20 @@ pub const WAVEFORM_WIDTH_MIN: u16 = 2;
 /// (nine bars, eight gaps, `.swave`'s 8 px right padding). Adding the row's
 /// two `PADDING_MAX` insets and the two 22 px side columns that hold the dot
 /// and the cancel button gives 186 px, which still fits inside the 216 px
-/// working pill. So no combination of these tokens can force the native window
-/// to grow, and `size_scale` and `border_width` stay the only tokens that
-/// change the card's footprint. Pinned by
+/// working pill. So no combination of these tokens can force the card wider,
+/// and `size_scale` and `border_width` stay the only tokens that change how
+/// wide it is. `padding` does change how tall it is, because the control row
+/// is a fixed core plus one padding above and below. Pinned by
 /// `overlay::tests::the_waveform_never_outgrows_the_working_pill`.
 pub const WAVEFORM_WIDTH_MAX: u16 = 6;
 
 /// The `border_width` an unset token inherits, in px at scale 1: today's
 /// hairline (`--ov-border-w: 1px`, `RecordingOverlay.css`).
 pub const BORDER_WIDTH_INHERIT: u16 = 1;
+/// The `padding` an unset token inherits, in px at scale 1: today's inset
+/// (`--ov-pad: 10px`, `RecordingOverlay.css`). At this value the control row
+/// is the 40 px it has always been and the Live transcript's inset is 12 px.
+pub const PADDING_INHERIT: u16 = 10;
 /// The `waveform_width` an unset token inherits, in px at scale 1: today's
 /// bar (`--ov-wave-w: 4px`, `RecordingOverlay.css`).
 ///
@@ -465,12 +470,15 @@ pub struct OverlayTheme {
     /// The card's corner radius at scale 1, 0 to 32 px.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub radius: Option<u16>,
-    /// The card's border width at scale 1, 0 to 4 px. The one token besides
-    /// `size_scale` that changes the card's footprint, so the native window
-    /// is computed from it too.
+    /// The card's border width at scale 1, 0 to 4 px. One of the two tokens
+    /// besides `size_scale` that change the card's footprint, so the native
+    /// window is computed from it too.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub border_width: Option<u16>,
-    /// The card's inner horizontal padding at scale 1, 0 to 20 px.
+    /// The card's inner padding on all four sides at scale 1, 0 to 20 px.
+    /// The control row is a fixed core plus one of these above and below, and
+    /// the Live transcript's inset follows it, so the card grows taller with
+    /// it and the native window is computed from it too.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub padding: Option<u16>,
     /// Gap between waveform bars at scale 1, 0 to 5 px.
@@ -522,6 +530,16 @@ impl OverlayTheme {
         self.border_width
             .unwrap_or(BORDER_WIDTH_INHERIT)
             .min(BORDER_WIDTH_MAX)
+    }
+
+    /// The padding in px at `size_scale` 1: unset ⇒ [`PADDING_INHERIT`],
+    /// otherwise clamped to `0..=PADDING_MAX`.
+    ///
+    /// The single clamp, like [`Self::border_width`]. The card's height is a
+    /// function of this, so the geometry and the card must never disagree
+    /// about how far a padding was allowed to go.
+    pub fn padding(&self) -> u16 {
+        self.padding.unwrap_or(PADDING_INHERIT).min(PADDING_MAX)
     }
 
     /// A copy with every token clamped to this module's bounds.
@@ -1586,7 +1604,7 @@ mod tests {
         for (token, property) in [
             ("radius", "--ov-radius"),
             ("border_width", "--ov-border-w"),
-            ("padding", "--ov-pad-x"),
+            ("padding", "--ov-pad"),
             ("waveform_gap", "--ov-wave-gap"),
             ("waveform_width", "--ov-wave-w"),
         ] {
@@ -1619,11 +1637,15 @@ mod tests {
             GLASS_TINT_INHERIT
         );
 
-        // The two Rust also owns, because the native geometry is built from
-        // them.
+        // The three Rust also owns, because the native geometry is built
+        // from them.
         assert_eq!(
             ts_number_field(inherit, "border_width"),
             f64::from(BORDER_WIDTH_INHERIT)
+        );
+        assert_eq!(
+            ts_number_field(inherit, "padding"),
+            f64::from(PADDING_INHERIT)
         );
         assert_eq!(
             ts_number_field(inherit, "waveform_width"),

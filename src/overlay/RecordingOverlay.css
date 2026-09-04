@@ -60,10 +60,15 @@
   --ov-work-w: 216px; /* working pill (transcribing / polishing) -- wide enough to
                          center longer labels; shared by Live (collapsed) + minimal */
   --ov-open-w: 392px; /* Live panel, expanded */
-  --ov-base-h: 40px; /* control-row height (.sbase) */
+  --ov-row-core-h: 20px; /* what the control row (.sbase) measures before its
+                            padding. The row is this plus one --ov-pad above and
+                            below, so at the inherit padding of 10 it is the
+                            40px row this overlay has always drawn. */
   --ov-cap-max-h: 64px; /* max height of the scrolling live-text region */
-  --ov-cap-pad-y: 12px; /* .stext-cap breathing room; the Live card's only
-                           non-variable length */
+  --ov-cap-pad-f: 1.2; /* .stext-cap breathing room, as a multiple of --ov-pad
+                          rather than a length of its own, so it follows the
+                          padding token: 10 -> 12, today's inset. */
+  --ov-cap-pad-y: calc(var(--ov-pad) * var(--ov-cap-pad-f));
 
   /* Card timings, in ms. Three places read them. The transitions below use
      them directly. The overlay page reads --ov-morph-ms at runtime
@@ -83,10 +88,13 @@
   --ov-radius: 24px; /* radius: the card's corner radius */
   --ov-border-w: 1px; /* border_width: the card's stroke, one per edge. The
                          card is content-box, so overlay_geometry.rs adds two
-                         of these to every card footprint. With --ov-scale, it
-                         is one of the two tokens that change the native
-                         window's size. */
-  --ov-pad-x: 10px; /* padding: the control row's horizontal padding */
+                         of these to every card footprint. With --ov-scale and
+                         --ov-pad, it is one of the three tokens that change
+                         the native window's size. */
+  --ov-pad: 10px; /* padding: the card's inner padding, on all four sides. The
+                     control row is --ov-row-core-h plus one of these above and
+                     below and the Live transcript's inset follows it too, so
+                     overlay_geometry.rs reads it into every card footprint. */
   --ov-wave-gap: 3px; /* waveform_gap: gap between waveform bars */
   --ov-wave-w: 4px; /* waveform_width: the width of one waveform bar */
 }
@@ -167,9 +175,9 @@
   transform-origin: top center;
 }
 .ov-stage.top .stext-cap {
-  /* Mirror of the bottom overlay (top: 12 / bottom: 0): the first line sits flush
-     under the pill and the breathing room moves below the text. The top fade is
-     off at rest — at zero top padding it would dim the resting first line — and
+  /* Mirror of the bottom overlay, top and bottom swapped: the first line sits
+     flush under the pill and the breathing room moves below the text. The top
+     fade is off at rest — at zero top padding it would dim the resting first line — and
      switches on (below) only once text overflows. */
   padding-top: 0;
   padding-bottom: calc(var(--ov-cap-pad-y) * var(--ov-scale));
@@ -279,9 +287,9 @@
   flex-direction: column;
   padding-top: calc(var(--ov-cap-pad-y) * var(--ov-scale));
   padding-bottom: 0px;
-  /* The text region's inset is 1.4x the control row's padding (10 -> 14). */
-  padding-left: calc(var(--ov-pad-x) * 1.4 * var(--ov-scale));
-  padding-right: calc(var(--ov-pad-x) * 1.4 * var(--ov-scale));
+  /* The text region's side inset is 1.4x the padding token (10 -> 14). */
+  padding-left: calc(var(--ov-pad) * 1.4 * var(--ov-scale));
+  padding-right: calc(var(--ov-pad) * 1.4 * var(--ov-scale));
   font-size: calc(15px * var(--ov-scale));
   font-style: italic;
   line-height: 1.35;
@@ -331,8 +339,12 @@
 /* base row — dot (left) | waveform (center) | timer + cancel (right).
    Same structure for pill & panel; the dot stays anchored left in both. */
 .sbase {
-  height: calc(var(--ov-base-h) * var(--ov-scale));
-  padding: 0 calc(var(--ov-pad-x) * var(--ov-scale));
+  /* The row is --ov-row-core-h with one --ov-pad on every edge. border-box is
+     what makes the height the whole row rather than the core alone, so these
+     two declarations describe one rectangle. */
+  box-sizing: border-box;
+  height: calc((var(--ov-row-core-h) + 2 * var(--ov-pad)) * var(--ov-scale));
+  padding: calc(var(--ov-pad) * var(--ov-scale));
   display: grid;
   /* Equal side columns (min 22px to hold the cancel button) keep the center item
      — waveform or label — centered whether the pill is at min width or content-
@@ -531,7 +543,7 @@
 :root[data-material="glass"] .scard.open {
   width: 100%;
   height: 100%;
-  /* .scard is content-box (the only other box-sizing in this file is .sdot),
+  /* .scard is content-box (the others in this file are .sdot and .sbase),
      so without this the border would push the card two --ov-border-w past
      the window and body{overflow:hidden} would clip it. The window is sized
      to the card including its border, so border-box is what makes the two

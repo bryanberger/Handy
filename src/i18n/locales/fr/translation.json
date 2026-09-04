@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Marge intérieure",
-          "description": "La marge intérieure horizontale de la rangée de contrôles."
+          "description": "La marge intérieure de la carte sur les quatre côtés. La fenêtre de l'overlay s'agrandit d'autant."
         },
         "waveformGap": {
           "title": "Espacement de la forme d'onde",

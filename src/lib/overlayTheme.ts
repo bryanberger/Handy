@@ -163,7 +163,7 @@ const STATIC_NUMERIC_INHERIT: Record<
   size_scale: 1, // --ov-scale
   radius: 24, // --ov-radius
   border_width: 1, // --ov-border-w
-  padding: 10, // --ov-pad-x
+  padding: 10, // --ov-pad
   waveform_gap: 3, // --ov-wave-gap
   waveform_width: 4, // --ov-wave-w
 };
@@ -254,7 +254,7 @@ export const OVERLAY_THEME_LENGTH_PROPERTIES: readonly string[] = [
   "--ov-scale",
   "--ov-radius",
   "--ov-border-w",
-  "--ov-pad-x",
+  "--ov-pad",
   "--ov-wave-gap",
   "--ov-wave-w",
 ];
@@ -443,15 +443,18 @@ export function resolveOverlayThemeVars(
   const radius = validToken(theme, "radius");
   if (radius !== null) vars["--ov-radius"] = `${radius}px`;
 
-  // The one length the native window geometry also reads.
+  // One of the two lengths the native window geometry also reads.
   // `overlay_geometry.rs` adds two of these to the card's footprint, so the
   // two sides must agree on the number, which is why it is a token and not a
   // derived value.
   const borderWidth = validToken(theme, "border_width");
   if (borderWidth !== null) vars["--ov-border-w"] = `${borderWidth}px`;
 
+  // The other one. The control row is a fixed core plus one of these above and
+  // below, and the Live transcript's inset follows it, so the window grows on
+  // both axes with the padding.
   const padding = validToken(theme, "padding");
-  if (padding !== null) vars["--ov-pad-x"] = `${padding}px`;
+  if (padding !== null) vars["--ov-pad"] = `${padding}px`;
 
   const waveformGap = validToken(theme, "waveform_gap");
   if (waveformGap !== null) vars["--ov-wave-gap"] = `${waveformGap}px`;

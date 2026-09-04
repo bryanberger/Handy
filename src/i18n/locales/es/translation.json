@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Espaciado interior",
-          "description": "El espaciado interior horizontal de la fila de controles."
+          "description": "El espaciado interior de la tarjeta en los cuatro lados. La ventana de la superposición crece con él."
         },
         "waveformGap": {
           "title": "Separación de la onda",

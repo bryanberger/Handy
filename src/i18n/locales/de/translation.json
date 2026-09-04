@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Innenabstand",
-          "description": "Der horizontale Innenabstand der Steuerungszeile."
+          "description": "Der Innenabstand der Karte auf allen vier Seiten. Das Overlay-Fenster wächst mit."
         },
         "waveformGap": {
           "title": "Wellenform-Abstand",

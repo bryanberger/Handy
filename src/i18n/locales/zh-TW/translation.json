@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "內邊距",
-          "description": "控制項列的水平內邊距。"
+          "description": "卡片四邊的內邊距。懸浮窗視窗也會隨之變大。"
         },
         "waveformGap": {
           "title": "波形間距",

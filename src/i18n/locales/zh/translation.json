@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "内边距",
-          "description": "控件行的水平内边距。"
+          "description": "卡片四边的内边距。悬浮窗窗口也会随之变大。"
         },
         "waveformGap": {
           "title": "波形间距",

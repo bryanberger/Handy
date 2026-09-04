@@ -1499,13 +1499,16 @@ size_scale?: number | null;
  */
 radius?: number | null; 
 /**
- * The card's border width at scale 1, 0 to 4 px. The one token besides
- * `size_scale` that changes the card's footprint, so the native window
- * is computed from it too.
+ * The card's border width at scale 1, 0 to 4 px. One of the two tokens
+ * besides `size_scale` that change the card's footprint, so the native
+ * window is computed from it too.
  */
 border_width?: number | null; 
 /**
- * The card's inner horizontal padding at scale 1, 0 to 20 px.
+ * The card's inner padding on all four sides at scale 1, 0 to 20 px.
+ * The control row is a fixed core plus one of these above and below, and
+ * the Live transcript's inset follows it, so the card grows taller with
+ * it and the native window is computed from it too.
  */
 padding?: number | null; 
 /**

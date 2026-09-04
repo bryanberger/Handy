@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Spaziatura interna",
-          "description": "La spaziatura interna orizzontale della riga dei controlli."
+          "description": "La spaziatura interna della scheda su tutti e quattro i lati. La finestra dell'overlay cresce di conseguenza."
         },
         "waveformGap": {
           "title": "Spaziatura della forma d'onda",

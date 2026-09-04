@@ -228,10 +228,10 @@ describe("overlayThemeStyleDelta", () => {
 
   test("an unchanged property is not rewritten", () => {
     const { set, remove } = overlayThemeStyleDelta(
-      { "--s-accent": "#7aa2f7", "--ov-pad-x": "10px" },
-      { "--s-accent": "#7aa2f7", "--ov-pad-x": "11px" },
+      { "--s-accent": "#7aa2f7", "--ov-pad": "10px" },
+      { "--s-accent": "#7aa2f7", "--ov-pad": "11px" },
     );
-    expect(set).toEqual([["--ov-pad-x", "11px"]]);
+    expect(set).toEqual([["--ov-pad", "11px"]]);
     expect(remove).toEqual([]);
   });
 
@@ -331,7 +331,7 @@ describe("derivations", () => {
       "--ov-scale": "1.1",
       "--ov-radius": "12px",
       "--ov-border-w": "2px",
-      "--ov-pad-x": "14px",
+      "--ov-pad": "14px",
       "--ov-wave-gap": "2px",
       "--ov-wave-w": "5px",
     });
@@ -534,7 +534,7 @@ describe("the worked example", () => {
       "--ov-scale": "1.1",
       "--ov-radius": "12px",
       "--ov-border-w": "1px",
-      "--ov-pad-x": "14px",
+      "--ov-pad": "14px",
       "--ov-wave-gap": "2px",
       "--ov-wave-w": "4px",
     });

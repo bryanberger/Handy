@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Innermarginal",
-          "description": "Kontrollradens vågräta innermarginal."
+          "description": "Kortets innermarginal på alla fyra sidor. Overlayfönstret växer med den."
         },
         "waveformGap": {
           "title": "Vågformsavstånd",

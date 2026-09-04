@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Indvendig margen",
-          "description": "Den vandrette indvendige margen i kontrolrækken."
+          "description": "Kortets indvendige margen på alle fire sider. Overlayvinduet vokser med den."
         },
         "waveformGap": {
           "title": "Bølgeformafstand",

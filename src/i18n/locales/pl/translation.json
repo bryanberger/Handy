@@ -360,7 +360,7 @@
         },
         "padding": {
           "title": "Odstęp wewnętrzny",
-          "description": "Poziomy odstęp wewnętrzny wiersza kontrolek."
+          "description": "Odstęp wewnętrzny karty ze wszystkich czterech stron. Okno nakładki powiększa się razem z nim."
         },
         "waveformGap": {
           "title": "Odstęp fali",

@@ -85,7 +85,7 @@ How the surface is rendered: Flat (an opaque surface) or Glass (a translucent su
 _Avoid_: effect, blur mode, vibrancy, acrylic, frosted (implementation terms)
 
 **Size scale**:
-The single factor that zooms every length in the card at once, including widths, heights, paddings, and type. It is one of the two tokens that change how much room the overlay needs on screen; border width is the other.
+The single factor that zooms every length in the card at once, including widths, heights, paddings, and type. It is one of the tokens that change how much room the overlay needs on screen, with border width and padding.
 _Avoid_: zoom, size, scale factor (bare), DPI, density
 
 **Resolved overlay theme**:

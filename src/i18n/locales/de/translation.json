@@ -301,7 +301,8 @@
           "glass": "Glas",
           "glassMacOnly": "Glas (nur macOS)"
         },
-        "unavailableNote": "Glas ist auf diesem Mac gerade nicht verfügbar — zum Beispiel wenn in macOS Transparenz reduzieren aktiv ist — daher wird das Overlay flach dargestellt."
+        "unavailableNote": "Glas ist auf diesem Mac gerade nicht verfügbar — zum Beispiel wenn in macOS Transparenz reduzieren aktiv ist — daher wird das Overlay flach dargestellt.",
+        "glassHint": "Die Tönungsstärke legt fest, wie stark die Oberflächenfarbe das Glas überdeckt — verringere sie, um mehr vom Hintergrund zu sehen."
       },
       "glassStyle": {
         "title": "Glas-Stil",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Deckkraft der Oberfläche",
-          "description": "Wie durchsichtig der Hintergrund der Karte ist."
+          "description": "Wie durchsichtig der Hintergrund der Karte ist. Gilt beim Material Flach; Glas hat seine eigene Tönungsstärke."
+        },
+        "glassTint": {
+          "title": "Tönungsstärke",
+          "description": "Wie stark die Oberflächenfarbe das Glas überdeckt. Niedriger lässt mehr von dem durch, was hinter dem Overlay liegt."
         },
         "text": {
           "title": "Text",

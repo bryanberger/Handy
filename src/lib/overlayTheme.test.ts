@@ -11,6 +11,7 @@ import {
   BORDER_INHERIT,
   BORDER_OPACITY_INHERIT,
   getStoredOverlayTheme,
+  GLASS_TINT_INHERIT,
   INHERIT_ALL,
   OVERLAY_THEME_CSS_PROPERTIES,
   OVERLAY_THEME_STORAGE_KEY,
@@ -140,7 +141,7 @@ describe("derivations", () => {
   });
 
   test("an unset surface_opacity resolves to 0.98 under Flat", () => {
-    expect(SURFACE_OPACITY_INHERIT.flat).toBe(0.98);
+    expect(SURFACE_OPACITY_INHERIT).toBe(0.98);
     expect(
       resolveOverlayThemeVars(resolved({ surface: "#1a1b26" }))["--s-surface"],
     ).toBe("color-mix(in srgb, #1a1b26 98%, transparent)");
@@ -180,6 +181,9 @@ describe("derivations", () => {
   test("the numeric bounds are the contract's", () => {
     expect(OVERLAY_TOKEN_BOUNDS).toEqual({
       surface_opacity: { min: 0.3, max: 1.0, step: 0.01 },
+      // The Glass tint reaches zero, where the Flat opacity stops at 0.30:
+      // untinted glass is a look, an invisible Flat card is not.
+      glass_tint: { min: 0.0, max: 1.0, step: 0.01 },
       border_opacity: { min: 0.0, max: 1.0, step: 0.01 },
       size_scale: { min: 0.8, max: 1.5, step: 0.05 },
       radius: { min: 0, max: 32, step: 1 },
@@ -263,7 +267,7 @@ describe("Glass", () => {
   test("writes the surface, the neutrals and the edge unconditionally", () => {
     // The tint is thin enough for the blur to read as blur, and the edge is
     // the same foreground mix Flat uses, only at a stronger alpha.
-    expect(SURFACE_OPACITY_INHERIT.glass).toBe(0.45);
+    expect(GLASS_TINT_INHERIT).toBe(0.45);
     expect(BORDER_OPACITY_INHERIT.glass).toBe(0.25);
 
     expect(resolveOverlayThemeVars(resolved({}, "glass"))).toEqual({
@@ -288,7 +292,7 @@ describe("Glass", () => {
    *  engine changes which native view draws behind it and which of the two
    *  engine tokens applies, never what the card writes. Rust hands
    *  `NSGlassEffectView` the same surface as its `tintColor`, composed from
-   *  the identical `surface`/`surface_opacity` pair. */
+   *  the identical `surface`/`glass_tint` pair. */
   test("the engine does not change what the card paints", () => {
     const older = resolveOverlayThemeVars(resolved({}, "glass"));
     const liquid = resolveOverlayThemeVars(resolved({}, "glass", "liquid"));
@@ -310,12 +314,68 @@ describe("Glass", () => {
   });
 });
 
+describe("the two alphas", () => {
+  /** The bug the split exists for: a card set opaque under Flat used to
+   *  follow the user into Glass and paint an opaque pane. */
+  test("an opaque Flat card is still glass the moment Glass renders", () => {
+    const opaqueFlat: Partial<OverlayTheme> = {
+      surface: "#000000",
+      surface_opacity: 1.0,
+    };
+
+    expect(resolveOverlayThemeVars(resolved(opaqueFlat))["--s-surface"]).toBe(
+      "color-mix(in srgb, #000000 100%, transparent)",
+    );
+    // Same theme, Glass rendering: the opacity is not read, so the tint is
+    // the Glass default and the blur shows through.
+    expect(
+      resolveOverlayThemeVars(resolved(opaqueFlat, "glass"))["--s-surface"],
+    ).toBe("color-mix(in srgb, #000000 45%, transparent)");
+  });
+
+  test("the Glass tint drives the card under Glass, and nothing else", () => {
+    expect(
+      resolveOverlayThemeVars(resolved({ glass_tint: 0.15 }, "glass"))[
+        "--s-surface"
+      ],
+    ).toBe("color-mix(in srgb, var(--color-background) 15%, transparent)");
+    expect(
+      resolveOverlayThemeVars(
+        resolved({ surface: "#1a1b26", glass_tint: 0.6 }, "glass"),
+      )["--s-surface"],
+    ).toBe("color-mix(in srgb, #1a1b26 60%, transparent)");
+
+    // A fully transparent tint is a value: untinted glass, Apple's own look.
+    expect(
+      resolveOverlayThemeVars(resolved({ glass_tint: 0 }, "glass"))[
+        "--s-surface"
+      ],
+    ).toBe("color-mix(in srgb, var(--color-background) 0%, transparent)");
+  });
+
+  test("the Glass tint writes nothing under Flat", () => {
+    // Not even the surface property: under Flat an untouched card is the
+    // stylesheet's own 98%, and the tint token has no say in it.
+    expect(resolveOverlayThemeVars(resolved({ glass_tint: 0.15 }))).toEqual({});
+  });
+
+  test("the surface colour is shared: it is the tint colour under Glass", () => {
+    const surfaceOnly = resolved({ surface: "#1a1b26" }, "glass");
+    expect(resolveOverlayThemeVars(surfaceOnly)["--s-surface"]).toBe(
+      "color-mix(in srgb, #1a1b26 45%, transparent)",
+    );
+    // …and it still picks the foreground, as it does under Flat.
+    expect(resolveOverlayThemeVars(surfaceOnly)["--s-text"]).toBe("#fbfbfb");
+  });
+});
+
 describe("the worked example", () => {
-  /** The README's "A full theme", every one of the fifteen tokens set. */
+  /** The README's "A full theme", every one of the sixteen tokens set. */
   const FULL_THEME: Partial<OverlayTheme> = {
     accent: "#7aa2f7",
     surface: "#1a1b26",
     surface_opacity: 0.92,
+    glass_tint: 0.45,
     text: "#c0caf5",
     border: "#ffffff",
     border_opacity: 0.3,
@@ -333,9 +393,10 @@ describe("the worked example", () => {
   // The README's full theme file and the CSS it resolves to. Its
   // `material: "glass"` is read here with the Flat neutrals, so this is the
   // rendering where Glass was requested and downgraded (the percentages in the
-  // Glass case are covered above); `glass_material` and `glass_style` are the
-  // two tokens with no CSS at all — each sets a native view's property — so
-  // neither writes anything. The
+  // Glass case are covered above) — which is also why `--s-surface` carries
+  // the 92% Flat opacity and not the 45% tint; `glass_material` and
+  // `glass_style` are the two tokens with no CSS at all — each sets a native
+  // view's property — so neither writes anything. The
   // contract's derivation rules mix the neutrals from `var(--s-text)`, which
   // resolves to the `--s-text` written beside them, while the explicit
   // `border` replaces that mix for the edge.
@@ -404,6 +465,7 @@ describe("the boundary re-validation", () => {
         "accent": "red",
         "surface": "#abc",
         "surface_opacity": 5,
+        "glass_tint": 5,
         "text": "#c0caf5ff",
         "material": "glass",
         "size_scale": 9,

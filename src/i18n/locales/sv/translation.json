@@ -301,7 +301,8 @@
           "glass": "Glas",
           "glassMacOnly": "Glas (endast macOS)"
         },
-        "unavailableNote": "Glas är inte tillgängligt på den här Mac-datorn just nu — till exempel när Reducera transparens är på i macOS — så overlayen visas som Platt."
+        "unavailableNote": "Glas är inte tillgängligt på den här Mac-datorn just nu — till exempel när Reducera transparens är på i macOS — så overlayen visas som Platt.",
+        "glassHint": "Tonstyrkan avgör hur mycket ytans färg täcker glaset — sänk den för att se mer av det som finns bakom."
       },
       "glassStyle": {
         "title": "Glasstil",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Ytans opacitet",
-          "description": "Hur genomskinlig kortets bakgrund är."
+          "description": "Hur genomskinlig kortets bakgrund är. Gäller för materialet Platt; Glas har sin egen tonstyrka."
+        },
+        "glassTint": {
+          "title": "Tonstyrka",
+          "description": "Hur mycket ytans färg täcker glaset. Lägre släpper igenom mer av det som finns bakom overlayen."
         },
         "text": {
           "title": "Text",

@@ -48,6 +48,11 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
   // cause: the payload carries `supported`/`available` and nothing else, so
   // asserting *why* (Reduce Transparency, say) would be a guess.
   const showUnavailableNote = glassSupport.supported && !glassSupport.available;
+  // …and when Glass *is* what the user is looking at, the line under the row
+  // is better spent pointing at the control that decides how glassy it is.
+  // The two are mutually exclusive by construction, so the row never grows
+  // two notes.
+  const showGlassHint = value === "glass" && glassSupport.available;
 
   return (
     <div>
@@ -71,6 +76,11 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
       {showUnavailableNote && (
         <p className="-mt-1 px-4 pb-2 text-xs text-mid-gray">
           {t("settings.appearance.material.unavailableNote")}
+        </p>
+      )}
+      {showGlassHint && (
+        <p className="-mt-1 px-4 pb-2 text-xs text-mid-gray">
+          {t("settings.appearance.material.glassHint")}
         </p>
       )}
     </div>

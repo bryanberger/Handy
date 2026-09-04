@@ -1,6 +1,6 @@
 //! Overlay theme: storage, per-key merge, and delivery.
 //!
-//! An *overlay theme* is the set of fifteen optional tokens that decide how
+//! An *overlay theme* is the set of sixteen optional tokens that decide how
 //! the recording overlay's card looks. Every token is optional and absent means
 //! *inherit* — the overlay uses Handy's built-in, theme-aware value — so a
 //! theme that sets nothing reproduces today's overlay exactly.
@@ -48,7 +48,7 @@ impl HexColor {
             3 => digits.chars().flat_map(|digit| [digit, digit]).collect(),
             6 => digits.to_string(),
             // Anything else is either alpha (4 or 8 digits), which belongs to
-            // `surface_opacity`, or not a colour at all.
+            // `surface_opacity` or `glass_tint`, or not a colour at all.
             _ => return None,
         };
 
@@ -101,8 +101,8 @@ pub enum Material {
 /// The eight values are the `NSVisualEffectMaterial` cases that make sense
 /// behind a small floating card, ordered from the most see-through to the
 /// least; the default is the one that measured the most backdrop transmission
-/// on macOS 26, in both app themes, at the tint an unset `surface_opacity`
-/// resolves to under Glass.
+/// on macOS 26, in both app themes, at the tint an unset `glass_tint`
+/// resolves to.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum GlassMaterial {
@@ -240,18 +240,20 @@ pub(crate) const INHERIT_SURFACE_LIGHT: &str = "#fbfbfb";
 #[cfg(any(target_os = "macos", test))]
 pub(crate) const INHERIT_SURFACE_DARK: &str = "#2c2b29";
 
-/// The alpha an unset `surface_opacity` resolves to under Glass.
+/// The alpha an unset `glass_tint` resolves to.
 ///
 /// The same colour is painted twice under Liquid Glass: once by the card, and
 /// once by the glass itself, which is handed it as its `tintColor` so it can
 /// lens the tint rather than have it laid on flat. This constant is the
 /// second half — what [`liquid_tint`] composes when the token is unset — and
-/// it must carry the same number as `SURFACE_OPACITY_INHERIT.glass` in
+/// it must carry the same number as `GLASS_TINT_INHERIT` in
 /// `src/lib/overlayTheme.ts`, where the first half lives. Measured on
 /// macOS 26: 0.45 holds the transcript at 5.6–9.6:1 across both Glass styles
 /// and both app themes, where 0.30 drops it to 4.3:1 under a Light app theme.
+/// The same number on both engines: the fallback blur was measured at 0.45
+/// too.
 #[cfg(any(target_os = "macos", test))]
-pub(crate) const SURFACE_OPACITY_INHERIT_GLASS: f64 = 0.45;
+pub(crate) const GLASS_TINT_INHERIT: f64 = 0.45;
 
 /// A straight-alpha sRGB colour, every component 0–1: what the liquid
 /// engine's `tintColor` is built from.
@@ -266,23 +268,26 @@ pub(crate) struct TintColor {
 
 /// The tint Liquid Glass paints **inside** the glass: the resolved `surface`
 /// — or the app background an unset one inherits — at the resolved
-/// `surface_opacity`.
+/// `glass_tint`.
+///
+/// `surface_opacity` is deliberately not an input: it is Flat's control, and
+/// under Glass the strength of the tint is `glass_tint` alone. That split is
+/// what lets an opaque Flat card and see-through Glass coexist in one theme.
 ///
 /// Pure, so the whole composition is testable without AppKit. `dark` is the
 /// overlay window's effective appearance, the one native read this needs.
-/// `None` means an untinted glass, which is what a zero alpha asks for — out
-/// of reach of a theme, whose alpha floor is [`SURFACE_OPACITY_MIN`], and so
-/// only reachable from the inherit path if that floor ever moves.
+/// `None` means an untinted glass — Apple's own look — which is what a zero
+/// tint asks for, and [`GLASS_TINT_MIN`] is zero, so a theme can ask for it.
 #[cfg(any(target_os = "macos", test))]
 pub(crate) fn liquid_tint(
     surface: Option<&HexColor>,
-    surface_opacity: Option<f64>,
+    glass_tint: Option<f64>,
     dark: bool,
 ) -> Option<TintColor> {
-    let alpha = surface_opacity
+    let alpha = glass_tint
         .filter(|value| value.is_finite())
-        .unwrap_or(SURFACE_OPACITY_INHERIT_GLASS)
-        .clamp(0.0, SURFACE_OPACITY_MAX);
+        .unwrap_or(GLASS_TINT_INHERIT)
+        .clamp(GLASS_TINT_MIN, GLASS_TINT_MAX);
     if alpha <= 0.0 {
         return None;
     }
@@ -309,10 +314,19 @@ pub(crate) fn liquid_tint(
 pub const SIZE_SCALE_MIN: f64 = 0.80;
 /// Highest accepted [`OverlayTheme::size_scale`].
 pub const SIZE_SCALE_MAX: f64 = 1.50;
-/// Lowest accepted `surface_opacity`.
+/// Lowest accepted `surface_opacity`. Flat's card may dim, but never to the
+/// point of vanishing: that is what Glass is for.
 pub const SURFACE_OPACITY_MIN: f64 = 0.30;
 /// Highest accepted `surface_opacity`.
 pub const SURFACE_OPACITY_MAX: f64 = 1.00;
+/// Lowest accepted `glass_tint`. Zero is a legitimate value, unlike
+/// `surface_opacity`'s floor: it asks for untinted glass, which is Apple's own
+/// look, and the blur behind it still makes the card visible.
+pub const GLASS_TINT_MIN: f64 = 0.00;
+/// Highest accepted `glass_tint`. At 1.00 the tint is opaque and the glass
+/// stops transmitting anything, which is a way of saying "Flat" the theme is
+/// allowed to say.
+pub const GLASS_TINT_MAX: f64 = 1.00;
 /// Highest accepted `radius`, in px at scale 1.
 pub const RADIUS_MAX: u16 = 32;
 /// Highest accepted `padding`, in px at scale 1.
@@ -381,11 +395,11 @@ where
     }
 }
 
-/// The fifteen overlay-theme tokens. `None` means *inherit*.
+/// The sixteen overlay-theme tokens. `None` means *inherit*.
 ///
 /// Field names are literally the theme-file keys. Every field deserializes
 /// leniently: a value of the wrong type or shape degrades to `None` with a
-/// `warn!`, so one bad token can never cost the other eight — the same
+/// `warn!`, so one bad token can never cost the other fifteen — the same
 /// principle `salvage_settings` applies one level up. The settings store's
 /// leniency is silent salvage (log only); the theme file applies the same rules
 /// but reports diagnostics, which is why it runs its own per-key pass instead
@@ -399,9 +413,21 @@ pub struct OverlayTheme {
     /// The card's background colour.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub surface: Option<HexColor>,
-    /// The card background's alpha, 0.30–1.00.
+    /// The card background's alpha **under Flat**, 0.30–1.00.
+    ///
+    /// Read only while the effective Material is Flat. Under Glass the card's
+    /// alpha is `glass_tint`, so a theme can keep an opaque Flat card and a
+    /// see-through Glass one at the same time — before the split, choosing
+    /// Glass with a high opacity painted an opaque card and nothing said why.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub surface_opacity: Option<f64>,
+    /// How much of the `surface` colour covers the glass, 0.00–1.00.
+    ///
+    /// Glass's own half of the pair above: the alpha the card paints its
+    /// surface at while the effective Material is Glass, and the alpha the
+    /// liquid engine's native `tintColor` is composed at. Ignored under Flat.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub glass_tint: Option<f64>,
     /// The card's foreground colour, and the base every neutral derives from.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub text: Option<HexColor>,
@@ -513,6 +539,12 @@ impl OverlayTheme {
                 SURFACE_OPACITY_MIN,
                 SURFACE_OPACITY_MAX,
                 "surface_opacity",
+            ),
+            glass_tint: clamp_float(
+                self.glass_tint,
+                GLASS_TINT_MIN,
+                GLASS_TINT_MAX,
+                "glass_tint",
             ),
             text: self.text.clone(),
             border: self.border.clone(),
@@ -719,6 +751,7 @@ pub fn merge(file: &OverlayTheme, settings: &OverlayTheme) -> OverlayTheme {
         accent: file.accent.clone().or_else(|| settings.accent.clone()),
         surface: file.surface.clone().or_else(|| settings.surface.clone()),
         surface_opacity: file.surface_opacity.or(settings.surface_opacity),
+        glass_tint: file.glass_tint.or(settings.glass_tint),
         text: file.text.clone().or_else(|| settings.text.clone()),
         border: file.border.clone().or_else(|| settings.border.clone()),
         border_opacity: file.border_opacity.or(settings.border_opacity),
@@ -868,6 +901,7 @@ mod tests {
         assert_eq!(theme.accent, None);
         assert_eq!(theme.surface, None);
         assert_eq!(theme.surface_opacity, None);
+        assert_eq!(theme.glass_tint, None);
         assert_eq!(theme.text, None);
         assert_eq!(theme.border, None);
         assert_eq!(theme.border_opacity, None);
@@ -898,6 +932,7 @@ mod tests {
             "accent": null,
             "surface": null,
             "surface_opacity": null,
+            "glass_tint": null,
             "text": null,
             "border": null,
             "border_opacity": null,
@@ -916,12 +951,12 @@ mod tests {
     }
 
     /// The liquid engine paints the surface tint itself, so this composition
-    /// is the only place the `surface`/`surface_opacity` pair becomes a
-    /// colour outside CSS. A set colour wins; an unset one inherits the app
+    /// is the only place the `surface`/`glass_tint` pair becomes a colour
+    /// outside CSS. A set colour wins; an unset one inherits the app
     /// background for the appearance actually on screen, which is what keeps
     /// a dark card dark under a Dark theme over a bright desktop.
     #[test]
-    fn the_liquid_tint_is_the_surface_at_the_surface_opacity() {
+    fn the_liquid_tint_is_the_surface_at_the_glass_tint() {
         let set = liquid_tint(HexColor::parse("#7aa2f7").as_ref(), Some(0.5), false)
             .expect("a set surface always tints");
         assert!((set.red - 0x7a as f64 / 255.0).abs() < 1e-9);
@@ -951,32 +986,71 @@ mod tests {
     fn the_liquid_tint_alpha_inherits_clamps_and_can_vanish() {
         assert_eq!(
             liquid_tint(None, None, false).map(|tint| tint.alpha),
-            Some(SURFACE_OPACITY_INHERIT_GLASS)
+            Some(GLASS_TINT_INHERIT)
         );
         // Above the contract's ceiling and non-finite values cannot reach an
         // `NSColor` — one is clamped, the other inherits.
         assert_eq!(
             liquid_tint(None, Some(4.0), false).map(|tint| tint.alpha),
-            Some(SURFACE_OPACITY_MAX)
+            Some(GLASS_TINT_MAX)
         );
         assert_eq!(
             liquid_tint(None, Some(f64::NAN), false).map(|tint| tint.alpha),
-            Some(SURFACE_OPACITY_INHERIT_GLASS)
+            Some(GLASS_TINT_INHERIT)
         );
         // Zero is untinted glass — Apple's own look — rather than a colour
-        // with no alpha, so the setter is handed nil.
+        // with no alpha, so the setter is handed nil. Unlike the surface's
+        // 0.30 floor, a theme can ask for this one.
+        assert_eq!(GLASS_TINT_MIN, 0.00);
         assert_eq!(liquid_tint(None, Some(0.0), false), None);
         assert_eq!(liquid_tint(None, Some(-1.0), false), None);
     }
 
+    /// The split this token exists for: an opaque card under Flat must not
+    /// follow the user into Glass. `surface_opacity` is not an input to the
+    /// native tint at all, so the theme below — the one a user who set Flat
+    /// to 1.00 and then picked Glass actually has — composes the glassy
+    /// default rather than an opaque pane.
+    #[test]
+    fn an_opaque_flat_surface_does_not_reach_the_glass_tint() {
+        use crate::overlay_glass::GlassAppearance;
+
+        let theme = OverlayTheme {
+            surface: hex("#000000"),
+            surface_opacity: Some(1.0),
+            material: Some(Material::Glass),
+            ..Default::default()
+        };
+
+        let appearance = GlassAppearance::from_theme(&theme);
+        assert_eq!(appearance.glass_tint, None);
+        assert_eq!(
+            liquid_tint(appearance.surface.as_ref(), appearance.glass_tint, true)
+                .map(|tint| tint.alpha),
+            Some(GLASS_TINT_INHERIT)
+        );
+
+        // …and a Glass tint the user does set is the alpha, whatever the Flat
+        // opacity beside it says.
+        let tinted = GlassAppearance::from_theme(&OverlayTheme {
+            glass_tint: Some(0.15),
+            ..theme
+        });
+        assert_eq!(
+            liquid_tint(None, tinted.glass_tint, false).map(|tint| tint.alpha),
+            Some(0.15)
+        );
+    }
+
     /// Salvage tier one: a token whose value is unusable inherits, and the
-    /// other eight survive untouched.
+    /// other fifteen survive untouched.
     #[test]
     fn one_bad_token_inherits_and_keeps_its_siblings() {
         let parsed: OverlayTheme = serde_json::from_value(json!({
             "accent": 5,                  // wrong JSON type
             "surface": "#1a1b26",
             "surface_opacity": 0.92,
+            "glass_tint": 0.45,
             "text": "rebeccapurple",      // a CSS colour name, not a hex value
             "border": "#ffffff",
             "border_opacity": 0.25,
@@ -1001,6 +1075,7 @@ mod tests {
 
         assert_eq!(parsed.surface, hex("#1a1b26"));
         assert_eq!(parsed.surface_opacity, Some(0.92));
+        assert_eq!(parsed.glass_tint, Some(0.45));
         assert_eq!(parsed.border, hex("#ffffff"));
         assert_eq!(parsed.border_opacity, Some(0.25));
         assert_eq!(parsed.size_scale, Some(1.1));
@@ -1063,6 +1138,7 @@ mod tests {
             accent: hex("#7aa2f7"),
             surface: hex("#1a1b26"),
             surface_opacity: Some(2.0),
+            glass_tint: Some(2.0),
             text: hex("#c0caf5"),
             border: hex("#ffffff"),
             border_opacity: Some(2.0),
@@ -1079,6 +1155,7 @@ mod tests {
         .normalized();
 
         assert_eq!(over.surface_opacity, Some(1.00));
+        assert_eq!(over.glass_tint, Some(1.00));
         assert_eq!(over.border_opacity, Some(1.00));
         assert_eq!(over.size_scale, Some(1.50));
         assert_eq!(over.radius, Some(32));
@@ -1097,6 +1174,7 @@ mod tests {
 
         let under = OverlayTheme {
             surface_opacity: Some(0.1),
+            glass_tint: Some(-0.5),
             border_opacity: Some(-0.5),
             size_scale: Some(0.1),
             waveform_width: Some(0),
@@ -1104,9 +1182,11 @@ mod tests {
         }
         .normalized();
         assert_eq!(under.surface_opacity, Some(0.30));
-        // border_opacity's floor is 0, unlike the surface's: an invisible
-        // edge is a legitimate theme, an invisible card is not.
+        // border_opacity's and glass_tint's floor is 0, unlike the surface's:
+        // an invisible edge and untinted glass are legitimate themes, an
+        // invisible Flat card is not.
         assert_eq!(under.border_opacity, Some(0.00));
+        assert_eq!(under.glass_tint, Some(0.00));
         assert_eq!(under.size_scale, Some(0.80));
         assert_eq!(under.waveform_width, Some(2));
 
@@ -1122,11 +1202,13 @@ mod tests {
         // apply layer writes no custom property for it.
         let non_finite = OverlayTheme {
             surface_opacity: Some(f64::NAN),
+            glass_tint: Some(f64::NAN),
             size_scale: Some(f64::INFINITY),
             ..Default::default()
         }
         .normalized();
         assert_eq!(non_finite.surface_opacity, None);
+        assert_eq!(non_finite.glass_tint, None);
         assert_eq!(non_finite.size_scale, None);
         assert_eq!(non_finite.size_scale(), 1.0);
         // Not `to_value(..).is_ok()`: serde_json turns a non-finite float into
@@ -1199,6 +1281,7 @@ mod tests {
         let settings = OverlayTheme {
             accent: hex("#ff0000"),
             surface: hex("#1a1b26"),
+            glass_tint: Some(0.6),
             radius: Some(12),
             border: hex("#ffffff"),
             border_width: Some(3),
@@ -1214,6 +1297,7 @@ mod tests {
         assert_eq!(merged.size_scale, Some(1.1));
         // …the settings fill the gaps…
         assert_eq!(merged.surface, hex("#1a1b26"));
+        assert_eq!(merged.glass_tint, Some(0.6));
         assert_eq!(merged.radius, Some(12));
         assert_eq!(merged.border, hex("#ffffff"));
         assert_eq!(merged.border_width, Some(3));
@@ -1274,6 +1358,7 @@ mod tests {
         let settings_theme = OverlayTheme {
             accent: hex("#7aa2f7"),
             surface_opacity: Some(0.05),
+            glass_tint: Some(1.9),
             material: Some(Material::Glass),
             size_scale: Some(1.0),
             radius: Some(99),
@@ -1292,6 +1377,7 @@ mod tests {
         assert_eq!(resolved.theme.size_scale(), 1.50);
         // The settings' own out-of-range values are clamped in the same pass.
         assert_eq!(resolved.theme.surface_opacity, Some(0.30));
+        assert_eq!(resolved.theme.glass_tint, Some(1.00));
         assert_eq!(resolved.theme.radius, Some(32));
         assert_eq!(resolved.theme.accent, hex("#7aa2f7"));
 

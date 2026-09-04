@@ -8,7 +8,7 @@
  * turns into — lives here so it can be tested without a webview.
  */
 
-import type { OverlayStyle, PreviewState } from "@/bindings";
+import type { Material, OverlayStyle, PreviewState } from "@/bindings";
 
 /** The two overlay styles that have something to preview; `none` has nothing
  *  to show. Derived from the binding rather than respelled, so the tab and the
@@ -59,6 +59,9 @@ export const IDLE_PREVIEW: PreviewMode = { running: false, state: "cycle" };
 
 export type PreviewAction =
   | { kind: "start" }
+  /** Start because a Material or Glass style change wants to be seen, rather
+   *  than because the button was pressed. Only [`autoStartFor`] issues it. */
+  | { kind: "autoStart" }
   | { kind: "stop" }
   | { kind: "pin"; state: PreviewState }
   /** The overlay style changed under a running preview; its chip may no
@@ -94,6 +97,13 @@ export function reducePreview(
     case "start":
       if (mode.running) return { mode, call: "none" };
       return { mode: { ...mode, running: true }, call: "start" };
+
+    case "autoStart":
+      // Always the loop, never a remembered chip: what a Material or Glass
+      // style change has to show is the card in every state, and the user did
+      // not ask for a preview at all — they changed a token.
+      if (mode.running) return { mode, call: "none" };
+      return { mode: { running: true, state: "cycle" }, call: "start" };
 
     case "stop":
       if (!mode.running) return { mode, call: "none" };
@@ -133,4 +143,100 @@ export function reducePreview(
         call: mode.running ? "stop" : "none",
       };
   }
+}
+
+/**
+ * A change the user just made that is worth seeing on the real overlay.
+ *
+ * Deliberately only the two that change what the *surface* is made of.
+ * Everything else — a colour, a length — is a change to a card the user can
+ * already see if a preview is running, and starting one for each of them
+ * would put an overlay on screen every time a slider moves.
+ */
+export type PreviewChange =
+  | { kind: "material"; to: Material }
+  | { kind: "glassStyle" };
+
+/** One such change as the tab reports it, tagged with a sequence number: two
+ *  identical changes in a row are still two requests, and an answered request
+ *  can be told from one still waiting. See [`answerPreviewRequest`]. */
+export interface PreviewChangeRequest {
+  change: PreviewChange;
+  seq: number;
+}
+
+/** What the tab knows when it decides whether to start showing. */
+export interface PreviewAutoStartState {
+  /** Whether a preview is already on screen. */
+  running: boolean;
+  style: OverlayStyle;
+  isRecording: boolean;
+  /** `glass_support.available`: whether Glass is what would actually be
+   *  painted right now, rather than merely a Material this build supports. */
+  glassAvailable: boolean;
+}
+
+/**
+ * Whether a token change should put the overlay on screen by itself, as the
+ * action to dispatch — or `null` for "leave the screen alone".
+ *
+ * Picking Glass with no preview running used to change nothing visible: the
+ * user chose a Material, the card behind the settings window changed, and
+ * they had to find the Start button to see it. Selecting Glass, or changing
+ * the Glass style, therefore starts the preview itself; the Stop button is
+ * right there, and it is the only way out, so nothing can be left on screen
+ * without the user being told how to take it off.
+ *
+ * Choosing *Flat* does not: Flat is what the overlay already looks like
+ * everywhere else, so there is nothing new to show. Neither does Glass on a
+ * machine that cannot draw it right now — supported but unavailable, which is
+ * what macOS Reduce Transparency leaves — because the overlay would come up
+ * Flat, answering "show me glass" with the card the user already has.
+ *
+ * The refusals are [`previewBlocker`]'s, not a second copy of them: a preview
+ * that may not be started by hand may not be started on the user's behalf
+ * either.
+ */
+export function autoStartFor(
+  change: PreviewChange,
+  state: PreviewAutoStartState,
+): PreviewAction | null {
+  if (change.kind === "material" && change.to !== "glass") return null;
+  // Both changes are about the glass, so both need glass to be what renders.
+  if (!state.glassAvailable) return null;
+  if (state.running) return null;
+  if (previewBlocker(state.isRecording, state.style) !== null) return null;
+  return { kind: "autoStart" };
+}
+
+/** The answer to one [`PreviewChangeRequest`]: the sequence number that has
+ *  now been dealt with, and what to dispatch for it — `null` for "leave the
+ *  screen alone", which is still an answer. */
+export interface PreviewRequestAnswer {
+  seq: number;
+  action: PreviewAction | null;
+}
+
+/**
+ * Answer a change request, at most once.
+ *
+ * The tab reports what the user did and this says what the preview does about
+ * it, so the "once per request" rule is testable rather than a shape an effect
+ * happens to have. `answeredSeq` is the last sequence number that got an
+ * answer: a request carrying it is already dealt with, which is what keeps a
+ * later `style`, `isRecording` or Glass-availability change from re-running an
+ * answered request, and keeps an asynchronous first resolved payload from
+ * faking a change the user never made. `null` means there is nothing to answer
+ * and the caller leaves its mark where it is.
+ *
+ * A request answered with no action still counts as answered — the user's pick
+ * was considered and the screen was deliberately left alone.
+ */
+export function answerPreviewRequest(
+  request: PreviewChangeRequest | null | undefined,
+  answeredSeq: number,
+  state: PreviewAutoStartState,
+): PreviewRequestAnswer | null {
+  if (!request || request.seq === answeredSeq) return null;
+  return { seq: request.seq, action: autoStartFor(request.change, state) };
 }

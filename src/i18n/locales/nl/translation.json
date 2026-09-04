@@ -301,7 +301,8 @@
           "glass": "Glas",
           "glassMacOnly": "Glas (alleen macOS)"
         },
-        "unavailableNote": "Glas is op deze Mac op dit moment niet beschikbaar — bijvoorbeeld wanneer Transparantie verminderen aanstaat in macOS — dus de overlay wordt Vlak weergegeven."
+        "unavailableNote": "Glas is op deze Mac op dit moment niet beschikbaar — bijvoorbeeld wanneer Transparantie verminderen aanstaat in macOS — dus de overlay wordt Vlak weergegeven.",
+        "glassHint": "De tintsterkte bepaalt hoeveel de oppervlakkleur het glas bedekt — verlaag hem om meer van de achtergrond te zien."
       },
       "glassStyle": {
         "title": "Glasstijl",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Dekking van oppervlak",
-          "description": "Hoe doorzichtig de achtergrond van de kaart is."
+          "description": "Hoe doorzichtig de achtergrond van de kaart is. Geldt bij het materiaal Vlak; Glas heeft zijn eigen tintsterkte."
+        },
+        "glassTint": {
+          "title": "Tintsterkte",
+          "description": "Hoeveel de oppervlakkleur het glas bedekt. Lager laat meer door van wat achter de overlay zit."
         },
         "text": {
           "title": "Tekst",

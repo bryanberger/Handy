@@ -301,7 +301,8 @@
           "glass": "玻璃",
           "glassMacOnly": "玻璃（仅 macOS）"
         },
-        "unavailableNote": "此 Mac 目前无法使用玻璃（例如 macOS 的「降低透明度」已开启时），因此悬浮窗以平面呈现。"
+        "unavailableNote": "此 Mac 目前无法使用玻璃（例如 macOS 的「降低透明度」已开启时），因此悬浮窗以平面呈现。",
+        "glassHint": "着色强度决定表面颜色覆盖玻璃的程度——调低即可看到更多背后的内容。"
       },
       "glassStyle": {
         "title": "玻璃样式",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "表面不透明度",
-          "description": "卡片背景的通透程度。"
+          "description": "卡片背景的通透程度。在材质为平面时生效；玻璃有自己的着色强度。"
+        },
+        "glassTint": {
+          "title": "着色强度",
+          "description": "表面颜色覆盖玻璃的程度。调低会透出更多悬浮窗背后的内容。"
         },
         "text": {
           "title": "文字",

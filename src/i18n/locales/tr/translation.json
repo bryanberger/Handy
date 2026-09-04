@@ -301,7 +301,8 @@
           "glass": "Cam",
           "glassMacOnly": "Cam (yalnızca macOS)"
         },
-        "unavailableNote": "Cam şu anda bu Mac'te kullanılamıyor — örneğin macOS'te Saydamlığı azalt açıkken — bu yüzden ekran katmanı Düz olarak çizilir."
+        "unavailableNote": "Cam şu anda bu Mac'te kullanılamıyor — örneğin macOS'te Saydamlığı azalt açıkken — bu yüzden ekran katmanı Düz olarak çizilir.",
+        "glassHint": "Ton yoğunluğu, yüzey renginin camı ne kadar kaplayacağını belirler — arkadakini daha çok görmek için düşürün."
       },
       "glassStyle": {
         "title": "Cam Stili",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Yüzey Opaklığı",
-          "description": "Kartın arka planının ne kadar saydam olduğu."
+          "description": "Kartın arka planının ne kadar saydam olduğu. Düz malzemesinde geçerlidir; Cam'ın kendi ton yoğunluğu vardır."
+        },
+        "glassTint": {
+          "title": "Ton Yoğunluğu",
+          "description": "Yüzey renginin camı ne kadar kapladığı. Daha düşük değer, ekran katmanının arkasındakini daha çok gösterir."
         },
         "text": {
           "title": "Metin",

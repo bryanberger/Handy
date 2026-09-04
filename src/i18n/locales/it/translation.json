@@ -301,7 +301,8 @@
           "glass": "Vetro",
           "glassMacOnly": "Vetro (solo macOS)"
         },
-        "unavailableNote": "Il vetro non è disponibile su questo Mac in questo momento — ad esempio quando Riduci trasparenza è attivo su macOS — quindi l'overlay viene reso Piatto."
+        "unavailableNote": "Il vetro non è disponibile su questo Mac in questo momento — ad esempio quando Riduci trasparenza è attivo su macOS — quindi l'overlay viene reso Piatto.",
+        "glassHint": "L'intensità della tinta decide quanto il colore della superficie copre il vetro — abbassala per vedere di più di ciò che sta dietro."
       },
       "glassStyle": {
         "title": "Stile del vetro",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Opacità della superficie",
-          "description": "Quanto lascia trasparire lo sfondo della scheda."
+          "description": "Quanto lascia trasparire lo sfondo della scheda. Vale con il materiale Piatto; Vetro ha la sua intensità della tinta."
+        },
+        "glassTint": {
+          "title": "Intensità della tinta",
+          "description": "Quanto il colore della superficie copre il vetro. Più basso lascia passare di più di ciò che sta dietro l'overlay."
         },
         "text": {
           "title": "Testo",

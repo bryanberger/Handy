@@ -17,7 +17,7 @@ use tauri::{AppHandle, Emitter};
 
 /// Persist the whole overlay theme.
 ///
-/// The frontend always sends the complete fourteen-token object: setting one token,
+/// The frontend always sends the complete sixteen-token object: setting one token,
 /// clearing one token (reset to inherit) and resetting the whole theme are all
 /// this one call with a different object. That keeps the settings store's
 /// optimistic write and its rollback — both keyed on a single `AppSettings`

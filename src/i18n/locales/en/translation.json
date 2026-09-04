@@ -301,7 +301,8 @@
           "glass": "Glass",
           "glassMacOnly": "Glass (macOS only)"
         },
-        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
+        "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat.",
+        "glassHint": "Tint strength decides how much of the surface color covers the glass — lower it to see more of what is behind."
       },
       "glassStyle": {
         "title": "Glass Style",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Surface Opacity",
-          "description": "How see-through the card's background is."
+          "description": "How see-through the card's background is. Applies under the Flat material; Glass has its own tint strength."
+        },
+        "glassTint": {
+          "title": "Tint Strength",
+          "description": "How much of the surface color covers the glass. Lower lets more of what is behind the overlay through."
         },
         "text": {
           "title": "Text",

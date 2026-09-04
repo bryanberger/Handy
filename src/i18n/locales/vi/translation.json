@@ -301,7 +301,8 @@
           "glass": "Kính",
           "glassMacOnly": "Kính (chỉ macOS)"
         },
-        "unavailableNote": "Kính hiện không khả dụng trên máy Mac này — ví dụ khi Giảm độ trong suốt của macOS đang bật — nên lớp phủ được vẽ dạng Phẳng."
+        "unavailableNote": "Kính hiện không khả dụng trên máy Mac này — ví dụ khi Giảm độ trong suốt của macOS đang bật — nên lớp phủ được vẽ dạng Phẳng.",
+        "glassHint": "Độ đậm màu phủ quyết định màu bề mặt phủ lên kính bao nhiêu — hạ xuống để thấy nhiều hơn phía sau."
       },
       "glassStyle": {
         "title": "Kiểu kính",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Độ mờ đục của bề mặt",
-          "description": "Mức độ nhìn xuyên qua nền của thẻ."
+          "description": "Mức độ nhìn xuyên qua nền của thẻ. Áp dụng với chất liệu Phẳng; Kính có độ đậm màu phủ riêng."
+        },
+        "glassTint": {
+          "title": "Độ đậm màu phủ",
+          "description": "Màu bề mặt phủ lên kính bao nhiêu. Giá trị thấp hơn để lộ nhiều hơn phần phía sau lớp phủ."
         },
         "text": {
           "title": "Văn bản",

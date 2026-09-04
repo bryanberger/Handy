@@ -68,6 +68,10 @@ _Avoid_: background, fill, card color
 The overlay theme's foreground color: the transcript, and the base every derived neutral is mixed from. Set it whenever the surface is set.
 _Avoid_: foreground, fg, font color, transcript color
 
+**Tint strength**:
+How much of the surface colour covers the glass under Glass, from untinted to fully covered. Separate from Flat's surface opacity, so switching material never carries the other material's value across.
+_Avoid_: glass opacity, tint alpha
+
 **Material**:
 How the surface is rendered: Flat (an opaque surface) or Glass (a translucent surface that blurs whatever is behind it).
 _Avoid_: effect, blur mode, vibrancy, acrylic, frosted (implementation terms)

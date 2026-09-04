@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
@@ -7,6 +7,7 @@ import { useResolvedOverlayTheme } from "@/hooks/useResolvedOverlayTheme";
 import { useSettings } from "@/hooks/useSettings";
 import {
   BORDER_OPACITY_INHERIT,
+  GLASS_TINT_INHERIT,
   INHERIT_ALL,
   SURFACE_OPACITY_INHERIT,
   type OverlayNumericKey,
@@ -24,9 +25,10 @@ import { GlassStyleSelector } from "./GlassStyleSelector";
 import { MaterialSelector } from "./MaterialSelector";
 import { OnScreenPreview } from "./OnScreenPreview";
 import {
-  OVERLAY_TOKEN_FIELDS,
+  overlayTokenFieldsFor,
   type OverlayTokenField,
 } from "./overlayTokenFields";
+import type { PreviewChange, PreviewChangeRequest } from "./previewMode";
 import { OverlayThemeProbes } from "./OverlayThemeProbes";
 import { ThemeFileGroup } from "./ThemeFileGroup";
 import { setOverlayThemeToken, useDraftSetting } from "./useDraftSetting";
@@ -34,10 +36,9 @@ import { EMPTY_FILE_STATE, useOverlayThemeVars } from "./useOverlayThemeVars";
 
 /** Token contract defaults that do not vary with the app theme; mirrors
  *  `RecordingOverlay.css`'s `:root` block, which is the actual source of
- *  truth these must be kept in step with by hand. The two opacities are
- *  excluded — their defaults depend on the effective Material and are read
- *  from the apply layer's own tables instead, so they can never drift from
- *  what is actually painted. */
+ *  truth these must be kept in step with by hand. The three alphas are
+ *  excluded — theirs live in the apply layer, beside the composition that
+ *  reads them, so they can never drift from what is actually painted. */
 const STATIC_NUMERIC_DEFAULTS: Partial<Record<OverlayNumericKey, number>> = {
   size_scale: 1,
   radius: 24,
@@ -48,7 +49,8 @@ const STATIC_NUMERIC_DEFAULTS: Partial<Record<OverlayNumericKey, number>> = {
 };
 
 function numericDefault(key: OverlayNumericKey, material: Material): number {
-  if (key === "surface_opacity") return SURFACE_OPACITY_INHERIT[material];
+  if (key === "surface_opacity") return SURFACE_OPACITY_INHERIT;
+  if (key === "glass_tint") return GLASS_TINT_INHERIT;
   if (key === "border_opacity") return BORDER_OPACITY_INHERIT[material];
   return STATIC_NUMERIC_DEFAULTS[key] ?? 0;
 }
@@ -89,7 +91,20 @@ const AppearanceSettingsInner: React.FC = () => {
 
   const style: OverlayStyle = settings?.overlay_style ?? "live";
 
+  // What the user last did to the surface itself, handed to the preview card,
+  // which decides whether it is worth putting the overlay on screen. The
+  // counter makes two identical picks two requests.
+  const [lastSurfaceChange, setLastSurfaceChange] =
+    useState<PreviewChangeRequest | null>(null);
+  const reportSurfaceChange = useCallback((change: PreviewChange) => {
+    setLastSurfaceChange((previous) => ({
+      change,
+      seq: (previous?.seq ?? 0) + 1,
+    }));
+  }, []);
+
   const vars = useOverlayThemeVars(resolved, draft, settings?.theme);
+  const glassSupport = resolved?.glass_support ?? NO_GLASS;
 
   const overlayTheme = settings?.overlay_theme ?? INHERIT_ALL;
   const resettingWhole = isUpdating("overlay_theme");
@@ -161,30 +176,41 @@ const AppearanceSettingsInner: React.FC = () => {
       // engine gating — rather than a generic dropdown, but both still live in
       // the descriptor table so the group is driven the same way as Color and
       // Size & Spacing.
-      case "material":
+      case "material": {
+        const current = vars.effectiveValue(field.key) ?? "flat";
         return (
           <MaterialSelector
             key={field.key}
-            value={vars.effectiveValue(field.key) ?? "flat"}
-            onSelect={(next) => void setOverlayThemeToken(field.key, next)}
-            glassSupport={resolved?.glass_support ?? NO_GLASS}
+            value={current}
+            onSelect={(next) => {
+              if (next !== current)
+                reportSurfaceChange({ kind: "material", to: next });
+              void setOverlayThemeToken(field.key, next);
+            }}
+            glassSupport={glassSupport}
             locked={locked}
             lockedDescription={lockedDescription}
           />
         );
+      }
 
-      case "glassStyle":
+      case "glassStyle": {
+        const current = vars.effectiveValue(field.key) ?? "regular";
         return (
           <GlassStyleSelector
             key={field.key}
-            value={vars.effectiveValue(field.key) ?? "regular"}
-            onSelect={(next) => void setOverlayThemeToken(field.key, next)}
+            value={current}
+            onSelect={(next) => {
+              if (next !== current) reportSurfaceChange({ kind: "glassStyle" });
+              void setOverlayThemeToken(field.key, next);
+            }}
             material={vars.effectiveValue("material") ?? "flat"}
-            glassSupport={resolved?.glass_support ?? NO_GLASS}
+            glassSupport={glassSupport}
             locked={locked}
             lockedDescription={lockedDescription}
           />
         );
+      }
     }
   };
 
@@ -206,6 +232,8 @@ const AppearanceSettingsInner: React.FC = () => {
           hasThemeFileOwnership={hasThemeFileOwnership}
           onResetConfirm={() => void resetSetting("overlay_theme")}
           onFlushDrafts={flushAll}
+          lastSurfaceChange={lastSurfaceChange}
+          glassAvailable={glassSupport.available}
         />
       </SettingsGroup>
 
@@ -221,20 +249,22 @@ const AppearanceSettingsInner: React.FC = () => {
 
       {style !== "none" && (
         <>
+          {/* Each group shows the rows its Material has: under Flat the
+              surface opacity, under Glass the tint strength in its place. */}
           <SettingsGroup title={t("settings.appearance.groups.color")}>
-            {OVERLAY_TOKEN_FIELDS.filter((f) => f.group === "color").map(
+            {overlayTokenFieldsFor("color", vars.effectiveMaterial).map(
               renderField,
             )}
           </SettingsGroup>
 
           <SettingsGroup title={t("settings.appearance.groups.material")}>
-            {OVERLAY_TOKEN_FIELDS.filter((f) => f.group === "material").map(
+            {overlayTokenFieldsFor("material", vars.effectiveMaterial).map(
               renderField,
             )}
           </SettingsGroup>
 
           <SettingsGroup title={t("settings.appearance.groups.size")}>
-            {OVERLAY_TOKEN_FIELDS.filter((f) => f.group === "size").map(
+            {overlayTokenFieldsFor("size", vars.effectiveMaterial).map(
               renderField,
             )}
           </SettingsGroup>
@@ -242,6 +272,7 @@ const AppearanceSettingsInner: React.FC = () => {
           <SettingsGroup title={t("settings.appearance.groups.themeFile")}>
             <ThemeFileGroup
               file={resolved?.file ?? EMPTY_FILE_STATE}
+              material={vars.effectiveMaterial}
               onReload={() => void reload()}
               isReloading={isReloading}
             />

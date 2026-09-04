@@ -6,12 +6,14 @@ import type { OverlayStyle, OverlayTheme, PreviewState } from "@/bindings";
 import { OverlayThemeReset } from "./OverlayThemeReset";
 import { themeAsJsonDocument } from "./ThemeFileGroup";
 import {
+  answerPreviewRequest,
   IDLE_PREVIEW,
   previewBlocker,
   previewChipsFor,
   reducePreview,
   type PreviewAction,
   type PreviewCall,
+  type PreviewChangeRequest,
   type PreviewMode,
 } from "./previewMode";
 
@@ -33,6 +35,15 @@ export interface OnScreenPreviewProps {
   /** Awaited before the preview starts, so the overlay never comes up showing
    *  tokens a pending debounce hasn't sent yet. */
   onFlushDrafts: () => Promise<void>;
+  /** The last Material or Glass style change the user made in the groups
+   *  below, which may start the preview by itself — see `autoStartFor`. The
+   *  tab reports the change rather than starting anything, so the decision
+   *  stays in one place and this card keeps sole ownership of the preview. */
+  lastSurfaceChange?: PreviewChangeRequest | null;
+  /** `glass_support.available` from the resolved theme: whether Glass is what
+   *  the overlay would actually draw. A change to Glass on a Mac that cannot
+   *  render it right now has nothing to show, so it starts nothing. */
+  glassAvailable: boolean;
 }
 
 /**
@@ -52,6 +63,8 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
   hasThemeFileOwnership,
   onResetConfirm,
   onFlushDrafts,
+  lastSurfaceChange = null,
+  glassAvailable,
 }) => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<PreviewMode>(IDLE_PREVIEW);
@@ -162,6 +175,28 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
       clearInterval(id);
     };
   }, []);
+
+  // Selecting Glass, or changing the Glass style, shows itself: the overlay
+  // comes up cycling so the change is on screen at once. What that is worth
+  // doing about is `answerPreviewRequest`'s call, including the once-per-
+  // request rule; all this effect owns is the ref remembering which request
+  // was answered, and the start it dispatches carries `send`'s mounted guard.
+  const answeredSeqRef = useRef(0);
+  useEffect(() => {
+    const answer = answerPreviewRequest(
+      lastSurfaceChange,
+      answeredSeqRef.current,
+      {
+        running: modeRef.current.running,
+        style,
+        isRecording,
+        glassAvailable,
+      },
+    );
+    if (!answer) return;
+    answeredSeqRef.current = answer.seq;
+    if (answer.action) dispatch(answer.action);
+  }, [lastSurfaceChange, style, isRecording, glassAvailable, dispatch]);
 
   // A real recording pre-empts the preview: the backend stops driving and
   // leaves the overlay to the session that took it, so the tab only has to

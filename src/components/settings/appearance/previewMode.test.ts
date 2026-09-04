@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import type { PreviewState } from "@/bindings";
 import {
+  answerPreviewRequest,
+  autoStartFor,
   IDLE_PREVIEW,
   previewBlocker,
   previewChipsFor,
   reducePreview,
+  type PreviewAutoStartState,
+  type PreviewChangeRequest,
   type PreviewMode,
 } from "./previewMode";
 
@@ -190,5 +194,179 @@ describe("reducePreview", () => {
     }
     expect(calls).toEqual(["start", "setState", "setState", "stop"]);
     expect(mode).toEqual({ running: false, state: "transcribing" });
+  });
+});
+
+/** Nothing in the way: no preview on screen, an overlay to show it on, no
+ *  recording, and a Mac that can actually draw glass right now. */
+const IDLE_TAB: PreviewAutoStartState = {
+  running: false,
+  style: "live",
+  isRecording: false,
+  glassAvailable: true,
+};
+
+describe("autoStartFor", () => {
+  const idle = IDLE_TAB;
+
+  test("picking Glass puts the overlay on screen by itself", () => {
+    expect(autoStartFor({ kind: "material", to: "glass" }, idle)).toEqual({
+      kind: "autoStart",
+    });
+  });
+
+  test("changing the Glass style does too", () => {
+    expect(autoStartFor({ kind: "glassStyle" }, idle)).toEqual({
+      kind: "autoStart",
+    });
+  });
+
+  /** Flat is what the overlay looks like everywhere else already; there is
+   *  nothing new to show, and starting a preview for it would be a window
+   *  appearing in answer to "make it plain". */
+  test("picking Flat shows nothing", () => {
+    expect(autoStartFor({ kind: "material", to: "flat" }, idle)).toBeNull();
+  });
+
+  test("a preview already on screen is left alone", () => {
+    expect(
+      autoStartFor(
+        { kind: "material", to: "glass" },
+        { ...idle, running: true },
+      ),
+    ).toBeNull();
+  });
+
+  /** The same refusals the Start button obeys: what may not be started by
+   *  hand may not be started on the user's behalf. */
+  test("it refuses for every reason the button refuses", () => {
+    expect(
+      autoStartFor(
+        { kind: "material", to: "glass" },
+        { ...idle, isRecording: true },
+      ),
+    ).toBeNull();
+    expect(
+      autoStartFor({ kind: "glassStyle" }, { ...idle, style: "none" }),
+    ).toBeNull();
+  });
+
+  /** Glass the machine supports but cannot draw right now — macOS Reduce
+   *  Transparency is the case that prompted this — renders Flat, so starting
+   *  a preview would answer "show me glass" with the card already there. */
+  test("Glass that would not actually render shows nothing", () => {
+    expect(
+      autoStartFor(
+        { kind: "material", to: "glass" },
+        {
+          running: false,
+          style: "live",
+          isRecording: false,
+          glassAvailable: false,
+        },
+      ),
+    ).toBeNull();
+    expect(
+      autoStartFor(
+        { kind: "glassStyle" },
+        {
+          running: false,
+          style: "minimal",
+          isRecording: false,
+          glassAvailable: false,
+        },
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("answerPreviewRequest", () => {
+  const glass: PreviewChangeRequest = {
+    change: { kind: "material", to: "glass" },
+    seq: 1,
+  };
+
+  test("no request is nothing to answer", () => {
+    expect(answerPreviewRequest(null, 0, IDLE_TAB)).toBeNull();
+    expect(answerPreviewRequest(undefined, 0, IDLE_TAB)).toBeNull();
+  });
+
+  test("a fresh request is answered, and names the seq to remember", () => {
+    expect(answerPreviewRequest(glass, 0, IDLE_TAB)).toEqual({
+      seq: 1,
+      action: { kind: "autoStart" },
+    });
+  });
+
+  test("a request already answered is never answered again", () => {
+    expect(answerPreviewRequest(glass, glass.seq, IDLE_TAB)).toBeNull();
+    // Not even once the state around it moves: this is what keeps a later
+    // style, recording or availability change from re-firing an answered pick.
+    expect(
+      answerPreviewRequest(glass, glass.seq, {
+        ...IDLE_TAB,
+        isRecording: true,
+      }),
+    ).toBeNull();
+  });
+
+  test("an answer of 'leave the screen alone' still counts as answered", () => {
+    // Picking Flat starts nothing, but the pick was dealt with — the next
+    // render must not reconsider it.
+    const flat: PreviewChangeRequest = {
+      change: { kind: "material", to: "flat" },
+      seq: 2,
+    };
+    expect(answerPreviewRequest(flat, 1, IDLE_TAB)).toEqual({
+      seq: 2,
+      action: null,
+    });
+    expect(answerPreviewRequest(flat, 2, IDLE_TAB)).toBeNull();
+  });
+
+  test("two identical picks in a row are two answers", () => {
+    const first: PreviewChangeRequest = {
+      change: { kind: "glassStyle" },
+      seq: 1,
+    };
+    const second: PreviewChangeRequest = {
+      change: { kind: "glassStyle" },
+      seq: 2,
+    };
+    expect(answerPreviewRequest(first, 0, IDLE_TAB)).toEqual({
+      seq: 1,
+      action: { kind: "autoStart" },
+    });
+    expect(answerPreviewRequest(second, 1, IDLE_TAB)).toEqual({
+      seq: 2,
+      action: { kind: "autoStart" },
+    });
+  });
+});
+
+describe("the auto-start transition", () => {
+  test("it starts the loop, whatever chip was remembered", () => {
+    const { mode, call } = reducePreview(
+      { running: false, state: "transcribing" },
+      { kind: "autoStart" },
+    );
+    expect(mode).toEqual({ running: true, state: "cycle" });
+    expect(call).toBe("start");
+  });
+
+  test("it sends nothing to a preview that is already running", () => {
+    const { mode, call } = reducePreview(running("listening"), {
+      kind: "autoStart",
+    });
+    expect(mode).toEqual(running("listening"));
+    expect(call).toBe("none");
+  });
+
+  test("Stop is still the way out of one it started", () => {
+    const started = reducePreview(IDLE_PREVIEW, { kind: "autoStart" }).mode;
+    expect(reducePreview(started, { kind: "stop" })).toEqual({
+      mode: { running: false, state: "cycle" },
+      call: "stop",
+    });
   });
 });

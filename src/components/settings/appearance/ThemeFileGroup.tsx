@@ -6,9 +6,13 @@ import { Button } from "@/components/ui/Button";
 import { PathDisplay } from "@/components/ui/PathDisplay";
 import { SettingContainer } from "@/components/ui/SettingContainer";
 import { INHERIT_ALL, type OverlayThemeKey } from "@/lib/overlayTheme";
-import { OVERLAY_TOKEN_FIELDS } from "./overlayTokenFields";
+import {
+  OVERLAY_TOKEN_GROUPS,
+  overlayTokenFieldsFor,
+} from "./overlayTokenFields";
 import { commands } from "@/bindings";
 import type {
+  Material,
   OverlayTheme,
   ResolvedOverlayTheme,
   ThemeFileDiagnosticCode,
@@ -31,33 +35,43 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
   return JSON.stringify(doc, null, 2);
 }
 
-/** The tokens the Appearance tab actually has a row for. Read off the
- *  descriptor table rather than listed again here, so a token that gains or
- *  loses its row is counted correctly without a second edit. Today the only
- *  absentee is `glass_material`: it drives the pre-macOS-26 fallback engine
- *  and is set from the theme file alone. */
-const KEYS_WITH_A_ROW = new Set<OverlayThemeKey>(
-  OVERLAY_TOKEN_FIELDS.map((field) => field.key),
-);
+/** The tokens the Appearance tab has a row for under one Material — every
+ *  group's rows, asked for the same way the groups themselves are rendered, so
+ *  a token that gains, loses or shares a row is counted without a second edit.
+ *  Two of the sixteen are always absent: `glass_material`, which drives the
+ *  pre-macOS-26 fallback engine and is set from the theme file alone, and
+ *  whichever alpha belongs to the other Material. */
+function keysWithARow(material: Material): Set<OverlayThemeKey> {
+  return new Set<OverlayThemeKey>(
+    OVERLAY_TOKEN_GROUPS.flatMap((group) =>
+      overlayTokenFieldsFor(group, material).map((field) => field.key),
+    ),
+  );
+}
 
 /**
  * What the "Active — this file sets N of M values" line counts: only the
- * tokens the tab can show as locked.
+ * tokens the tab can show as locked *right now*, on the Material being
+ * painted.
  *
- * A file that sets a tab-less token would otherwise be reported as owning a
- * value the user cannot find any row for, and the total would promise a row
- * that does not exist. The token is still honoured — this is a counting rule
- * for one sentence, not a filter on the file.
+ * A file that sets a token with no row on screen would otherwise be reported
+ * as owning a value the user cannot find any control for, and the total would
+ * promise rows that are not there — `glass_material` has none at all, and the
+ * two alphas share one slot, so fourteen of the sixteen tokens are showing at
+ * any moment. The tokens are still honoured — this is a counting rule for one
+ * sentence, not a filter on the file.
  */
-export function lockedTokenCounts(ownedKeys: readonly string[]): {
+export function lockedTokenCounts(
+  ownedKeys: readonly string[],
+  material: Material,
+): {
   count: number;
   total: number;
 } {
+  const shown = keysWithARow(material);
   return {
-    count: ownedKeys.filter((key) =>
-      KEYS_WITH_A_ROW.has(key as OverlayThemeKey),
-    ).length,
-    total: KEYS_WITH_A_ROW.size,
+    count: ownedKeys.filter((key) => shown.has(key as OverlayThemeKey)).length,
+    total: shown.size,
   };
 }
 
@@ -89,6 +103,9 @@ const MAX_SHOWN_DIAGNOSTICS = 5;
 
 export interface ThemeFileGroupProps {
   file: ResolvedOverlayTheme["file"];
+  /** The effective Material, which decides how many rows are on screen for
+   *  the "sets N of M values" line — see [`lockedTokenCounts`]. */
+  material: Material;
   onReload: () => void;
   isReloading: boolean;
   grouped?: boolean;
@@ -102,6 +119,7 @@ export interface ThemeFileGroupProps {
  */
 export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
   file,
+  material,
   onReload,
   isReloading,
   grouped = true,
@@ -138,7 +156,7 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
 
   const shown = file.diagnostics.slice(0, MAX_SHOWN_DIAGNOSTICS);
   const more = moreDiagnosticsCount(file.diagnostics_total, shown.length);
-  const owned = lockedTokenCounts(file.owned_keys);
+  const owned = lockedTokenCounts(file.owned_keys, material);
 
   return (
     <>

@@ -301,7 +301,8 @@
           "glass": "Sklo",
           "glassMacOnly": "Sklo (jen macOS)"
         },
-        "unavailableNote": "Sklo na tomto Macu právě není dostupné — například když je v macOS zapnuté Omezit průhlednost — takže se překryv vykresluje jako Plochý."
+        "unavailableNote": "Sklo na tomto Macu právě není dostupné — například když je v macOS zapnuté Omezit průhlednost — takže se překryv vykresluje jako Plochý.",
+        "glassHint": "Síla zabarvení určuje, jak moc barva povrchu překrývá sklo — snižte ji, ať je vidět víc z toho, co je za ním."
       },
       "glassStyle": {
         "title": "Styl skla",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Krytí povrchu",
-          "description": "Jak moc pozadí karty prosvítá."
+          "description": "Jak moc pozadí karty prosvítá. Platí pro materiál Plochý; Sklo má vlastní sílu zabarvení."
+        },
+        "glassTint": {
+          "title": "Síla zabarvení",
+          "description": "Jak moc barva povrchu překrývá sklo. Nižší hodnota propustí víc z toho, co je za překryvem."
         },
         "text": {
           "title": "Text",

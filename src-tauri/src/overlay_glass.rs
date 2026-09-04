@@ -17,7 +17,7 @@
 //! installed view, so a token change is a property write, never a re-install.
 //!
 //! Liquid Glass is also handed the card's surface tint, composed from
-//! `surface`/`surface_opacity` by `overlay_theme::liquid_tint` (which only
+//! `surface`/`glass_tint` by `overlay_theme::liquid_tint` (which only
 //! exists on macOS, so this is not an intra-doc link), so
 //! that the glass can lens it rather than have it painted flat on top. The
 //! card keeps painting its own surface as well: measured on macOS 26, a card
@@ -84,8 +84,9 @@ pub struct GlassAppearance {
     pub glass_style: GlassStyle,
     /// The `surface` token, or `None` to inherit the app background.
     pub surface: Option<crate::overlay_theme::HexColor>,
-    /// The `surface_opacity` token, or `None` to inherit.
-    pub surface_opacity: Option<f64>,
+    /// The `glass_tint` token, or `None` to inherit. Glass's own tint
+    /// strength: `surface_opacity` is Flat's control and is not read here.
+    pub glass_tint: Option<f64>,
 }
 
 impl GlassAppearance {
@@ -95,7 +96,7 @@ impl GlassAppearance {
             glass_material: theme.glass_material(),
             glass_style: theme.glass_style(),
             surface: theme.surface.clone(),
-            surface_opacity: theme.surface_opacity,
+            glass_tint: theme.glass_tint,
         }
     }
 }
@@ -485,7 +486,7 @@ mod native {
                 // itself changes under a card already on screen.
                 let tint = liquid_tint(
                     appearance.surface.as_ref(),
-                    appearance.surface_opacity,
+                    appearance.glass_tint,
                     is_dark(window),
                 );
                 liquid.setTintColor(tint.map(native_tint).as_deref());

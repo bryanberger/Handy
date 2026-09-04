@@ -32,9 +32,10 @@ export type OverlayThemeKey = keyof OverlayTheme;
 /** The four tokens whose value is a colour. */
 export type OverlayColorKey = "accent" | "surface" | "text" | "border";
 
-/** The eight tokens whose value is a number. */
+/** The nine tokens whose value is a number. */
 export type OverlayNumericKey =
   | "surface_opacity"
+  | "glass_tint"
   | "border_opacity"
   | "size_scale"
   | "radius"
@@ -55,6 +56,7 @@ export const OVERLAY_TOKEN_BOUNDS: Record<
   { min: number; max: number; step: number }
 > = {
   surface_opacity: { min: 0.3, max: 1.0, step: 0.01 },
+  glass_tint: { min: 0.0, max: 1.0, step: 0.01 },
   border_opacity: { min: 0.0, max: 1.0, step: 0.01 },
   size_scale: { min: 0.8, max: 1.5, step: 0.05 },
   radius: { min: 0, max: 32, step: 1 },
@@ -69,6 +71,7 @@ export const INHERIT_ALL: OverlayTheme = {
   accent: null,
   surface: null,
   surface_opacity: null,
+  glass_tint: null,
   text: null,
   border: null,
   border_opacity: null,
@@ -84,28 +87,41 @@ export const INHERIT_ALL: OverlayTheme = {
 };
 
 /**
- * The surface alpha an unset `surface_opacity` resolves to, per Material.
+ * The card alpha an unset `surface_opacity` resolves to: today's near-opaque
+ * card, straight from `RecordingOverlay.css`.
  *
- * Flat's 0.98 is today's near-opaque card. Glass's 0.45 is measured, not
- * guessed: over a split light/dark striped desktop the card passes about 53
- * levels of the backdrop through at 0.45 against 27 at the 0.70 this feature
- * first shipped with, which is the difference between "a dark card" and
- * "frosted glass" — while the worst-case contrast of the transcript over the
- * brightest backdrop stays at 6.1:1, comfortably past WCAG AA. Going further
- * to 0.30 buys another 10 levels but drops that worst case to 4.9:1, which a
- * pure-white desktop would push under the line.
+ * Flat's number, and only Flat's. The token is not read under Glass at all —
+ * see [`GLASS_TINT_INHERIT`] for why the two are separate tokens rather than
+ * one value with a per-Material default.
+ */
+export const SURFACE_OPACITY_INHERIT = 0.98;
+
+/**
+ * The tint alpha an unset `glass_tint` resolves to, on both engines.
+ *
+ * 0.45 is measured, not guessed: over a split light/dark striped desktop the
+ * card passes about 53 levels of the backdrop through at 0.45 against 27 at
+ * the 0.70 this feature first shipped with, which is the difference between
+ * "a dark card" and "frosted glass" — while the worst-case contrast of the
+ * transcript over the brightest backdrop stays at 6.1:1, comfortably past
+ * WCAG AA. Going further to 0.30 buys another 10 levels but drops that worst
+ * case to 4.9:1, which a pure-white desktop would push under the line.
  *
  * Liquid Glass (macOS 26) was measured against the same desktop and keeps the
  * same 0.45: at 0.30 the worst-case transcript contrast falls to 4.3:1 under a
  * Light app theme, under WCAG AA, while 0.45 holds 5.6-9.6:1 across both Glass
  * styles and both app themes. Rust composes the native `tintColor` from the
- * identical number (`SURFACE_OPACITY_INHERIT_GLASS` in
+ * identical number (`GLASS_TINT_INHERIT` in
  * `src-tauri/src/overlay_theme.rs`).
+ *
+ * **Why Glass has its own token.** While the two Materials shared
+ * `surface_opacity`, they were mutually exclusive in practice: a card set
+ * opaque under Flat stayed opaque when the user picked Glass, so Glass looked
+ * broken the first time it was chosen and nothing on screen said why. Each
+ * Material now carries its own alpha, so switching Material always lands on
+ * that Material's own value and Glass is glass immediately.
  */
-export const SURFACE_OPACITY_INHERIT: Record<Material, number> = {
-  flat: 0.98,
-  glass: 0.45,
-};
+export const GLASS_TINT_INHERIT = 0.45;
 
 /**
  * What an unset `border` mixes from: the foreground, on every Material.
@@ -291,21 +307,31 @@ export function resolveOverlayThemeVars(
     vars["--s-accent-soft"] = alphaMix(accent, ACCENT_SOFT_PERCENT);
   }
 
-  // Both surface tokens feed one property. With either one unset its inherited
-  // input is substituted, and because those inputs are literally today's, a
-  // theme that sets only the opacity keeps a theme-aware card.
+  // The surface colour is shared by both Materials; its alpha is not. Flat
+  // reads `surface_opacity`, Glass reads `glass_tint` and ignores the opacity
+  // entirely — which is what lets an opaque Flat card and see-through Glass
+  // live in one theme. With the colour unset its inherited input is
+  // substituted, and because that input is literally today's, a theme that
+  // sets only an alpha keeps a theme-aware card.
   const surface = validHex(theme.surface);
   const opacity = validToken(theme, "surface_opacity");
-  if (surface !== null || opacity !== null || glass) {
-    // The card paints this on every engine, Liquid Glass included. Liquid
-    // Glass is handed the same colour natively as well, so that it can lens
-    // it — but it is not trusted to be the only tint: measured on macOS 26, a
-    // card that painted nothing and left the tint to `tintColor` alone came
-    // out dark under a Light app theme, with the transcript unreadable on it.
-    const alpha = opacity ?? SURFACE_OPACITY_INHERIT[material];
+  const tint = validToken(theme, "glass_tint");
+  if (glass) {
+    // Written unconditionally under Glass: the CSS default of 98% would hide
+    // the blur. The card paints this on every engine, Liquid Glass included.
+    // Liquid Glass is handed the same colour natively as well, so that it can
+    // lens it — but it is not trusted to be the only tint: measured on
+    // macOS 26, a card that painted nothing and left the tint to `tintColor`
+    // alone came out dark under a Light app theme, with the transcript
+    // unreadable on it.
     vars["--s-surface"] = alphaMix(
       surface ?? "var(--color-background)",
-      alpha * 100,
+      (tint ?? GLASS_TINT_INHERIT) * 100,
+    );
+  } else if (surface !== null || opacity !== null) {
+    vars["--s-surface"] = alphaMix(
+      surface ?? "var(--color-background)",
+      (opacity ?? SURFACE_OPACITY_INHERIT) * 100,
     );
   }
 

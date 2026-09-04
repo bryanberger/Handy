@@ -31,8 +31,9 @@
 use crate::overlay_theme::{
     GlassMaterial, GlassStyle, HexColor, Material, OverlayTheme, ThemeFileDiagnostic,
     ThemeFileDiagnosticCode, ThemeFileState, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN,
-    BORDER_WIDTH_MAX, PADDING_MAX, RADIUS_MAX, SIZE_SCALE_MAX, SIZE_SCALE_MIN, SURFACE_OPACITY_MAX,
-    SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
+    BORDER_WIDTH_MAX, GLASS_TINT_MAX, GLASS_TINT_MIN, PADDING_MAX, RADIUS_MAX, SIZE_SCALE_MAX,
+    SIZE_SCALE_MIN, SURFACE_OPACITY_MAX, SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX,
+    WAVEFORM_WIDTH_MIN,
 };
 use log::{debug, warn};
 use serde_json::Value;
@@ -67,7 +68,7 @@ pub const THEME_FILE_ENV_VAR: &str = "HANDY_OVERLAY_THEME_FILE";
 /// Discussion #1802 asked for (`~/.config/handy/`).
 const LINUX_CONFIG_SUBDIR: &str = "handy";
 
-/// Anything larger than this is not a fifteen-key document; refused unread.
+/// Anything larger than this is not a sixteen-key document; refused unread.
 const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 
 /// How many diagnostics ride along in [`ThemeFileState`]. Every diagnostic
@@ -75,14 +76,15 @@ const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 /// unbounded in a hostile document.
 const MAX_DIAGNOSTICS: usize = 5;
 
-/// The fifteen token keys, in the token contract's order — which is also the
+/// The sixteen token keys, in the token contract's order — which is also the
 /// order the Appearance tab lists them in. This is the order
 /// [`ThemeFileState::owned_keys`] and the per-key diagnostics come out in, so
 /// the payload does not depend on how `serde_json` orders an object's keys.
-const TOKEN_KEYS: [&str; 15] = [
+const TOKEN_KEYS: [&str; 16] = [
     "accent",
     "surface",
     "surface_opacity",
+    "glass_tint",
     "text",
     "border",
     "border_opacity",
@@ -638,6 +640,11 @@ fn parse_document(text: &str) -> Result<ParsedDocument, ThemeFileDiagnostic> {
                 );
                 tokens.surface_opacity.is_some()
             }
+            "glass_tint" => {
+                tokens.glass_tint =
+                    parse_ratio(key, value, GLASS_TINT_MIN, GLASS_TINT_MAX, &mut diagnostics);
+                tokens.glass_tint.is_some()
+            }
             "border_opacity" => {
                 tokens.border_opacity = parse_ratio(
                     key,
@@ -772,8 +779,8 @@ fn parse_color(
 }
 
 /// Why a colour was refused. The alpha forms get their own sentence: silently
-/// dropping the alpha would misapply the user's intent, and `surface_opacity`
-/// is where that intent belongs.
+/// dropping the alpha would misapply the user's intent, and the two alpha
+/// tokens are where that intent belongs.
 fn color_problem(key: &str, raw: &str) -> String {
     let trimmed = raw.trim();
     let digits = trimmed.strip_prefix('#').unwrap_or(trimmed);
@@ -781,7 +788,7 @@ fn color_problem(key: &str, raw: &str) -> String {
         matches!(digits.len(), 4 | 8) && digits.chars().all(|digit| digit.is_ascii_hexdigit());
 
     if carries_alpha {
-        format!("'{key}' is {raw:?}, which carries alpha; colours are '#rrggbb' and transparency is 'surface_opacity'")
+        format!("'{key}' is {raw:?}, which carries alpha; colours are '#rrggbb' and transparency is 'surface_opacity' or 'glass_tint'")
     } else {
         format!("'{key}' is {raw:?}, not a '#rrggbb' colour")
     }
@@ -875,7 +882,8 @@ fn parse_glass_style(
         })
 }
 
-/// A 0–1 style token (`surface_opacity`, `border_opacity`, `size_scale`): a
+/// A 0–1 style token (`surface_opacity`, `glass_tint`, `border_opacity`,
+/// `size_scale`): a
 /// JSON number, clamped to the contract's bounds with a diagnostic when it
 /// had to move.
 fn parse_ratio(
@@ -1063,6 +1071,7 @@ mod tests {
   "accent": null,
   "surface": null,
   "surface_opacity": null,
+  "glass_tint": null,
   "text": null,
   "border": null,
   "border_opacity": null,
@@ -1084,6 +1093,7 @@ mod tests {
   "accent": "#7aa2f7",
   "surface": "#1a1b26",
   "surface_opacity": 0.92,
+  "glass_tint": 0.45,
   "text": "#c0caf5",
   "border": "#ffffff",
   "border_opacity": 0.3,
@@ -1310,6 +1320,7 @@ mod tests {
                 accent: hex("#7aa2f7"),
                 surface: hex("#1a1b26"),
                 surface_opacity: Some(0.92),
+                glass_tint: Some(0.45),
                 text: hex("#c0caf5"),
                 border: hex("#ffffff"),
                 border_opacity: Some(0.3),
@@ -1324,7 +1335,7 @@ mod tests {
                 waveform_width: Some(4),
             }
         );
-        // Every key is owned, so the tab locks all fifteen.
+        // Every key is owned, so the tab locks all sixteen.
         assert_eq!(parsed.owned_keys, TOKEN_KEYS.to_vec());
         assert!(parsed.diagnostics.is_empty());
     }
@@ -1342,10 +1353,12 @@ mod tests {
         assert_eq!(parsed.tokens.surface_opacity, Some(1.0));
         assert_eq!(parsed.tokens.material, Some(Material::Flat));
 
-        // The nine tokens it does not mention still inherit.
+        // The eleven tokens it does not mention still inherit.
+        assert_eq!(parsed.tokens.glass_tint, None);
         assert_eq!(parsed.tokens.border, None);
         assert_eq!(parsed.tokens.border_opacity, None);
         assert_eq!(parsed.tokens.glass_material, None);
+        assert_eq!(parsed.tokens.glass_style, None);
         assert_eq!(parsed.tokens.size_scale, None);
         assert_eq!(parsed.tokens.radius, None);
         assert_eq!(parsed.tokens.border_width, None);
@@ -1482,6 +1495,49 @@ mod tests {
         assert_eq!(quiet.tokens.radius, Some(13));
         assert_eq!(quiet.tokens.surface_opacity, Some(0.3));
         assert!(quiet.diagnostics.is_empty());
+    }
+
+    /// The Glass tint, with its bounds spelled out from the token table
+    /// rather than read from the module's constants. Its floor is zero, where
+    /// `surface_opacity`'s is 0.30 — the one place the two alpha tokens'
+    /// contracts visibly differ, and the reason a document can ask for
+    /// untinted glass but not for an invisible Flat card.
+    #[test]
+    fn the_glass_tint_parses_clamps_and_reaches_zero() {
+        let parsed = parse(r##"{ "glass_tint": 0.15, "surface_opacity": 1 }"##);
+        assert_eq!(parsed.tokens.glass_tint, Some(0.15));
+        assert_eq!(parsed.tokens.surface_opacity, Some(1.0));
+        assert!(parsed.diagnostics.is_empty());
+        // Contract order: the Glass tint sits beside the Flat opacity it
+        // replaces, not with the Material tokens.
+        assert_eq!(parsed.owned_keys, vec!["surface_opacity", "glass_tint"]);
+
+        // Zero is in bounds and silent.
+        let untinted = parse(r##"{ "glass_tint": 0 }"##);
+        assert_eq!(untinted.tokens.glass_tint, Some(0.0));
+        assert!(untinted.diagnostics.is_empty());
+
+        // Out of bounds clamps and is reported; the key is still owned.
+        let clamped = parse(r##"{ "glass_tint": 4 }"##);
+        assert_eq!(clamped.tokens.glass_tint, Some(1.0));
+        assert_eq!(clamped.owned_keys, vec!["glass_tint"]);
+        assert_eq!(
+            codes(&clamped.diagnostics),
+            vec![ThemeFileDiagnosticCode::OutOfBounds]
+        );
+
+        // A negative value clamps to untinted rather than inheriting.
+        let negative = parse(r##"{ "glass_tint": -1 }"##);
+        assert_eq!(negative.tokens.glass_tint, Some(0.0));
+
+        // The wrong JSON type costs this key alone.
+        let wrong = parse(r##"{ "glass_tint": "0.45", "accent": "#7aa2f7" }"##);
+        assert_eq!(wrong.tokens.glass_tint, None);
+        assert_eq!(wrong.tokens.accent, hex("#7aa2f7"));
+        assert_eq!(
+            codes(&wrong.diagnostics),
+            vec![ThemeFileDiagnosticCode::WrongType]
+        );
     }
 
     /// The border and waveform tokens, with the bounds spelled out from the
@@ -1669,11 +1725,11 @@ mod tests {
             ]
         );
 
-        // An alpha-carrying colour points at the token that does carry alpha.
+        // An alpha-carrying colour points at the tokens that do carry alpha.
         let alpha = parse(r##"{ "surface": "#1a1b26ff" }"##);
         assert_eq!(alpha.tokens.surface, None);
         assert!(
-            messages(&alpha.diagnostics).contains("surface_opacity"),
+            messages(&alpha.diagnostics).contains("glass_tint"),
             "{}",
             messages(&alpha.diagnostics)
         );

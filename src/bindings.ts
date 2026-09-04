@@ -910,7 +910,7 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 /**
  * Persist the whole overlay theme.
  * 
- * The frontend always sends the complete fourteen-token object: setting one token,
+ * The frontend always sends the complete sixteen-token object: setting one token,
  * clearing one token (reset to inherit) and resetting the whole theme are all
  * this one call with a different object. That keeps the settings store's
  * optimistic write and its rollback — both keyed on a single `AppSettings`
@@ -1178,8 +1178,8 @@ export type GlassEngine =
  * The eight values are the `NSVisualEffectMaterial` cases that make sense
  * behind a small floating card, ordered from the most see-through to the
  * least; the default is the one that measured the most backdrop transmission
- * on macOS 26, in both app themes, at the tint an unset `surface_opacity`
- * resolves to under Glass.
+ * on macOS 26, in both app themes, at the tint an unset `glass_tint`
+ * resolves to.
  */
 export type GlassMaterial = 
 /**
@@ -1385,11 +1385,11 @@ export type OverlayPosition = "top" | "bottom"
  */
 export type OverlayStyle = "none" | "minimal" | "live"
 /**
- * The fifteen overlay-theme tokens. `None` means *inherit*.
+ * The sixteen overlay-theme tokens. `None` means *inherit*.
  * 
  * Field names are literally the theme-file keys. Every field deserializes
  * leniently: a value of the wrong type or shape degrades to `None` with a
- * `warn!`, so one bad token can never cost the other eight — the same
+ * `warn!`, so one bad token can never cost the other fifteen — the same
  * principle `salvage_settings` applies one level up. The settings store's
  * leniency is silent salvage (log only); the theme file applies the same rules
  * but reports diagnostics, which is why it runs its own per-key pass instead
@@ -1405,9 +1405,22 @@ accent?: HexColor | null;
  */
 surface?: HexColor | null; 
 /**
- * The card background's alpha, 0.30–1.00.
+ * The card background's alpha **under Flat**, 0.30–1.00.
+ * 
+ * Read only while the effective Material is Flat. Under Glass the card's
+ * alpha is `glass_tint`, so a theme can keep an opaque Flat card and a
+ * see-through Glass one at the same time — before the split, choosing
+ * Glass with a high opacity painted an opaque card and nothing said why.
  */
 surface_opacity?: number | null; 
+/**
+ * How much of the `surface` colour covers the glass, 0.00–1.00.
+ * 
+ * Glass's own half of the pair above: the alpha the card paints its
+ * surface at while the effective Material is Glass, and the alpha the
+ * liquid engine's native `tintColor` is composed at. Ignored under Flat.
+ */
+glass_tint?: number | null; 
 /**
  * The card's foreground colour, and the base every neutral derives from.
  */

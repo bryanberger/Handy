@@ -301,7 +301,8 @@
           "glass": "Vidro",
           "glassMacOnly": "Vidro (apenas macOS)"
         },
-        "unavailableNote": "O vidro não está disponível neste Mac no momento — por exemplo quando Reduzir transparência está ativado no macOS — então a sobreposição é exibida como Plana."
+        "unavailableNote": "O vidro não está disponível neste Mac no momento — por exemplo quando Reduzir transparência está ativado no macOS — então a sobreposição é exibida como Plana.",
+        "glassHint": "A intensidade do tom decide o quanto a cor da superfície cobre o vidro — reduza-a para ver mais do que está atrás."
       },
       "glassStyle": {
         "title": "Estilo do vidro",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Opacidade da superfície",
-          "description": "O quanto o fundo do cartão deixa ver através."
+          "description": "O quanto o fundo do cartão deixa ver através. Vale com o material Plano; Vidro tem a própria intensidade do tom."
+        },
+        "glassTint": {
+          "title": "Intensidade do tom",
+          "description": "O quanto a cor da superfície cobre o vidro. Mais baixo deixa passar mais do que está atrás da sobreposição."
         },
         "text": {
           "title": "Texto",

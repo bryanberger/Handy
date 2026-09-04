@@ -301,7 +301,8 @@
           "glass": "Cristal",
           "glassMacOnly": "Cristal (solo macOS)"
         },
-        "unavailableNote": "El cristal no está disponible ahora mismo en este Mac — por ejemplo cuando Reducir transparencia está activado en macOS — así que la superposición se muestra Plana."
+        "unavailableNote": "El cristal no está disponible ahora mismo en este Mac — por ejemplo cuando Reducir transparencia está activado en macOS — así que la superposición se muestra Plana.",
+        "glassHint": "La intensidad del tinte decide cuánto cubre el cristal el color de la superficie — bájala para ver más de lo que hay detrás."
       },
       "glassStyle": {
         "title": "Estilo del cristal",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Opacidad de la superficie",
-          "description": "Cuánto se transparenta el fondo de la tarjeta."
+          "description": "Cuánto se transparenta el fondo de la tarjeta. Se aplica con el material Plano; Cristal tiene su propia intensidad de tinte."
+        },
+        "glassTint": {
+          "title": "Intensidad del tinte",
+          "description": "Cuánto cubre el cristal el color de la superficie. Más bajo deja pasar más de lo que hay detrás de la superposición."
         },
         "text": {
           "title": "Texto",

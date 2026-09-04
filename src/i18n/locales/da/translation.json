@@ -301,7 +301,8 @@
           "glass": "Glas",
           "glassMacOnly": "Glas (kun macOS)"
         },
-        "unavailableNote": "Glas er ikke tilgængeligt på denne Mac lige nu — for eksempel når Reducér gennemsigtighed er slået til i macOS — så overlayet vises Fladt."
+        "unavailableNote": "Glas er ikke tilgængeligt på denne Mac lige nu — for eksempel når Reducér gennemsigtighed er slået til i macOS — så overlayet vises Fladt.",
+        "glassHint": "Tonestyrken afgør, hvor meget overfladens farve dækker glasset — sænk den for at se mere af det, der er bagved."
       },
       "glassStyle": {
         "title": "Glasstil",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Overfladens dækkraft",
-          "description": "Hvor gennemsigtig kortets baggrund er."
+          "description": "Hvor gennemsigtig kortets baggrund er. Gælder for materialet Flad; Glas har sin egen tonestyrke."
+        },
+        "glassTint": {
+          "title": "Tonestyrke",
+          "description": "Hvor meget overfladens farve dækker glasset. Lavere lader mere af det, der er bag overlayet, komme igennem."
         },
         "text": {
           "title": "Tekst",

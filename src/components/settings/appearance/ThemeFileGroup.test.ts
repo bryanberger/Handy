@@ -25,21 +25,46 @@ describe("moreDiagnosticsCount", () => {
 });
 
 describe("lockedTokenCounts", () => {
-  test("the total is the tokens with a row, not every token there is", () => {
-    const { total } = lockedTokenCounts([]);
-    expect(total).toBe(OVERLAY_TOKEN_FIELDS.length);
-    // One token short of the contract's fifteen: `glass_material` drives the
-    // pre-macOS-26 fallback engine and has no row to be shown locked in.
-    expect(total).toBe(Object.keys(INHERIT_ALL).length - 1);
+  test("the total is the rows on screen, not every token there is", () => {
+    // Two short of the contract's sixteen, on either Material:
+    // `glass_material` drives the pre-macOS-26 fallback engine and has no row
+    // at all, and the two alphas share one slot — Flat's surface opacity or
+    // Glass's tint strength, never both.
+    for (const material of ["flat", "glass"] as const) {
+      const { total } = lockedTokenCounts([], material);
+      expect(total).toBe(14);
+      expect(total).toBe(OVERLAY_TOKEN_FIELDS.length - 1);
+      expect(total).toBe(Object.keys(INHERIT_ALL).length - 2);
+    }
   });
 
   test("counts the owned tokens the tab can show as locked", () => {
-    expect(lockedTokenCounts(["accent", "radius", "material"]).count).toBe(3);
+    expect(
+      lockedTokenCounts(["accent", "radius", "material"], "flat").count,
+    ).toBe(3);
   });
 
   test("a tab-less token the file owns is not counted", () => {
-    expect(lockedTokenCounts(["glass_material"]).count).toBe(0);
-    expect(lockedTokenCounts(["accent", "glass_material"]).count).toBe(1);
+    expect(lockedTokenCounts(["glass_material"], "flat").count).toBe(0);
+    expect(lockedTokenCounts(["accent", "glass_material"], "flat").count).toBe(
+      1,
+    );
+  });
+
+  test("nor is the alpha belonging to the other Material", () => {
+    // A file that pins both alphas fills exactly one row, whichever Material
+    // is being painted; the other control is not on screen to be locked.
+    const bothAlphas = ["surface_opacity", "glass_tint"];
+    expect(lockedTokenCounts(bothAlphas, "flat")).toEqual({
+      count: 1,
+      total: 14,
+    });
+    expect(lockedTokenCounts(bothAlphas, "glass")).toEqual({
+      count: 1,
+      total: 14,
+    });
+    expect(lockedTokenCounts(["glass_tint"], "flat").count).toBe(0);
+    expect(lockedTokenCounts(["surface_opacity"], "glass").count).toBe(0);
   });
 });
 

@@ -301,7 +301,8 @@
           "glass": "Verre",
           "glassMacOnly": "Verre (macOS uniquement)"
         },
-        "unavailableNote": "Le verre n'est pas disponible sur ce Mac pour le moment — par exemple lorsque Réduire la transparence est activé dans macOS — donc l'overlay est rendu en Plat."
+        "unavailableNote": "Le verre n'est pas disponible sur ce Mac pour le moment — par exemple lorsque Réduire la transparence est activé dans macOS — donc l'overlay est rendu en Plat.",
+        "glassHint": "L'intensité de la teinte détermine quelle part de la couleur de surface recouvre le verre — baissez-la pour voir davantage l'arrière-plan."
       },
       "glassStyle": {
         "title": "Style du verre",
@@ -327,7 +328,11 @@
         },
         "surfaceOpacity": {
           "title": "Opacité de la surface",
-          "description": "À quel point le fond de la carte laisse voir au travers."
+          "description": "À quel point le fond de la carte laisse voir au travers. S'applique avec le matériau Plat ; Verre a sa propre intensité de teinte."
+        },
+        "glassTint": {
+          "title": "Intensité de la teinte",
+          "description": "Quelle part de la couleur de surface recouvre le verre. Plus bas laisse passer davantage de ce qui se trouve derrière l'overlay."
         },
         "text": {
           "title": "Texte",

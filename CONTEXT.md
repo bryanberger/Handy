@@ -117,7 +117,7 @@ The extra native window area around the card, per overlay state, that keeps the 
 _Avoid_: padding, margin, window bleed
 
 **Shadow slack**:
-The window margin that the card is inset by so its own shadow falls inside the window. Zero under Glass, where macOS draws the shadow outside the card, and zero when the shadow strength is zero. The window keeps the card's own distance from the screen edge, growing by the full slack away from that edge and by only the room the card already had towards it, so the card does not move and the shadow is clipped at the usable edge.
+The window margin that the card is inset by so its own shadow falls inside the window. Zero under Glass, where macOS draws the shadow outside the card, and zero when the shadow strength is zero. The window keeps the card's own distance from the screen edge, growing by the full slack away from that edge and by at most the **edge margin** towards it, so the card does not move and the shadow is clipped at the usable edge.
 _Avoid_: shadow padding, shadow margin, window slack (which is the room a morph needs)
 
 **Glass style**:

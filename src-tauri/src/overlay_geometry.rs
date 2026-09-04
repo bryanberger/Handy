@@ -659,10 +659,15 @@ pub(crate) fn shadow_edge_slack(theme: &OverlayTheme, material: Material, room: 
 /// A value rather than a `#[cfg]` so every platform's edge margins are asserted
 /// on every host; [`Self::current`] alone reads the build target.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[allow(dead_code)] // Two of the three are always the other builds'.
 pub(crate) enum Platform {
+    // Two of the three are always the other builds', so each variant waives
+    // the unused check on the platforms that never construct it and keeps it
+    // on the one that does.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     MacOs,
+    #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
     Windows,
+    #[cfg_attr(any(target_os = "macos", target_os = "windows"), allow(dead_code))]
     Linux,
 }
 
@@ -797,7 +802,8 @@ pub(crate) fn overlay_edge_y(
 /// Where the platform reports no work area, GDK on Wayland returning the
 /// monitor geometry, this degrades to the raw monitor edge, exactly what the
 /// fallback path does today.
-#[allow(dead_code)] // Windows places through `windows_overlay_bounds`; both are tested everywhere.
+// Windows places through `windows_overlay_bounds`; both are tested everywhere.
+#[cfg_attr(target_os = "windows", allow(dead_code))]
 pub(crate) fn overlay_logical_origin(
     monitor: &MonitorBounds,
     logical_width: f64,
@@ -827,7 +833,8 @@ pub(crate) fn overlay_logical_origin(
 /// monitor's own scale and issued as physical pixels. The work area is already
 /// physical (`MONITORINFO.rcWork`), so only the margin, the shadow's edge slack
 /// and the window scale.
-#[allow(dead_code)] // Only Windows places through this; the tests run on every host.
+// Only Windows places through this; the tests run on every host.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 pub(crate) fn windows_overlay_bounds(
     monitor: &MonitorBounds,
     logical_width: f64,
@@ -856,8 +863,9 @@ pub(crate) fn windows_overlay_bounds(
 /// A screen edge the overlay can anchor to. The layer-shell half of
 /// [`OverlayPosition`], kept apart from `gtk_layer_shell::Edge` so the rule is
 /// testable off Linux.
+// Linux-only in production; asserted on every host.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[allow(dead_code)] // Linux-only in production; asserted on every host.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub(crate) enum ScreenEdge {
     Top,
     Bottom,
@@ -865,7 +873,8 @@ pub(crate) enum ScreenEdge {
 
 impl ScreenEdge {
     /// The edge across the screen, the one the surface must *not* anchor to.
-    #[allow(dead_code)] // Linux-only in production; asserted on every host.
+    // Linux-only in production; asserted on every host.
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     pub(crate) fn opposite(self) -> Self {
         match self {
             Self::Top => Self::Bottom,
@@ -883,8 +892,9 @@ impl ScreenEdge {
 /// with Handy computing nothing, provided Handy keeps its own exclusive zone at
 /// 0 and never enables the automatic one, which would push every other desktop
 /// window by the user's margin.
+// Linux-only in production; asserted on every host.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[allow(dead_code)] // Linux-only in production; asserted on every host.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub(crate) struct LayerShellPlacement {
     /// The edge the surface is anchored to.
     pub(crate) anchor: ScreenEdge,
@@ -901,7 +911,8 @@ pub(crate) struct LayerShellPlacement {
 /// gives that back and the card stays where it sits with no shadow. Never past
 /// the edge itself: `edge_slack` is capped at the margin, and the `max(0)` is
 /// belt and braces for a rounding step.
-#[allow(dead_code)] // Linux-only in production; asserted on every host.
+// Linux-only in production; asserted on every host.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub(crate) fn layer_shell_placement(
     position: OverlayPosition,
     margin: u16,

@@ -77,7 +77,7 @@ fn set_current_card_shape(shape: OverlayCardShape) -> OverlayCardShape {
 /// `edge_margin` against it: a window created before any show would otherwise
 /// be placed at the other edge's inherited margin.
 fn initial_overlay_window(app_handle: &AppHandle) -> OverlayWindowState {
-    let position = settings::get_settings(app_handle).overlay_position;
+    let position = settings::get_overlay_position(app_handle);
     update_overlay_position_cache(position);
     OverlayWindowState::initial(&crate::overlay_theme::resolve(app_handle), position)
 }

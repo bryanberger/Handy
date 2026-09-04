@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Themabestand",
-        "description": "Een optioneel JSON-bestand dat waarden van het overlaythema overschrijft, zodat externe thematools de overlay kunnen aansturen.",
+        "description": "Het JSON-bestand waarin je overlaythema staat. Handy schrijft het zodra je hier iets wijzigt, en een bewerking vanuit een teksteditor of een thematool wordt van kracht zodra die is opgeslagen.",
         "notFound": "Nog geen themabestand. Handy maakt er hier een aan zodra je hierboven iets wijzigt.",
         "owned": "Dit bestand is het thema; Handy schrijft het. Het stelt {{count}} van {{total}} waarden in.",
         "managed": {

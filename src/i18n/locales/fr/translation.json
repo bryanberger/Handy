@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Fichier de thème",
-        "description": "Un fichier JSON facultatif qui remplace les valeurs du thème de l'overlay, afin que des outils de personnalisation externes puissent piloter l'overlay.",
+        "description": "Le fichier JSON où vit le thème de l'overlay. Handy l'écrit dès que vous modifiez quelque chose ici, et une modification faite dans un éditeur de texte ou un outil de personnalisation s'applique dès qu'elle est enregistrée.",
         "notFound": "Pas encore de fichier de thème. Handy en crée un ici la première fois que vous modifiez quelque chose ci-dessus.",
         "owned": "Ce fichier est le thème ; c'est Handy qui l'écrit. Il définit {{count}} valeurs sur {{total}}.",
         "managed": {

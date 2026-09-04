@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Arquivo de tema",
-        "description": "Um arquivo JSON opcional que substitui os valores do tema da sobreposição, para que ferramentas externas de personalização possam controlá-la.",
+        "description": "O arquivo JSON onde vive o tema da sobreposição. O Handy o escreve sempre que você muda algo aqui, e uma edição feita em um editor de texto ou em uma ferramenta de personalização é aplicada assim que é salva.",
         "notFound": "Ainda não há arquivo de tema. O Handy cria um aqui na primeira vez que você mudar algo acima.",
         "owned": "Este arquivo é o tema; quem o escreve é o Handy. Ele define {{count}} de {{total}} valores.",
         "managed": {

@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Tema dosyası",
-        "description": "Ekran katmanı temasının değerlerini geçersiz kılan isteğe bağlı bir JSON dosyası; böylece harici tema araçları ekran katmanını yönetebilir.",
+        "description": "Ekran katmanı temanızın durduğu JSON dosyası. Burada bir şeyi her değiştirdiğinizde Handy bu dosyaya yazar; bir metin düzenleyicide ya da tema aracında yapılan düzenleme de kaydedilir kaydedilmez uygulanır.",
         "notFound": "Henüz tema dosyası yok. Yukarıda bir şeyi ilk değiştirdiğinizde Handy burada bir tane oluşturur.",
         "owned": "Bu dosya temanın kendisidir; onu Handy yazar. {{total}} değerden {{count}} tanesini ayarlıyor.",
         "managed": {

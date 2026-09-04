@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Archivo de tema",
-        "description": "Un archivo JSON opcional que sustituye los valores del tema de la superposición, para que herramientas de temas externas puedan controlarla.",
+        "description": "El archivo JSON donde vive el tema de la superposición. Handy lo escribe cada vez que cambias algo aquí, y una edición hecha desde un editor de texto o una herramienta de temas se aplica en cuanto se guarda.",
         "notFound": "Aún no hay archivo de tema. Handy creará uno aquí la primera vez que cambies algo de arriba.",
         "owned": "Este archivo es el tema; lo escribe Handy. Define {{count}} de {{total}} valores.",
         "managed": {

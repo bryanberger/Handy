@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Plik motywu",
-        "description": "Opcjonalny plik JSON, który nadpisuje wartości motywu nakładki, dzięki czemu zewnętrzne narzędzia do motywów mogą sterować nakładką.",
+        "description": "Plik JSON, w którym mieści się motyw nakładki. Handy zapisuje go za każdym razem, gdy coś tutaj zmienisz, a zmiana wprowadzona w edytorze tekstu lub w narzędziu do motywów zaczyna działać zaraz po zapisaniu.",
         "notFound": "Nie ma jeszcze pliku motywu. Handy utworzy go tutaj przy pierwszej zmianie powyżej.",
         "owned": "Ten plik jest motywem; zapisuje go Handy. Ustawia {{count}} z {{total}} wartości.",
         "managed": {

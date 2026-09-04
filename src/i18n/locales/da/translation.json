@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Temafil",
-        "description": "En valgfri JSON-fil, der tilsidesætter værdier i overlaytemaet, så eksterne temaværktøjer kan styre overlayet.",
+        "description": "JSON-filen, som dit overlaytema ligger i. Handy skriver den, hver gang du ændrer noget her, og en redigering fra en teksteditor eller et temaværktøj træder i kraft, så snart den gemmes.",
         "notFound": "Ingen temafil endnu. Handy opretter en her, første gang du ændrer noget ovenfor.",
         "owned": "Denne fil er temaet; Handy skriver den. Den angiver {{count}} af {{total}} værdier.",
         "managed": {

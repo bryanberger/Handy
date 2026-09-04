@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Soubor motivu",
-        "description": "Volitelný soubor JSON, který přepisuje hodnoty motivu překryvu, takže překryv mohou řídit externí nástroje pro motivy.",
+        "description": "Soubor JSON, ve kterém je uložen motiv překryvu. Handy do něj zapisuje, kdykoli tu něco změníte, a úprava z textového editoru nebo z nástroje pro motivy se projeví, jakmile je uložena.",
         "notFound": "Zatím žádný soubor motivu. Handy ho zde vytvoří, jakmile poprvé něco výše změníte.",
         "owned": "Tento soubor je motiv; zapisuje ho Handy. Nastavuje {{count}} z {{total}} hodnot.",
         "managed": {

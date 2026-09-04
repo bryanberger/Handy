@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Tệp giao diện",
-        "description": "Một tệp JSON tùy chọn ghi đè các giá trị giao diện lớp phủ, để các công cụ tạo giao diện bên ngoài có thể điều khiển lớp phủ.",
+        "description": "Tệp JSON chứa giao diện lớp phủ của bạn. Handy ghi tệp này mỗi khi bạn thay đổi thứ gì đó ở đây, và một chỉnh sửa từ trình soạn thảo văn bản hay công cụ tạo giao diện sẽ có hiệu lực ngay khi được lưu.",
         "notFound": "Chưa có tệp giao diện. Handy sẽ tạo một tệp ở đây trong lần đầu bạn thay đổi thứ gì đó ở trên.",
         "owned": "Tệp này chính là giao diện; Handy ghi tệp này. Nó đặt {{count}} trong {{total}} giá trị.",
         "managed": {

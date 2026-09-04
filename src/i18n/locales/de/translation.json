@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Designdatei",
-        "description": "Eine optionale JSON-Datei, die Werte des Overlay-Designs überschreibt, damit externe Theming-Tools das Overlay steuern können.",
+        "description": "Die JSON-Datei, in der dein Overlay-Design liegt. Handy schreibt sie, sobald du hier etwas änderst, und eine Änderung aus einem Texteditor oder einem Theming-Tool wirkt, sobald sie gespeichert ist.",
         "notFound": "Noch keine Designdatei. Handy legt hier eine an, sobald du oben etwas änderst.",
         "owned": "Diese Datei ist das Design; Handy schreibt sie. Sie setzt {{count}} von {{total}} Werten.",
         "managed": {

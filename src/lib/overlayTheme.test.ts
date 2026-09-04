@@ -310,6 +310,25 @@ describe("inherit", () => {
     expect(inheritedTokenValue("size_scale", "flat", "regular", 200)).toBe(1);
   });
 
+  // Before the first resolved payload there is no honest number: the inherit
+  // depends on the platform and the anchored edge, and only Rust knows both.
+  // Null comes back out so the tab can hold the row rather than flash a zero
+  // that reads as "flush" on a screen where nothing is flush.
+  test("an unresolved edge margin has no inherit to show", () => {
+    expect(inheritedTokenValue("edge_margin", "flat", "regular", null)).toBe(
+      null,
+    );
+    expect(inheritedTokenValue("edge_margin", "glass", "clear", null)).toBe(
+      null,
+    );
+    // Every other token's inherit is a constant, so a missing margin costs
+    // them nothing.
+    expect(inheritedTokenValue("radius", "flat", "regular", null)).toBe(24);
+    expect(inheritedTokenValue("border_opacity", "glass", "clear", null)).toBe(
+      BORDER_OPACITY_INHERIT_CLEAR,
+    );
+  });
+
   // Spotlight's capsule carries a bright rim in both appearances. Clear is our
   // only surface dark enough in both for white to read, so only it inherits
   // white. Flat and Regular keep the foreground mix their Light card shows.
@@ -347,6 +366,8 @@ describe("inherit", () => {
             glassStyle,
             EDGE_MARGIN_SAMPLE,
           );
+          // A margin was passed, so the one nullable token has a number here.
+          if (value === null) throw new Error(`${key} inherits nothing`);
           expect(value).toBeGreaterThanOrEqual(min);
           expect(value).toBeLessThanOrEqual(max);
         }

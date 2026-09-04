@@ -314,11 +314,11 @@ fn is_mouse_within_monitor(
 /// PR #969 to abandon it for full monitor bounds; this is the same call for
 /// every edge.
 ///
-/// Where a platform reports no work area — GDK on Wayland never overrides
-/// `get_workarea`, so it hands back the monitor geometry — the usable edges
-/// are the raw ones, which is what the fallback path already does today. That
-/// only reaches the screen without layer shell; under layer shell the
-/// compositor does the subtraction and this is never called.
+/// Where a platform reports no work area, the usable edges are the raw ones,
+/// which is what the fallback path already does today. GDK on Wayland is that
+/// case, never overriding `get_workarea` and so handing back the monitor
+/// geometry. It only reaches the screen without layer shell; under layer shell
+/// the compositor does the subtraction and this is never called.
 fn overlay_monitor_bounds(app_handle: &AppHandle) -> Option<MonitorBounds> {
     let monitor = get_monitor_with_cursor(app_handle)?;
     let work_area = monitor.work_area();
@@ -1005,8 +1005,12 @@ fn update_overlay_position_on_main(
         // size scale rather than reading the window's size back from the OS, so
         // a scale change resizes a visible window too. Without that the card
         // would repaint larger inside the old window and be clipped.
-        let anchor = settings::get_settings(app_handle).overlay_position;
-        update_overlay_position_cache(anchor);
+        // The cached edge, not the store: this runs on every frame of an
+        // `edge_margin` drag, where a full settings deserialize is the one cost
+        // the draft path cannot afford. It is also the edge `resolve` measured
+        // `effective_edge_margin` against, so reading it here once pairs the
+        // recorded state's edge with the margin belonging to it.
+        let anchor = current_overlay_position();
         let window = OverlayWindowState::new(current_card_shape(), &resolved, anchor);
         let (width, height) = window.window_size();
         let margin = window.edge_margin();

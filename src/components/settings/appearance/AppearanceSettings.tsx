@@ -67,12 +67,6 @@ const handleGlassShadow = (next: boolean) => {
   void setOverlayThemeToken("shadow_strength", next ? 1 : 0);
 };
 
-/** Shown on the edge-margin slider before the first resolved payload arrives,
- *  which carries the platform's own inherited margin. Zero rather than a guess
- *  at one platform's number: it is the one value that is meaningful everywhere
- *  ("flush"), and the real one replaces it on the next render. */
-const INHERITED_EDGE_MARGIN_UNKNOWN = 0;
-
 function isOverlayThemeDefault(theme: OverlayTheme): boolean {
   return (Object.values(theme) as unknown[]).every(
     (value) => value === null || value === undefined,
@@ -139,10 +133,10 @@ const AppearanceSettingsInner: React.FC = () => {
     vars.effectiveValue("show_waveform") ?? BOOLEAN_INHERIT.show_waveform;
   // What an unset `edge_margin` is worth here: Rust resolves it against the
   // platform and the anchored edge and ships the answer, so the slider shows
-  // the gap the overlay actually has. `INHERITED_EDGE_MARGIN_UNKNOWN` only
-  // shows before the first resolved payload, for one frame.
-  const inheritedEdgeMargin =
-    resolved?.effective_edge_margin ?? INHERITED_EDGE_MARGIN_UNKNOWN;
+  // the gap the overlay actually has. Null until that payload lands, and the
+  // row waits for it (see the Overlay group below) rather than flashing a
+  // number, since every stand-in would be a different platform's truth.
+  const inheritedEdgeMargin = resolved?.effective_edge_margin ?? null;
   const handleSelectMaterial = useCallback(
     (next: Material) => {
       if (next !== currentMaterial)
@@ -301,8 +295,11 @@ const AppearanceSettingsInner: React.FC = () => {
         <ShowOverlay descriptionMode="tooltip" grouped={true} />
         {/* The edge margin belongs to the position, not to the card's sizes,
             so its row sits here under Overlay Position. Hidden with that
-            dropdown when the overlay is off, there being no edge to sit at. */}
+            dropdown when the overlay is off, there being no edge to sit at,
+            and held back until Rust has said what an unset margin inherits on
+            this platform and this edge. */}
         {style !== "none" &&
+          inheritedEdgeMargin !== null &&
           overlayTokenFieldsFor("position", vars.effectiveMaterial).map(
             renderField,
           )}
@@ -372,6 +369,7 @@ const AppearanceSettingsInner: React.FC = () => {
               file={resolved?.file ?? EMPTY_FILE_STATE}
               material={vars.effectiveMaterial}
               showWaveform={showsWaveform}
+              style={style}
               watching={resolved?.watching ?? false}
               onReload={() => void reload()}
               isReloading={isReloading}

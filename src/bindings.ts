@@ -1632,8 +1632,8 @@ waveform_width?: number | null;
  * is *not* multiplied by `size_scale`: the screen does not zoom, and the
  * card's distance from the edge stays what the user chose at every scale.
  * Which edge it is measured from follows the `overlay_position` setting,
- * so an unset value inherits per platform *and* per position; see
- * [`Self::edge_margin`].
+ * so an unset value inherits per platform *and* per position, which the
+ * accessor of the same name resolves.
  */
 edge_margin?: number | null }
 /**
@@ -1707,24 +1707,6 @@ effective_material: Material;
  */
 glass_support: GlassSupport; 
 /**
- * How far the overlay window may reach past the card towards the screen
- * edge it is anchored to, in logical points, already scaled and whole.
- * 
- * Derived, like the Material above, and for the same reason: only Rust
- * knows the room the card has to the usable edge on this platform at this
- * overlay position, and the overlay page must inset the card by exactly
- * the same number or the card would move the moment a shadow is switched
- * on. The apply layer writes it straight into `--ov-shadow-edge-slack`;
- * the native window is sized and placed from it. Zero under Glass and
- * whenever the shadow strength is zero.
- */
-shadow_edge_slack?: number; 
-/**
- * The theme file behind `theme`: where it is, whether Handy writes it,
- * which tokens it sets and what the reader had to ignore.
- */
-file: ThemeFileState; 
-/**
  * The gap to the usable screen edge actually in effect, in points: the
  * `edge_margin` token, or the per-platform, per-position value an unset
  * one inherits. Concrete, never `None`.
@@ -1736,6 +1718,25 @@ file: ThemeFileState;
  * the one the window is placed from.
  */
 effective_edge_margin: number; 
+/**
+ * How far the overlay window may reach past the card towards the screen
+ * edge it is anchored to, in logical points, already scaled and whole.
+ * 
+ * Derived, like the Material above, and for the same reason: the overlay
+ * page must inset the card by exactly the same number the native window
+ * grew by, or the card would move the moment a shadow is switched on. It
+ * is capped at `effective_edge_margin`, the room the card has to the
+ * usable edge, so the window stops short of the Dock and the menu bar.
+ * The apply layer writes it straight into `--ov-shadow-edge-slack`; the
+ * native window is sized and placed from it. Zero under Glass and
+ * whenever the shadow strength is zero.
+ */
+shadow_edge_slack?: number; 
+/**
+ * The theme file behind `theme`: where it is, whether Handy writes it,
+ * which tokens it sets and what the reader had to ignore.
+ */
+file: ThemeFileState; 
 /**
  * Whether a file watcher is delivering changes to that file. False means
  * the Appearance tab keeps its Reload button, the only way a hand edit

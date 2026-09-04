@@ -611,8 +611,11 @@ pub struct OverlayTheme {
     /// is *not* multiplied by `size_scale`: the screen does not zoom, and the
     /// card's distance from the edge stays what the user chose at every scale.
     /// Which edge it is measured from follows the `overlay_position` setting,
-    /// so an unset value inherits per platform *and* per position; see
-    /// [`Self::edge_margin`].
+    /// so an unset value inherits per platform *and* per position, which the
+    /// accessor of the same name resolves.
+    // Deliberately no intra-doc link to that accessor: specta copies this doc
+    // into `src/bindings.ts` verbatim, where `[`Self::edge_margin`]` would
+    // land as a link to nothing.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub edge_margin: Option<u16>,
 }
@@ -2156,8 +2159,8 @@ mod tests {
     }
 
     /// The margin token's own rules: it clamps like the other lengths, and an
-    /// unset one is *not* one number — it follows the platform and the edge
-    /// the overlay is anchored to, so flipping Top/Bottom while nothing is set
+    /// unset one is *not* one number. It follows the platform and the edge the
+    /// overlay is anchored to, so flipping Top/Bottom while nothing is set
     /// keeps today's look on both.
     #[test]
     fn the_edge_margin_clamps_and_inherits_per_position() {

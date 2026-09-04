@@ -434,6 +434,7 @@ export const OVERLAY_THEME_LENGTH_PROPERTIES: readonly string[] = [
   "--ov-shadow-strength",
   "--ov-shadow-y",
   "--ov-shadow-slack",
+  "--ov-shadow-edge-slack",
 ];
 
 /**
@@ -519,6 +520,23 @@ export function autoForeground(surfaceHex: string): string {
 /** The Material actually rendered, re-validated (rule 2). */
 function effectiveMaterialOf(resolved: ResolvedOverlayTheme): Material {
   return resolved.effective_material === "glass" ? "glass" : "flat";
+}
+
+/**
+ * How far the card is inset from the screen edge the overlay is anchored to,
+ * in points, re-validated (rule 2).
+ *
+ * Derived by Rust and carried on the resolved theme, because only Rust knows
+ * the gap the card already has to the Dock, the taskbar or the menu bar on this
+ * platform, and the native window was sized and placed from this same number.
+ * There is no platform table here on purpose. A mirror written before the field
+ * existed, or a hand-edited one, falls back to the full slack, which is what
+ * the three other sides take.
+ */
+function edgeSlack(resolved: ResolvedOverlayTheme, slack: number): number {
+  const carried = resolved.shadow_edge_slack;
+  if (typeof carried !== "number" || !Number.isFinite(carried)) return slack;
+  return Math.min(Math.max(Math.round(carried), 0), slack);
 }
 
 /**
@@ -648,10 +666,10 @@ export function resolveOverlayThemeVars(
   // window this card fills exactly, and `shadow_strength` merely switches it
   // (`overlay_glass::window_shadow`), so no property is written there.
   //
-  // The slack is the one pre-scaled property in the file. CSS cannot round, and
-  // the native window inset the card by `ceil(reach * scale)`; a fractional
-  // disagreement would drift the card off its screen offset, so the integer is
-  // computed once, here.
+  // The two slacks are the only pre-scaled properties in the file. CSS cannot
+  // round, and the native window inset the card by these very integers; a
+  // fractional disagreement would drift the card off its screen offset, so each
+  // is computed once and written whole.
   const strength =
     validToken(theme, "shadow_strength") ?? SHADOW_STRENGTH_INHERIT[material];
   if (!glass && strength > 0) {
@@ -662,6 +680,7 @@ export function resolveOverlayThemeVars(
     vars["--ov-shadow-strength"] = String(strength);
     vars["--ov-shadow-y"] = `${offsetY}px`;
     vars["--ov-shadow-slack"] = `${slack}px`;
+    vars["--ov-shadow-edge-slack"] = `${edgeSlack(resolved, slack)}px`;
   }
 
   return vars;

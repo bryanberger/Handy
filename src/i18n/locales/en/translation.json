@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Shadow Offset",
-          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+          "description": "How far below the card its shadow falls. The card itself never moves; the overlay grows its window around it, and the shadow is trimmed where it would reach the screen edge."
         },
         "showWaveform": {
           "title": "Show Waveform",

@@ -99,9 +99,15 @@
   --ov-shadow-blur: 20px; /* the shadow's blur radius. Fixed: strength and offset are the
                              two controls, and the reach (blur + offset) is the window's slack. */
   --ov-shadow-slack: 0px; /* the room .ov-stage leaves around the card for its shadow.
-                             Written by the apply layer ALREADY SCALED and rounded up, the one
-                             pre-scaled property in this file, because CSS cannot ceil and the
-                             native window must inset the card by the very same integer. */
+                             Written by the apply layer ALREADY SCALED and rounded up, one of the
+                             two pre-scaled properties in this file, because CSS cannot ceil and
+                             the native window must inset the card by the very same integer. */
+  --ov-shadow-edge-slack: 0px; /* the same room on the screen edge the overlay is anchored to,
+                                  where the window could only grow as far as the gap the card
+                                  already had to the Dock or the menu bar. Rust derives it and
+                                  ships it on the resolved theme, because only Rust knows that
+                                  gap; the window is placed from the very same number, which is
+                                  what keeps the card still when a shadow is switched on. */
   --ov-side-min: 22px; /* the control row's side columns' floor: what the cancel button needs.
                           The apply layer drops it to 0 when show_cancel takes that button away.
                           A length at size scale 1 like every other token here, so .sbase scales
@@ -186,14 +192,20 @@
   justify-content: center; /* horizontal centering, kept for both forms */
   align-items: flex-end; /* bottom placement: flush to the bottom edge */
   font-family: var(--s-font);
-  /* Room for the card's own shadow, symmetric on all four sides. Taken raw:
-     the apply layer writes it already scaled and ceiled, and the native window
-     grew by twice this while keeping its screen-edge offset, so the card lifts
-     into the slack rather than the window moving. */
+  /* Room for the card's own shadow. Both values are taken raw: the apply layer
+     writes them already scaled and ceiled, and the native window grew by
+     exactly these, so the card lands where it sits with no shadow at all.
+     The full slack on the three sides away from the anchored screen edge, and
+     on the anchored side only the room the card already had to the Dock or the
+     menu bar, which is where the shadow's tail is clipped. */
   padding: var(--ov-shadow-slack);
+  padding-bottom: var(--ov-shadow-edge-slack);
 }
 .ov-stage.top {
   align-items: flex-start; /* top placement: flush to the top edge */
+  /* The anchored edge is the top one here, so the two swap. */
+  padding-top: var(--ov-shadow-edge-slack);
+  padding-bottom: var(--ov-shadow-slack);
 }
 
 /* Compact pill: fade the whole container in/out (the pill itself never pops or

@@ -1642,6 +1642,19 @@ effective_material: Material;
  */
 glass_support: GlassSupport; 
 /**
+ * How far the overlay window may reach past the card towards the screen
+ * edge it is anchored to, in logical points, already scaled and whole.
+ * 
+ * Derived, like the Material above, and for the same reason: only Rust
+ * knows the room the card has to the usable edge on this platform at this
+ * overlay position, and the overlay page must inset the card by exactly
+ * the same number or the card would move the moment a shadow is switched
+ * on. The apply layer writes it straight into `--ov-shadow-edge-slack`;
+ * the native window is sized and placed from it. Zero under Glass and
+ * whenever the shadow strength is zero.
+ */
+shadow_edge_slack: number; 
+/**
  * What the theme file contributed, including which tokens it owns and what
  * the reader had to ignore.
  */

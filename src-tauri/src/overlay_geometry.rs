@@ -367,9 +367,10 @@ pub(crate) struct CardMetrics {
 ///
 /// Beside [`CardMetrics`] rather than inside it, because these two do not
 /// describe the card's rectangle at all: they describe the space around it.
-/// The window grows by twice the slack on both axes and keeps its screen-edge
-/// offset, so the card lifts into the slack it gained and the window still
-/// covers exactly the strip it always covered.
+/// The window grows into that space on all four sides, by the full slack
+/// everywhere except the anchored screen edge, where it takes only the room
+/// the card already had. So the card does not move, and the window still stops
+/// short of the usable edge.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ShadowMetrics {
     /// 0.00 to 1.00, resolved against the Material's own inherit. Under Flat
@@ -448,18 +449,21 @@ impl CardMetrics {
     /// Rounds the scaled card up before adding the slack, so the window is
     /// never a fraction short of its card and every result is a whole point.
     ///
-    /// The shadow's own slack goes on last, twice per axis, since it is
-    /// symmetric: the card is inset from every window edge by it, so the
-    /// shadow has room to fall inside the window rather than outside it. The
-    /// placement does not compensate, so the *window* keeps the screen-edge
-    /// offset and the card floats the slack further in. At the Flat inherit
-    /// strength of 0 the slack is 0 and every window is the one this overlay
-    /// has always used.
+    /// The shadow's own slack goes on last. It is the full slack on the two
+    /// horizontal sides and on the side away from the screen edge the overlay
+    /// is anchored to; on the anchored side it is `edge_slack`, only the room
+    /// that already exists between the card and the usable edge. The card
+    /// therefore keeps the screen position it has with no shadow at all, the
+    /// window still never reaches past the usable edge, and the shadow's faint
+    /// tail is clipped there rather than covering the Dock or the menu bar. At
+    /// the Flat inherit strength of 0 both are 0 and every window is the one
+    /// this overlay has always used.
     pub(crate) fn window_size(
         &self,
         shape: OverlayCardShape,
         material: Material,
         shadow: ShadowMetrics,
+        edge_slack: f64,
     ) -> (f64, f64) {
         let (card_width, card_height) = match material {
             Material::Glass => shape.card_footprint(self),
@@ -467,10 +471,15 @@ impl CardMetrics {
         };
         let (slack_width, slack_height) = shape.card().slack(material);
         let shadow_slack = self.shadow_slack(material, shadow);
+        // Clamped rather than trusted. The edge slack is resolved against the
+        // Material actually rendered, and `OverlayWindowState::initial` sizes a
+        // Glass theme's first hidden window as Flat, so the two can disagree
+        // for exactly that one window.
+        let edge_slack = edge_slack.clamp(0.0, shadow_slack);
 
         (
             (card_width * self.scale).ceil() + slack_width + 2.0 * shadow_slack,
-            (card_height * self.scale).ceil() + slack_height + 2.0 * shadow_slack,
+            (card_height * self.scale).ceil() + slack_height + shadow_slack + edge_slack,
         )
     }
 
@@ -480,10 +489,13 @@ impl CardMetrics {
     /// Zero under Glass, where the window is the card and macOS draws the
     /// shadow outside it, and zero at strength 0, so a theme that asks for no
     /// shadow gets today's window byte for byte. Scaled and rounded up here
-    /// because CSS cannot round: `--ov-shadow-slack` is the one custom
-    /// property the apply layer writes already scaled, so `.ov-stage`'s padding
-    /// and this number are the same integer and the card cannot land on a
-    /// fraction of a point.
+    /// because CSS cannot round: `--ov-shadow-slack` is one of the two custom
+    /// properties the apply layer writes already scaled, so `.ov-stage`'s
+    /// padding and this number are the same integer and the card cannot land on
+    /// a fraction of a point.
+    ///
+    /// This is what the three sides away from the anchored screen edge take.
+    /// The anchored side takes [`shadow_edge_slack`] instead.
     pub(crate) fn shadow_slack(&self, material: Material, shadow: ShadowMetrics) -> f64 {
         if material == Material::Glass || !shadow.casts() {
             return 0.0;
@@ -587,6 +599,28 @@ impl CardMetrics {
     }
 }
 
+/// How far the overlay window may grow past the card on the screen edge it is
+/// anchored to, in whole logical points.
+///
+/// The whole placement rule in one line: the window takes the full
+/// [`CardMetrics::shadow_slack`] on the three sides away from that edge, and
+/// here only `room`, the gap the card already has to the usable edge (the
+/// bottom offset above the Dock, or the top offset below the menu bar). So the
+/// card keeps the screen position it has with no shadow, the window stops at
+/// the usable edge instead of covering the Dock or the menu bar, and the
+/// shadow's faint tail is clipped by the window boundary there.
+///
+/// Its result travels to the overlay page on the resolved theme, so the page's
+/// `.ov-stage` insets the card by the very same number and the two cannot
+/// disagree about where the card lands. `room` is the one thing the geometry
+/// cannot work out for itself: it comes from `overlay::anchored_edge_room`,
+/// which owns the per-platform offsets.
+pub(crate) fn shadow_edge_slack(theme: &OverlayTheme, material: Material, room: f64) -> f64 {
+    CardMetrics::from_theme(theme)
+        .shadow_slack(material, ShadowMetrics::from_theme(theme, material))
+        .min(room.max(0.0))
+}
+
 /// Everything a theme configures the native overlay window from.
 ///
 /// Its size, the blur's macOS material and the blur's corner radius are
@@ -608,6 +642,12 @@ pub(crate) struct OverlayWindowState {
     glass: GlassAppearance,
     metrics: CardMetrics,
     shadow: ShadowMetrics,
+    /// The anchored screen edge's share of the shadow slack, resolved once by
+    /// [`shadow_edge_slack`] and carried so the window and the overlay page
+    /// inset the card by the same number. A field rather than something this
+    /// state recomputes, because the room it is capped by belongs to the
+    /// screen, not to the theme.
+    edge_slack: f64,
 }
 
 impl OverlayWindowState {
@@ -621,7 +661,10 @@ impl OverlayWindowState {
     ///
     /// Glass cannot be in effect yet. `overlay_glass::install` needs the window
     /// this is sizing, so it has not run, and the first show resolves again and
-    /// resizes once Glass is installed.
+    /// resizes once Glass is installed. The resolved edge slack is Glass's 0
+    /// for the same reason, which `window_size` clamps against rather than
+    /// reads, so this window is at worst one shadow-slack short on its anchored
+    /// side until that first show.
     pub(crate) fn initial(resolved: &ResolvedOverlayTheme) -> Self {
         Self::for_material(OverlayCardShape::CompactRest, resolved, Material::Flat)
     }
@@ -637,13 +680,22 @@ impl OverlayWindowState {
             glass: GlassAppearance::from_theme(&resolved.theme),
             metrics: CardMetrics::from_theme(&resolved.theme),
             shadow: ShadowMetrics::from_theme(&resolved.theme, material),
+            edge_slack: resolved.shadow_edge_slack,
         }
     }
 
     /// The window this state wants, in logical points.
     pub(crate) fn window_size(&self) -> (f64, f64) {
         self.metrics
-            .window_size(self.shape, self.material, self.shadow)
+            .window_size(self.shape, self.material, self.shadow, self.edge_slack)
+    }
+
+    /// How far this window reaches past the card towards the anchored screen
+    /// edge. The placement subtracts it, so the card lands where it would with
+    /// no shadow at all.
+    pub(crate) fn edge_slack(&self) -> f64 {
+        self.edge_slack
+            .clamp(0.0, self.metrics.shadow_slack(self.material, self.shadow))
     }
 
     /// The `shadow_strength` the native window shadow is switched from.
@@ -726,7 +778,7 @@ mod tests {
         material: Material,
         border_width: u16,
     ) -> (f64, f64) {
-        metrics_for(scale, border_width).window_size(shape, material, inherit_shadow(material))
+        metrics_for(scale, border_width).window_size(shape, material, inherit_shadow(material), 0.0)
     }
 
     fn metrics_for(scale: f64, border_width: u16) -> CardMetrics {
@@ -750,7 +802,7 @@ mod tests {
             padding: Some(padding),
             ..OverlayTheme::default()
         })
-        .window_size(shape, material, inherit_shadow(material))
+        .window_size(shape, material, inherit_shadow(material), 0.0)
     }
 
     fn window_state() -> OverlayWindowState {
@@ -765,6 +817,7 @@ mod tests {
             },
             metrics: inherit_metrics(),
             shadow: inherit_shadow(Material::Flat),
+            edge_slack: 0.0,
         }
     }
 
@@ -816,6 +869,7 @@ mod tests {
                     radius_px,
                 },
             shadow: ShadowMetrics { strength, offset_y },
+            edge_slack,
         } = base.clone();
 
         // Each variant differs from `base` in exactly the field it names, and
@@ -897,6 +951,13 @@ mod tests {
                 offset_y: offset_y + 4,
                 ..base.shadow
             }),
+            // The anchored edge's share of that slack is not a token at all:
+            // it follows the overlay position and the platform, and it changes
+            // the window's height as well as where it is placed.
+            OverlayWindowState {
+                edge_slack: edge_slack + 8.0,
+                ..base.clone()
+            },
             // The four Glass-only tokens. Only the liquid engine reads the
             // style and tint, but all are live property writes on the
             // installed view, so a change to any has to reach it.
@@ -955,6 +1016,7 @@ mod tests {
             window(OverlayCardShape::LivePill, 1.0, Material::Flat)
         );
         assert_eq!(state.shadow_strength(), 0.0);
+        assert_eq!(state.edge_slack(), 0.0);
         assert_eq!(
             state.corner_radius(),
             inherit_metrics().corner_radius(OverlayCardShape::LivePill)
@@ -1454,9 +1516,13 @@ mod tests {
             };
             let by_hand = CardMetrics::from_theme(&theme);
             let shadow = ShadowMetrics::from_theme(&theme, material);
+            // Derived rather than written as 0, so the derivation is pinned to
+            // "no shadow, no room taken" at a room big enough to hide a bug.
+            let edge_slack = shadow_edge_slack(&theme, material, 40.0);
+            assert_eq!(edge_slack, 0.0, "{material:?}");
             for shape in OverlayCardShape::ALL {
                 assert_eq!(
-                    by_hand.window_size(shape, material, shadow),
+                    by_hand.window_size(shape, material, shadow, edge_slack),
                     window(shape, 1.0, material),
                     "{shape:?} {material:?}"
                 );
@@ -1464,22 +1530,26 @@ mod tests {
         }
     }
 
-    /// A Flat shadow grows the window by twice its reach on every side, so the
-    /// shadow has somewhere to fall. The expectations are `blur + offset`
-    /// scaled and rounded up, written out, never `shadow_slack()` again.
+    /// A Flat shadow grows the window by its full reach on the two horizontal
+    /// sides and on the side away from the anchored screen edge, and by the
+    /// room the card already had on the anchored side. The expectations are
+    /// `blur + offset` scaled and rounded up, written out, never
+    /// `shadow_slack()` again.
     #[test]
     fn the_flat_shadow_grows_the_window_on_every_side() {
-        // (offset, scale, slack per side, the resting pill's window at that
-        // slack): the blur is a fixed 20, and the windows without it are 256 x
-        // 46 at scale 1, 213 x 38 at 0.8 and 365 x 67 at 1.5.
-        for (offset, scale, slack, window_size) in [
-            (0, 1.00, 20.0, (296.0, 86.0)),
-            (4, 1.00, 24.0, (304.0, 94.0)),
-            (16, 1.00, 36.0, (328.0, 118.0)),
-            (4, 0.80, 20.0, (253.0, 78.0)), // 19.2, rounded up
-            (4, 1.50, 36.0, (437.0, 139.0)),
-            (16, 1.50, 54.0, (473.0, 175.0)),
-            (0, 0.80, 16.0, (245.0, 70.0)),
+        // (offset, scale, slack per side, the resting pill's window with the
+        // anchored edge given no room, and with it given the full slack): the
+        // blur is a fixed 20, and the windows without a shadow are 256 x 46 at
+        // scale 1, 213 x 38 at 0.8 and 365 x 67 at 1.5. Only the height differs
+        // between the two, by exactly the slack.
+        for (offset, scale, slack, clipped, roomy) in [
+            (0, 1.00, 20.0, (296.0, 66.0), (296.0, 86.0)),
+            (4, 1.00, 24.0, (304.0, 70.0), (304.0, 94.0)),
+            (16, 1.00, 36.0, (328.0, 82.0), (328.0, 118.0)),
+            (4, 0.80, 20.0, (253.0, 58.0), (253.0, 78.0)), // 19.2, rounded up
+            (4, 1.50, 36.0, (437.0, 103.0), (437.0, 139.0)),
+            (16, 1.50, 54.0, (473.0, 121.0), (473.0, 175.0)),
+            (0, 0.80, 16.0, (245.0, 54.0), (245.0, 70.0)),
         ] {
             let metrics = metrics_of(OverlayTheme {
                 size_scale: Some(scale),
@@ -1500,14 +1570,32 @@ mod tests {
             );
 
             assert_eq!(
-                metrics.window_size(OverlayCardShape::CompactRest, Material::Flat, shadow),
-                window_size,
-                "offset {offset} at {scale}"
+                metrics.window_size(OverlayCardShape::CompactRest, Material::Flat, shadow, 0.0),
+                clipped,
+                "offset {offset} at {scale}, no room at the anchored edge"
+            );
+            assert_eq!(
+                metrics.window_size(OverlayCardShape::CompactRest, Material::Flat, shadow, slack),
+                roomy,
+                "offset {offset} at {scale}, room to spare"
+            );
+            // More room than the shadow reaches is still only the shadow's
+            // reach; a window wider than its own slack would sit off centre.
+            assert_eq!(
+                metrics.window_size(
+                    OverlayCardShape::CompactRest,
+                    Material::Flat,
+                    shadow,
+                    slack + 100.0
+                ),
+                roomy,
+                "offset {offset} at {scale}, capped at the slack"
             );
         }
 
         // The four windows at the inherit offset and a mid strength, as
-        // literals: today's plus 2 x 24 on both axes.
+        // literals: today's plus 24 on each horizontal side, 24 above and the
+        // macOS bottom offset's 15 below.
         let shadow = ShadowMetrics::from_theme(
             &OverlayTheme {
                 shadow_strength: Some(0.5),
@@ -1517,12 +1605,12 @@ mod tests {
         );
         let metrics = inherit_metrics();
         assert_eq!(
-            metrics.window_size(OverlayCardShape::CompactRest, Material::Flat, shadow),
-            (304.0, 94.0)
+            metrics.window_size(OverlayCardShape::CompactRest, Material::Flat, shadow, 15.0),
+            (304.0, 85.0)
         );
         assert_eq!(
-            metrics.window_size(OverlayCardShape::LiveOpen, Material::Flat, shadow),
-            (448.0, 168.0)
+            metrics.window_size(OverlayCardShape::LiveOpen, Material::Flat, shadow, 15.0),
+            (448.0, 159.0)
         );
 
         // The strength only decides whether there is a shadow at all; the
@@ -1572,7 +1660,7 @@ mod tests {
                 assert_eq!(metrics.shadow_slack(Material::Glass, shadow), 0.0);
                 for shape in OverlayCardShape::ALL {
                     assert_eq!(
-                        metrics.window_size(shape, Material::Glass, shadow),
+                        metrics.window_size(shape, Material::Glass, shadow, 0.0),
                         window(shape, 1.0, Material::Glass),
                         "{shape:?} at {strength}/{offset}"
                     );
@@ -1581,10 +1669,105 @@ mod tests {
         }
     }
 
+    /// The anchored screen edge takes only the room the card already had
+    /// there, so the card keeps the position it has with no shadow at all.
+    #[test]
+    fn the_shadow_takes_only_the_room_the_card_has_at_the_anchored_edge() {
+        // (scale, offset, the full slack, and the edge slack at each of the
+        // three rooms the placement can offer: macOS Bottom's 15, macOS Top's
+        // 46 less a 30 point menu bar, and Windows and Linux's flush 4).
+        for (scale, offset, slack, at_15, at_16, at_4) in [
+            (1.00, 4, 24.0, 15.0, 16.0, 4.0),
+            (1.00, 16, 36.0, 15.0, 16.0, 4.0),
+            (0.80, 0, 16.0, 15.0, 16.0, 4.0),
+            (0.80, 4, 20.0, 15.0, 16.0, 4.0),
+            (1.50, 16, 54.0, 15.0, 16.0, 4.0),
+        ] {
+            let theme = OverlayTheme {
+                size_scale: Some(scale),
+                shadow_strength: Some(0.5),
+                shadow_offset_y: Some(offset),
+                ..OverlayTheme::default()
+            };
+            assert_eq!(
+                CardMetrics::from_theme(&theme).shadow_slack(
+                    Material::Flat,
+                    ShadowMetrics::from_theme(&theme, Material::Flat)
+                ),
+                slack,
+                "{scale} / {offset}"
+            );
+            for (room, expected) in [(15.0, at_15), (16.0, at_16), (4.0, at_4)] {
+                assert_eq!(
+                    shadow_edge_slack(&theme, Material::Flat, room),
+                    expected,
+                    "{scale} / {offset} in {room} points of room"
+                );
+            }
+            // A room the placement could never offer takes nothing extra, and
+            // one that has been eaten away entirely takes nothing at all.
+            assert_eq!(shadow_edge_slack(&theme, Material::Flat, 400.0), slack);
+            assert_eq!(shadow_edge_slack(&theme, Material::Flat, 0.0), 0.0);
+            assert_eq!(shadow_edge_slack(&theme, Material::Flat, -20.0), 0.0);
+            // Under Glass there is no CSS shadow to make room for, whatever
+            // the room is.
+            assert_eq!(shadow_edge_slack(&theme, Material::Glass, 40.0), 0.0);
+        }
+
+        // And a theme that asks for no shadow takes no room on either Material,
+        // which is what keeps today's windows byte-identical.
+        for material in [Material::Flat, Material::Glass] {
+            assert_eq!(
+                shadow_edge_slack(&OverlayTheme::default(), material, 40.0),
+                0.0,
+                "{material:?}"
+            );
+        }
+    }
+
+    /// The card's screen rectangle is byte-identical with and without a
+    /// shadow. The window grows and moves; the card does not.
+    ///
+    /// Stated here on the size alone, one shape at a time: the window gains the
+    /// full slack on the side away from the anchored screen edge and the edge
+    /// slack on the anchored side, and `.ov-stage` insets the card by those
+    /// very numbers, so the card's height and its distance from both window
+    /// edges are what they were. `overlay.rs`'s
+    /// `the_card_keeps_its_screen_position_when_a_shadow_is_added` completes it
+    /// by placing that window on a screen.
+    #[test]
+    fn a_shadow_moves_the_window_around_the_card_not_the_card() {
+        let theme = OverlayTheme {
+            shadow_strength: Some(1.0),
+            shadow_offset_y: Some(16),
+            ..OverlayTheme::default()
+        };
+        let metrics = CardMetrics::from_theme(&theme);
+        let shadow = ShadowMetrics::from_theme(&theme, Material::Flat);
+        let slack = metrics.shadow_slack(Material::Flat, shadow);
+        assert_eq!(slack, 36.0);
+
+        for shape in OverlayCardShape::ALL {
+            let bare = window(shape, 1.0, Material::Flat);
+            for room in [0.0, 4.0, 15.0, 40.0, 100.0] {
+                let edge = shadow_edge_slack(&theme, Material::Flat, room);
+                let shadowed = metrics.window_size(shape, Material::Flat, shadow, edge);
+                // The card sits `slack` from three window edges and `edge` from
+                // the anchored one, so what is left is exactly the bare window.
+                assert_eq!(
+                    (shadowed.0 - 2.0 * slack, shadowed.1 - slack - edge),
+                    bare,
+                    "{shape:?} in {room} points of room"
+                );
+            }
+        }
+    }
+
     /// The slack is computed in two languages, and CSS cannot round, so the
-    /// apply layer writes `--ov-shadow-slack` already scaled and ceiled. Both
-    /// sides must therefore start from the same blur radius and the same
-    /// expression; this reads the frontend for both.
+    /// apply layer writes `--ov-shadow-slack` already scaled and ceiled and
+    /// `--ov-shadow-edge-slack` from the number Rust derived. Both sides must
+    /// therefore start from the same blur radius and the same expressions;
+    /// this reads the frontend for all of it.
     #[test]
     fn the_shadow_slack_is_the_apply_layers() {
         assert_eq!(css_px(OVERLAY_CSS, "--ov-shadow-blur"), CARD_SHADOW_BLUR);
@@ -1596,10 +1779,34 @@ mod tests {
             APPLY_LAYER_TS.contains("Math.ceil((SHADOW_BLUR_PX + offsetY) * (scale ?? 1))"),
             "the apply layer no longer ceils blur + offset, scaled"
         );
-        // The stage takes the number verbatim, unscaled, because it arrives
-        // scaled. A `* var(--ov-scale)` here would square the factor.
+        // The anchored side is Rust's number, taken off the resolved theme and
+        // never re-derived from a platform table over there.
+        assert!(
+            APPLY_LAYER_TS.contains("const carried = resolved.shadow_edge_slack;"),
+            "the apply layer no longer reads the edge slack off the resolved theme"
+        );
+        assert!(
+            APPLY_LAYER_TS
+                .contains("vars[\"--ov-shadow-edge-slack\"] = `${edgeSlack(resolved, slack)}px`;"),
+            "the apply layer no longer writes the edge slack"
+        );
+        // Both are taken verbatim, unscaled, because they arrive scaled. A
+        // `* var(--ov-scale)` here would square the factor. The stage pads all
+        // four sides with the full slack and gives the anchored one back, which
+        // is the bottom by default and the top under `.ov-stage.top`.
+        let stage = css_rule(OVERLAY_CSS, ".ov-stage {");
+        assert_eq!(css_declaration(stage, "padding"), "var(--ov-shadow-slack)");
         assert_eq!(
-            css_declaration(css_rule(OVERLAY_CSS, ".ov-stage {"), "padding"),
+            css_declaration(stage, "padding-bottom"),
+            "var(--ov-shadow-edge-slack)"
+        );
+        let top = css_rule(OVERLAY_CSS, ".ov-stage.top {");
+        assert_eq!(
+            css_declaration(top, "padding-top"),
+            "var(--ov-shadow-edge-slack)"
+        );
+        assert_eq!(
+            css_declaration(top, "padding-bottom"),
             "var(--ov-shadow-slack)"
         );
     }
@@ -1636,7 +1843,12 @@ mod tests {
                 (OverlayCardShape::LiveOpen, glass[4], 118.0),
             ] {
                 assert_eq!(
-                    metrics.window_size(shape, Material::Glass, inherit_shadow(Material::Glass)),
+                    metrics.window_size(
+                        shape,
+                        Material::Glass,
+                        inherit_shadow(Material::Glass),
+                        0.0
+                    ),
                     (width, height),
                     "{shape:?} at gap {gap}"
                 );
@@ -1649,7 +1861,7 @@ mod tests {
                 (OverlayCardShape::LiveOpen, flat[1], 120.0),
             ] {
                 assert_eq!(
-                    metrics.window_size(shape, Material::Flat, inherit_shadow(Material::Flat)),
+                    metrics.window_size(shape, Material::Flat, inherit_shadow(Material::Flat), 0.0),
                     (width, height),
                     "{shape:?} at gap {gap}"
                 );
@@ -1686,7 +1898,7 @@ mod tests {
         // waveform, so it costs the row nothing here.
         for shape in [OverlayCardShape::CompactRest, OverlayCardShape::LivePill] {
             assert_eq!(
-                hidden.window_size(shape, Material::Glass, glass_shadow),
+                hidden.window_size(shape, Material::Glass, glass_shadow, 0.0),
                 (66.0, 42.0),
                 "{shape:?}"
             );
@@ -1697,7 +1909,7 @@ mod tests {
             (OverlayCardShape::LiveOpen, (394.0, 118.0)),
         ] {
             assert_eq!(
-                hidden.window_size(shape, Material::Glass, glass_shadow),
+                hidden.window_size(shape, Material::Glass, glass_shadow, 0.0),
                 expected,
                 "{shape:?}"
             );
@@ -1711,7 +1923,12 @@ mod tests {
             ..OverlayTheme::default()
         });
         assert_eq!(
-            no_cancel.window_size(OverlayCardShape::CompactRest, Material::Glass, glass_shadow),
+            no_cancel.window_size(
+                OverlayCardShape::CompactRest,
+                Material::Glass,
+                glass_shadow,
+                0.0
+            ),
             (174.0, 42.0)
         );
         // With the waveform gone too, the row is the dot between two paddings,
@@ -1723,7 +1940,7 @@ mod tests {
         });
         for shape in [OverlayCardShape::CompactRest, OverlayCardShape::LivePill] {
             assert_eq!(
-                bare.window_size(shape, Material::Glass, glass_shadow),
+                bare.window_size(shape, Material::Glass, glass_shadow, 0.0),
                 (29.0, 42.0),
                 "{shape:?}"
             );
@@ -1740,8 +1957,8 @@ mod tests {
                 (OverlayCardShape::LivePill, OverlayCardShape::LiveWorking),
                 (OverlayCardShape::LivePill, OverlayCardShape::LiveOpen),
             ] {
-                let (narrow, _) = metrics.window_size(from, Material::Glass, glass_shadow);
-                let (wide, _) = metrics.window_size(to, Material::Glass, glass_shadow);
+                let (narrow, _) = metrics.window_size(from, Material::Glass, glass_shadow, 0.0);
+                let (wide, _) = metrics.window_size(to, Material::Glass, glass_shadow, 0.0);
                 assert!(narrow <= wide, "{from:?} -> {to:?} is not a grow");
             }
         }
@@ -1787,7 +2004,12 @@ mod tests {
                 (OverlayCardShape::LivePill, live),
             ] {
                 assert_eq!(
-                    metrics.window_size(shape, Material::Glass, inherit_shadow(Material::Glass)),
+                    metrics.window_size(
+                        shape,
+                        Material::Glass,
+                        inherit_shadow(Material::Glass),
+                        0.0
+                    ),
                     expected,
                     "{shape:?} at scale {scale}, waveform {waveform}, cancel {cancel}"
                 );
@@ -1822,7 +2044,12 @@ mod tests {
                 });
                 for shape in OverlayCardShape::ALL {
                     assert_eq!(
-                        metrics.window_size(shape, Material::Flat, inherit_shadow(Material::Flat)),
+                        metrics.window_size(
+                            shape,
+                            Material::Flat,
+                            inherit_shadow(Material::Flat),
+                            0.0
+                        ),
                         window(shape, 1.0, Material::Flat),
                         "{shape:?} with waveform {show_waveform}, cancel {show_cancel}"
                     );
@@ -2135,6 +2362,7 @@ mod tests {
         );
         assert_eq!(css_px(OVERLAY_CSS, "--ov-shadow-blur"), CARD_SHADOW_BLUR);
         assert_eq!(css_px(OVERLAY_CSS, "--ov-shadow-slack"), 0.0);
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-shadow-edge-slack"), 0.0);
         // The card's own shadow: two layers, both scaled, both at an alpha the
         // strength multiplies, so strength 0 is fully transparent and Flat is
         // pixel-identical to what it always was.

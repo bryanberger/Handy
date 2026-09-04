@@ -49,6 +49,9 @@ function resolved(
   return {
     theme: { ...INHERIT_ALL, ...theme },
     effective_material: effective,
+    // The anchored edge's room, as macOS's Bottom placement offers it. Only
+    // the shadow's own tests move it.
+    shadow_edge_slack: 15,
     glass_support: {
       supported: effective === "glass",
       available: false,
@@ -703,7 +706,7 @@ describe("the worked example", () => {
   // view property, and `waveform_style` writes none either, being a renderer
   // the card picks rather than a value it paints. The neutrals mix from `var(--s-text)`, resolving to the
   // `--s-text` beside them, while a set `border` replaces it for the edge.
-  test("resolves to exactly the nineteen properties listed", () => {
+  test("resolves to exactly the twenty properties listed", () => {
     expect(resolveOverlayThemeVars(resolved(FULL_THEME))).toEqual({
       "--s-accent": "#7aa2f7",
       "--s-accent-soft": "color-mix(in srgb, #7aa2f7 20%, transparent)",
@@ -727,6 +730,9 @@ describe("the worked example", () => {
       "--ov-shadow-strength": "0.35",
       "--ov-shadow-y": "6px",
       "--ov-shadow-slack": "29px",
+      // …capped on the anchored side at the 15 points the fixture's payload
+      // says the card has to the usable edge.
+      "--ov-shadow-edge-slack": "15px",
     });
   });
 
@@ -735,7 +741,7 @@ describe("the worked example", () => {
     // match. One missing from OVERLAY_THEME_CSS_PROPERTIES paints on after its
     // token returns to inherit; one listed but never written is dead weight.
     // Read under Flat, the Material that draws its own shadow; under Glass the
-    // three shadow properties are deliberately absent (macOS draws it).
+    // four shadow properties are deliberately absent (macOS draws it).
     const written = Object.keys(resolveOverlayThemeVars(resolved(FULL_THEME)));
     for (const property of written) {
       expect(OVERLAY_THEME_CSS_PROPERTIES).toContain(property);
@@ -754,6 +760,9 @@ describe("the shadow", () => {
         // The offset falls back to its inherit, so the slack is 20 + 4.
         "--ov-shadow-y": "4px",
         "--ov-shadow-slack": "24px",
+        // …and the anchored screen edge gets the 15 points the fixture's
+        // resolved payload says the card has above the Dock.
+        "--ov-shadow-edge-slack": "15px",
       },
     );
 
@@ -803,10 +812,41 @@ describe("the shadow", () => {
     expect(vars["--ov-shadow-strength"]).toBeUndefined();
     expect(vars["--ov-shadow-y"]).toBeUndefined();
     expect(vars["--ov-shadow-slack"]).toBeUndefined();
+    expect(vars["--ov-shadow-edge-slack"]).toBeUndefined();
 
     // …and an unset strength under Glass inherits 1, still writing nothing.
     const inherited = resolveOverlayThemeVars(resolved({}, "glass"));
     expect(inherited["--ov-shadow-slack"]).toBeUndefined();
+  });
+
+  test("the anchored edge takes the number Rust derived, never its own", () => {
+    // The one number this module cannot work out: only Rust knows the gap the
+    // card has to the Dock, the taskbar or the menu bar, and the native window
+    // was sized and placed from the very same integer. Getting it wrong here
+    // moves the card the moment a shadow is switched on.
+    const withRoom = (room: number) => {
+      const payload = resolved({ shadow_strength: 0.5 });
+      return resolveOverlayThemeVars({ ...payload, shadow_edge_slack: room })[
+        "--ov-shadow-edge-slack"
+      ];
+    };
+
+    // macOS Bottom, macOS Top, Windows and Linux, and a screen edge with no
+    // room left at all.
+    expect(withRoom(15)).toBe("15px");
+    expect(withRoom(16)).toBe("16px");
+    expect(withRoom(4)).toBe("4px");
+    expect(withRoom(0)).toBe("0px");
+    // Never more than the slack itself, whatever arrives.
+    expect(withRoom(400)).toBe("24px");
+    expect(withRoom(-8)).toBe("0px");
+    // A mirror written before this field existed falls back to the full slack,
+    // which is what the other three sides take (rule 2).
+    const payload = resolved({ shadow_strength: 0.5 });
+    delete (payload as { shadow_edge_slack?: number }).shadow_edge_slack;
+    expect(resolveOverlayThemeVars(payload)["--ov-shadow-edge-slack"]).toBe(
+      "24px",
+    );
   });
 
   test("a Glass theme downgraded to Flat draws Flat's shadow", () => {

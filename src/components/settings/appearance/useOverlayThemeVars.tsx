@@ -179,6 +179,9 @@ export function useOverlayThemeVars(
       : {
           theme: mergeDraft(INHERIT_ALL, draft, []),
           effective_material: "flat" as const,
+          // No resolved theme means no window either, so the shadow has no
+          // screen edge to keep clear of.
+          shadow_edge_slack: 0,
           glass_support: {
             supported: false,
             available: false,

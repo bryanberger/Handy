@@ -1247,6 +1247,36 @@ pub fn get_overlay_theme(app: &AppHandle) -> crate::overlay_theme::OverlayTheme 
     overlay_theme_from_stored(store.get("settings").as_ref())
 }
 
+/// Just the stored `overlay_position`, without deserializing the rest of
+/// `AppSettings`.
+///
+/// The same shortcut as [`get_overlay_theme`] and for the same caller: the
+/// overlay theme resolves per animation frame while a token is dragged, and it
+/// now derives the shadow's anchored-side slack, which depends on which screen
+/// edge the overlay sits at. Skipping the migration pass is safe here too, the
+/// one migration that ever touched `overlay_position` (the retired `"none"`)
+/// having run at startup before any window existed, and its own alias still
+/// covering a store that skipped it.
+pub fn get_overlay_position(app: &AppHandle) -> OverlayPosition {
+    let store = app
+        .store(crate::portable::store_path(SETTINGS_STORE_PATH))
+        .expect("Failed to initialize store");
+
+    overlay_position_from_stored(store.get("settings").as_ref())
+}
+
+/// The overlay position carried by a raw stored `settings` value.
+///
+/// Pure, so the agreement with `get_settings` is a test rather than a claim.
+/// Everything unreadable falls back to the same default `AppSettings` does, so
+/// the overlay is placed at the bottom rather than not at all.
+fn overlay_position_from_stored(stored: Option<&serde_json::Value>) -> OverlayPosition {
+    stored
+        .and_then(|settings| settings.get("overlay_position"))
+        .and_then(|position| serde_json::from_value(position.clone()).ok())
+        .unwrap_or_else(default_overlay_position)
+}
+
 /// The overlay theme carried by a raw stored `settings` value.
 ///
 /// Pure, so the agreement with `get_settings` is a test rather than a claim.
@@ -1417,6 +1447,53 @@ mod tests {
         );
         // And a store with no `settings` value at all inherits everything.
         assert_eq!(overlay_theme_from_stored(None), OverlayTheme::default());
+    }
+
+    /// The same, for the position. Same reasoning: the resolved overlay theme
+    /// derives its shadow's anchored-side slack from which screen edge the card
+    /// sits at, so a shortcut that disagreed with the full read would size the
+    /// window for one edge and place it at the other.
+    #[test]
+    fn the_overlay_position_shortcut_answers_what_the_full_read_would() {
+        fn the_long_way(stored: &serde_json::Value) -> OverlayPosition {
+            match serde_json::from_value::<AppSettings>(stored.clone()) {
+                Ok(settings) => settings.overlay_position,
+                Err(_) => salvage_settings(stored).overlay_position,
+            }
+        }
+
+        for (what, stored) in [
+            (
+                "no position key",
+                serde_json::json!({ "hold_threshold_ms": 500 }),
+            ),
+            (
+                "bottom",
+                serde_json::json!({ "overlay_position": "bottom" }),
+            ),
+            ("top", serde_json::json!({ "overlay_position": "top" })),
+            // The retired `"none"`, which the field's own alias folds onto
+            // Bottom, so this shortcut needs no migration of its own.
+            (
+                "the legacy none",
+                serde_json::json!({ "overlay_position": "none" }),
+            ),
+            ("nonsense", serde_json::json!({ "overlay_position": 7 })),
+        ] {
+            assert_eq!(
+                overlay_position_from_stored(Some(&stored)),
+                the_long_way(&stored),
+                "{what}: the shortcut and the full read must agree"
+            );
+        }
+
+        // The position really is read, rather than every case agreeing on the
+        // default, and an absent store is placed rather than not placed at all.
+        assert_eq!(
+            overlay_position_from_stored(Some(&serde_json::json!({ "overlay_position": "top" }))),
+            OverlayPosition::Top
+        );
+        assert_eq!(overlay_position_from_stored(None), OverlayPosition::Bottom);
     }
 
     /// Frozen snapshot of a real v0.9.0-era settings store, as written to

@@ -57,8 +57,9 @@ fn set_current_card_shape(shape: OverlayCardShape) -> OverlayCardShape {
     OverlayCardShape::from_u8(OVERLAY_CARD_SHAPE.swap(shape as u8, Ordering::SeqCst))
 }
 
-/// The compact window at the scale in effect, the size the overlay window is
-/// created at, before any card has been shown.
+/// The compact window at the scale in effect: the size the overlay window is
+/// created at, and how far it reaches past the card towards the anchored screen
+/// edge, before any card has been shown.
 ///
 /// Always sized for Flat, because at window-creation time
 /// `overlay_glass::install` has not run yet (it needs the window this
@@ -71,8 +72,8 @@ fn set_current_card_shape(shape: OverlayCardShape) -> OverlayCardShape {
 /// Resolves from the theme-file cache with no filesystem IO, so it is safe on
 /// the main thread, where the geometry runs. The show path re-reads the file
 /// instead, off the main thread.
-fn initial_overlay_dimensions(app_handle: &AppHandle) -> (f64, f64) {
-    OverlayWindowState::initial(&crate::overlay_theme::resolve(app_handle)).window_size()
+fn initial_overlay_window(app_handle: &AppHandle) -> OverlayWindowState {
+    OverlayWindowState::initial(&crate::overlay_theme::resolve(app_handle))
 }
 
 static LAST_MIC_LEVEL_EMIT: AtomicU64 = AtomicU64::new(0);
@@ -89,15 +90,122 @@ const OVERLAY_BOTTOM_OFFSET: f64 = 15.0;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 const OVERLAY_BOTTOM_OFFSET: f64 = 40.0;
 
+/// How far the overlay card sits from the screen edge it is anchored to, in
+/// logical points.
+///
+/// A value rather than the two constants read straight from the placement, so
+/// the arithmetic below can be exercised at every platform's numbers from any
+/// host, which is how the shadow's "the card never moves" invariant is tested.
+/// The third stack's vertical edge margin (PR #2) replaces the whole pair with
+/// an `effective_edge_margin` read from the work area: this struct and
+/// [`anchored_edge_room`] are the two places it substitutes.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PlacementOffsets {
+    /// The gap between the monitor's own top edge and a Top overlay's card.
+    /// Measured from the monitor rather than the usable area, so on macOS it
+    /// also has to clear the menu bar.
+    top: f64,
+    /// The gap between the usable bottom edge and a Bottom overlay's card. On
+    /// macOS the usable bottom already tracks the Dock.
+    bottom: f64,
+}
+
+impl PlacementOffsets {
+    /// What this build places with.
+    const PLATFORM: Self = Self {
+        top: OVERLAY_TOP_OFFSET,
+        bottom: OVERLAY_BOTTOM_OFFSET,
+    };
+}
+
+/// How far below the monitor's own top edge the usable area starts, in logical
+/// points: macOS's menu bar, and nothing anywhere else.
+///
+/// Cached because the resolved overlay theme carries the shadow's anchored-side
+/// slack to the overlay page, and is resolved off the main thread, where a
+/// monitor must not be queried. Every placement measures it (they all run on
+/// the main thread) and leaves it here for the next resolve.
+static USABLE_TOP_INSET: Mutex<f64> = Mutex::new(USABLE_TOP_INSET_SEED);
+
+/// What the inset is taken to be before any placement has measured it.
+///
+/// Off macOS it is simply right: the Top placement measures from the monitor's
+/// own top edge there, so nothing is inset at all, and a Linux layer surface
+/// never places through `calculate_overlay_position` to correct it. On macOS it
+/// is the Top offset itself, which leaves a Top overlay's shadow no room at
+/// that edge rather than guessing at a menu bar nothing has measured yet; the
+/// window creation places, so at most one window is ever sized from it.
+#[cfg(target_os = "macos")]
+const USABLE_TOP_INSET_SEED: f64 = OVERLAY_TOP_OFFSET;
+#[cfg(not(target_os = "macos"))]
+const USABLE_TOP_INSET_SEED: f64 = 0.0;
+
+/// The last measured usable-top inset, or the seed if a placement panicked
+/// mid-write, which errs towards a window that stays clear of the menu bar.
+fn usable_top_inset() -> f64 {
+    USABLE_TOP_INSET
+        .lock()
+        .map_or(USABLE_TOP_INSET_SEED, |inset| *inset)
+}
+
+/// Remember what a placement measured, for the resolves that cannot measure.
+fn note_usable_top_inset(inset: f64) {
+    if let Ok(mut cached) = USABLE_TOP_INSET.lock() {
+        *cached = inset;
+    }
+}
+
+/// Today's gap between the card's anchored edge and the usable edge of the
+/// screen, in logical points.
+///
+/// This is how far a Flat shadow may grow the overlay window towards that edge
+/// without ever covering the Dock, the taskbar or the menu bar, and so how far
+/// the shadow reaches before the window boundary clips it. `top_inset` is where
+/// the usable area starts below the monitor's own top edge, because the Top
+/// placement measures from the monitor and has to clear the menu bar itself.
+///
+/// Pure, and the one place the third stack's vertical edge margin (PR #2)
+/// substitutes its `effective_edge_margin` for these offsets.
+fn edge_room(position: OverlayPosition, offsets: PlacementOffsets, top_inset: f64) -> f64 {
+    match position {
+        OverlayPosition::Top => offsets.top - top_inset,
+        OverlayPosition::Bottom => offsets.bottom,
+    }
+    .max(0.0)
+}
+
+/// The room the resolved overlay theme caps a Flat shadow's anchored-side slack
+/// at, at the overlay position in force.
+///
+/// Public because `overlay_theme::resolve_from` derives that slack and runs off
+/// the main thread, where the monitor query the room's one measured term needs
+/// is not allowed. See [`USABLE_TOP_INSET`].
+pub fn anchored_edge_room(app_handle: &AppHandle) -> f64 {
+    edge_room(
+        settings::get_overlay_position(app_handle),
+        PlacementOffsets::PLATFORM,
+        usable_top_inset(),
+    )
+}
+
 /// Configures the edge and offset of a GTK layer surface. gtk-layer-shell
 /// commits anchor and margin changes itself, including while the surface is
 /// mapped, so changing position does not require a manual hide/show cycle.
 #[cfg(target_os = "linux")]
-fn configure_layer_shell_position(gtk_window: &gtk::ApplicationWindow, position: OverlayPosition) {
-    let (edge, opposite_edge, margin) = match position {
+fn configure_layer_shell_position(
+    gtk_window: &gtk::ApplicationWindow,
+    position: OverlayPosition,
+    edge_slack: f64,
+) {
+    let (edge, opposite_edge, offset) = match position {
         OverlayPosition::Top => (Edge::Top, Edge::Bottom, OVERLAY_TOP_OFFSET),
         OverlayPosition::Bottom => (Edge::Bottom, Edge::Top, OVERLAY_BOTTOM_OFFSET),
     };
+    // The surface grew towards this edge by the shadow's edge slack, so its
+    // margin gives that back and the card stays where it was. Never past the
+    // edge itself, and the exclusive zone stays 0 (set once in
+    // `init_gtk_layer_shell`), so a shadow never reserves a strip of desktop.
+    let margin = (offset - edge_slack).max(0.0);
 
     gtk_window.set_anchor(edge, true);
     gtk_window.set_anchor(opposite_edge, false);
@@ -118,10 +226,11 @@ fn configure_layer_shell_surface(
     position: OverlayPosition,
     width: f64,
     height: f64,
+    edge_slack: f64,
 ) {
     use gtk::prelude::{GtkWindowExt, WidgetExt};
 
-    configure_layer_shell_position(gtk_window, position);
+    configure_layer_shell_position(gtk_window, position, edge_slack);
 
     gtk_window.set_size_request(
         width.round().max(1.0) as i32,
@@ -152,8 +261,15 @@ fn init_gtk_layer_shell(overlay_window: &tauri::webview::WebviewWindow) -> bool 
 
         let app_handle = overlay_window.app_handle();
         let overlay_position = settings::get_settings(app_handle).overlay_position;
-        let (width, height) = initial_overlay_dimensions(app_handle);
-        configure_layer_shell_surface(&gtk_window, overlay_position, width, height);
+        let window = initial_overlay_window(app_handle);
+        let (width, height) = window.window_size();
+        configure_layer_shell_surface(
+            &gtk_window,
+            overlay_position,
+            width,
+            height,
+            window.edge_slack(),
+        );
 
         let initialized = gtk_window.is_layer_window();
         LAYER_SHELL_ACTIVE.store(initialized, Ordering::SeqCst);
@@ -264,6 +380,7 @@ fn calculate_overlay_position(
     app_handle: &AppHandle,
     width: f64,
     height: f64,
+    edge_slack: f64,
 ) -> Option<(f64, f64)> {
     let monitor = get_monitor_with_cursor(app_handle)?;
     let scale = monitor.scale_factor();
@@ -271,40 +388,60 @@ fn calculate_overlay_position(
     // work_area.position shares monitor.position's global coordinate space, so
     // no monitor offset is added.
     #[cfg(target_os = "macos")]
-    let work_bottom = {
+    let (work_top, work_bottom) = {
         let wa = monitor.work_area();
-        (wa.position.y as f64 + wa.size.height as f64) / scale
+        (
+            wa.position.y as f64 / scale,
+            (wa.position.y as f64 + wa.size.height as f64) / scale,
+        )
     };
     #[cfg(not(target_os = "macos"))]
-    let work_bottom = monitor.position().y as f64 / scale + monitor.size().height as f64 / scale;
+    let (work_top, work_bottom) = (
+        monitor.position().y as f64 / scale,
+        monitor.position().y as f64 / scale + monitor.size().height as f64 / scale,
+    );
 
     let screen = OverlayScreen {
         x: monitor.position().x as f64 / scale,
         y: monitor.position().y as f64 / scale,
         width: monitor.size().width as f64 / scale,
+        work_top,
         work_bottom,
     };
+    // The only monitor read of the menu bar's height there is. Left for the
+    // resolves that cannot query a monitor; see USABLE_TOP_INSET.
+    note_usable_top_inset(screen.top_inset());
 
     let settings = settings::get_settings(app_handle);
     Some(overlay_origin(
         screen,
         (width, height),
         settings.overlay_position,
+        PlacementOffsets::PLATFORM,
+        edge_slack,
     ))
 }
 
 /// The screen the overlay is placed on, in logical points.
 ///
 /// Only what the placement reads, so [`overlay_origin`] can be exercised
-/// without a monitor: the monitor's own rectangle, and the bottom of the
-/// usable area, which on macOS tracks the Dock and elsewhere is the monitor's
-/// own bottom edge.
+/// without a monitor: the monitor's own rectangle, and the usable area's top
+/// and bottom, which on macOS sit below the menu bar and above the Dock and
+/// elsewhere are the monitor's own edges.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct OverlayScreen {
     x: f64,
     y: f64,
     width: f64,
+    work_top: f64,
     work_bottom: f64,
+}
+
+impl OverlayScreen {
+    /// How far below the monitor's own top edge the usable area starts.
+    fn top_inset(self) -> f64 {
+        (self.work_top - self.y).max(0.0)
+    }
 }
 
 /// Where the overlay window's top-left corner goes, in logical points.
@@ -313,26 +450,29 @@ struct OverlayScreen {
 /// rather than a reading of three platform branches. Horizontally the window is
 /// centred on the monitor; vertically it hangs off the anchored edge.
 ///
-/// It is the *window's* anchored edge that keeps the offset, not the card's.
-/// Under Flat a card that casts a shadow is inset from that edge by the
-/// shadow's slack (`.ov-stage`'s padding), so turning a shadow on lifts a
-/// bottom overlay, and lowers a top one, by however far its shadow reaches.
-/// That is deliberate: the window then covers exactly the strip it always
-/// covered, and the shadow falls inside it. A window placed to keep the *card*
-/// still would reach past the offset instead, over the Dock or the menu bar,
-/// and swallow clicks there, which was measured in the VM (see ticket 28). The
-/// card plus its shadow keep the offset, which is also the truer reading of
-/// "15 points above the Dock".
+/// It is the *card* that keeps the offset, on both anchors and every platform,
+/// whatever its shadow does. Under Flat a card that casts a shadow is inset
+/// from every window edge (`.ov-stage`'s padding), by the full shadow slack on
+/// the three sides away from the anchored edge and by `edge_slack` on the
+/// anchored side, so subtracting that same `edge_slack` here lands the card
+/// exactly where it sits with no shadow at all.
+///
+/// `edge_slack` is capped at [`edge_room`], the gap the card already has to the
+/// usable edge, so the window still stops short of the Dock and the menu bar
+/// and never swallows a click meant for them, which was measured in the VM (see
+/// ticket 28). The shadow's faint tail is clipped at that edge instead.
 fn overlay_origin(
     screen: OverlayScreen,
     size: (f64, f64),
     position: OverlayPosition,
+    offsets: PlacementOffsets,
+    edge_slack: f64,
 ) -> (f64, f64) {
     let (width, height) = size;
     let x = screen.x + (screen.width - width) / 2.0;
     let y = match position {
-        OverlayPosition::Top => screen.y + OVERLAY_TOP_OFFSET,
-        OverlayPosition::Bottom => screen.work_bottom - height - OVERLAY_BOTTOM_OFFSET,
+        OverlayPosition::Top => screen.y + offsets.top - edge_slack,
+        OverlayPosition::Bottom => screen.work_bottom - height - offsets.bottom + edge_slack,
     };
 
     (x, y)
@@ -348,18 +488,21 @@ fn windows_overlay_bounds(
     logical_width: f64,
     logical_height: f64,
     overlay_position: OverlayPosition,
+    edge_slack: f64,
 ) -> (i32, i32, i32, i32) {
     let width = (logical_width * scale).round().max(1.0) as i32;
     let height = (logical_height * scale).round().max(1.0) as i32;
     let x = (monitor_position.x as f64 + (monitor_size.width as f64 - width as f64) / 2.0).round()
         as i32;
+    // `overlay_origin`'s rule in this monitor's own pixels: the offset the card
+    // keeps, less the slack the window grew towards that edge, both scaled.
     let y = match overlay_position {
         OverlayPosition::Top => {
-            (monitor_position.y as f64 + OVERLAY_TOP_OFFSET * scale).round() as i32
+            (monitor_position.y as f64 + (OVERLAY_TOP_OFFSET - edge_slack) * scale).round() as i32
         }
         OverlayPosition::Bottom => (monitor_position.y as f64 + monitor_size.height as f64
             - height as f64
-            - OVERLAY_BOTTOM_OFFSET * scale)
+            - (OVERLAY_BOTTOM_OFFSET - edge_slack) * scale)
             .round() as i32,
     };
 
@@ -374,6 +517,7 @@ fn place_windows_overlay(
     overlay_window: &tauri::webview::WebviewWindow,
     logical_width: f64,
     logical_height: f64,
+    edge_slack: f64,
 ) -> Result<(), String> {
     use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
 
@@ -386,6 +530,7 @@ fn place_windows_overlay(
         logical_width,
         logical_height,
         settings::get_settings(app_handle).overlay_position,
+        edge_slack,
     );
     let hwnd = overlay_window
         .hwnd()
@@ -422,13 +567,14 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     forget_window_state();
     // Created at the compact size for the scale in effect. Every show resizes
     // the window anyway; starting at the right size saves the first show one.
-    let (width, height) = initial_overlay_dimensions(app_handle);
+    let window = initial_overlay_window(app_handle);
+    let (width, height) = window.window_size();
 
     // On Linux (Wayland), monitor detection often fails, but we don't need exact coordinates
     // for Layer Shell as we use anchors. On other platforms, we require a monitor.
     #[cfg(not(target_os = "linux"))]
     {
-        let position = calculate_overlay_position(app_handle, width, height);
+        let position = calculate_overlay_position(app_handle, width, height, window.edge_slack());
         if position.is_none() {
             debug!("Failed to determine overlay position, not creating overlay window");
             return;
@@ -495,9 +641,11 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     forget_window_state();
     // Created at the compact size for the scale in effect. Every show resizes
     // the panel anyway; starting at the right size saves the first show one.
-    let (width, height) = initial_overlay_dimensions(app_handle);
+    let window = initial_overlay_window(app_handle);
+    let (width, height) = window.window_size();
 
-    if let Some((x, y)) = calculate_overlay_position(app_handle, width, height) {
+    if let Some((x, y)) = calculate_overlay_position(app_handle, width, height, window.edge_slack())
+    {
         // PanelBuilder creates a Tauri window then converts it to NSPanel.
         // The window remains registered, so get_webview_window() still works.
         match PanelBuilder::<_, RecordingOverlayPanel>::new(app_handle, "recording_overlay")
@@ -584,6 +732,7 @@ fn show_overlay_state_on_main(
     // keeps the same record, or the session's first theme edit repeats its work.
     let window = OverlayWindowState::new(shape, &resolved);
     let (width, height) = window.window_size();
+    let edge_slack = window.edge_slack();
     let radius = window.corner_radius();
     let shadow = crate::overlay_glass::window_shadow(material, window.shadow_strength());
     record_window_state(window);
@@ -608,7 +757,7 @@ fn show_overlay_state_on_main(
             let position = settings::get_settings(app_handle).overlay_position;
             match overlay_window.gtk_window() {
                 Ok(gtk_window) => {
-                    configure_layer_shell_surface(&gtk_window, position, width, height)
+                    configure_layer_shell_surface(&gtk_window, position, width, height, edge_slack)
                 }
                 Err(error) => log::error!("Failed to access GTK overlay window: {error}"),
             }
@@ -629,20 +778,21 @@ fn show_overlay_state_on_main(
 
             let pos_started = std::time::Instant::now();
             #[cfg(not(target_os = "windows"))]
-            let set_pos_elapsed =
-                if let Some((x, y)) = calculate_overlay_position(app_handle, width, height) {
-                    let set_pos_started = std::time::Instant::now();
-                    let _ = overlay_window
-                        .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
-                    set_pos_started.elapsed()
-                } else {
-                    std::time::Duration::ZERO
-                };
+            let set_pos_elapsed = if let Some((x, y)) =
+                calculate_overlay_position(app_handle, width, height, edge_slack)
+            {
+                let set_pos_started = std::time::Instant::now();
+                let _ = overlay_window
+                    .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
+                set_pos_started.elapsed()
+            } else {
+                std::time::Duration::ZERO
+            };
             #[cfg(target_os = "windows")]
             let set_pos_elapsed = {
                 let set_pos_started = std::time::Instant::now();
                 if let Err(error) =
-                    place_windows_overlay(app_handle, &overlay_window, width, height)
+                    place_windows_overlay(app_handle, &overlay_window, width, height, edge_slack)
                 {
                     log::error!("Failed to place recording overlay: {error}");
                 }
@@ -661,7 +811,9 @@ fn show_overlay_state_on_main(
             // Re-assert bounds after show(): the pre-show move crosses the DPI
             // boundary, and tao's WM_DPICHANGED reflow clobbers the first placement.
             #[cfg(target_os = "windows")]
-            if let Err(error) = place_windows_overlay(app_handle, &overlay_window, width, height) {
+            if let Err(error) =
+                place_windows_overlay(app_handle, &overlay_window, width, height, edge_slack)
+            {
                 log::error!("Failed to re-assert recording overlay position: {error}");
             }
 
@@ -963,6 +1115,7 @@ fn update_overlay_position_on_main(
         // would repaint larger inside the old window and be clipped.
         let window = OverlayWindowState::new(current_card_shape(), &resolved);
         let (width, height) = window.window_size();
+        let edge_slack = window.edge_slack();
         let radius = window.corner_radius();
         let shadow = crate::overlay_glass::window_shadow(material, window.shadow_strength());
 
@@ -985,7 +1138,7 @@ fn update_overlay_position_on_main(
                 // Layer surfaces size themselves from GTK's size request, so the
                 // full configure (size request + anchors) applies a new size.
                 Ok(gtk_window) => {
-                    configure_layer_shell_surface(&gtk_window, position, width, height)
+                    configure_layer_shell_surface(&gtk_window, position, width, height, edge_slack)
                 }
                 Err(error) => log::error!("Failed to access GTK overlay window: {error}"),
             }
@@ -993,7 +1146,9 @@ fn update_overlay_position_on_main(
         }
 
         #[cfg(target_os = "windows")]
-        if let Err(error) = place_windows_overlay(app_handle, &overlay_window, width, height) {
+        if let Err(error) =
+            place_windows_overlay(app_handle, &overlay_window, width, height, edge_slack)
+        {
             log::error!("Failed to update recording overlay position: {error}");
         }
 
@@ -1001,7 +1156,8 @@ fn update_overlay_position_on_main(
         {
             let _ =
                 overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
-            if let Some((x, y)) = calculate_overlay_position(app_handle, width, height) {
+            if let Some((x, y)) = calculate_overlay_position(app_handle, width, height, edge_slack)
+            {
                 let _ = overlay_window
                     .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
             }
@@ -1188,74 +1344,187 @@ mod tests {
         OVERLAY_WIDTH,
     };
 
+    /// The three platforms' offsets, so the placement rule is exercised at all
+    /// of their numbers whichever host the tests run on.
+    const MACOS: PlacementOffsets = PlacementOffsets {
+        top: 46.0,
+        bottom: 15.0,
+    };
+    const WINDOWS: PlacementOffsets = PlacementOffsets {
+        top: 4.0,
+        bottom: 40.0,
+    };
+    const LINUX: PlacementOffsets = WINDOWS;
+
+    /// Every platform, named, for a test that has to walk them.
+    const PLATFORMS: [(&str, PlacementOffsets, f64); 3] = [
+        // macOS is the only one whose usable top sits below the monitor's: the
+        // menu bar, 30 points on macOS 26.
+        ("macos", MACOS, 30.0),
+        ("windows", WINDOWS, 0.0),
+        ("linux", LINUX, 0.0),
+    ];
+
     /// A screen with the overlay on it: a 1440p display at the origin whose
-    /// Dock takes the bottom 60 points.
-    fn screen() -> OverlayScreen {
+    /// menu bar takes `top_inset` points and whose Dock takes the bottom 60.
+    fn screen_with(top_inset: f64) -> OverlayScreen {
         OverlayScreen {
             x: 0.0,
             y: 0.0,
             width: 2560.0,
+            work_top: top_inset,
             work_bottom: 1380.0,
         }
     }
 
-    /// Where the window's anchored edge lands, shadow or no shadow.
+    /// The macOS screen, the one the platform-independent assertions use.
+    fn screen() -> OverlayScreen {
+        screen_with(30.0)
+    }
+
+    /// The card's own rectangle, recovered from the window that holds it: the
+    /// window less the slack it grew by on each side.
+    fn card_in(
+        origin: (f64, f64),
+        size: (f64, f64),
+        slack: f64,
+        edge_slack: f64,
+        position: OverlayPosition,
+    ) -> (f64, f64, f64, f64) {
+        let (top_pad, bottom_pad) = match position {
+            OverlayPosition::Top => (edge_slack, slack),
+            OverlayPosition::Bottom => (slack, edge_slack),
+        };
+        (
+            origin.0 + slack,
+            origin.1 + top_pad,
+            size.0 - 2.0 * slack,
+            size.1 - top_pad - bottom_pad,
+        )
+    }
+
+    /// The rule this whole change exists for: **the card never moves.** Its
+    /// screen rectangle is byte-identical with and without a shadow, at every
+    /// card shape, at both anchors, on all three platforms.
     ///
-    /// The window keeps the offset, so it covers exactly the strip it always
-    /// covered and a Flat shadow falls inside it. The card, inset from that
-    /// edge by the shadow's slack, therefore lifts (Bottom) or drops (Top) by
-    /// however far its shadow reaches, which is what stops the window swallowing
-    /// clicks meant for the Dock or the menu bar.
+    /// The window around it does move and grow, which is why it is `.ov-stage`'s
+    /// padding that has to mirror `card_in` above.
     #[test]
-    fn the_window_keeps_its_edge_offset_when_a_shadow_is_added() {
+    fn the_card_keeps_its_screen_position_when_a_shadow_is_added() {
+        // The five card shapes' Flat windows at scale 1, plus the largest one a
+        // size scale can reach.
+        for card in [(256.0, 46.0), (400.0, 120.0), (600.0, 180.0)] {
+            for (platform, offsets, top_inset) in PLATFORMS {
+                let screen = screen_with(top_inset);
+                for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+                    let room = edge_room(position, offsets, screen.top_inset());
+                    let bare = overlay_origin(screen, card, position, offsets, 0.0);
+                    let expected = card_in(bare, card, 0.0, 0.0, position);
+
+                    // Every slack a Flat shadow can ask for: none, the inherit
+                    // reach, and ceil((20 + 16) * 1.5), the largest there is.
+                    for slack in [0.0_f64, 16.0, 20.0, 24.0, 36.0, 54.0] {
+                        let edge_slack = slack.min(room);
+                        let size = (card.0 + 2.0 * slack, card.1 + slack + edge_slack);
+                        let origin = overlay_origin(screen, size, position, offsets, edge_slack);
+
+                        assert_eq!(
+                            card_in(origin, size, slack, edge_slack, position),
+                            expected,
+                            "{platform} {position:?} at slack {slack}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// …and the window it moved still stops at the usable edge, which is what
+    /// keeps a click meant for the Dock or the menu bar reaching them.
+    #[test]
+    fn the_window_never_passes_the_usable_edge() {
         let card = (256.0, 46.0);
 
-        // The slack a Flat shadow adds per side: none, the inherit reach, and
-        // the largest a theme can ask for, ceil((20 + 16) * 1.5).
-        for slack in [0.0, 20.0, 24.0, 54.0] {
-            let size = (card.0 + 2.0 * slack, card.1 + 2.0 * slack);
+        for (platform, offsets, top_inset) in PLATFORMS {
+            let screen = screen_with(top_inset);
+            for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+                let room = edge_room(position, offsets, screen.top_inset());
+                for slack in [0.0_f64, 16.0, 24.0, 54.0, 200.0] {
+                    let edge_slack = slack.min(room);
+                    let size = (card.0 + 2.0 * slack, card.1 + slack + edge_slack);
+                    let (_, y) = overlay_origin(screen, size, position, offsets, edge_slack);
 
-            let (x, y) = overlay_origin(screen(), size, OverlayPosition::Bottom);
-            assert_eq!(x + slack, (2560.0 - card.0) / 2.0, "bottom x at {slack}");
-            // The window's own bottom edge is where the card's used to be, so
-            // it never reaches past the offset and over the Dock.
-            assert_eq!(
-                screen().work_bottom - (y + size.1),
-                OVERLAY_BOTTOM_OFFSET,
-                "bottom window edge at {slack}"
-            );
-            // …and the card, inset by the slack, floats that much higher.
-            assert_eq!(
-                screen().work_bottom - (y + size.1 - slack),
-                OVERLAY_BOTTOM_OFFSET + slack,
-                "card edge at {slack}"
-            );
-
-            let (x, y) = overlay_origin(screen(), size, OverlayPosition::Top);
-            assert_eq!(x + slack, (2560.0 - card.0) / 2.0, "top x at {slack}");
-            assert_eq!(
-                y - screen().y,
-                OVERLAY_TOP_OFFSET,
-                "top window edge at {slack}"
-            );
-            assert_eq!(
-                (y + slack) - screen().y,
-                OVERLAY_TOP_OFFSET + slack,
-                "top card edge at {slack}"
-            );
+                    match position {
+                        OverlayPosition::Top => assert!(
+                            y >= screen.work_top,
+                            "{platform} top at slack {slack}: {y} is above {}",
+                            screen.work_top
+                        ),
+                        OverlayPosition::Bottom => assert!(
+                            y + size.1 <= screen.work_bottom,
+                            "{platform} bottom at slack {slack}: {} is below {}",
+                            y + size.1,
+                            screen.work_bottom
+                        ),
+                    }
+                }
+            }
         }
 
-        // With no shadow the arithmetic is byte-identical to what it was
-        // before the token existed, so today's overlay does not move at all.
+        // The rooms those bounds come from, written out: macOS's Top offset
+        // less a 30 point menu bar, its 15 points above the Dock, and the flush
+        // 4 and 40 Windows and Linux use.
+        assert_eq!(edge_room(OverlayPosition::Top, MACOS, 30.0), 16.0);
+        assert_eq!(edge_room(OverlayPosition::Bottom, MACOS, 30.0), 15.0);
+        assert_eq!(edge_room(OverlayPosition::Top, WINDOWS, 0.0), 4.0);
+        assert_eq!(edge_room(OverlayPosition::Bottom, WINDOWS, 0.0), 40.0);
+        // A menu bar taller than the offset leaves no room at all rather than a
+        // negative one, which is also what the unmeasured seed produces.
+        assert_eq!(edge_room(OverlayPosition::Top, MACOS, 60.0), 0.0);
+        assert_eq!(edge_room(OverlayPosition::Top, MACOS, MACOS.top), 0.0);
+        // Which is exactly what the unmeasured seed produces on macOS, and
+        // nothing at all off it, where the usable top is the monitor's own.
         assert_eq!(
-            overlay_origin(screen(), card, OverlayPosition::Bottom),
+            edge_room(
+                OverlayPosition::Top,
+                PlacementOffsets::PLATFORM,
+                USABLE_TOP_INSET_SEED
+            ),
+            if cfg!(target_os = "macos") {
+                0.0
+            } else {
+                OVERLAY_TOP_OFFSET
+            }
+        );
+    }
+
+    /// With no shadow the arithmetic is byte-identical to what it was before
+    /// the token existed, so today's overlay does not move at all.
+    #[test]
+    fn a_shadowless_overlay_is_placed_exactly_as_it_always_was() {
+        let card = (256.0, 46.0);
+
+        assert_eq!(
+            overlay_origin(
+                screen(),
+                card,
+                OverlayPosition::Bottom,
+                PlacementOffsets::PLATFORM,
+                0.0
+            ),
             (
                 (2560.0 - card.0) / 2.0,
                 1380.0 - card.1 - OVERLAY_BOTTOM_OFFSET
             )
         );
         assert_eq!(
-            overlay_origin(screen(), card, OverlayPosition::Top),
+            overlay_origin(
+                screen(),
+                card,
+                OverlayPosition::Top,
+                PlacementOffsets::PLATFORM,
+                0.0
+            ),
             ((2560.0 - card.0) / 2.0, OVERLAY_TOP_OFFSET)
         );
     }
@@ -1268,17 +1537,25 @@ mod tests {
             x: -2560.0,
             y: -200.0,
             width: 2560.0,
+            work_top: -170.0,
             work_bottom: 1240.0,
         };
-        let slack = 24.0;
-        let size = (256.0 + 2.0 * slack, 46.0 + 2.0 * slack);
+        let slack = 24.0_f64;
+        let offsets = PlacementOffsets::PLATFORM;
 
-        let (x, y) = overlay_origin(left, size, OverlayPosition::Top);
-        assert_eq!(x + slack, -2560.0 + (2560.0 - 256.0) / 2.0);
-        assert_eq!(y - left.y, OVERLAY_TOP_OFFSET);
+        for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+            let edge_slack = slack.min(edge_room(position, offsets, left.top_inset()));
+            let size = (256.0 + 2.0 * slack, 46.0 + slack + edge_slack);
+            let origin = overlay_origin(left, size, position, offsets, edge_slack);
+            let bare = overlay_origin(left, (256.0, 46.0), position, offsets, 0.0);
 
-        let (_, y) = overlay_origin(left, size, OverlayPosition::Bottom);
-        assert_eq!(left.work_bottom - (y + size.1), OVERLAY_BOTTOM_OFFSET);
+            assert_eq!(
+                card_in(origin, size, slack, edge_slack, position),
+                card_in(bare, (256.0, 46.0), 0.0, 0.0, position),
+                "{position:?}"
+            );
+            assert_eq!(origin.0 + slack, -2560.0 + (2560.0 - 256.0) / 2.0);
+        }
     }
 
     #[test]
@@ -1363,6 +1640,7 @@ mod tests {
                 OVERLAY_WIDTH,
                 OVERLAY_HEIGHT,
                 OverlayPosition::Bottom,
+                0.0,
             ),
             (3648, 2031, 384, 69)
         );
@@ -1374,8 +1652,43 @@ mod tests {
                 OVERLAY_WIDTH,
                 OVERLAY_HEIGHT,
                 OverlayPosition::Top,
+                0.0,
             ),
             (3648, 6, 384, 69)
+        );
+
+        // The shadow's anchored-side slack is scaled like every other length
+        // here, so the card lands where it did without one. A 20 point shadow
+        // at the top: Windows' 4 point offset is all the room there is, so the
+        // window is 24 points taller, starts flush with the monitor, and the
+        // card's own top edge is still 4 logical points down (6 physical, the
+        // unshadowed window's own y).
+        assert_eq!(
+            windows_overlay_bounds(
+                monitor_position,
+                monitor_size,
+                1.5,
+                OVERLAY_WIDTH + 40.0,
+                OVERLAY_HEIGHT + 24.0,
+                OverlayPosition::Top,
+                4.0,
+            ),
+            (3618, 0, 444, 105)
+        );
+        // At the bottom the whole 20 fits inside the 40 point offset, so the
+        // window ends 20 points above the monitor's edge and the card's bottom
+        // is still at 2160 - 40 x 1.5 = 2100.
+        assert_eq!(
+            windows_overlay_bounds(
+                monitor_position,
+                monitor_size,
+                1.5,
+                OVERLAY_WIDTH + 40.0,
+                OVERLAY_HEIGHT + 40.0,
+                OverlayPosition::Bottom,
+                20.0,
+            ),
+            (3618, 2001, 444, 129)
         );
 
         // A scaled window converts to physical pixels the same way and still
@@ -1391,6 +1704,7 @@ mod tests {
                 &crate::overlay_theme::OverlayTheme::default(),
                 Material::Flat,
             ),
+            0.0,
         );
         assert_eq!(
             windows_overlay_bounds(
@@ -1400,6 +1714,7 @@ mod tests {
                 width,
                 height,
                 OverlayPosition::Bottom,
+                0.0,
             ),
             (3392, 1831, 896, 269)
         );
@@ -1416,6 +1731,7 @@ mod tests {
                 OVERLAY_STREAM_WIDTH,
                 OVERLAY_STREAM_HEIGHT,
                 OverlayPosition::Bottom,
+                0.0,
             ),
             (-1530, 1040, 500, 150)
         );

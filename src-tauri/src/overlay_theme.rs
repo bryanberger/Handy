@@ -935,6 +935,18 @@ pub struct ResolvedOverlayTheme {
     /// the Appearance tab instead of a TypeScript platform check, so the two
     /// sides cannot disagree.
     pub glass_support: GlassSupport,
+    /// How far the overlay window may reach past the card towards the screen
+    /// edge it is anchored to, in logical points, already scaled and whole.
+    ///
+    /// Derived, like the Material above, and for the same reason: only Rust
+    /// knows the room the card has to the usable edge on this platform at this
+    /// overlay position, and the overlay page must inset the card by exactly
+    /// the same number or the card would move the moment a shadow is switched
+    /// on. The apply layer writes it straight into `--ov-shadow-edge-slack`;
+    /// the native window is sized and placed from it. Zero under Glass and
+    /// whenever the shadow strength is zero.
+    #[serde(default)]
+    pub shadow_edge_slack: f64,
     /// What the theme file contributed, including which tokens it owns and what
     /// the reader had to ignore.
     pub file: ThemeFileState,
@@ -987,6 +999,7 @@ pub fn resolve(app: &AppHandle) -> ResolvedOverlayTheme {
         settings_theme(app),
         crate::overlay_theme_file::cached(app),
         glass_support(app),
+        crate::overlay::anchored_edge_room(app),
     )
 }
 
@@ -999,6 +1012,7 @@ pub fn resolve_with(app: &AppHandle, settings_theme: OverlayTheme) -> ResolvedOv
         settings_theme,
         crate::overlay_theme_file::cached(app),
         glass_support(app),
+        crate::overlay::anchored_edge_room(app),
     )
 }
 
@@ -1025,6 +1039,7 @@ pub fn resolve_reloading_for(
         settings_theme,
         crate::overlay_theme_file::read(app),
         glass_support(app),
+        crate::overlay::anchored_edge_room(app),
     )
 }
 
@@ -1034,19 +1049,29 @@ fn settings_theme(app: &AppHandle) -> OverlayTheme {
 }
 
 /// The whole resolution rule with nothing to look up: merge the file over the
-/// settings, clamp once, and decide the Material actually rendered.
+/// settings, clamp once, decide the Material actually rendered, and work out
+/// how far the window may grow towards the anchored screen edge.
 ///
-/// Pure, so the merge order, the clamping and the Glass downgrade are testable
-/// together without an `AppHandle`.
+/// `edge_room` is the gap the card already has to the usable edge, which only
+/// the placement knows; everything else is here.
+///
+/// Pure, so the merge order, the clamping, the Glass downgrade and the shadow's
+/// anchored-side slack are testable together without an `AppHandle`.
 pub fn resolve_from(
     settings_theme: OverlayTheme,
     file: ThemeFileState,
     support: GlassSupport,
+    edge_room: f64,
 ) -> ResolvedOverlayTheme {
     let theme = merge(&file.tokens, &settings_theme).normalized();
     let effective_material = effective_material(theme.material(), support);
 
     ResolvedOverlayTheme {
+        shadow_edge_slack: crate::overlay_geometry::shadow_edge_slack(
+            &theme,
+            effective_material,
+            edge_room,
+        ),
         theme,
         effective_material,
         glass_support: support,
@@ -1749,7 +1774,7 @@ mod tests {
             available: false,
             engine: GlassEngine::VisualEffect,
         };
-        let resolved = resolve_from(settings_theme.clone(), file.clone(), unavailable);
+        let resolved = resolve_from(settings_theme.clone(), file.clone(), unavailable, 15.0);
 
         // The file's out-of-range value wins the key and is then clamped.
         assert_eq!(resolved.theme.size_scale, Some(1.50));
@@ -1776,10 +1801,74 @@ mod tests {
             available: true,
             engine: GlassEngine::Liquid,
         };
-        let rendered = resolve_from(settings_theme, ThemeFileState::absent_at(""), available);
+        let rendered = resolve_from(
+            settings_theme,
+            ThemeFileState::absent_at(""),
+            available,
+            15.0,
+        );
         assert_eq!(rendered.effective_material, Material::Glass);
         // With no file, the settings' own scale survives.
         assert_eq!(rendered.theme.size_scale, Some(1.0));
+    }
+
+    /// The resolved theme carries the one number the overlay page cannot work
+    /// out for itself: how far its window reaches past the card towards the
+    /// screen edge it is anchored to.
+    ///
+    /// Derived here, beside the effective Material, because the same resolve is
+    /// what the window is sized and placed from and what the page paints, and
+    /// the two must inset the card by the same integer or the card moves.
+    #[test]
+    fn a_resolved_theme_carries_the_shadows_anchored_side_slack() {
+        let flat = GlassSupport {
+            supported: false,
+            available: false,
+            engine: GlassEngine::None,
+        };
+        let glass = GlassSupport {
+            supported: true,
+            available: true,
+            engine: GlassEngine::Liquid,
+        };
+        let file = ThemeFileState::absent_at("");
+        let shadowed = OverlayTheme {
+            shadow_strength: Some(0.5),
+            shadow_offset_y: Some(4),
+            ..Default::default()
+        };
+
+        // A Flat card casting a 24 point shadow, in each of the rooms the three
+        // platforms' offsets can offer.
+        for (room, expected) in [(0.0, 0.0), (4.0, 4.0), (15.0, 15.0), (40.0, 24.0)] {
+            assert_eq!(
+                resolve_from(shadowed.clone(), file.clone(), flat, room).shadow_edge_slack,
+                expected,
+                "{room} points of room"
+            );
+        }
+
+        // Nothing is taken with no shadow to make room for, which is what keeps
+        // an untouched overlay's window byte-identical…
+        assert_eq!(
+            resolve_from(OverlayTheme::default(), file.clone(), flat, 40.0).shadow_edge_slack,
+            0.0
+        );
+        // …nor under Glass, where the shadow is macOS's own, outside a window
+        // the card fills exactly. It is the *rendered* Material that decides,
+        // so a Glass request downgraded to Flat still makes room.
+        let wants_glass = OverlayTheme {
+            material: Some(Material::Glass),
+            ..shadowed.clone()
+        };
+        assert_eq!(
+            resolve_from(wants_glass.clone(), file.clone(), glass, 40.0).shadow_edge_slack,
+            0.0
+        );
+        assert_eq!(
+            resolve_from(wants_glass, file, flat, 40.0).shadow_edge_slack,
+            24.0
+        );
     }
 
     #[test]

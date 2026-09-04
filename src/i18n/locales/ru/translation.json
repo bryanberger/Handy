@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "Файл темы",
         "description": "Необязательный файл JSON, который переопределяет значения темы наложения, чтобы внешние инструменты оформления могли управлять наложением.",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "Файла темы пока нет. Handy создаст его здесь при первом изменении настроек выше.",
+        "owned": "Этот файл и есть тема; его записывает Handy. Он задаёт {{count}} из {{total}} значений.",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "Управляется извне: этот файл — символическая ссылка на {{target}}. Handy читает его и никогда не записывает.",
+          "readOnly": "Управляется извне: этот файл доступен только для чтения, поэтому Handy читает его и никогда не записывает.",
+          "notCreatable": "Управляется извне: HANDY_OVERLAY_THEME_FILE указывает на {{target}}, а Handy не создаёт там файлы. Создайте его сами или удалите переменную.",
+          "unknown": "Управляется извне: Handy не может записать этот файл и только читает его."
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "Файлом темы управляет не Handy, поэтому эти значения доступны только для чтения.",
         "reload": "Перезагрузить",
         "copy": "Скопировать тему как JSON",
         "copied": "Скопировано",

@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "Tệp giao diện",
         "description": "Một tệp JSON tùy chọn ghi đè các giá trị giao diện lớp phủ, để các công cụ tạo giao diện bên ngoài có thể điều khiển lớp phủ.",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "Chưa có tệp giao diện. Handy sẽ tạo một tệp ở đây trong lần đầu bạn thay đổi thứ gì đó ở trên.",
+        "owned": "Tệp này chính là giao diện; Handy ghi tệp này. Nó đặt {{count}} trong {{total}} giá trị.",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "Do bên ngoài quản lý: tệp này là liên kết tượng trưng tới {{target}}. Handy chỉ đọc và không bao giờ ghi.",
+          "readOnly": "Do bên ngoài quản lý: tệp này ở chế độ chỉ đọc, nên Handy chỉ đọc và không bao giờ ghi.",
+          "notCreatable": "Do bên ngoài quản lý: HANDY_OVERLAY_THEME_FILE trỏ tới {{target}}, và Handy không tạo tệp ở đó. Hãy tự tạo tệp, hoặc bỏ đặt biến này.",
+          "unknown": "Do bên ngoài quản lý: Handy không thể ghi tệp này nên chỉ đọc."
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "Tệp giao diện do thứ khác ngoài Handy quản lý, nên các giá trị này ở chế độ chỉ đọc.",
         "reload": "Tải lại",
         "copy": "Sao chép giao diện dạng JSON",
         "copied": "Đã sao chép",

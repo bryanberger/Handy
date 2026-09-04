@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "File del tema",
         "description": "Un file JSON facoltativo che sostituisce i valori del tema dell'overlay, così strumenti di personalizzazione esterni possono pilotare l'overlay.",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "Non c'è ancora un file del tema. Handy ne crea uno qui la prima volta che cambi qualcosa qui sopra.",
+        "owned": "Questo file è il tema; lo scrive Handy. Imposta {{count}} valori su {{total}}.",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "Gestito dall'esterno: questo file è un collegamento simbolico a {{target}}. Handy lo legge e non lo scrive mai.",
+          "readOnly": "Gestito dall'esterno: questo file è di sola lettura, quindi Handy lo legge e non lo scrive mai.",
+          "notCreatable": "Gestito dall'esterno: HANDY_OVERLAY_THEME_FILE indica {{target}} e Handy non crea file lì. Crealo tu oppure rimuovi la variabile.",
+          "unknown": "Gestito dall'esterno: Handy non può scrivere questo file, quindi si limita a leggerlo."
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "Il file del tema è gestito da qualcosa che non è Handy, quindi questi valori sono di sola lettura.",
         "reload": "Ricarica",
         "copy": "Copia il tema come JSON",
         "copied": "Copiato",

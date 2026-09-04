@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "थीम फ़ाइल",
         "description": "एक वैकल्पिक JSON फ़ाइल जो ओवरले थीम के मान बदल देती है, ताकि बाहरी थीम टूल ओवरले को चला सकें।",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "अभी कोई थीम फ़ाइल नहीं है। ऊपर पहली बार कुछ बदलने पर Handy यहाँ एक फ़ाइल बना देगा।",
+        "owned": "यह फ़ाइल ही थीम है; इसे Handy लिखता है। यह {{total}} में से {{count}} मान सेट करती है।",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "बाहर से प्रबंधित: यह फ़ाइल {{target}} की सिमलिंक है। Handy इसे सिर्फ़ पढ़ता है, कभी लिखता नहीं।",
+          "readOnly": "बाहर से प्रबंधित: यह फ़ाइल केवल पढ़ने योग्य है, इसलिए Handy इसे सिर्फ़ पढ़ता है, कभी लिखता नहीं।",
+          "notCreatable": "बाहर से प्रबंधित: HANDY_OVERLAY_THEME_FILE में {{target}} दिया गया है, और Handy वहाँ फ़ाइलें नहीं बनाता। इसे खुद बनाएँ, या यह वेरिएबल हटाएँ।",
+          "unknown": "बाहर से प्रबंधित: Handy इस फ़ाइल में लिख नहीं सकता, इसलिए वह इसे सिर्फ़ पढ़ता है।"
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "थीम फ़ाइल को Handy के अलावा कोई और चला रहा है, इसलिए ये मान केवल पढ़ने योग्य हैं।",
         "reload": "फिर से लोड करें",
         "copy": "थीम को JSON के रूप में कॉपी करें",
         "copied": "कॉपी हो गया",

@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "Archivo de tema",
         "description": "Un archivo JSON opcional que sustituye los valores del tema de la superposición, para que herramientas de temas externas puedan controlarla.",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "Aún no hay archivo de tema. Handy creará uno aquí la primera vez que cambies algo de arriba.",
+        "owned": "Este archivo es el tema; lo escribe Handy. Define {{count}} de {{total}} valores.",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "Gestionado externamente: este archivo es un enlace simbólico a {{target}}. Handy lo lee y nunca lo escribe.",
+          "readOnly": "Gestionado externamente: este archivo es de solo lectura, así que Handy lo lee y nunca lo escribe.",
+          "notCreatable": "Gestionado externamente: HANDY_OVERLAY_THEME_FILE indica {{target}}, y Handy no crea archivos ahí. Créalo tú mismo o quita la variable.",
+          "unknown": "Gestionado externamente: Handy no puede escribir este archivo, así que solo lo lee."
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "El archivo de tema lo gestiona algo que no es Handy, así que estos valores son de solo lectura.",
         "reload": "Recargar",
         "copy": "Copiar el tema como JSON",
         "copied": "Copiado",

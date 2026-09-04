@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "Temafil",
         "description": "En valfri JSON-fil som åsidosätter värden i overlaytemat, så att externa temaverktyg kan styra overlayen.",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "Ingen temafil ännu. Handy skapar en här första gången du ändrar något ovanför.",
+        "owned": "Den här filen är temat; Handy skriver den. Den anger {{count}} av {{total}} värden.",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "Styrs externt: den här filen är en symbolisk länk till {{target}}. Handy läser den och skriver aldrig till den.",
+          "readOnly": "Styrs externt: den här filen är skrivskyddad, så Handy läser den och skriver aldrig till den.",
+          "notCreatable": "Styrs externt: HANDY_OVERLAY_THEME_FILE pekar ut {{target}}, och Handy skapar inga filer där. Skapa den själv eller ta bort variabeln.",
+          "unknown": "Styrs externt: Handy kan inte skriva till den här filen och läser den därför bara."
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "Temafilen styrs av något annat än Handy, så de här värdena är skrivskyddade.",
         "reload": "Läs om",
         "copy": "Kopiera temat som JSON",
         "copied": "Kopierad",

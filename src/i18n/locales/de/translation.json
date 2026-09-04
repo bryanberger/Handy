@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "Designdatei",
         "description": "Eine optionale JSON-Datei, die Werte des Overlay-Designs überschreibt, damit externe Theming-Tools das Overlay steuern können.",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "Noch keine Designdatei. Handy legt hier eine an, sobald du oben etwas änderst.",
+        "owned": "Diese Datei ist das Design; Handy schreibt sie. Sie setzt {{count}} von {{total}} Werten.",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "Extern verwaltet: Diese Datei ist ein symbolischer Link auf {{target}}. Handy liest sie und schreibt sie nie.",
+          "readOnly": "Extern verwaltet: Diese Datei ist schreibgeschützt, deshalb liest Handy sie nur und schreibt sie nie.",
+          "notCreatable": "Extern verwaltet: HANDY_OVERLAY_THEME_FILE nennt {{target}}, und Handy legt dort keine Dateien an. Lege sie selbst an oder entferne die Variable.",
+          "unknown": "Extern verwaltet: Handy kann diese Datei nicht schreiben und liest sie deshalb nur."
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "Die Designdatei wird nicht von Handy verwaltet, deshalb sind diese Werte schreibgeschützt.",
         "reload": "Neu laden",
         "copy": "Design als JSON kopieren",
         "copied": "Kopiert",

@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "テーマファイル",
         "description": "外部のテーマ作成ツールからオーバーレイを制御できるように、オーバーレイのテーマ値を上書きする任意の JSON ファイルです。",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "テーマファイルはまだありません。上の設定を初めて変更したときに、Handy がここに作成します。",
+        "owned": "このファイルがテーマそのものです。Handy が書き込みます。{{total}} 個中 {{count}} 個の値を設定しています。",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "外部管理: このファイルは {{target}} へのシンボリックリンクです。Handy は読み取るだけで、書き込むことはありません。",
+          "readOnly": "外部管理: このファイルは読み取り専用のため、Handy は読み取るだけで、書き込むことはありません。",
+          "notCreatable": "外部管理: HANDY_OVERLAY_THEME_FILE が {{target}} を指定していますが、Handy はそこにファイルを作成しません。自分で作成するか、この環境変数を解除してください。",
+          "unknown": "外部管理: Handy はこのファイルに書き込めないため、読み取るだけです。"
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "テーマファイルは Handy 以外のものが管理しているため、これらの値は読み取り専用です。",
         "reload": "再読み込み",
         "copy": "テーマを JSON としてコピー",
         "copied": "コピーしました",

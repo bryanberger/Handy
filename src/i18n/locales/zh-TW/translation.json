@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "主題檔案",
         "description": "選用的 JSON 檔案，可覆寫懸浮窗主題的值，讓外部主題工具能夠控制懸浮窗。",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "還沒有主題檔案。首次變更上方的設定時，Handy 會在此處建立一個。",
+        "owned": "此檔案就是主題，由 Handy 寫入。它設定了 {{total}} 個值中的 {{count}} 個。",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "由外部管理：此檔案是指向 {{target}} 的符號連結。Handy 只會讀取，絕不寫入。",
+          "readOnly": "由外部管理：此檔案為唯讀，因此 Handy 只會讀取，絕不寫入。",
+          "notCreatable": "由外部管理：HANDY_OVERLAY_THEME_FILE 指定了 {{target}}，而 Handy 不會在該處建立檔案。請自行建立，或取消設定該變數。",
+          "unknown": "由外部管理：Handy 無法寫入此檔案，因此只會讀取。"
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "主題檔案由 Handy 以外的程式管理，因此這些值為唯讀。",
         "reload": "重新載入",
         "copy": "以 JSON 複製主題",
         "copied": "已複製",

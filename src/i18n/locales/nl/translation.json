@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "Themabestand",
         "description": "Een optioneel JSON-bestand dat waarden van het overlaythema overschrijft, zodat externe thematools de overlay kunnen aansturen.",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "Nog geen themabestand. Handy maakt er hier een aan zodra je hierboven iets wijzigt.",
+        "owned": "Dit bestand is het thema; Handy schrijft het. Het stelt {{count}} van {{total}} waarden in.",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "Extern beheerd: dit bestand is een symbolische link naar {{target}}. Handy leest het en schrijft het nooit.",
+          "readOnly": "Extern beheerd: dit bestand is alleen-lezen, dus Handy leest het en schrijft het nooit.",
+          "notCreatable": "Extern beheerd: HANDY_OVERLAY_THEME_FILE wijst naar {{target}}, en Handy maakt daar geen bestanden aan. Maak het zelf aan of verwijder de variabele.",
+          "unknown": "Extern beheerd: Handy kan dit bestand niet schrijven en leest het daarom alleen."
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "Het themabestand wordt beheerd door iets anders dan Handy, dus deze waarden zijn alleen-lezen.",
         "reload": "Herladen",
         "copy": "Thema als JSON kopiëren",
         "copied": "Gekopieerd",

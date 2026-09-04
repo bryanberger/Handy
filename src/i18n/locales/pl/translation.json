@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "Plik motywu",
         "description": "Opcjonalny plik JSON, który nadpisuje wartości motywu nakładki, dzięki czemu zewnętrzne narzędzia do motywów mogą sterować nakładką.",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "Nie ma jeszcze pliku motywu. Handy utworzy go tutaj przy pierwszej zmianie powyżej.",
+        "owned": "Ten plik jest motywem; zapisuje go Handy. Ustawia {{count}} z {{total}} wartości.",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "Zarządzany z zewnątrz: ten plik to dowiązanie symboliczne do {{target}}. Handy go odczytuje i nigdy nie zapisuje.",
+          "readOnly": "Zarządzany z zewnątrz: ten plik jest tylko do odczytu, więc Handy go odczytuje i nigdy nie zapisuje.",
+          "notCreatable": "Zarządzany z zewnątrz: HANDY_OVERLAY_THEME_FILE wskazuje {{target}}, a Handy nie tworzy tam plików. Utwórz go samodzielnie lub usuń tę zmienną.",
+          "unknown": "Zarządzany z zewnątrz: Handy nie może zapisać tego pliku, więc tylko go odczytuje."
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "Plikiem motywu zarządza coś innego niż Handy, więc te wartości są tylko do odczytu.",
         "reload": "Wczytaj ponownie",
         "copy": "Kopiuj motyw jako JSON",
         "copied": "Skopiowano",

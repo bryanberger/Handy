@@ -386,15 +386,15 @@
       "themeFile": {
         "title": "ملف السمة",
         "description": "ملف JSON اختياري يتجاوز قيم سمة التراكب، بحيث تستطيع أدوات التنسيق الخارجية التحكم في التراكب.",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "لا يوجد ملف سمة بعد. سيُنشئ Handy واحداً هنا عند أول تغيير تجريه في الأعلى.",
+        "owned": "هذا الملف هو السمة؛ يكتبه Handy. وهو يحدد {{count}} من {{total}} قيم.",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "مُدار خارجياً: هذا الملف رابط رمزي إلى {{target}}. يقرأه Handy ولا يكتبه أبداً.",
+          "readOnly": "مُدار خارجياً: هذا الملف للقراءة فقط، لذا يقرأه Handy ولا يكتبه أبداً.",
+          "notCreatable": "مُدار خارجياً: يحدد HANDY_OVERLAY_THEME_FILE المسار {{target}}، ولا ينشئ Handy ملفات هناك. أنشئه بنفسك، أو أزل هذا المتغير.",
+          "unknown": "مُدار خارجياً: لا يستطيع Handy الكتابة إلى هذا الملف، لذا يقرأه فقط."
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "يدير ملف السمة شيء آخر غير Handy، لذا فإن هذه القيم للقراءة فقط.",
         "reload": "إعادة التحميل",
         "copy": "نسخ السمة بصيغة JSON",
         "copied": "تم النسخ",

@@ -409,15 +409,15 @@
       "themeFile": {
         "title": "Arquivo de tema",
         "description": "Um arquivo JSON opcional que substitui os valores do tema da sobreposição, para que ferramentas externas de personalização possam controlá-la.",
-        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
-        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "notFound": "Ainda não há arquivo de tema. O Handy cria um aqui na primeira vez que você mudar algo acima.",
+        "owned": "Este arquivo é o tema; quem o escreve é o Handy. Ele define {{count}} de {{total}} valores.",
         "managed": {
-          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
-          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
-          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
-          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+          "symlink": "Gerenciado externamente: este arquivo é um link simbólico para {{target}}. O Handy o lê e nunca o escreve.",
+          "readOnly": "Gerenciado externamente: este arquivo é somente leitura, então o Handy o lê e nunca o escreve.",
+          "notCreatable": "Gerenciado externamente: HANDY_OVERLAY_THEME_FILE indica {{target}}, e o Handy não cria arquivos ali. Crie-o você mesmo ou remova a variável.",
+          "unknown": "Gerenciado externamente: o Handy não consegue escrever este arquivo, então apenas o lê."
         },
-        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
+        "lockedDescription": "O arquivo de tema é gerenciado por algo que não é o Handy, então estes valores são somente leitura.",
         "reload": "Recarregar",
         "copy": "Copiar o tema como JSON",
         "copied": "Copiado",

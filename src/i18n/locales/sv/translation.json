@@ -331,6 +331,10 @@
         "resetLabel": "Återställ till standard"
       },
       "tokens": {
+        "edgeMargin": {
+          "title": "Skärmkantsmarginal",
+          "description": "Hur långt overlayen ligger från den skärmkant den är förankrad vid. 0 lägger den tätt mot den användbara kanten — under menyraden och ovanför Dock på macOS, innanför arbetsytan på Windows och innanför ytan som paneler lämnar på Linux med layer shell. Påverkas inte av storleksskalan."
+        },
         "accent": {
           "title": "Accentfärg",
           "description": "Färgen som framhäver: vågformen, inspelningspunkten, markören och förloppssnurran."

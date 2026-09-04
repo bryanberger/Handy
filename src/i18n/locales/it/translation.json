@@ -331,6 +331,10 @@
         "resetLabel": "Ripristina il valore predefinito"
       },
       "tokens": {
+        "edgeMargin": {
+          "title": "Margine dal bordo",
+          "description": "A che distanza l'overlay si posiziona dal bordo dello schermo a cui è ancorato. 0 lo appoggia al bordo utilizzabile — sotto la barra dei menu e sopra il Dock su macOS, dentro l'area di lavoro su Windows e dentro l'area lasciata libera dai pannelli su Linux con layer shell. Non risente della scala delle dimensioni."
+        },
         "accent": {
           "title": "Accento",
           "description": "Il colore di risalto: la forma d'onda, il punto di registrazione, il cursore e l'indicatore di caricamento."

@@ -78,7 +78,7 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `shortcut.rs` - Global keyboard shortcut handling
 - `settings.rs` - Application settings management
 - `overlay.rs` - Recording overlay window (platform-specific): window creation, monitors, positioning, show and hide, the Glass reveal, mic levels
-- `overlay_geometry.rs` - Card geometry, pure and platform-free: card shapes, card metrics (size scale, border width, radius), the window size and corner radius they produce, and the overlay window state the native window is configured from
+- `overlay_geometry.rs` - Card and placement geometry, with no `AppHandle`, no AppKit and no native calls: card shapes, card metrics (size scale, border width, radius), the window size and corner radius they produce, the overlay window state the native window is configured from, and where that window lands. Each platform's placement rule is a value here (`Platform`, `inherit_edge_margin`, `overlay_logical_origin`, `windows_overlay_bounds`, `layer_shell_placement`) rather than a `cfg` branch, so every platform's arithmetic is asserted from any host; `Platform::current` is the one line that reads the build target
 - `overlay_theme.rs` - Overlay theme tokens, the resolver (the file's tokens, clamped, unset ones inheriting), delivery and the "already delivered" gate the watcher leans on
 - `overlay_theme_file.rs` - Reads `overlay_theme.json` and decides whether Handy owns it (see the README's Overlay Theme File section)
 - `overlay_theme_write.rs` - Writes `overlay_theme.json`: atomic, verified by reading it back through the same parser, plus the one-time migration of the store's old `overlay_theme`

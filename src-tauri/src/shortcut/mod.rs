@@ -666,6 +666,9 @@ pub fn change_overlay_position_setting(app: AppHandle, position: String) -> Resu
     };
     settings.overlay_position = parsed;
     settings::write_settings(&app, settings);
+    // The anchored edge also decides which edge `edge_margin` is measured from,
+    // and the cache is what the theme paths read it through.
+    crate::overlay::update_overlay_position_cache(parsed);
 
     // Whether the overlay shows at all is owned by overlay_style now; position
     // only ever toggles Top/Bottom, so the enabled cache is untouched here.

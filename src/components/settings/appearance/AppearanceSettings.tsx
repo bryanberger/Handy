@@ -131,6 +131,12 @@ const AppearanceSettingsInner: React.FC = () => {
   // change anything while the card draws none.
   const showsWaveform =
     vars.effectiveValue("show_waveform") ?? BOOLEAN_INHERIT.show_waveform;
+  // What an unset `edge_margin` is worth here: Rust resolves it against the
+  // platform and the anchored edge and ships the answer, so the slider shows
+  // the gap the overlay actually has. Null until that payload lands; the row
+  // waits for it (see the Overlay group below) rather than flash a number that
+  // would be some other platform's truth.
+  const inheritedEdgeMargin = resolved?.effective_edge_margin ?? null;
   const handleSelectMaterial = useCallback(
     (next: Material) => {
       if (next !== currentMaterial)
@@ -265,6 +271,7 @@ const AppearanceSettingsInner: React.FC = () => {
                 field.key,
                 vars.effectiveMaterial,
                 currentGlassStyle,
+                inheritedEdgeMargin,
               )
             }
             locked={locked}
@@ -286,6 +293,16 @@ const AppearanceSettingsInner: React.FC = () => {
 
       <SettingsGroup title={t("settings.appearance.groups.overlay")}>
         <ShowOverlay descriptionMode="tooltip" grouped={true} />
+        {/* The edge margin belongs to the position, not to the card's sizes,
+            so its row sits here under Overlay Position. Hidden with that
+            dropdown when the overlay is off, there being no edge to sit at,
+            and held back until Rust has said what an unset margin inherits on
+            this platform and this edge. */}
+        {style !== "none" &&
+          inheritedEdgeMargin !== null &&
+          overlayTokenFieldsFor("position", vars.effectiveMaterial).map(
+            renderField,
+          )}
       </SettingsGroup>
 
       <SettingsGroup title={t("settings.appearance.groups.preview")}>
@@ -352,6 +369,7 @@ const AppearanceSettingsInner: React.FC = () => {
               file={resolved?.file ?? EMPTY_FILE_STATE}
               material={vars.effectiveMaterial}
               showWaveform={showsWaveform}
+              style={style}
               watching={resolved?.watching ?? false}
               onReload={() => void reload()}
               isReloading={isReloading}

@@ -10,10 +10,13 @@ import {
   STYLES_USING_WAVEFORM_WIDTH,
 } from "@/overlay/waveform/waveformStyles";
 
-/** The five groups of token rows the tab renders, in display order. Listed
- *  once so anything walking every row on screen, like the theme file's
- *  "sets N of M values" line, cannot miss a group. */
+/** The six groups of token rows the tab renders, in display order. Listed once
+ *  so anything walking every row on screen, like the theme file's "sets N of M
+ *  values" line, cannot miss a group. `position` is the odd one: its single row
+ *  sits in the Overlay group beside the style and position dropdowns rather
+ *  than a group of its own, that being the question it answers. */
 export const OVERLAY_TOKEN_GROUPS = [
+  "position",
   "color",
   "material",
   "elements",
@@ -51,9 +54,9 @@ interface OverlayTokenFieldBase {
  *
  * A discriminated union on `kind`, so `key` narrows with it. A color field's
  * key is one of the four color tokens, a length/factor field's one of the
- * twelve numeric ones, a toggle's one of the two switches, and each enum field
- * its own kind, so `renderField` reads `effectiveValue(field.key)` at the
- * right type per branch, not a cast.
+ * thirteen numeric ones, a toggle's one of the two switches, and each enum
+ * field its own kind, so `renderField` reads `effectiveValue(field.key)` at
+ * the right type per branch, not a cast.
  *
  * Numeric bounds come from `OVERLAY_TOKEN_BOUNDS` (the apply layer's
  * re-validation table, `src/lib/overlayTheme.ts`) rather than a copy here, so
@@ -95,15 +98,28 @@ const WAVEFORM_STYLE = "settings.appearance.waveformStyle";
  *  border, border_opacity, material, glass_material, glass_style,
  *  shadow_strength, shadow_offset_y, show_waveform, show_cancel, size_scale,
  *  radius, border_width, padding, element_gap, waveform_style, waveform_gap,
- *  waveform_width. Also the display order: every group's rows are contiguous.
- *  `glass_material` alone has no row, driving only the pre-macOS-26 fallback
- *  engine and set from the theme file.
+ *  waveform_width, edge_margin. Also the display order once `edge_margin`
+ *  leads: every group's rows are contiguous. `edge_margin` is out of contract
+ *  sequence on purpose, its row being the first one on screen, under Overlay
+ *  Position. `glass_material` is the only token with no row, driving the
+ *  pre-macOS-26 fallback engine alone and set from the theme file.
  *
- *  `shadow_strength` has two rows, one per Material, as the two card alphas
- *  do. Under Flat it is a slider over a CSS shadow this stylesheet draws;
- *  under Glass the shadow is macOS's own and `NSWindow` offers no strength,
- *  so the only honest control is a switch. */
+ *  `shadow_strength` has two rows, one per Material, as the two card alphas do.
+ *  Under Flat it is a slider over a CSS shadow the stylesheet draws; under
+ *  Glass the shadow is macOS's own and `NSWindow` offers no strength, so the
+ *  only honest control is a switch. */
 export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
+  // The one token measured against the screen instead of the card, so it sits
+  // with Overlay Position rather than the card's sizes, and its px are never
+  // multiplied by the size scale.
+  {
+    key: "edge_margin",
+    group: "position",
+    kind: "length",
+    ...OVERLAY_TOKEN_BOUNDS.edge_margin,
+    labelKey: `${TOKENS}.edgeMargin.title`,
+    descriptionKey: `${TOKENS}.edgeMargin.description`,
+  },
   {
     key: "accent",
     group: "color",

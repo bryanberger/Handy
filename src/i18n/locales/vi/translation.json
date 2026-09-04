@@ -331,6 +331,10 @@
         "resetLabel": "Đặt lại về mặc định"
       },
       "tokens": {
+        "edgeMargin": {
+          "title": "Lề mép màn hình",
+          "description": "Lớp phủ nằm cách mép màn hình mà nó neo vào bao xa. 0 đặt nó sát mép dùng được — dưới thanh menu và trên Dock trên macOS, trong vùng làm việc trên Windows, và trong vùng mà các panel chừa lại trên Linux khi dùng layer shell. Không bị tỷ lệ kích thước ảnh hưởng."
+        },
         "accent": {
           "title": "Màu nhấn",
           "description": "Màu làm nổi bật: dạng sóng, chấm ghi âm, con trỏ và vòng quay xử lý."

@@ -331,6 +331,10 @@
         "resetLabel": "Przywróć wartość domyślną"
       },
       "tokens": {
+        "edgeMargin": {
+          "title": "Margines od krawędzi",
+          "description": "Jak daleko nakładka znajduje się od krawędzi ekranu, przy której jest zakotwiczona. 0 przykleja ją do użytecznej krawędzi — pod paskiem menu i nad Dockiem w macOS, wewnątrz obszaru roboczego w Windows oraz wewnątrz obszaru pozostawionego przez panele w Linuksie z layer shell. Skala rozmiaru na nią nie wpływa."
+        },
         "accent": {
           "title": "Akcent",
           "description": "Kolor wyróżnienia: fala dźwiękowa, kropka nagrywania, kursor i wskaźnik ładowania."

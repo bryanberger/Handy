@@ -1473,11 +1473,11 @@ export type OverlayPosition = "top" | "bottom"
  */
 export type OverlayStyle = "none" | "minimal" | "live"
 /**
- * The twenty-two overlay-theme tokens. `None` means inherit.
+ * The twenty-three overlay-theme tokens. `None` means inherit.
  * 
  * Field names are the theme-file keys, and every field deserializes
  * leniently: a wrong type or shape degrades to `None` with a `warn!`, so one
- * bad token never costs the other twenty-one, as `salvage_settings` does one
+ * bad token never costs the other twenty-two, as `salvage_settings` does one
  * level up. The store salvages silently (log only); the theme file applies
  * the same rules but reports diagnostics, so it runs its own per-key pass
  * instead of deserializing an `OverlayTheme`.
@@ -1623,7 +1623,19 @@ waveform_gap?: number | null;
 /**
  * Width of each waveform bar at scale 1, 2 to 6 px.
  */
-waveform_width?: number | null }
+waveform_width?: number | null; 
+/**
+ * The gap between the usable screen edge and the card, in points, 0 to
+ * 200. Zero sits the card flush against that edge.
+ * 
+ * The one token measured against the screen rather than the card, so it
+ * is *not* multiplied by `size_scale`: the screen does not zoom, and the
+ * card's distance from the edge stays what the user chose at every scale.
+ * Which edge it is measured from follows the `overlay_position` setting,
+ * so an unset value inherits per platform *and* per position, which the
+ * accessor of the same name resolves.
+ */
+edge_margin?: number | null }
 /**
  * A theme being edited, on its way to the overlay window alone.
  * 
@@ -1695,15 +1707,28 @@ effective_material: Material;
  */
 glass_support: GlassSupport; 
 /**
+ * The gap to the usable screen edge actually in effect, in points: the
+ * `edge_margin` token, or the per-platform, per-position value an unset
+ * one inherits. Concrete, never `None`.
+ * 
+ * Carried for the same reason as `glass_support`: the number depends on
+ * the platform and on the anchored edge, and the Appearance tab's slider
+ * has to show it while the token is unset. Shipping the answer keeps a
+ * six-cell platform table out of TypeScript, where it could disagree with
+ * the one the window is placed from.
+ */
+effective_edge_margin: number; 
+/**
  * How far the overlay window may reach past the card towards the screen
  * edge it is anchored to, in logical points, already scaled and whole.
  * 
- * Derived, like the Material above, and for the same reason: only Rust
- * knows the room the card has to the usable edge on this platform at this
- * overlay position, and the overlay page must inset the card by exactly
- * the same number or the card would move the moment a shadow is switched
- * on. The apply layer writes it straight into `--ov-shadow-edge-slack`;
- * the native window is sized and placed from it. Zero under Glass and
+ * Derived, like the Material above, and for the same reason: the overlay
+ * page must inset the card by exactly the same number the native window
+ * grew by, or the card would move the moment a shadow is switched on. It
+ * is capped at `effective_edge_margin`, the room the card has to the
+ * usable edge, so the window stops short of the Dock and the menu bar.
+ * The apply layer writes it straight into `--ov-shadow-edge-slack`; the
+ * native window is sized and placed from it. Zero under Glass and
  * whenever the shadow strength is zero.
  */
 shadow_edge_slack?: number; 

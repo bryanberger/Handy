@@ -1240,9 +1240,10 @@ pub fn write_settings(app: &AppHandle, settings: AppSettings) {
 /// `AppSettings`.
 ///
 /// The overlay theme resolves per animation frame while a token is dragged, and
-/// derives its shadow's anchored-side slack from the overlay position.
-/// `get_settings` deserializes all sixty-odd fields, runs the migration pass
-/// and can write the store back, so this reads the one value it needs.
+/// resolves the edge margin, and with it the shadow's anchored-side slack,
+/// against the overlay position. `get_settings` deserializes all sixty-odd
+/// fields, runs the migration pass and can write the store back, so this reads
+/// the one value it needs. Window creation takes it too, for the same reason.
 /// Skipping migrations is safe: the one that ever touched `overlay_position`
 /// (the retired `"none"`) ran at startup before any window existed, and its
 /// alias still covers a store that skipped it.

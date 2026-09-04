@@ -331,6 +331,10 @@
         "resetLabel": "Restablecer al valor predeterminado"
       },
       "tokens": {
+        "edgeMargin": {
+          "title": "Margen del borde",
+          "description": "A qué distancia se coloca la superposición del borde de la pantalla al que está anclada. 0 la deja pegada al borde utilizable — bajo la barra de menús y encima del Dock en macOS, dentro del área de trabajo en Windows y dentro del área que dejan los paneles en Linux con layer shell. No le afecta la escala de tamaño."
+        },
         "accent": {
           "title": "Acento",
           "description": "El color de resalte: la forma de onda, el punto de grabación, el cursor y el indicador de carga."

@@ -35,8 +35,8 @@
 use crate::overlay_theme::{
     GlassMaterial, GlassStyle, HexColor, ManagedReason, Material, OverlayTheme,
     ThemeFileDiagnostic, ThemeFileDiagnosticCode, ThemeFileOwnership, ThemeFileState,
-    WaveformStyle, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN, BORDER_WIDTH_MAX, ELEMENT_GAP_MAX,
-    GLASS_TINT_MAX, GLASS_TINT_MIN, PADDING_MAX, RADIUS_MAX, SHADOW_OFFSET_Y_MAX,
+    WaveformStyle, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN, BORDER_WIDTH_MAX, EDGE_MARGIN_MAX,
+    ELEMENT_GAP_MAX, GLASS_TINT_MAX, GLASS_TINT_MIN, PADDING_MAX, RADIUS_MAX, SHADOW_OFFSET_Y_MAX,
     SHADOW_STRENGTH_MAX, SHADOW_STRENGTH_MIN, SIZE_SCALE_MAX, SIZE_SCALE_MIN, SURFACE_OPACITY_MAX,
     SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
 };
@@ -76,7 +76,7 @@ const CONFIG_SUBDIR: &str = "handy";
 /// lookup. Per XDG, empty is unset and a relative value invalid.
 const CONFIG_HOME_ENV_VAR: &str = "XDG_CONFIG_HOME";
 
-/// Anything larger than this is not a twenty-two-key document; refused unread.
+/// Anything larger than this is not a twenty-three-key document; refused unread.
 const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 
 /// Diagnostics carried in [`ThemeFileState`]. All reach the log; this bounds
@@ -128,13 +128,13 @@ const fn token(
     TokenSpec { key, parser }
 }
 
-/// The twenty-two tokens in token-contract order, which the Appearance tab,
-/// [`ThemeFileState::owned_keys`] and the per-key diagnostics all follow, so
-/// the payload does not depend on `serde_json`'s key order.
+/// The twenty-three tokens in the token contract's order, followed by the
+/// Appearance tab, [`ThemeFileState::owned_keys`] and the per-key diagnostics,
+/// so the payload does not depend on `serde_json`'s key order.
 ///
 /// One table, not a key list beside a match on it. Key, parser and bounds are
 /// one fact; splitting them made a mismatch a runtime debug assertion.
-const TOKENS: [TokenSpec; 22] = [
+const TOKENS: [TokenSpec; 23] = [
     token("accent", |key, value, tokens, diagnostics| {
         tokens.accent = parse_color(key, value, diagnostics);
         tokens.accent.is_some()
@@ -264,6 +264,10 @@ const TOKENS: [TokenSpec; 22] = [
             diagnostics,
         );
         tokens.waveform_width.is_some()
+    }),
+    token("edge_margin", |key, value, tokens, diagnostics| {
+        tokens.edge_margin = parse_px(key, value, 0, EDGE_MARGIN_MAX, diagnostics);
+        tokens.edge_margin.is_some()
     }),
 ];
 
@@ -1461,7 +1465,8 @@ mod tests {
   "element_gap": null,
   "waveform_style": null,
   "waveform_gap": null,
-  "waveform_width": null
+  "waveform_width": null,
+  "edge_margin": null
 }"##;
 
     /// The contract's custom theme, byte-identical to its worked example.
@@ -1488,7 +1493,8 @@ mod tests {
   "element_gap": 8,
   "waveform_style": "ribbon",
   "waveform_gap": 2,
-  "waveform_width": 4
+  "waveform_width": 4,
+  "edge_margin": 24
 }"##;
 
     /// The contract's theming-tool document: every leniency, a comment key,
@@ -2147,9 +2153,10 @@ mod tests {
                 waveform_style: Some(WaveformStyle::Ribbon),
                 waveform_gap: Some(2),
                 waveform_width: Some(4),
+                edge_margin: Some(24),
             }
         );
-        // Every key is owned, so the tab locks all twenty-two.
+        // Every key is owned, so the tab locks all twenty-three.
         assert_eq!(
             parsed.owned_keys,
             TOKENS.iter().map(|token| token.key).collect::<Vec<_>>()
@@ -2169,7 +2176,7 @@ mod tests {
         assert_eq!(parsed.tokens.surface_opacity, Some(1.0));
         assert_eq!(parsed.tokens.material, Some(Material::Flat));
 
-        // The seventeen tokens it does not mention still inherit.
+        // The eighteen tokens it does not mention still inherit.
         assert_eq!(parsed.tokens.glass_tint, None);
         assert_eq!(parsed.tokens.border, None);
         assert_eq!(parsed.tokens.border_opacity, None);
@@ -2187,6 +2194,7 @@ mod tests {
         assert_eq!(parsed.tokens.waveform_style, None);
         assert_eq!(parsed.tokens.waveform_gap, None);
         assert_eq!(parsed.tokens.waveform_width, None);
+        assert_eq!(parsed.tokens.edge_margin, None);
 
         assert_eq!(
             parsed.owned_keys,

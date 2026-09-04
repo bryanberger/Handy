@@ -17,6 +17,7 @@ import { commands } from "@/bindings";
 import type {
   ManagedReason,
   Material,
+  OverlayStyle,
   OverlayTheme,
   ResolvedOverlayTheme,
   ThemeFileDiagnosticCode,
@@ -37,19 +38,24 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
   return JSON.stringify(doc, null, 2);
 }
 
-/** The tokens with a row in the Appearance tab under one Material. It asks
- *  for rows exactly as the groups render them, so a token that gains, loses
- *  or shares a row needs no second edit. Never shown: `glass_material`, which
- *  drives only the pre-macOS-26 fallback engine and has no control, the other
- *  Material's alpha, under Glass the shadow offset macOS owns, and with the
- *  waveform hidden the whole Waveform group the tab drops with it. */
+/** The tokens with a row in the Appearance tab under one Material, one
+ *  waveform switch and one overlay style. It asks for rows exactly as the
+ *  groups render them, so a token that gains, loses or shares a row needs no
+ *  second edit. Never shown: `glass_material`, which drives the pre-macOS-26
+ *  fallback engine alone and has no control, the other Material's alpha, under
+ *  Glass the shadow offset macOS owns, with the waveform hidden the Waveform
+ *  group the tab drops with it, and with the overlay off the edge margin,
+ *  which sits under Overlay Position with no edge to sit at. */
 function keysWithARow(
   material: Material,
   showWaveform: boolean,
+  style: OverlayStyle,
 ): Set<OverlayThemeKey> {
-  const groups = showWaveform
-    ? OVERLAY_TOKEN_GROUPS
-    : OVERLAY_TOKEN_GROUPS.filter((group) => group !== "waveform");
+  const groups = OVERLAY_TOKEN_GROUPS.filter(
+    (group) =>
+      (showWaveform || group !== "waveform") &&
+      (style !== "none" || group !== "position"),
+  );
   return new Set<OverlayThemeKey>(
     groups.flatMap((group) =>
       overlayTokenFieldsFor(group, material).map((field) => field.key),
@@ -59,24 +65,26 @@ function keysWithARow(
 
 /**
  * What the "this file sets N of M values" line counts. Only the tokens with a
- * row on screen right now, on the Material being painted.
+ * row on screen right now, on the Material being painted and at the overlay
+ * style in effect.
  *
  * Otherwise a file setting a row-less token would count as a value with no
  * control, promising rows that are not there. So the total follows what is on
- * screen: twenty of the twenty-two under Flat, nineteen under Glass, with no
- * shadow offset, and three fewer either way with the waveform hidden, whose
- * group leaves the tab. The tokens still apply; this rule counts one sentence,
- * not the file.
+ * screen: twenty-one of the twenty-three under Flat, twenty under Glass, with
+ * no shadow offset, three fewer either way with the waveform hidden, and one
+ * fewer again with the overlay off. The tokens still apply; this rule counts
+ * one sentence, not the file.
  */
 export function setTokenCounts(
   ownedKeys: readonly string[],
   material: Material,
   showWaveform: boolean,
+  style: OverlayStyle,
 ): {
   count: number;
   total: number;
 } {
-  const shown = keysWithARow(material, showWaveform);
+  const shown = keysWithARow(material, showWaveform, style);
   return {
     count: ownedKeys.filter((key) => shown.has(key as OverlayThemeKey)).length,
     total: shown.size,
@@ -156,6 +164,10 @@ export interface ThemeFileGroupProps {
   /** `show_waveform`, which takes the Waveform group off the tab with it, so
    *  its three rows leave the same count. */
   showWaveform: boolean;
+  /** The overlay style in effect, for the same line: the edge margin's row goes
+   *  away with the overlay, so it is not one of the rows a file could set on
+   *  screen. */
+  style: OverlayStyle;
   /** Whether the file watcher is running. It is, on nearly every machine, and
    *  then a hand edit arrives on its own and Reload has nothing to do. */
   watching: boolean;
@@ -174,6 +186,7 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
   file,
   material,
   showWaveform,
+  style,
   watching,
   onReload,
   isReloading,
@@ -212,7 +225,7 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
   const more = moreDiagnosticsCount(file.diagnostics_total, shown.length);
   const status = themeFileStatus(
     file,
-    setTokenCounts(file.owned_keys, material, showWaveform),
+    setTokenCounts(file.owned_keys, material, showWaveform, style),
   );
 
   return (

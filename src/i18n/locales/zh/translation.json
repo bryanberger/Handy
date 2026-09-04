@@ -331,6 +331,10 @@
         "resetLabel": "重置为默认值"
       },
       "tokens": {
+        "edgeMargin": {
+          "title": "边缘间距",
+          "description": "悬浮窗距离其锚定的屏幕边缘有多远。0 表示紧贴可用边缘——在 macOS 上位于菜单栏下方、程序坞上方，在 Windows 上位于工作区内，在 Linux 上使用 layer shell 时位于面板留出的区域内。不受尺寸缩放影响。"
+        },
         "accent": {
           "title": "强调色",
           "description": "高亮颜色：波形、录制圆点、光标和加载图标。"

@@ -331,6 +331,10 @@
         "resetLabel": "Nulstil til standard"
       },
       "tokens": {
+        "edgeMargin": {
+          "title": "Skærmkantsmargen",
+          "description": "Hvor langt overlayet ligger fra den skærmkant, det er forankret til. 0 lægger det helt op ad den brugbare kant — under menulinjen og over Dock på macOS, inden for arbejdsområdet på Windows og inden for det område, panelerne efterlader på Linux med layer shell. Påvirkes ikke af størrelsesskalaen."
+        },
         "accent": {
           "title": "Accent",
           "description": "Fremhævningsfarven: bølgeformen, optageprikken, markøren og indlæsningsikonet."

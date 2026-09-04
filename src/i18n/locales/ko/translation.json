@@ -331,6 +331,10 @@
         "resetLabel": "기본값으로 재설정"
       },
       "tokens": {
+        "edgeMargin": {
+          "title": "가장자리 여백",
+          "description": "오버레이가 고정된 화면 가장자리에서 얼마나 떨어져 있는지입니다. 0은 사용 가능한 가장자리에 딱 붙입니다 — macOS에서는 메뉴 막대 아래와 Dock 위, Windows에서는 작업 영역 안쪽, Linux에서는 layer shell 사용 시 패널이 남긴 영역 안쪽입니다. 크기 배율의 영향을 받지 않습니다."
+        },
         "accent": {
           "title": "강조",
           "description": "강조 색상: 파형, 녹음 점, 커서, 로딩 표시."

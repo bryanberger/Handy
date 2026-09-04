@@ -331,6 +331,10 @@
         "resetLabel": "既定値に戻す"
       },
       "tokens": {
+        "edgeMargin": {
+          "title": "画面端の余白",
+          "description": "オーバーレイを固定した画面端からどれだけ離すかです。0 は使用可能な端にぴったり合わせます（macOS ではメニューバーの下と Dock の上、Windows では作業領域の内側、Linux では layer shell 使用時にパネルが空けた領域の内側）。サイズ倍率の影響は受けません。"
+        },
         "accent": {
           "title": "アクセント",
           "description": "強調表示の色：波形、録音ドット、キャレット、スピナーに使われます。"

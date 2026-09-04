@@ -3,8 +3,8 @@
 //! A *theme file* lets an external theming tool drive the overlay without the
 //! settings window. Handy only ever **reads** it — nothing here writes, moves
 //! or rewrites the file — and nothing but typed tokens ever comes out of it:
-//! canonical `#rrggbb` colours, the closed enums `flat | glass` and the eight
-//! macOS `glass_material` values, and numbers
+//! canonical `#rrggbb` colours, the closed enums `flat | glass`, the eight
+//! macOS `glass_material` values and the two `glass_style` values, and numbers
 //! rounded and clamped to the token contract's bounds. No CSS, stylesheet,
 //! script, font, path, URL or command is ever read from this document, so a
 //! hostile file can at worst cost the overlay its styling for one session.
@@ -29,10 +29,10 @@
 //! valid. Readers should tolerate either shape.
 
 use crate::overlay_theme::{
-    GlassMaterial, HexColor, Material, OverlayTheme, ThemeFileDiagnostic, ThemeFileDiagnosticCode,
-    ThemeFileState, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN, BORDER_WIDTH_MAX, PADDING_MAX,
-    RADIUS_MAX, SIZE_SCALE_MAX, SIZE_SCALE_MIN, SURFACE_OPACITY_MAX, SURFACE_OPACITY_MIN,
-    WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
+    GlassMaterial, GlassStyle, HexColor, Material, OverlayTheme, ThemeFileDiagnostic,
+    ThemeFileDiagnosticCode, ThemeFileState, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN,
+    BORDER_WIDTH_MAX, PADDING_MAX, RADIUS_MAX, SIZE_SCALE_MAX, SIZE_SCALE_MIN, SURFACE_OPACITY_MAX,
+    SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
 };
 use log::{debug, warn};
 use serde_json::Value;
@@ -67,7 +67,7 @@ pub const THEME_FILE_ENV_VAR: &str = "HANDY_OVERLAY_THEME_FILE";
 /// Discussion #1802 asked for (`~/.config/handy/`).
 const LINUX_CONFIG_SUBDIR: &str = "handy";
 
-/// Anything larger than this is not a fourteen-key document; refused unread.
+/// Anything larger than this is not a fifteen-key document; refused unread.
 const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 
 /// How many diagnostics ride along in [`ThemeFileState`]. Every diagnostic
@@ -75,11 +75,11 @@ const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 /// unbounded in a hostile document.
 const MAX_DIAGNOSTICS: usize = 5;
 
-/// The fourteen token keys, in the token contract's order — which is also the
+/// The fifteen token keys, in the token contract's order — which is also the
 /// order the Appearance tab lists them in. This is the order
 /// [`ThemeFileState::owned_keys`] and the per-key diagnostics come out in, so
 /// the payload does not depend on how `serde_json` orders an object's keys.
-const TOKEN_KEYS: [&str; 14] = [
+const TOKEN_KEYS: [&str; 15] = [
     "accent",
     "surface",
     "surface_opacity",
@@ -88,6 +88,7 @@ const TOKEN_KEYS: [&str; 14] = [
     "border_opacity",
     "material",
     "glass_material",
+    "glass_style",
     "size_scale",
     "radius",
     "border_width",
@@ -660,6 +661,10 @@ fn parse_document(text: &str) -> Result<ParsedDocument, ThemeFileDiagnostic> {
                 tokens.glass_material = parse_glass_material(key, value, &mut diagnostics);
                 tokens.glass_material.is_some()
             }
+            "glass_style" => {
+                tokens.glass_style = parse_glass_style(key, value, &mut diagnostics);
+                tokens.glass_style.is_some()
+            }
             "radius" => {
                 tokens.radius = parse_px(key, value, 0, RADIUS_MAX, &mut diagnostics);
                 tokens.radius.is_some()
@@ -828,6 +833,38 @@ fn parse_glass_material(
         .or_else(|| {
             let expected = GlassMaterial::ALL
                 .map(|material| format!("\"{}\"", material.as_key()))
+                .join(", ");
+            diagnostics.push(diagnostic(
+                ThemeFileDiagnosticCode::WrongType,
+                Some(key.to_string()),
+                format!("'{key}' is {raw:?}; expected one of {expected}"),
+            ));
+            None
+        })
+}
+
+/// `glass_style`: the two Liquid Glass styles, matched case-insensitively
+/// and ignoring `-`/` ` like [`parse_glass_material`], so a document written
+/// by hand or by a third-party tool spells them however it likes.
+fn parse_glass_style(
+    key: &str,
+    value: &Value,
+    diagnostics: &mut Vec<ThemeFileDiagnostic>,
+) -> Option<GlassStyle> {
+    let raw = expect_string(key, value, diagnostics)?;
+    let normalized: String = raw
+        .trim()
+        .to_ascii_lowercase()
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .collect();
+
+    GlassStyle::ALL
+        .into_iter()
+        .find(|style| style.as_key() == normalized)
+        .or_else(|| {
+            let expected = GlassStyle::ALL
+                .map(|style| format!("\"{}\"", style.as_key()))
                 .join(", ");
             diagnostics.push(diagnostic(
                 ThemeFileDiagnosticCode::WrongType,
@@ -1031,6 +1068,7 @@ mod tests {
   "border_opacity": null,
   "material": null,
   "glass_material": null,
+  "glass_style": null,
   "size_scale": null,
   "radius": null,
   "border_width": null,
@@ -1051,6 +1089,7 @@ mod tests {
   "border_opacity": 0.3,
   "material": "glass",
   "glass_material": "popover",
+  "glass_style": "clear",
   "size_scale": 1.1,
   "radius": 12,
   "border_width": 1,
@@ -1276,6 +1315,7 @@ mod tests {
                 border_opacity: Some(0.3),
                 material: Some(Material::Glass),
                 glass_material: Some(GlassMaterial::Popover),
+                glass_style: Some(GlassStyle::Clear),
                 size_scale: Some(1.1),
                 radius: Some(12),
                 border_width: Some(1),
@@ -1284,7 +1324,7 @@ mod tests {
                 waveform_width: Some(4),
             }
         );
-        // Every key is owned, so the tab locks all fourteen.
+        // Every key is owned, so the tab locks all fifteen.
         assert_eq!(parsed.owned_keys, TOKEN_KEYS.to_vec());
         assert!(parsed.diagnostics.is_empty());
     }
@@ -1529,6 +1569,48 @@ mod tests {
         );
         let message = messages(&unknown.diagnostics);
         assert!(message.contains("\"popover\""), "{message}");
+    }
+
+    /// `glass_style` is spelled as leniently as `glass_material` and just as
+    /// closed, so a document that names a style this build does not have
+    /// loses that one key rather than the whole file.
+    #[test]
+    fn glass_style_spelling_is_lenient_but_closed() {
+        for spelling in ["clear", "CLEAR", " Clear "] {
+            let parsed = parse(&format!(r##"{{ "glass_style": "{spelling}" }}"##));
+            assert_eq!(
+                parsed.tokens.glass_style,
+                Some(GlassStyle::Clear),
+                "{spelling}"
+            );
+            assert!(parsed.diagnostics.is_empty(), "{spelling}");
+        }
+
+        assert_eq!(
+            parse(r##"{ "glass_style": "regular" }"##)
+                .tokens
+                .glass_style,
+            Some(GlassStyle::Regular)
+        );
+
+        let unknown = parse(r##"{ "glass_style": "frosted", "radius": 12 }"##);
+        assert_eq!(unknown.tokens.glass_style, None);
+        assert_eq!(unknown.tokens.radius, Some(12));
+        assert_eq!(unknown.owned_keys, vec!["radius"]);
+        assert_eq!(
+            codes(&unknown.diagnostics),
+            vec![ThemeFileDiagnosticCode::WrongType]
+        );
+        let message = messages(&unknown.diagnostics);
+        assert!(message.contains("\"regular\""), "{message}");
+
+        // Wrong JSON type, not a wrong spelling: same one-key cost.
+        let wrong_type = parse(r##"{ "glass_style": 1 }"##);
+        assert_eq!(wrong_type.tokens.glass_style, None);
+        assert_eq!(
+            codes(&wrong_type.diagnostics),
+            vec![ThemeFileDiagnosticCode::WrongType]
+        );
     }
 
     /// A typo and a key from a newer schema are indistinguishable here, and a

@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Glas ist auf diesem Mac gerade nicht verfügbar — zum Beispiel wenn in macOS Transparenz reduzieren aktiv ist — daher wird das Overlay flach dargestellt."
       },
-      "glassMaterial": {
-        "title": "Glas-Material",
-        "description": "Mit welcher macOS-Unschärfe die Glasoberfläche gezeichnet wird. Gilt nur, solange Material auf Glas steht.",
+      "glassStyle": {
+        "title": "Glas-Stil",
+        "description": "Mit welchem Liquid Glass das Overlay gezeichnet wird. Normal dunkelt selbst ab, damit der Text über allem lesbar bleibt; Klar ist dünner und lässt mehr vom Hintergrund durch. Ab macOS 26.",
         "options": {
-          "hudWindow": {
-            "title": "HUD-Fenster",
-            "description": "Lässt am meisten vom Hintergrund durch. Immer dunkel, unabhängig vom App-Design."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Folgt dem App-Design, etwa zwei Drittel so durchsichtig wie HUD-Fenster."
-          },
-          "menu": {
-            "title": "Menü",
-            "description": "Folgt dem App-Design, noch etwas dichter."
-          },
-          "sidebar": {
-            "title": "Seitenleiste",
-            "description": "Folgt dem App-Design, weich und nur leicht durchsichtig."
-          },
-          "underWindowBackground": {
-            "title": "Unter dem Fenster",
-            "description": "Die breiteste Unschärfe, vom Hintergrund bleibt kaum etwas übrig."
-          },
-          "sheet": {
-            "title": "Sheet",
-            "description": "Auf neueren macOS-Versionen deckend — es scheint kein Hintergrund durch."
-          },
-          "tooltip": {
-            "title": "Tooltip",
-            "description": "Folgt dem App-Design, nur leicht durchsichtig."
-          },
-          "contentBackground": {
-            "title": "Inhaltshintergrund",
-            "description": "Auf neueren macOS-Versionen deckend — es scheint kein Hintergrund durch."
-          }
+          "regular": "Normal",
+          "clear": "Klar"
         }
       },
       "color": {

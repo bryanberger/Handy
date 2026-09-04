@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Le verre n'est pas disponible sur ce Mac pour le moment — par exemple lorsque Réduire la transparence est activé dans macOS — donc l'overlay est rendu en Plat."
       },
-      "glassMaterial": {
-        "title": "Matériau du verre",
-        "description": "Le flou macOS avec lequel la surface Verre est dessinée. Ne s'applique que lorsque Matériau vaut Verre.",
+      "glassStyle": {
+        "title": "Style du verre",
+        "description": "Avec quel Liquid Glass l'overlay est dessiné. Normal conserve son propre assombrissement, la transcription reste donc lisible sur n'importe quel fond ; Transparent est plus fin et laisse voir davantage l'arrière-plan. macOS 26 et versions ultérieures.",
         "options": {
-          "hudWindow": {
-            "title": "Fenêtre HUD",
-            "description": "Laisse passer le plus d'arrière-plan. Toujours sombre, quel que soit le thème de l'application."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Suit le thème de l'application, environ deux tiers moins transparent que Fenêtre HUD."
-          },
-          "menu": {
-            "title": "Menu",
-            "description": "Suit le thème de l'application, encore plus dense."
-          },
-          "sidebar": {
-            "title": "Barre latérale",
-            "description": "Suit le thème de l'application, doux et à peine transparent."
-          },
-          "underWindowBackground": {
-            "title": "Sous la fenêtre",
-            "description": "Le flou le plus large, il ne reste presque rien de l'arrière-plan."
-          },
-          "sheet": {
-            "title": "Feuille",
-            "description": "Opaque sur les versions récentes de macOS — aucun arrière-plan ne transparaît."
-          },
-          "tooltip": {
-            "title": "Info-bulle",
-            "description": "Suit le thème de l'application, à peine transparent."
-          },
-          "contentBackground": {
-            "title": "Arrière-plan de contenu",
-            "description": "Opaque sur les versions récentes de macOS — aucun arrière-plan ne transparaît."
-          }
+          "regular": "Normal",
+          "clear": "Transparent"
         }
       },
       "color": {

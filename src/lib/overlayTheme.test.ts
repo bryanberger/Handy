@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { Material, OverlayTheme, ResolvedOverlayTheme } from "@/bindings";
+import type {
+  GlassEngine,
+  Material,
+  OverlayTheme,
+  ResolvedOverlayTheme,
+} from "@/bindings";
 import {
   applyOverlayTheme,
   autoForeground,
@@ -27,11 +32,16 @@ import {
 function resolved(
   theme: Partial<OverlayTheme>,
   effective: Material = "flat",
+  engine: GlassEngine = "visual_effect",
 ): ResolvedOverlayTheme {
   return {
     theme: { ...INHERIT_ALL, ...theme },
     effective_material: effective,
-    glass_support: { supported: effective === "glass", available: false },
+    glass_support: {
+      supported: effective === "glass",
+      available: false,
+      engine,
+    },
     file: {
       path: "/tmp/overlay_theme.json",
       present: false,
@@ -274,6 +284,24 @@ describe("Glass", () => {
     ).toBe("color-mix(in srgb, #7aa2f7 50%, transparent)");
   });
 
+  /** Liquid Glass (macOS 26) paints the same card as the older blur: the
+   *  engine changes which native view draws behind it and which of the two
+   *  engine tokens applies, never what the card writes. Rust hands
+   *  `NSGlassEffectView` the same surface as its `tintColor`, composed from
+   *  the identical `surface`/`surface_opacity` pair. */
+  test("the engine does not change what the card paints", () => {
+    const older = resolveOverlayThemeVars(resolved({}, "glass"));
+    const liquid = resolveOverlayThemeVars(resolved({}, "glass", "liquid"));
+    expect(liquid).toEqual(older);
+    expect(liquid["--s-surface"]).toBe(
+      "color-mix(in srgb, var(--color-background) 45%, transparent)",
+    );
+  });
+
+  test("Flat is Flat on every engine", () => {
+    expect(resolveOverlayThemeVars(resolved({}, "flat", "liquid"))).toEqual({});
+  });
+
   test("a requested Glass downgraded to Flat renders Flat neutrals", () => {
     const vars = resolveOverlayThemeVars(resolved({ material: "glass" }));
     expect(vars["--s-surface"]).toBeUndefined();
@@ -283,7 +311,7 @@ describe("Glass", () => {
 });
 
 describe("the worked example", () => {
-  /** The README's "A full theme", every one of the fourteen tokens set. */
+  /** The README's "A full theme", every one of the fifteen tokens set. */
   const FULL_THEME: Partial<OverlayTheme> = {
     accent: "#7aa2f7",
     surface: "#1a1b26",
@@ -293,6 +321,7 @@ describe("the worked example", () => {
     border_opacity: 0.3,
     material: "glass",
     glass_material: "popover",
+    glass_style: "clear",
     size_scale: 1.1,
     radius: 12,
     border_width: 1,
@@ -304,8 +333,9 @@ describe("the worked example", () => {
   // The README's full theme file and the CSS it resolves to. Its
   // `material: "glass"` is read here with the Flat neutrals, so this is the
   // rendering where Glass was requested and downgraded (the percentages in the
-  // Glass case are covered above); `glass_material` is the one token with no
-  // CSS at all — it sets a native view's property — so it writes nothing. The
+  // Glass case are covered above); `glass_material` and `glass_style` are the
+  // two tokens with no CSS at all — each sets a native view's property — so
+  // neither writes anything. The
   // contract's derivation rules mix the neutrals from `var(--s-text)`, which
   // resolves to the `--s-text` written beside them, while the explicit
   // `border` replaces that mix for the edge.
@@ -385,7 +415,7 @@ describe("the boundary re-validation", () => {
         "waveform_width": 1
       },
       "effective_material": "opaque",
-      "glass_support": { "supported": true, "available": true },
+      "glass_support": { "supported": true, "available": true, "engine": "liquid" },
       "file": null
     }`) as ResolvedOverlayTheme;
 

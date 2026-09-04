@@ -303,42 +303,12 @@
         },
         "unavailableNote": "この Mac では現在ガラスを利用できないため（macOS の「透明度を下げる」がオンのときなど）、オーバーレイはフラットで描画されます。"
       },
-      "glassMaterial": {
-        "title": "ガラスのマテリアル",
-        "description": "ガラスのサーフェスを描画する macOS のぼかしの種類です。マテリアルがガラスのときだけ適用されます。",
+      "glassStyle": {
+        "title": "ガラスのスタイル",
+        "description": "オーバーレイをどの Liquid Glass で描画するかです。標準は自分で暗くするためどんな背景でも文字が読みやすく、クリアは薄く背後がより見えます。macOS 26 以降。",
         "options": {
-          "hudWindow": {
-            "title": "HUD ウインドウ",
-            "description": "背景を最もよく透かします。アプリのテーマにかかわらず常に暗くなります。"
-          },
-          "popover": {
-            "title": "ポップオーバー",
-            "description": "アプリのテーマに従い、透け具合は HUD ウインドウの約 3 分の 2 です。"
-          },
-          "menu": {
-            "title": "メニュー",
-            "description": "アプリのテーマに従い、さらに濃くなります。"
-          },
-          "sidebar": {
-            "title": "サイドバー",
-            "description": "アプリのテーマに従い、柔らかくわずかに透ける程度です。"
-          },
-          "underWindowBackground": {
-            "title": "ウインドウの背面",
-            "description": "最も広くぼかし、背景はほとんど残りません。"
-          },
-          "sheet": {
-            "title": "シート",
-            "description": "最近の macOS では不透明で、背景はまったく透けません。"
-          },
-          "tooltip": {
-            "title": "ツールチップ",
-            "description": "アプリのテーマに従い、わずかに透ける程度です。"
-          },
-          "contentBackground": {
-            "title": "コンテンツ背景",
-            "description": "最近の macOS では不透明で、背景はまったく透けません。"
-          }
+          "regular": "標準",
+          "clear": "クリア"
         }
       },
       "color": {

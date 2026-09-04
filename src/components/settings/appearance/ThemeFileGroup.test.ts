@@ -3,9 +3,11 @@ import type { OverlayTheme } from "@/bindings";
 import { INHERIT_ALL } from "@/lib/overlayTheme";
 import {
   diagnosticI18nKey,
+  lockedTokenCounts,
   moreDiagnosticsCount,
   themeAsJsonDocument,
 } from "./ThemeFileGroup";
+import { OVERLAY_TOKEN_FIELDS } from "./overlayTokenFields";
 
 describe("moreDiagnosticsCount", () => {
   test("is 0 when nothing was capped", () => {
@@ -19,6 +21,25 @@ describe("moreDiagnosticsCount", () => {
 
   test("never goes negative", () => {
     expect(moreDiagnosticsCount(2, 5)).toBe(0);
+  });
+});
+
+describe("lockedTokenCounts", () => {
+  test("the total is the tokens with a row, not every token there is", () => {
+    const { total } = lockedTokenCounts([]);
+    expect(total).toBe(OVERLAY_TOKEN_FIELDS.length);
+    // One token short of the contract's fifteen: `glass_material` drives the
+    // pre-macOS-26 fallback engine and has no row to be shown locked in.
+    expect(total).toBe(Object.keys(INHERIT_ALL).length - 1);
+  });
+
+  test("counts the owned tokens the tab can show as locked", () => {
+    expect(lockedTokenCounts(["accent", "radius", "material"]).count).toBe(3);
+  });
+
+  test("a tab-less token the file owns is not counted", () => {
+    expect(lockedTokenCounts(["glass_material"]).count).toBe(0);
+    expect(lockedTokenCounts(["accent", "glass_material"]).count).toBe(1);
   });
 });
 

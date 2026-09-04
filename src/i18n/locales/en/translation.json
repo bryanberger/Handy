@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Glass isn't available on this Mac right now — for example when macOS Reduce Transparency is on — so the overlay renders Flat."
       },
-      "glassMaterial": {
-        "title": "Glass Material",
-        "description": "Which macOS blur the Glass surface is drawn with. Only applies while Material is Glass.",
+      "glassStyle": {
+        "title": "Glass Style",
+        "description": "Which Liquid Glass the overlay is drawn with. Regular keeps its own dimming, so the transcript stays readable over anything; Clear is thinner and shows more of what is behind it. macOS 26 and later.",
         "options": {
-          "hudWindow": {
-            "title": "HUD Window",
-            "description": "Lets the most of the background through. Always dark, whatever the app theme."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Follows the app theme, about two thirds as see-through as HUD Window."
-          },
-          "menu": {
-            "title": "Menu",
-            "description": "Follows the app theme, denser again."
-          },
-          "sidebar": {
-            "title": "Sidebar",
-            "description": "Follows the app theme, soft and only slightly see-through."
-          },
-          "underWindowBackground": {
-            "title": "Under Window",
-            "description": "The widest blur, with little of the background left."
-          },
-          "sheet": {
-            "title": "Sheet",
-            "description": "Opaque on recent macOS — no background shows through."
-          },
-          "tooltip": {
-            "title": "Tooltip",
-            "description": "Follows the app theme, only slightly see-through."
-          },
-          "contentBackground": {
-            "title": "Content Background",
-            "description": "Opaque on recent macOS — no background shows through."
-          }
+          "regular": "Regular",
+          "clear": "Clear"
         }
       },
       "color": {

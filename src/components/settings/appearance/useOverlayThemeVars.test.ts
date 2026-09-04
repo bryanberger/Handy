@@ -196,7 +196,7 @@ describe("sameStringMap", () => {
     const withScale = (size_scale: number): ResolvedOverlayTheme => ({
       theme: { ...INHERIT_ALL, accent: "#b18cfe", size_scale },
       effective_material: "flat",
-      glass_support: { supported: true, available: true },
+      glass_support: { supported: true, available: true, engine: "liquid" },
       file: EMPTY_FILE_STATE,
     });
     const first = resolveOverlayThemeVars(withScale(0.85));

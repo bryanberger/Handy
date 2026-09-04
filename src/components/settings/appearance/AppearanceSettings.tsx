@@ -11,11 +11,16 @@ import {
   SURFACE_OPACITY_INHERIT,
   type OverlayNumericKey,
 } from "@/lib/overlayTheme";
-import type { Material, OverlayStyle, OverlayTheme } from "@/bindings";
+import type {
+  GlassSupport,
+  Material,
+  OverlayStyle,
+  OverlayTheme,
+} from "@/bindings";
 import { ShowOverlay } from "../ShowOverlay";
 import { ThemeSelector } from "../ThemeSelector";
 import { ColorField } from "./ColorField";
-import { GlassMaterialSelector } from "./GlassMaterialSelector";
+import { GlassStyleSelector } from "./GlassStyleSelector";
 import { MaterialSelector } from "./MaterialSelector";
 import { OnScreenPreview } from "./OnScreenPreview";
 import {
@@ -42,16 +47,19 @@ const STATIC_NUMERIC_DEFAULTS: Partial<Record<OverlayNumericKey, number>> = {
   waveform_width: 4,
 };
 
-function numericDefault(
-  key: OverlayNumericKey,
-  effectiveMaterial: Material,
-): number {
-  if (key === "surface_opacity")
-    return SURFACE_OPACITY_INHERIT[effectiveMaterial];
-  if (key === "border_opacity")
-    return BORDER_OPACITY_INHERIT[effectiveMaterial];
+function numericDefault(key: OverlayNumericKey, material: Material): number {
+  if (key === "surface_opacity") return SURFACE_OPACITY_INHERIT[material];
+  if (key === "border_opacity") return BORDER_OPACITY_INHERIT[material];
   return STATIC_NUMERIC_DEFAULTS[key] ?? 0;
 }
+
+/** What the tab assumes before the first resolved payload arrives: no Glass,
+ *  and so no engine. */
+const NO_GLASS: GlassSupport = {
+  supported: false,
+  available: false,
+  engine: "none",
+};
 
 function isOverlayThemeDefault(theme: OverlayTheme): boolean {
   return (Object.values(theme) as unknown[]).every(
@@ -62,8 +70,8 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
 /**
  * The Appearance tab: the app theme picker and the overlay style/position
  * (both reused unchanged from About/Advanced), the on-screen preview, and the
- * fourteen overlay-theme tokens grouped as Color / Material / Size & Spacing,
- * plus the Theme File group. Groups 4 onward are driven by
+ * overlay-theme tokens grouped as Color / Material / Size & Spacing, plus the
+ * Theme File group. Groups 4 onward are driven by
  * `OVERLAY_TOKEN_FIELDS` rather than hardcoded, so that table is the only
  * place a token's shape is declared.
  */
@@ -148,35 +156,31 @@ const AppearanceSettingsInner: React.FC = () => {
         );
       }
 
-      // The two enum tokens get their own selectors — Material for the Glass
-      // gating and the unavailable note, the Glass material for its eight
-      // option descriptions — rather than a generic dropdown, but both still
-      // live in the descriptor table so the group is driven the same way as
-      // Color and Size & Spacing.
+      // The two enum tokens with a row get their own selectors — Material for
+      // the Glass gating and the unavailable note, the Glass style for its
+      // engine gating — rather than a generic dropdown, but both still live in
+      // the descriptor table so the group is driven the same way as Color and
+      // Size & Spacing.
       case "material":
         return (
           <MaterialSelector
             key={field.key}
             value={vars.effectiveValue(field.key) ?? "flat"}
             onSelect={(next) => void setOverlayThemeToken(field.key, next)}
-            glassSupport={
-              resolved?.glass_support ?? { supported: false, available: false }
-            }
+            glassSupport={resolved?.glass_support ?? NO_GLASS}
             locked={locked}
             lockedDescription={lockedDescription}
           />
         );
 
-      case "glassMaterial":
+      case "glassStyle":
         return (
-          <GlassMaterialSelector
+          <GlassStyleSelector
             key={field.key}
-            value={vars.effectiveValue(field.key) ?? "hud_window"}
+            value={vars.effectiveValue(field.key) ?? "regular"}
             onSelect={(next) => void setOverlayThemeToken(field.key, next)}
             material={vars.effectiveValue("material") ?? "flat"}
-            glassSupport={
-              resolved?.glass_support ?? { supported: false, available: false }
-            }
+            glassSupport={resolved?.glass_support ?? NO_GLASS}
             locked={locked}
             lockedDescription={lockedDescription}
           />

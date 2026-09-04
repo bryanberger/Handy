@@ -303,42 +303,12 @@
         },
         "unavailableNote": "O vidro não está disponível neste Mac no momento — por exemplo quando Reduzir transparência está ativado no macOS — então a sobreposição é exibida como Plana."
       },
-      "glassMaterial": {
-        "title": "Material do vidro",
-        "description": "Com qual desfoque do macOS a superfície de Vidro é desenhada. Só vale enquanto Material estiver como Vidro.",
+      "glassStyle": {
+        "title": "Estilo do vidro",
+        "description": "Com qual Liquid Glass a sobreposição é desenhada. Normal mantém o próprio escurecimento, então a transcrição continua legível sobre qualquer fundo; Transparente é mais fino e mostra mais do que está atrás. macOS 26 ou posterior.",
         "options": {
-          "hudWindow": {
-            "title": "Janela HUD",
-            "description": "Deixa passar a maior parte do fundo. Sempre escuro, seja qual for o tema do aplicativo."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Segue o tema do aplicativo, deixa passar cerca de dois terços do que a Janela HUD deixa."
-          },
-          "menu": {
-            "title": "Menu",
-            "description": "Segue o tema do aplicativo, ainda mais denso."
-          },
-          "sidebar": {
-            "title": "Barra lateral",
-            "description": "Segue o tema do aplicativo, suave e quase sem transparência."
-          },
-          "underWindowBackground": {
-            "title": "Sob a janela",
-            "description": "O desfoque mais amplo, quase nada do fundo permanece."
-          },
-          "sheet": {
-            "title": "Folha",
-            "description": "Opaco nas versões recentes do macOS — nenhum fundo aparece através."
-          },
-          "tooltip": {
-            "title": "Tooltip",
-            "description": "Segue o tema do aplicativo, quase sem transparência."
-          },
-          "contentBackground": {
-            "title": "Fundo de conteúdo",
-            "description": "Opaco nas versões recentes do macOS — nenhum fundo aparece através."
-          }
+          "regular": "Normal",
+          "clear": "Transparente"
         }
       },
       "color": {

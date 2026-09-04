@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Il vetro non è disponibile su questo Mac in questo momento — ad esempio quando Riduci trasparenza è attivo su macOS — quindi l'overlay viene reso Piatto."
       },
-      "glassMaterial": {
-        "title": "Materiale del vetro",
-        "description": "Con quale sfocatura di macOS viene disegnata la superficie Vetro. Vale solo quando Materiale è impostato su Vetro.",
+      "glassStyle": {
+        "title": "Stile del vetro",
+        "description": "Con quale Liquid Glass viene disegnato l'overlay. Normale mantiene il proprio scurimento, così la trascrizione resta leggibile su qualsiasi sfondo; Trasparente è più sottile e lascia vedere di più ciò che sta dietro. macOS 26 e successivi.",
         "options": {
-          "hudWindow": {
-            "title": "Finestra HUD",
-            "description": "Lascia passare la maggior parte dello sfondo. Sempre scuro, qualunque sia il tema dell'applicazione."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Segue il tema dell'applicazione, trasparente circa due terzi rispetto a Finestra HUD."
-          },
-          "menu": {
-            "title": "Menu",
-            "description": "Segue il tema dell'applicazione, ancora più denso."
-          },
-          "sidebar": {
-            "title": "Barra laterale",
-            "description": "Segue il tema dell'applicazione, morbido e appena trasparente."
-          },
-          "underWindowBackground": {
-            "title": "Sotto la finestra",
-            "description": "La sfocatura più ampia, dello sfondo resta ben poco."
-          },
-          "sheet": {
-            "title": "Foglio",
-            "description": "Opaco nelle versioni recenti di macOS — non traspare alcuno sfondo."
-          },
-          "tooltip": {
-            "title": "Tooltip",
-            "description": "Segue il tema dell'applicazione, appena trasparente."
-          },
-          "contentBackground": {
-            "title": "Sfondo del contenuto",
-            "description": "Opaco nelle versioni recenti di macOS — non traspare alcuno sfondo."
-          }
+          "regular": "Normale",
+          "clear": "Trasparente"
         }
       },
       "color": {

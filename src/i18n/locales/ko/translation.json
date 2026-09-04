@@ -303,42 +303,12 @@
         },
         "unavailableNote": "이 Mac에서는 지금 유리를 사용할 수 없으므로(예를 들어 macOS의 투명도 줄이기가 켜져 있을 때) 오버레이가 플랫으로 표시됩니다."
       },
-      "glassMaterial": {
-        "title": "유리 재질",
-        "description": "유리 표면을 그릴 때 사용할 macOS 흐림 효과입니다. 재질이 유리일 때만 적용됩니다.",
+      "glassStyle": {
+        "title": "유리 스타일",
+        "description": "오버레이를 어떤 리퀴드 글래스로 그릴지 정합니다. 기본은 자체적으로 어둡게 처리해 어떤 배경에서도 전사 내용이 잘 보이며, 투명은 더 얇아 뒤가 더 많이 비칩니다. macOS 26 이상.",
         "options": {
-          "hudWindow": {
-            "title": "HUD 윈도우",
-            "description": "배경을 가장 많이 비칩니다. 앱 테마와 상관없이 항상 어둡습니다."
-          },
-          "popover": {
-            "title": "팝오버",
-            "description": "앱 테마를 따르며, HUD 윈도우의 약 3분의 2만큼 비칩니다."
-          },
-          "menu": {
-            "title": "메뉴",
-            "description": "앱 테마를 따르며, 더 짙습니다."
-          },
-          "sidebar": {
-            "title": "사이드바",
-            "description": "앱 테마를 따르며, 부드럽고 아주 살짝만 비칩니다."
-          },
-          "underWindowBackground": {
-            "title": "윈도우 아래",
-            "description": "가장 넓게 흐려져 배경이 거의 남지 않습니다."
-          },
-          "sheet": {
-            "title": "시트",
-            "description": "최근 macOS에서는 불투명하여 배경이 전혀 비치지 않습니다."
-          },
-          "tooltip": {
-            "title": "툴팁",
-            "description": "앱 테마를 따르며, 아주 살짝만 비칩니다."
-          },
-          "contentBackground": {
-            "title": "콘텐츠 배경",
-            "description": "최근 macOS에서는 불투명하여 배경이 전혀 비치지 않습니다."
-          }
+          "regular": "기본",
+          "clear": "투명"
         }
       },
       "color": {

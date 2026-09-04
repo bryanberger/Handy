@@ -182,7 +182,11 @@ export function useOverlayThemeVars(
       : {
           theme: mergeDraft(INHERIT_ALL, draft, []),
           effective_material: "flat" as const,
-          glass_support: { supported: false, available: false },
+          glass_support: {
+            supported: false,
+            available: false,
+            engine: "none" as const,
+          },
           file: EMPTY_FILE_STATE,
         };
   }, [resolved, draft]);

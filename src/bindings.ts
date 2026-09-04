@@ -1143,6 +1143,30 @@ export type EngineType =
  */
 "TranscribeCpp" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "Canary" | "Cohere"
 /**
+ * Which native implementation is drawing the Glass surface.
+ * 
+ * Not a token: a fact about the running machine, reported alongside
+ * `GlassSupport` so the Appearance tab can offer the controls the engine
+ * actually honours — the Glass style on Liquid Glass, nothing on the
+ * fallback — instead of guessing from a macOS version number in TypeScript.
+ */
+export type GlassEngine = 
+/**
+ * Nothing is installed: off macOS, or the install failed. Always paired
+ * with `available: false`.
+ */
+"none" | 
+/**
+ * One `NSVisualEffectView`, the pre-macOS-26 blur. Honours
+ * `GlassMaterial`.
+ */
+"visual_effect" | 
+/**
+ * One `NSGlassEffectView` — Liquid Glass, macOS 26 and later. Honours
+ * `GlassStyle` and tints itself from the surface.
+ */
+"liquid"
+/**
  * Which macOS material the Glass blur is drawn with.
  * 
  * The blur is one `NSVisualEffectView`, and its `material` is a live setter
@@ -1200,6 +1224,27 @@ export type GlassMaterial =
  */
 "content_background"
 /**
+ * Which Liquid Glass recipe `NSGlassEffectView` draws.
+ * 
+ * macOS 26 replaced the frosted `NSVisualEffectView` look with Liquid Glass,
+ * whose two published styles are the whole of the choice: `Regular`, the
+ * standard glass that carries its own dimming so content stays legible over
+ * anything, and `Clear`, a thinner, more transparent glass that leans on the
+ * backdrop. Read only while the **liquid** engine is drawing (macOS 26 and
+ * later); on the fallback engine, and off macOS, it is carried through the
+ * merge and ignored — `GlassMaterial` is the fallback's equivalent knob.
+ */
+export type GlassStyle = 
+/**
+ * `NSGlassEffectViewStyleRegular`: the default, and the one that keeps a
+ * transcript readable over a bright desktop.
+ */
+"regular" | 
+/**
+ * `NSGlassEffectViewStyleClear`: thinner glass, more backdrop.
+ */
+"clear"
+/**
  * Whether Glass can render.
  */
 export type GlassSupport = { 
@@ -1212,7 +1257,13 @@ supported: boolean;
  * Glass renders right now: `supported`, the effect view is installed, and
  * macOS "Reduce transparency" is off. Drives what is actually painted.
  */
-available: boolean }
+available: boolean; 
+/**
+ * Which native view is installed, and so which of the two engine-specific
+ * tokens means anything on this machine. `None` until an install
+ * succeeds, which is what off-macOS and a failed install both report.
+ */
+engine: GlassEngine }
 export type GpuDeviceOption = { id: string; name: string; total_vram_mb: number }
 /**
  * A canonical `#rrggbb` colour.
@@ -1334,7 +1385,7 @@ export type OverlayPosition = "top" | "bottom"
  */
 export type OverlayStyle = "none" | "minimal" | "live"
 /**
- * The fourteen overlay-theme tokens. `None` means *inherit*.
+ * The fifteen overlay-theme tokens. `None` means *inherit*.
  * 
  * Field names are literally the theme-file keys. Every field deserializes
  * leniently: a value of the wrong type or shape degrades to `None` with a
@@ -1377,9 +1428,22 @@ border_opacity?: number | null;
  */
 material?: Material | null; 
 /**
- * Which macOS material the Glass blur uses. Ignored under Flat.
+ * Which macOS material the Glass blur uses. Read only by the
+ * `visual_effect` engine, so ignored under Flat and on macOS 26.
+ * 
+ * **Theme-file only.** It lost its row in the Appearance tab when Liquid
+ * Glass arrived, so the merge takes it from the file and never from the
+ * settings store: a value an older build persisted there would otherwise
+ * drive the fallback engine with no control anywhere that could show or
+ * clear it. The field stays on the struct so those stored documents keep
+ * deserializing, and so a theme copied out of the tab still round-trips.
  */
 glass_material?: GlassMaterial | null; 
+/**
+ * Which Liquid Glass style the Glass surface uses. Read only by the
+ * `liquid` engine, so ignored under Flat and before macOS 26.
+ */
+glass_style?: GlassStyle | null; 
 /**
  * One factor multiplying every length in the card, 0.80–1.50.
  */

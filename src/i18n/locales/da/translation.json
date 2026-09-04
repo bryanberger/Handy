@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Glas er ikke tilgængeligt på denne Mac lige nu — for eksempel når Reducér gennemsigtighed er slået til i macOS — så overlayet vises Fladt."
       },
-      "glassMaterial": {
-        "title": "Glasmateriale",
-        "description": "Hvilken sløring fra macOS glasoverfladen tegnes med. Gælder kun, når Materiale er Glas.",
+      "glassStyle": {
+        "title": "Glasstil",
+        "description": "Med hvilket Liquid Glass overlayet tegnes. Normal dæmper selv, så transskriptionen forbliver læsbar oven på hvad som helst; Klar er tyndere og viser mere af det, der er bagved. macOS 26 og nyere.",
         "options": {
-          "hudWindow": {
-            "title": "HUD-vindue",
-            "description": "Lader mest af baggrunden komme igennem. Altid mørkt, uanset apptemaet."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Følger apptemaet, cirka to tredjedele så gennemsigtigt som HUD-vindue."
-          },
-          "menu": {
-            "title": "Menu",
-            "description": "Følger apptemaet, endnu tættere."
-          },
-          "sidebar": {
-            "title": "Sidebjælke",
-            "description": "Følger apptemaet, blødt og kun let gennemsigtigt."
-          },
-          "underWindowBackground": {
-            "title": "Under vinduet",
-            "description": "Den bredeste sløring, hvor der er meget lidt baggrund tilbage."
-          },
-          "sheet": {
-            "title": "Ark",
-            "description": "Uigennemsigtigt på nyere macOS — ingen baggrund skinner igennem."
-          },
-          "tooltip": {
-            "title": "Værktøjstip",
-            "description": "Følger apptemaet, kun let gennemsigtigt."
-          },
-          "contentBackground": {
-            "title": "Indholdsbaggrund",
-            "description": "Uigennemsigtigt på nyere macOS — ingen baggrund skinner igennem."
-          }
+          "regular": "Normal",
+          "clear": "Klar"
         }
       },
       "color": {

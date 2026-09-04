@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { PathDisplay } from "@/components/ui/PathDisplay";
 import { SettingContainer } from "@/components/ui/SettingContainer";
 import { INHERIT_ALL, type OverlayThemeKey } from "@/lib/overlayTheme";
+import { OVERLAY_TOKEN_FIELDS } from "./overlayTokenFields";
 import { commands } from "@/bindings";
 import type {
   OverlayTheme,
@@ -28,6 +29,36 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
     if (value !== null && value !== undefined) doc[key] = value;
   });
   return JSON.stringify(doc, null, 2);
+}
+
+/** The tokens the Appearance tab actually has a row for. Read off the
+ *  descriptor table rather than listed again here, so a token that gains or
+ *  loses its row is counted correctly without a second edit. Today the only
+ *  absentee is `glass_material`: it drives the pre-macOS-26 fallback engine
+ *  and is set from the theme file alone. */
+const KEYS_WITH_A_ROW = new Set<OverlayThemeKey>(
+  OVERLAY_TOKEN_FIELDS.map((field) => field.key),
+);
+
+/**
+ * What the "Active — this file sets N of M values" line counts: only the
+ * tokens the tab can show as locked.
+ *
+ * A file that sets a tab-less token would otherwise be reported as owning a
+ * value the user cannot find any row for, and the total would promise a row
+ * that does not exist. The token is still honoured — this is a counting rule
+ * for one sentence, not a filter on the file.
+ */
+export function lockedTokenCounts(ownedKeys: readonly string[]): {
+  count: number;
+  total: number;
+} {
+  return {
+    count: ownedKeys.filter((key) =>
+      KEYS_WITH_A_ROW.has(key as OverlayThemeKey),
+    ).length,
+    total: KEYS_WITH_A_ROW.size,
+  };
 }
 
 const DIAGNOSTIC_I18N_KEYS: Record<ThemeFileDiagnosticCode, string> = {
@@ -107,6 +138,7 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
 
   const shown = file.diagnostics.slice(0, MAX_SHOWN_DIAGNOSTICS);
   const more = moreDiagnosticsCount(file.diagnostics_total, shown.length);
+  const owned = lockedTokenCounts(file.owned_keys);
 
   return (
     <>
@@ -136,8 +168,8 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
         <p className="mt-2 text-xs text-mid-gray">
           {file.present
             ? t("settings.appearance.themeFile.active", {
-                count: file.owned_keys.length,
-                total: Object.keys(INHERIT_ALL).length,
+                count: owned.count,
+                total: owned.total,
               })
             : t("settings.appearance.themeFile.notFound")}
         </p>

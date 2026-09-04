@@ -17,7 +17,7 @@ interface OverlayTokenFieldBase {
  * tab: one entry per token, published as data so `AppearanceSettings` can
  * render the Overlay Color / Overlay Material / Overlay Size & Spacing groups
  * as `fields.filter(f => f.group === …).map(renderField)` instead of
- * hardcoding fourteen rows by hand.
+ * hardcoding a row per token by hand.
  *
  * A discriminated union on `kind`, so the token's `key` narrows with it: a
  * color field's key is one of the four color tokens, a length/factor field's
@@ -41,16 +41,18 @@ export type OverlayTokenField =
   | (NumericTokenFieldBase & { kind: "length" })
   | (NumericTokenFieldBase & { kind: "factor" })
   | (OverlayTokenFieldBase & { kind: "material"; key: "material" })
-  | (OverlayTokenFieldBase & { kind: "glassMaterial"; key: "glass_material" });
+  | (OverlayTokenFieldBase & { kind: "glassStyle"; key: "glass_style" });
 
 const TOKENS = "settings.appearance.tokens";
 const MATERIAL = "settings.appearance.material";
-const GLASS_MATERIAL = "settings.appearance.glassMaterial";
+const GLASS_STYLE = "settings.appearance.glassStyle";
 
 /** Token order matches the contract's table, which is also the order the
  *  theme file's `TOKEN_KEYS` lists them in: accent, surface, surface_opacity,
- *  text, border, border_opacity, material, glass_material, size_scale,
- *  radius, border_width, padding, waveform_gap, waveform_width. */
+ *  text, border, border_opacity, material, glass_material, glass_style,
+ *  size_scale, radius, border_width, padding, waveform_gap, waveform_width.
+ *  `glass_material` is the one token with no row: it drives the pre-macOS-26
+ *  fallback engine only, and is set from the theme file. */
 export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
   {
     key: "accent",
@@ -108,14 +110,15 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
     labelKey: `${MATERIAL}.title`,
     descriptionKey: `${MATERIAL}.description`,
   },
-  // The Glass material only means anything while Material is Glass, so its
-  // own selector owns the enabling rule as well as the eight option labels.
+  // The Glass style only means anything while Material is Glass and Liquid
+  // Glass is the engine, so its own selector owns that rule as well as the
+  // two option labels.
   {
-    key: "glass_material",
+    key: "glass_style",
     group: "material",
-    kind: "glassMaterial",
-    labelKey: `${GLASS_MATERIAL}.title`,
-    descriptionKey: `${GLASS_MATERIAL}.description`,
+    kind: "glassStyle",
+    labelKey: `${GLASS_STYLE}.title`,
+    descriptionKey: `${GLASS_STYLE}.description`,
   },
   {
     key: "size_scale",

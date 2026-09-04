@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Glas is op deze Mac op dit moment niet beschikbaar — bijvoorbeeld wanneer Transparantie verminderen aanstaat in macOS — dus de overlay wordt Vlak weergegeven."
       },
-      "glassMaterial": {
-        "title": "Glasmateriaal",
-        "description": "Met welke macOS-vervaging het glasoppervlak wordt getekend. Geldt alleen zolang Materiaal op Glas staat.",
+      "glassStyle": {
+        "title": "Glasstijl",
+        "description": "Met welk Liquid Glass de overlay wordt getekend. Normaal dimt zelf, zodat de transcriptie overal leesbaar blijft; Helder is dunner en laat meer van de achtergrond zien. macOS 26 en later.",
         "options": {
-          "hudWindow": {
-            "title": "HUD-venster",
-            "description": "Laat het meeste van de achtergrond door. Altijd donker, ongeacht het app-thema."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Volgt het app-thema, ongeveer twee derde zo doorzichtig als HUD-venster."
-          },
-          "menu": {
-            "title": "Menu",
-            "description": "Volgt het app-thema, nog wat dichter."
-          },
-          "sidebar": {
-            "title": "Zijbalk",
-            "description": "Volgt het app-thema, zacht en maar een beetje doorzichtig."
-          },
-          "underWindowBackground": {
-            "title": "Onder het venster",
-            "description": "De breedste vervaging, er blijft weinig van de achtergrond over."
-          },
-          "sheet": {
-            "title": "Sheet",
-            "description": "Dekkend op recente macOS-versies — er schijnt geen achtergrond door."
-          },
-          "tooltip": {
-            "title": "Tooltip",
-            "description": "Volgt het app-thema, maar een beetje doorzichtig."
-          },
-          "contentBackground": {
-            "title": "Inhoudsachtergrond",
-            "description": "Dekkend op recente macOS-versies — er schijnt geen achtergrond door."
-          }
+          "regular": "Normaal",
+          "clear": "Helder"
         }
       },
       "color": {

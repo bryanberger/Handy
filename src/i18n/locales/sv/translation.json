@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Glas är inte tillgängligt på den här Mac-datorn just nu — till exempel när Reducera transparens är på i macOS — så overlayen visas som Platt."
       },
-      "glassMaterial": {
-        "title": "Glasmaterial",
-        "description": "Vilken oskärpa i macOS glasytan ritas med. Gäller bara när Material är Glas.",
+      "glassStyle": {
+        "title": "Glasstil",
+        "description": "Med vilket Liquid Glass overlayen ritas. Normal dämpar själv, så transkriptionen förblir läsbar mot vad som helst; Klar är tunnare och visar mer av det som finns bakom. macOS 26 och senare.",
         "options": {
-          "hudWindow": {
-            "title": "HUD-fönster",
-            "description": "Släpper igenom mest av bakgrunden. Alltid mörkt, oavsett apptema."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Följer apptemat, ungefär två tredjedelar så genomskinligt som HUD-fönster."
-          },
-          "menu": {
-            "title": "Meny",
-            "description": "Följer apptemat, ännu tätare."
-          },
-          "sidebar": {
-            "title": "Sidofält",
-            "description": "Följer apptemat, mjukt och bara lite genomskinligt."
-          },
-          "underWindowBackground": {
-            "title": "Under fönstret",
-            "description": "Den bredaste oskärpan, nästan inget av bakgrunden är kvar."
-          },
-          "sheet": {
-            "title": "Ark",
-            "description": "Ogenomskinligt på senare macOS — ingen bakgrund syns igenom."
-          },
-          "tooltip": {
-            "title": "Verktygstips",
-            "description": "Följer apptemat, bara lite genomskinligt."
-          },
-          "contentBackground": {
-            "title": "Innehållsbakgrund",
-            "description": "Ogenomskinligt på senare macOS — ingen bakgrund syns igenom."
-          }
+          "regular": "Normal",
+          "clear": "Klar"
         }
       },
       "color": {

@@ -878,7 +878,11 @@ fn show_overlay_state_on_main(
     // previous Glass session left it visible); under Glass it changes
     // nothing but the blur's own material, so the blur cannot appear before
     // the card paints.
-    crate::overlay_glass::apply_material(app_handle, material, resolved.theme.glass_material());
+    crate::overlay_glass::apply_material(
+        app_handle,
+        material,
+        crate::overlay_glass::GlassAppearance::from_theme(&resolved.theme),
+    );
 
     let (width, height) = overlay_dimensions(shape, scale, material, resolved.theme.border_width());
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
@@ -1209,9 +1213,14 @@ fn update_overlay_position_on_main(app_handle: &AppHandle, scale: Option<f64>) {
         let material = resolved.effective_material;
         // Hides the glass view when this reposition lands on Flat (in case a
         // previous Glass session left it visible); under Glass it applies the
-        // `glass_material` token live, which is how changing it in the tab
-        // reaches an overlay that is already on screen.
-        crate::overlay_glass::apply_material(app_handle, material, resolved.theme.glass_material());
+        // engine's own tokens live, which is how changing the Glass style, or
+        // the surface the liquid engine tints itself with, reaches an overlay
+        // that is already on screen.
+        crate::overlay_glass::apply_material(
+            app_handle,
+            material,
+            crate::overlay_glass::GlassAppearance::from_theme(&resolved.theme),
+        );
 
         // Every platform recomputes the size from the card on screen and the
         // size scale, rather than reading the window's current size back from
@@ -1455,6 +1464,7 @@ mod tests {
     /// fails a test here instead of shipping a clipped card.
     const OVERLAY_CSS: &str = include_str!("../../src/overlay/RecordingOverlay.css");
     const OVERLAY_TSX: &str = include_str!("../../src/overlay/RecordingOverlay.tsx");
+    const THEME_CSS: &str = include_str!("../../src/styles/theme.css");
 
     /// The number a declaration is written with, in the unit it carries: the
     /// digits immediately before the first `unit` after `<name>:`. The needle
@@ -1484,6 +1494,19 @@ mod tests {
 
     fn css_ms(css: &str, name: &str) -> f64 {
         css_value(css, name, "ms")
+    }
+
+    /// The colour a `--name: #rrggbb;` declaration is written with.
+    fn css_color(css: &str, name: &str) -> String {
+        let needle = format!("{name}:");
+        let start = css
+            .find(&needle)
+            .unwrap_or_else(|| panic!("{name} is not declared"));
+        let rest = &css[start + needle.len()..];
+        let end = rest
+            .find(';')
+            .unwrap_or_else(|| panic!("{name} is unclosed"));
+        rest[..end].trim().to_string()
     }
 
     /// One rule's body, so a declaration is read from the rule that carries it
@@ -1977,6 +2000,23 @@ mod tests {
         // window is sized from above.
         assert!(css_px(OVERLAY_CSS, "--ov-rest-w") <= css_px(OVERLAY_CSS, "--ov-work-w"));
         assert!(css_px(OVERLAY_CSS, "--ov-pill-w") <= css_px(OVERLAY_CSS, "--ov-open-w"));
+    }
+
+    /// The liquid engine tints the glass itself, in Rust, so the colour an
+    /// unset `surface` inherits has to be the same one the apply layer's
+    /// `var(--color-background)` resolves to in the webview. The palette is
+    /// the source of truth; these two constants are the copy that must follow
+    /// it.
+    #[test]
+    fn inherit_surface_matches_the_app_palette() {
+        assert_eq!(
+            css_color(THEME_CSS, "--light-color-background"),
+            crate::overlay_theme::INHERIT_SURFACE_LIGHT
+        );
+        assert_eq!(
+            css_color(THEME_CSS, "--dark-color-background"),
+            crate::overlay_theme::INHERIT_SURFACE_DARK
+        );
     }
 
     #[cfg(target_os = "windows")]

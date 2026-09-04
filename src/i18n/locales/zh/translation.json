@@ -303,42 +303,12 @@
         },
         "unavailableNote": "此 Mac 目前无法使用玻璃（例如 macOS 的「降低透明度」已开启时），因此悬浮窗以平面呈现。"
       },
-      "glassMaterial": {
-        "title": "玻璃材质",
-        "description": "玻璃表面使用哪种 macOS 模糊效果绘制。仅在材质为玻璃时生效。",
+      "glassStyle": {
+        "title": "玻璃样式",
+        "description": "悬浮窗使用哪种液态玻璃绘制。标准会自行压暗背景，因此转录文字在任何背景上都清晰可读；透明更薄，会透出更多背后的内容。需要 macOS 26 或更高版本。",
         "options": {
-          "hudWindow": {
-            "title": "HUD 窗口",
-            "description": "透出的背景最多。无论应用主题如何，始终为深色。"
-          },
-          "popover": {
-            "title": "弹出框",
-            "description": "跟随应用主题，通透度约为 HUD 窗口的三分之二。"
-          },
-          "menu": {
-            "title": "菜单",
-            "description": "跟随应用主题，更为厚实。"
-          },
-          "sidebar": {
-            "title": "边栏",
-            "description": "跟随应用主题，柔和且仅略微透出背景。"
-          },
-          "underWindowBackground": {
-            "title": "窗口下方",
-            "description": "模糊范围最广，几乎看不到背景。"
-          },
-          "sheet": {
-            "title": "面板",
-            "description": "在较新的 macOS 上不透明——完全不会透出背景。"
-          },
-          "tooltip": {
-            "title": "工具提示",
-            "description": "跟随应用主题，仅略微透出背景。"
-          },
-          "contentBackground": {
-            "title": "内容背景",
-            "description": "在较新的 macOS 上不透明——完全不会透出背景。"
-          }
+          "regular": "标准",
+          "clear": "透明"
         }
       },
       "color": {

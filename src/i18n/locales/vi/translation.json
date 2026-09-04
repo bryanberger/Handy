@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Kính hiện không khả dụng trên máy Mac này — ví dụ khi Giảm độ trong suốt của macOS đang bật — nên lớp phủ được vẽ dạng Phẳng."
       },
-      "glassMaterial": {
-        "title": "Chất liệu kính",
-        "description": "Bề mặt Kính được vẽ bằng hiệu ứng làm mờ nào của macOS. Chỉ áp dụng khi Chất liệu là Kính.",
+      "glassStyle": {
+        "title": "Kiểu kính",
+        "description": "Lớp phủ được vẽ bằng loại Liquid Glass nào. Thường tự làm tối nền nên bản chép vẫn dễ đọc trên mọi thứ; Trong suốt mỏng hơn và để lộ nhiều hơn phía sau. macOS 26 trở lên.",
         "options": {
-          "hudWindow": {
-            "title": "Cửa sổ HUD",
-            "description": "Để lộ nền nhiều nhất. Luôn tối màu, bất kể giao diện ứng dụng."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Theo giao diện ứng dụng, để lộ nền khoảng hai phần ba so với Cửa sổ HUD."
-          },
-          "menu": {
-            "title": "Menu",
-            "description": "Theo giao diện ứng dụng, đặc hơn nữa."
-          },
-          "sidebar": {
-            "title": "Thanh bên",
-            "description": "Theo giao diện ứng dụng, dịu và chỉ hơi để lộ nền."
-          },
-          "underWindowBackground": {
-            "title": "Dưới cửa sổ",
-            "description": "Hiệu ứng mờ rộng nhất, gần như không còn thấy nền."
-          },
-          "sheet": {
-            "title": "Sheet",
-            "description": "Đục trên các phiên bản macOS gần đây — không thấy nền phía sau."
-          },
-          "tooltip": {
-            "title": "Chú giải",
-            "description": "Theo giao diện ứng dụng, chỉ hơi để lộ nền."
-          },
-          "contentBackground": {
-            "title": "Nền nội dung",
-            "description": "Đục trên các phiên bản macOS gần đây — không thấy nền phía sau."
-          }
+          "regular": "Thường",
+          "clear": "Trong suốt"
         }
       },
       "color": {

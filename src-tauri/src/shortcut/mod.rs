@@ -601,6 +601,12 @@ pub fn change_theme_setting(app: AppHandle, theme: String) -> Result<(), String>
     // Notify other webviews (the recording overlay) so they re-apply the palette
     // live — they set `data-theme` on their own document and can't see this one.
     let _ = app.emit("theme-changed", parsed);
+    // The overlay's native Glass carries half the card's surface tint, composed
+    // from the window's *effective* appearance when it was last written. The
+    // event above only reaches CSS, so without this the card repaints under the
+    // new theme while the glass behind it keeps the old tint — visible whenever
+    // the theme is switched with the Appearance tab's preview on screen.
+    crate::overlay_glass::reapply_appearance(&app);
     Ok(())
 }
 

@@ -74,6 +74,7 @@ export const INHERIT_ALL: OverlayTheme = {
   border_opacity: null,
   material: null,
   glass_material: null,
+  glass_style: null,
   size_scale: null,
   radius: null,
   border_width: null,
@@ -93,6 +94,13 @@ export const INHERIT_ALL: OverlayTheme = {
  * brightest backdrop stays at 6.1:1, comfortably past WCAG AA. Going further
  * to 0.30 buys another 10 levels but drops that worst case to 4.9:1, which a
  * pure-white desktop would push under the line.
+ *
+ * Liquid Glass (macOS 26) was measured against the same desktop and keeps the
+ * same 0.45: at 0.30 the worst-case transcript contrast falls to 4.3:1 under a
+ * Light app theme, under WCAG AA, while 0.45 holds 5.6-9.6:1 across both Glass
+ * styles and both app themes. Rust composes the native `tintColor` from the
+ * identical number (`SURFACE_OPACITY_INHERIT_GLASS` in
+ * `src-tauri/src/overlay_theme.rs`).
  */
 export const SURFACE_OPACITY_INHERIT: Record<Material, number> = {
   flat: 0.98,
@@ -100,7 +108,7 @@ export const SURFACE_OPACITY_INHERIT: Record<Material, number> = {
 };
 
 /**
- * What an unset `border` mixes from: the foreground, on both Materials.
+ * What an unset `border` mixes from: the foreground, on every Material.
  *
  * One value and not a per-Material pair, because the obvious Glass default —
  * a white rim, the way an Apple HUD carries one — was measured and rejected.
@@ -119,7 +127,10 @@ export const BORDER_INHERIT = "var(--s-text)";
  * The alpha an unset `border_opacity` resolves to, per Material — the second
  * half of [`BORDER_INHERIT`]. Flat's 0.12 is today's hairline strength;
  * Glass's is stronger because the edge is the only hard line a translucent
- * card has, and the thinner tint above leaves it more work to do.
+ * card has, and the thinner tint above leaves it more work to do. Measured
+ * again on Liquid Glass, where 0.25 lands as a single 2 px transition of
+ * +45 levels over the card — one hairline beside the glass's own rim, not a
+ * second line.
  */
 export const BORDER_OPACITY_INHERIT: Record<Material, number> = {
   flat: 0.12,
@@ -129,10 +140,11 @@ export const BORDER_OPACITY_INHERIT: Record<Material, number> = {
 /**
  * The neutral group as a percentage of the foreground, per Material.
  *
- * Flat's four are reverse-engineered from today's hand-picked neutrals, so
- * switching to the derivation lands on today's look in both app themes. Glass's
- * are strengthened because muted and faint are what fail first over a blurred
- * background. These are the most eyeball-tunable numbers in the feature.
+ * Flat's are reverse-engineered from today's hand-picked neutrals, so
+ * switching to the derivation lands on today's look in both app themes.
+ * Glass's are strengthened because muted and faint are what fail first over a
+ * blurred background — whichever engine blurs it. These are the most
+ * eyeball-tunable numbers in the feature.
  */
 const NEUTRALS: Record<
   Material,
@@ -285,6 +297,11 @@ export function resolveOverlayThemeVars(
   const surface = validHex(theme.surface);
   const opacity = validToken(theme, "surface_opacity");
   if (surface !== null || opacity !== null || glass) {
+    // The card paints this on every engine, Liquid Glass included. Liquid
+    // Glass is handed the same colour natively as well, so that it can lens
+    // it — but it is not trusted to be the only tint: measured on macOS 26, a
+    // card that painted nothing and left the tint to `tintColor` alone came
+    // out dark under a Light app theme, with the transcript unreadable on it.
     const alpha = opacity ?? SURFACE_OPACITY_INHERIT[material];
     vars["--s-surface"] = alphaMix(
       surface ?? "var(--color-background)",

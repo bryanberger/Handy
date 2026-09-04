@@ -88,6 +88,14 @@ _Avoid_: theme applier, style engine, renderer
 The extra native window area around the card, per overlay state, that keeps the card's animations inside the window. Zero under Glass so the blur never paints outside the card.
 _Avoid_: padding, margin, window bleed
 
+**Glass style**:
+Which Liquid Glass recipe the surface is drawn with under Glass on macOS 26 and later: Regular or Clear.
+_Avoid_: glass variant, glass mode
+
+**Engine**:
+Which native view draws Glass on the running system: Liquid Glass, the older visual-effect view, or none.
+_Avoid_: backend, renderer, implementation (for this concept)
+
 **Theme file**:
 A file on disk that supplies overlay-theme tokens, so external theming tools can drive the overlay without the settings window.
 _Avoid_: config file, user stylesheet, custom CSS

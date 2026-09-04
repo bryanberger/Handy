@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Cam şu anda bu Mac'te kullanılamıyor — örneğin macOS'te Saydamlığı azalt açıkken — bu yüzden ekran katmanı Düz olarak çizilir."
       },
-      "glassMaterial": {
-        "title": "Cam Malzemesi",
-        "description": "Cam yüzeyin hangi macOS bulanıklığıyla çizileceği. Yalnızca Malzeme Cam iken geçerlidir.",
+      "glassStyle": {
+        "title": "Cam Stili",
+        "description": "Ekran katmanının hangi Liquid Glass ile çizileceği. Normal kendi karartmasını uygular, böylece transkripsiyon her zeminde okunaklı kalır; Şeffaf daha incedir ve arkasındakini daha çok gösterir. macOS 26 ve sonrası.",
         "options": {
-          "hudWindow": {
-            "title": "HUD Penceresi",
-            "description": "Arka planı en çok geçiren seçenek. Uygulama teması ne olursa olsun her zaman koyudur."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Uygulama temasını izler, HUD Penceresi'nin geçirdiğinin yaklaşık üçte ikisini geçirir."
-          },
-          "menu": {
-            "title": "Menü",
-            "description": "Uygulama temasını izler, daha da yoğundur."
-          },
-          "sidebar": {
-            "title": "Kenar Çubuğu",
-            "description": "Uygulama temasını izler, yumuşaktır ve yalnızca hafifçe saydamdır."
-          },
-          "underWindowBackground": {
-            "title": "Pencerenin Altı",
-            "description": "En geniş bulanıklık; arka plandan geriye çok az şey kalır."
-          },
-          "sheet": {
-            "title": "Sayfa",
-            "description": "Yeni macOS sürümlerinde opaktır — arka plan hiç görünmez."
-          },
-          "tooltip": {
-            "title": "İpucu",
-            "description": "Uygulama temasını izler, yalnızca hafifçe saydamdır."
-          },
-          "contentBackground": {
-            "title": "İçerik Arka Planı",
-            "description": "Yeni macOS sürümlerinde opaktır — arka plan hiç görünmez."
-          }
+          "regular": "Normal",
+          "clear": "Şeffaf"
         }
       },
       "color": {

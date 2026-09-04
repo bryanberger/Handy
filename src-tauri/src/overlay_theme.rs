@@ -1,6 +1,6 @@
 //! Overlay theme: storage, per-key merge, and delivery.
 //!
-//! An *overlay theme* is the set of fourteen optional tokens that decide how
+//! An *overlay theme* is the set of fifteen optional tokens that decide how
 //! the recording overlay's card looks. Every token is optional and absent means
 //! *inherit* — the overlay uses Handy's built-in, theme-aware value — so a
 //! theme that sets nothing reproduces today's overlay exactly.
@@ -164,6 +164,147 @@ impl GlassMaterial {
     }
 }
 
+/// Which Liquid Glass recipe `NSGlassEffectView` draws.
+///
+/// macOS 26 replaced the frosted `NSVisualEffectView` look with Liquid Glass,
+/// whose two published styles are the whole of the choice: `Regular`, the
+/// standard glass that carries its own dimming so content stays legible over
+/// anything, and `Clear`, a thinner, more transparent glass that leans on the
+/// backdrop. Read only while the **liquid** engine is drawing (macOS 26 and
+/// later); on the fallback engine, and off macOS, it is carried through the
+/// merge and ignored — `GlassMaterial` is the fallback's equivalent knob.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum GlassStyle {
+    /// `NSGlassEffectViewStyleRegular`: the default, and the one that keeps a
+    /// transcript readable over a bright desktop.
+    #[default]
+    Regular,
+    /// `NSGlassEffectViewStyleClear`: thinner glass, more backdrop.
+    Clear,
+}
+
+impl GlassStyle {
+    /// Declaration order — the order the Appearance tab's segmented control
+    /// and the theme file's documentation list them in.
+    pub const ALL: [GlassStyle; 2] = [Self::Regular, Self::Clear];
+
+    /// The theme-file spelling, which is also the serde representation and the
+    /// value the frontend's bindings carry.
+    pub fn as_key(self) -> &'static str {
+        match self {
+            Self::Regular => "regular",
+            Self::Clear => "clear",
+        }
+    }
+}
+
+/// Which native implementation is drawing the Glass surface.
+///
+/// Not a token: a fact about the running machine, reported alongside
+/// `GlassSupport` so the Appearance tab can offer the controls the engine
+/// actually honours — the Glass style on Liquid Glass, nothing on the
+/// fallback — instead of guessing from a macOS version number in TypeScript.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum GlassEngine {
+    /// Nothing is installed: off macOS, or the install failed. Always paired
+    /// with `available: false`.
+    #[default]
+    None,
+    /// One `NSVisualEffectView`, the pre-macOS-26 blur. Honours
+    /// `GlassMaterial`.
+    VisualEffect,
+    /// One `NSGlassEffectView` — Liquid Glass, macOS 26 and later. Honours
+    /// `GlassStyle` and tints itself from the surface.
+    Liquid,
+}
+
+/// The card surface an unset `surface` token inherits under a **light** app
+/// appearance: `--light-color-background` in `src/styles/theme.css`, which is
+/// what the apply layer's `var(--color-background)` resolves to there.
+///
+/// Rust needs the literal because the liquid engine paints the surface tint
+/// natively, inside the glass, where no CSS variable can reach it. Pinned to
+/// the stylesheet by `overlay::tests::inherit_surface_matches_the_app_palette`.
+///
+/// macOS-only, like the four items below it: nothing off macOS composes a
+/// native tint, and an unconditional item here would be dead code on Windows
+/// and Linux. `test` keeps the pin and the composition tests running on every
+/// target.
+#[cfg(any(target_os = "macos", test))]
+pub(crate) const INHERIT_SURFACE_LIGHT: &str = "#fbfbfb";
+/// The card surface an unset `surface` token inherits under a **dark** app
+/// appearance: `--dark-color-background` in `src/styles/theme.css`. See
+/// [`INHERIT_SURFACE_LIGHT`].
+#[cfg(any(target_os = "macos", test))]
+pub(crate) const INHERIT_SURFACE_DARK: &str = "#2c2b29";
+
+/// The alpha an unset `surface_opacity` resolves to under Glass.
+///
+/// The same colour is painted twice under Liquid Glass: once by the card, and
+/// once by the glass itself, which is handed it as its `tintColor` so it can
+/// lens the tint rather than have it laid on flat. This constant is the
+/// second half — what [`liquid_tint`] composes when the token is unset — and
+/// it must carry the same number as `SURFACE_OPACITY_INHERIT.glass` in
+/// `src/lib/overlayTheme.ts`, where the first half lives. Measured on
+/// macOS 26: 0.45 holds the transcript at 5.6–9.6:1 across both Glass styles
+/// and both app themes, where 0.30 drops it to 4.3:1 under a Light app theme.
+#[cfg(any(target_os = "macos", test))]
+pub(crate) const SURFACE_OPACITY_INHERIT_GLASS: f64 = 0.45;
+
+/// A straight-alpha sRGB colour, every component 0–1: what the liquid
+/// engine's `tintColor` is built from.
+#[cfg(any(target_os = "macos", test))]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct TintColor {
+    pub red: f64,
+    pub green: f64,
+    pub blue: f64,
+    pub alpha: f64,
+}
+
+/// The tint Liquid Glass paints **inside** the glass: the resolved `surface`
+/// — or the app background an unset one inherits — at the resolved
+/// `surface_opacity`.
+///
+/// Pure, so the whole composition is testable without AppKit. `dark` is the
+/// overlay window's effective appearance, the one native read this needs.
+/// `None` means an untinted glass, which is what a zero alpha asks for — out
+/// of reach of a theme, whose alpha floor is [`SURFACE_OPACITY_MIN`], and so
+/// only reachable from the inherit path if that floor ever moves.
+#[cfg(any(target_os = "macos", test))]
+pub(crate) fn liquid_tint(
+    surface: Option<&HexColor>,
+    surface_opacity: Option<f64>,
+    dark: bool,
+) -> Option<TintColor> {
+    let alpha = surface_opacity
+        .filter(|value| value.is_finite())
+        .unwrap_or(SURFACE_OPACITY_INHERIT_GLASS)
+        .clamp(0.0, SURFACE_OPACITY_MAX);
+    if alpha <= 0.0 {
+        return None;
+    }
+
+    let inherited = if dark {
+        INHERIT_SURFACE_DARK
+    } else {
+        INHERIT_SURFACE_LIGHT
+    };
+    let hex = surface.map(HexColor::as_str).unwrap_or(inherited);
+    let channel = |offset: usize| {
+        u8::from_str_radix(&hex[offset..offset + 2], 16).unwrap_or_default() as f64 / 255.0
+    };
+
+    Some(TintColor {
+        red: channel(1),
+        green: channel(3),
+        blue: channel(5),
+        alpha,
+    })
+}
+
 /// Lowest accepted [`OverlayTheme::size_scale`].
 pub const SIZE_SCALE_MIN: f64 = 0.80;
 /// Highest accepted [`OverlayTheme::size_scale`].
@@ -240,7 +381,7 @@ where
     }
 }
 
-/// The fourteen overlay-theme tokens. `None` means *inherit*.
+/// The fifteen overlay-theme tokens. `None` means *inherit*.
 ///
 /// Field names are literally the theme-file keys. Every field deserializes
 /// leniently: a value of the wrong type or shape degrades to `None` with a
@@ -276,9 +417,21 @@ pub struct OverlayTheme {
     /// what is actually painted is the resolved theme's effective material.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub material: Option<Material>,
-    /// Which macOS material the Glass blur uses. Ignored under Flat.
+    /// Which macOS material the Glass blur uses. Read only by the
+    /// `visual_effect` engine, so ignored under Flat and on macOS 26.
+    ///
+    /// **Theme-file only.** It lost its row in the Appearance tab when Liquid
+    /// Glass arrived, so the merge takes it from the file and never from the
+    /// settings store: a value an older build persisted there would otherwise
+    /// drive the fallback engine with no control anywhere that could show or
+    /// clear it. The field stays on the struct so those stored documents keep
+    /// deserializing, and so a theme copied out of the tab still round-trips.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub glass_material: Option<GlassMaterial>,
+    /// Which Liquid Glass style the Glass surface uses. Read only by the
+    /// `liquid` engine, so ignored under Flat and before macOS 26.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub glass_style: Option<GlassStyle>,
     /// One factor multiplying every length in the card, 0.80–1.50.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub size_scale: Option<f64>,
@@ -326,6 +479,12 @@ impl OverlayTheme {
         self.glass_material.unwrap_or_default()
     }
 
+    /// The Liquid Glass style the blur is drawn with: unset ⇒ Regular. Only
+    /// consulted while the liquid engine is drawing.
+    pub fn glass_style(&self) -> GlassStyle {
+        self.glass_style.unwrap_or_default()
+    }
+
     /// The border width in px at `size_scale` 1: unset ⇒
     /// [`BORDER_WIDTH_INHERIT`], otherwise clamped to `0..=BORDER_WIDTH_MAX`.
     ///
@@ -365,6 +524,7 @@ impl OverlayTheme {
             ),
             material: self.material,
             glass_material: self.glass_material,
+            glass_style: self.glass_style,
             size_scale: clamp_float(
                 self.size_scale,
                 SIZE_SCALE_MIN,
@@ -403,6 +563,10 @@ pub struct GlassSupport {
     /// Glass renders right now: `supported`, the effect view is installed, and
     /// macOS "Reduce transparency" is off. Drives what is actually painted.
     pub available: bool,
+    /// Which native view is installed, and so which of the two engine-specific
+    /// tokens means anything on this machine. `None` until an install
+    /// succeeds, which is what off-macOS and a failed install both report.
+    pub engine: GlassEngine,
 }
 
 /// The Material actually in effect: the requested token, downgraded to Flat
@@ -546,6 +710,9 @@ pub struct ResolvedOverlayTheme {
 /// Merge two token sets per key: `file` wins wherever it sets a token, and an
 /// absent token falls through to `settings` and then to inherit.
 ///
+/// One token breaks that shape: `glass_material` has no row in the Appearance
+/// tab, so it is read from the file alone — see its field doc.
+///
 /// Pure, so the precedence rule is testable without an `AppHandle`.
 pub fn merge(file: &OverlayTheme, settings: &OverlayTheme) -> OverlayTheme {
     OverlayTheme {
@@ -556,7 +723,10 @@ pub fn merge(file: &OverlayTheme, settings: &OverlayTheme) -> OverlayTheme {
         border: file.border.clone().or_else(|| settings.border.clone()),
         border_opacity: file.border_opacity.or(settings.border_opacity),
         material: file.material.or(settings.material),
-        glass_material: file.glass_material.or(settings.glass_material),
+        // Deliberately not `.or(settings.glass_material)`: the tab has no
+        // control for it, so the store cannot be the source.
+        glass_material: file.glass_material,
+        glass_style: file.glass_style.or(settings.glass_style),
         size_scale: file.size_scale.or(settings.size_scale),
         radius: file.radius.or(settings.radius),
         border_width: file.border_width.or(settings.border_width),
@@ -703,6 +873,7 @@ mod tests {
         assert_eq!(theme.border_opacity, None);
         assert_eq!(theme.material, None);
         assert_eq!(theme.glass_material, None);
+        assert_eq!(theme.glass_style, None);
         assert_eq!(theme.size_scale, None);
         assert_eq!(theme.radius, None);
         assert_eq!(theme.border_width, None);
@@ -714,6 +885,7 @@ mod tests {
         assert_eq!(theme.size_scale(), 1.0);
         assert_eq!(theme.material(), Material::Flat);
         assert_eq!(theme.glass_material(), GlassMaterial::HudWindow);
+        assert_eq!(theme.glass_style(), GlassStyle::Regular);
         assert_eq!(theme.border_width(), 1);
 
         // A store written before this field existed, and an explicit
@@ -731,6 +903,7 @@ mod tests {
             "border_opacity": null,
             "material": null,
             "glass_material": null,
+            "glass_style": null,
             "size_scale": null,
             "radius": null,
             "border_width": null,
@@ -740,6 +913,60 @@ mod tests {
         }))
         .expect("null is the explicit spelling of inherit");
         assert_eq!(explicit_nulls, theme);
+    }
+
+    /// The liquid engine paints the surface tint itself, so this composition
+    /// is the only place the `surface`/`surface_opacity` pair becomes a
+    /// colour outside CSS. A set colour wins; an unset one inherits the app
+    /// background for the appearance actually on screen, which is what keeps
+    /// a dark card dark under a Dark theme over a bright desktop.
+    #[test]
+    fn the_liquid_tint_is_the_surface_at_the_surface_opacity() {
+        let set = liquid_tint(HexColor::parse("#7aa2f7").as_ref(), Some(0.5), false)
+            .expect("a set surface always tints");
+        assert!((set.red - 0x7a as f64 / 255.0).abs() < 1e-9);
+        assert!((set.green - 0xa2 as f64 / 255.0).abs() < 1e-9);
+        assert!((set.blue - 0xf7 as f64 / 255.0).abs() < 1e-9);
+        assert_eq!(set.alpha, 0.5);
+
+        // The app theme picks the inherited colour, and nothing else does.
+        let light = liquid_tint(None, Some(0.5), false).expect("inherit still tints");
+        let dark = liquid_tint(None, Some(0.5), true).expect("inherit still tints");
+        assert!(light.red > dark.red, "{light:?} vs {dark:?}");
+        assert_eq!(light.alpha, dark.alpha);
+        assert_eq!(
+            light,
+            liquid_tint(
+                HexColor::parse(INHERIT_SURFACE_LIGHT).as_ref(),
+                Some(0.5),
+                true
+            )
+            .expect("the inherited colour is a colour like any other")
+        );
+    }
+
+    /// The alpha rules, which are what the Appearance tab's slider and the
+    /// theme file both have to agree with.
+    #[test]
+    fn the_liquid_tint_alpha_inherits_clamps_and_can_vanish() {
+        assert_eq!(
+            liquid_tint(None, None, false).map(|tint| tint.alpha),
+            Some(SURFACE_OPACITY_INHERIT_GLASS)
+        );
+        // Above the contract's ceiling and non-finite values cannot reach an
+        // `NSColor` — one is clamped, the other inherits.
+        assert_eq!(
+            liquid_tint(None, Some(4.0), false).map(|tint| tint.alpha),
+            Some(SURFACE_OPACITY_MAX)
+        );
+        assert_eq!(
+            liquid_tint(None, Some(f64::NAN), false).map(|tint| tint.alpha),
+            Some(SURFACE_OPACITY_INHERIT_GLASS)
+        );
+        // Zero is untinted glass — Apple's own look — rather than a colour
+        // with no alpha, so the setter is handed nil.
+        assert_eq!(liquid_tint(None, Some(0.0), false), None);
+        assert_eq!(liquid_tint(None, Some(-1.0), false), None);
     }
 
     /// Salvage tier one: a token whose value is unusable inherits, and the
@@ -755,6 +982,7 @@ mod tests {
             "border_opacity": 0.25,
             "material": "Glass",          // the store's enums are case-sensitive
             "glass_material": "HUDWindow", // likewise
+            "glass_style": "Clear",        // likewise
             "size_scale": 1.1,
             "radius": 12.5,               // a float where integer px is required
             "border_width": 2,
@@ -768,6 +996,7 @@ mod tests {
         assert_eq!(parsed.text, None);
         assert_eq!(parsed.material, None);
         assert_eq!(parsed.glass_material, None);
+        assert_eq!(parsed.glass_style, None);
         assert_eq!(parsed.radius, None);
 
         assert_eq!(parsed.surface, hex("#1a1b26"));
@@ -839,6 +1068,7 @@ mod tests {
             border_opacity: Some(2.0),
             material: Some(Material::Glass),
             glass_material: Some(GlassMaterial::Menu),
+            glass_style: Some(GlassStyle::Clear),
             size_scale: Some(3.0),
             radius: Some(99),
             border_width: Some(99),
@@ -863,6 +1093,7 @@ mod tests {
         assert_eq!(over.border, hex("#ffffff"));
         assert_eq!(over.material, Some(Material::Glass));
         assert_eq!(over.glass_material, Some(GlassMaterial::Menu));
+        assert_eq!(over.glass_style, Some(GlassStyle::Clear));
 
         let under = OverlayTheme {
             surface_opacity: Some(0.1),
@@ -971,7 +1202,7 @@ mod tests {
             radius: Some(12),
             border: hex("#ffffff"),
             border_width: Some(3),
-            glass_material: Some(GlassMaterial::Menu),
+            glass_style: Some(GlassStyle::Clear),
             waveform_width: Some(5),
             ..Default::default()
         };
@@ -986,13 +1217,44 @@ mod tests {
         assert_eq!(merged.radius, Some(12));
         assert_eq!(merged.border, hex("#ffffff"));
         assert_eq!(merged.border_width, Some(3));
-        assert_eq!(merged.glass_material, Some(GlassMaterial::Menu));
+        assert_eq!(merged.glass_style, Some(GlassStyle::Clear));
         assert_eq!(merged.waveform_width, Some(5));
         // …and a key neither of them sets still inherits.
         assert_eq!(merged.text, None);
 
-        // Merging with an absent file is the settings, unchanged.
+        // Merging with an absent file is the settings, unchanged — for every
+        // token the settings can carry, which is all of them but the one
+        // below.
         assert_eq!(merge(&OverlayTheme::default(), &settings), settings);
+    }
+
+    /// `glass_material` is the one token the settings store cannot supply.
+    /// Its eight-option dropdown left the Appearance tab when Liquid Glass
+    /// arrived, so a value an older build persisted there would drive the
+    /// fallback engine from a place with no control to show or clear it. The
+    /// file is the only source; the field survives only so those stored
+    /// documents keep deserializing.
+    #[test]
+    fn the_glass_material_is_taken_from_the_theme_file_alone() {
+        let settings = OverlayTheme {
+            glass_material: Some(GlassMaterial::Menu),
+            radius: Some(12),
+            ..Default::default()
+        };
+
+        let stored_only = merge(&OverlayTheme::default(), &settings);
+        assert_eq!(stored_only.glass_material, None);
+        // …and its neighbours in the same struct still fall through.
+        assert_eq!(stored_only.radius, Some(12));
+
+        let file = OverlayTheme {
+            glass_material: Some(GlassMaterial::Popover),
+            ..Default::default()
+        };
+        assert_eq!(
+            merge(&file, &settings).glass_material,
+            Some(GlassMaterial::Popover)
+        );
     }
 
     /// The resolver is the only place the three rules meet, so pin them
@@ -1021,6 +1283,7 @@ mod tests {
         let unavailable = GlassSupport {
             supported: true,
             available: false,
+            engine: GlassEngine::VisualEffect,
         };
         let resolved = resolve_from(settings_theme.clone(), file.clone(), unavailable);
 
@@ -1046,6 +1309,7 @@ mod tests {
         let available = GlassSupport {
             supported: true,
             available: true,
+            engine: GlassEngine::Liquid,
         };
         let rendered = resolve_from(settings_theme, ThemeFileState::absent_at(""), available);
         assert_eq!(rendered.effective_material, Material::Glass);
@@ -1058,10 +1322,12 @@ mod tests {
         let unavailable = GlassSupport {
             supported: true,
             available: false,
+            engine: GlassEngine::VisualEffect,
         };
         let available = GlassSupport {
             supported: true,
             available: true,
+            engine: GlassEngine::Liquid,
         };
 
         assert_eq!(

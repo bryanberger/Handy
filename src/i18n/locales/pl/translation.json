@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Szkło nie jest teraz dostępne na tym Macu — na przykład gdy w macOS włączona jest opcja Ogranicz przezroczystość — więc nakładka jest renderowana jako Płaska."
       },
-      "glassMaterial": {
-        "title": "Materiał szkła",
-        "description": "Którym rozmyciem macOS rysowana jest powierzchnia Szkła. Działa tylko wtedy, gdy Materiał to Szkło.",
+      "glassStyle": {
+        "title": "Styl szkła",
+        "description": "Którym Liquid Glass rysowana jest nakładka. Zwykłe samo przyciemnia tło, więc transkrypcja pozostaje czytelna na dowolnym tle; Przezroczyste jest cieńsze i pokazuje więcej tego, co za nim. macOS 26 i nowsze.",
         "options": {
-          "hudWindow": {
-            "title": "Okno HUD",
-            "description": "Przepuszcza najwięcej tła. Zawsze ciemne, niezależnie od motywu aplikacji."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Podąża za motywem aplikacji, przepuszcza około dwóch trzecich tego co Okno HUD."
-          },
-          "menu": {
-            "title": "Menu",
-            "description": "Podąża za motywem aplikacji, jeszcze gęstsze."
-          },
-          "sidebar": {
-            "title": "Pasek boczny",
-            "description": "Podąża za motywem aplikacji, miękki i tylko lekko prześwitujący."
-          },
-          "underWindowBackground": {
-            "title": "Pod oknem",
-            "description": "Najszersze rozmycie, z tła zostaje niewiele."
-          },
-          "sheet": {
-            "title": "Arkusz",
-            "description": "Nieprzezroczysty na nowszych wersjach macOS — tło w ogóle nie prześwituje."
-          },
-          "tooltip": {
-            "title": "Podpowiedź",
-            "description": "Podąża za motywem aplikacji, tylko lekko prześwitujący."
-          },
-          "contentBackground": {
-            "title": "Tło zawartości",
-            "description": "Nieprzezroczysty na nowszych wersjach macOS — tło w ogóle nie prześwituje."
-          }
+          "regular": "Zwykłe",
+          "clear": "Przezroczyste"
         }
       },
       "color": {

@@ -74,7 +74,7 @@ The app data directory is `~/Library/Application Support/com.pais.handy/` on mac
 
 The Appearance tab shows the path actually in effect, with a button that opens its folder.
 
-**What the file may contain.** A JSON object with an optional `version` plus any of the fourteen overlay-theme tokens:
+**What the file may contain.** A JSON object with an optional `version` plus any of the fifteen overlay-theme tokens:
 
 | Key               | Type       | Range                                                                                                                           |
 | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
@@ -87,6 +87,7 @@ The Appearance tab shows the path actually in effect, with a button that opens i
 | `border_opacity`  | number     | 0.00 – 1.00                                                                                                                     |
 | `material`        | string     | `"flat"` or `"glass"`                                                                                                           |
 | `glass_material`  | string     | `"hud_window"`, `"popover"`, `"menu"`, `"sidebar"`, `"under_window_background"`, `"sheet"`, `"tooltip"`, `"content_background"` |
+| `glass_style`     | string     | `"regular"` or `"clear"`                                                                                                        |
 | `size_scale`      | number     | 0.80 – 1.50                                                                                                                     |
 | `radius`          | integer px | 0 – 32                                                                                                                          |
 | `border_width`    | integer px | 0 – 4                                                                                                                           |
@@ -94,9 +95,9 @@ The Appearance tab shows the path actually in effect, with a button that opens i
 | `waveform_gap`    | integer px | 0 – 5                                                                                                                           |
 | `waveform_width`  | integer px | 2 – 6                                                                                                                           |
 
-`glass_material` picks which macOS blur the Glass surface is drawn with; it does nothing while `material` is `"flat"` or off macOS. `border`, `border_opacity` and `border_width` are the card's edge — `border_width` is, with `size_scale`, one of the only two tokens that change how much room the overlay needs on screen.
+`glass_style` picks which Liquid Glass the Glass surface is drawn with on macOS 26 and later, and is the one the Appearance tab shows; `glass_material` picks which `NSVisualEffectMaterial` blur it uses on older macOS. `glass_material` is **theme-file only** — it drives the fallback engine, it has no row in the Appearance tab, and Handy reads it from this file and nowhere else. Each is read by one engine and ignored by the other, so a file can carry both; both do nothing while `material` is `"flat"` or off macOS. `border`, `border_opacity` and `border_width` are the card's edge — `border_width` is, with `size_scale`, one of the only two tokens that change how much room the overlay needs on screen.
 
-**Inherit.** Every token is optional, and an absent key means exactly what an explicit `null` means: inherit Handy's own theme-aware value for it. The merge is per key — `file, else settings window, else built-in` — so a file that sets only `surface` leaves the other thirteen tokens under the Appearance tab's control. Tokens the file does set are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are therefore valid documents that change nothing at all, and deleting the file is the way to stop overriding.
+**Inherit.** Every token is optional, and an absent key means exactly what an explicit `null` means: inherit Handy's own theme-aware value for it. The merge is per key — `file, else settings window, else built-in` — so a file that sets only `surface` leaves the other fourteen tokens under the Appearance tab's control. Tokens the file does set are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are therefore valid documents that change nothing at all, and deleting the file is the way to stop overriding.
 
 **A full theme:**
 
@@ -111,6 +112,7 @@ The Appearance tab shows the path actually in effect, with a button that opens i
   "border_opacity": 0.3,
   "material": "glass",
   "glass_material": "popover",
+  "glass_style": "clear",
   "size_scale": 1.1,
   "radius": 12,
   "border_width": 1,
@@ -120,7 +122,7 @@ The Appearance tab shows the path actually in effect, with a button that opens i
 }
 ```
 
-**What a theming tool might emit.** Color parsing is lenient — `#RGB` shorthand, a missing `#`, any case, surrounding whitespace, a UTF-8 BOM — and so are the two enums' spelling (`material` ignores case; `glass_material` also ignores `-` and spaces, so `"HUD Window"` reads as `"hud_window"`). Everything else must be a correctly typed JSON value. Unknown keys are ignored, so `"_comment"` is the supported way to annotate a document:
+**What a theming tool might emit.** Color parsing is lenient — `#RGB` shorthand, a missing `#`, any case, surrounding whitespace, a UTF-8 BOM — and so are the three enums' spelling. `material` ignores case and surrounding whitespace; `glass_material` and `glass_style` also drop everything that is not a letter or a digit, so `"HUD Window"`, `"hud-window"` and `"hud_window"` all read as `"hud_window"`, and `"Clear"` and `"clear "` both read as `"clear"`. Everything else must be a correctly typed JSON value. Unknown keys are ignored, so `"_comment"` is the supported way to annotate a document:
 
 ```json
 {

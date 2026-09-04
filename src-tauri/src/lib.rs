@@ -1096,6 +1096,12 @@ pub fn run(cli_args: CliArgs) {
                 log::info!("Theme changed to: {:?}", theme);
                 // Re-apply the current tray state with the new theme's icon set
                 utils::refresh_tray_icon(window.app_handle());
+                // …and the overlay's native Glass tint, which is composed from
+                // the window's effective appearance at the moment it is
+                // written. This is the System-theme half of the same fix
+                // `change_theme_setting` makes for an explicit Light/Dark pick:
+                // the OS switching under us has to move the glass too.
+                overlay_glass::reapply_appearance(window.app_handle());
             }
             _ => {}
         })

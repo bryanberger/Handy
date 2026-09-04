@@ -303,42 +303,12 @@
         },
         "unavailableNote": "Sklo na tomto Macu právě není dostupné — například když je v macOS zapnuté Omezit průhlednost — takže se překryv vykresluje jako Plochý."
       },
-      "glassMaterial": {
-        "title": "Materiál skla",
-        "description": "Kterým rozostřením macOS se skleněný povrch vykresluje. Platí jen tehdy, když je Materiál nastaven na Sklo.",
+      "glassStyle": {
+        "title": "Styl skla",
+        "description": "Kterým Liquid Glass se překryv vykresluje. Obyčejné si samo ztmavuje pozadí, takže přepis zůstává čitelný na čemkoli; Průhledné je tenčí a ukáže víc z toho, co je za ním. macOS 26 a novější.",
         "options": {
-          "hudWindow": {
-            "title": "Okno HUD",
-            "description": "Propouští nejvíc pozadí. Vždy tmavé, bez ohledu na motiv aplikace."
-          },
-          "popover": {
-            "title": "Popover",
-            "description": "Sleduje motiv aplikace, propouští asi dvě třetiny toho co Okno HUD."
-          },
-          "menu": {
-            "title": "Nabídka",
-            "description": "Sleduje motiv aplikace, ještě hustší."
-          },
-          "sidebar": {
-            "title": "Postranní panel",
-            "description": "Sleduje motiv aplikace, měkký a jen mírně průsvitný."
-          },
-          "underWindowBackground": {
-            "title": "Pod oknem",
-            "description": "Nejširší rozostření, z pozadí zbude jen málo."
-          },
-          "sheet": {
-            "title": "List",
-            "description": "Na novějších verzích macOS neprůhledný — žádné pozadí neprosvítá."
-          },
-          "tooltip": {
-            "title": "Popisek",
-            "description": "Sleduje motiv aplikace, jen mírně průsvitný."
-          },
-          "contentBackground": {
-            "title": "Pozadí obsahu",
-            "description": "Na novějších verzích macOS neprůhledný — žádné pozadí neprosvítá."
-          }
+          "regular": "Obyčejné",
+          "clear": "Průhledné"
         }
       },
       "color": {

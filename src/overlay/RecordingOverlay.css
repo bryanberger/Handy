@@ -103,8 +103,16 @@
                              pre-scaled property in this file, because CSS cannot ceil and the
                              native window must inset the card by the very same integer. */
   --ov-side-min: 22px; /* the control row's side columns' floor: what the cancel button needs.
-                          The apply layer drops it to 0 when show_cancel takes that button away. */
-  --ov-dot-col-w: 12px; /* the left column's own content: .sdot's 7px + .sbase-l's 5px inset */
+                          The apply layer drops it to 0 when show_cancel takes that button away.
+                          A length at size scale 1 like every other token here, so .sbase scales
+                          it where it uses it. */
+  --ov-dot-w: 7px; /* the recording dot itself: .sdot's width and height */
+  --ov-dot-inset: 5px; /* .sbase-l's left inset. A row with a waveform on it keeps the inset; a
+                          row without one drops it, so the dot sits one padding from the card's
+                          left edge just as the cancel button does from the right. */
+  --ov-dot-col-w: 12px; /* the left column's own content while the waveform is on the row:
+                           --ov-dot-w plus --ov-dot-inset, written out as a number because
+                           overlay_geometry.rs reads these declarations as numbers. */
   --ov-wave-pad-r: 8px; /* .swave's right padding, the last part of the centre column */
   --ov-wave-slot-w: calc(
     9 * var(--ov-wave-w) + 8 * var(--ov-wave-gap)
@@ -114,13 +122,17 @@
   /* The control row's own width, with an empty centre column and with the
      waveform in it. The resting shapes take the larger of their tuned width and
      --ov-row-w, so a roomy padding, bar or gap widens the pill instead of being
-     clipped by .scard's overflow. overlay_geometry.rs mirrors both sums. */
+     clipped by .scard's overflow. overlay_geometry.rs mirrors both sums.
+     They differ in the left column, not only in the waveform: the row that
+     carries a waveform keeps the dot's inset, the bare row drops it. */
   --ov-bare-w: calc(
     2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +
-      max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min)
+      max(var(--ov-side-min), var(--ov-dot-w)) + var(--ov-side-min)
   );
   --ov-row-w: calc(
-    var(--ov-bare-w) + var(--ov-wave-slot-w) + var(--ov-wave-pad-r)
+    2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +
+      max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min) +
+      var(--ov-wave-slot-w) + var(--ov-wave-pad-r)
   );
 }
 @media (prefers-color-scheme: dark) {
@@ -311,7 +323,8 @@
 /* show_waveform off, on the two shapes that rest: the pill shrinks to the row
    that is left rather than holding a width tuned around a waveform. OverlayCard
    only ever puts this class on those two, so it can never meet .open or
-   .working, and the morph out of it is still a grow. */
+   .working, and the morph out of it is still a grow. What the class does to the
+   row itself, and what .nocancel adds to it, is with .sbase below. */
 .scard.nowave {
   width: calc(var(--ov-bare-w) * var(--ov-scale));
 }
@@ -400,15 +413,18 @@
   padding: calc(var(--ov-pad) * var(--ov-scale));
   display: grid;
   /* Equal side columns (floor --ov-side-min, the room the cancel button needs)
-     keep the center item — waveform or label — centered whether the pill is at
-     min width or content-sized. Both floors stay unscaled, so the center stays
-     centered at any scale, and the pill scales with its content, so the floor
-     never squeezes it. With the cancel button hidden the floor is 0 and the two
-     tracks still take equal free space, so the centring survives. */
+     keep the center item, waveform or label, centered whether the pill is at
+     min width or content-sized. The floor carries the scale because every width
+     around it does: the card is a size-scale-1 sum times --ov-scale, so a floor
+     left at 22px is wider than the row it sits in below scale 1 and pushes the
+     cancel button through the card's edge. With that button hidden the floor is
+     0 and the two tracks still take equal free space, so the centring survives.
+     .scard.nowave.nocancel below replaces this when the dot is all that is
+     left. */
   grid-template-columns:
-    minmax(var(--ov-side-min), 1fr)
+    minmax(calc(var(--ov-side-min) * var(--ov-scale)), 1fr)
     auto
-    minmax(var(--ov-side-min), 1fr);
+    minmax(calc(var(--ov-side-min) * var(--ov-scale)), 1fr);
   align-items: center;
   /* element_gap, once on each side of the centre column. Both the card's width
      and this grow by the same two gaps, so the centre column's room never
@@ -417,7 +433,7 @@
 }
 .sbase-l {
   display: flex;
-  padding-left: calc(5px * var(--ov-scale));
+  padding-left: calc(var(--ov-dot-inset) * var(--ov-scale));
   align-items: center;
   justify-self: start;
 }
@@ -428,9 +444,27 @@
   gap: calc((10px + var(--ov-elem-gap)) * var(--ov-scale));
   justify-self: end;
 }
+/* No waveform, so nothing pads the row between the dot and the cancel button.
+   The dot drops its inset and sits one padding from the left edge, where the
+   button already sits one padding from the right. --ov-bare-w adds up the same
+   row. */
+.scard.nowave .sbase-l {
+  padding-left: 0;
+}
+/* No cancel button either, so the dot is alone on the row. The three columns
+   collapse to their contents and the row centres them, which is the only way
+   the dot lands in the middle of the card: left-aligned in its own track it
+   would sit one padding in, with the whole empty right column beside it. The
+   two element gaps have nothing left to fall between, so they become free
+   space that the centring splits, and the card still pays for them. */
+.scard.nowave.nocancel .sbase {
+  grid-template-columns: auto auto auto;
+  justify-content: center;
+  column-gap: 0;
+}
 .sdot {
-  width: calc(7px * var(--ov-scale));
-  height: calc(7px * var(--ov-scale));
+  width: calc(var(--ov-dot-w) * var(--ov-scale));
+  height: calc(var(--ov-dot-w) * var(--ov-scale));
   border-radius: 50%;
   flex: none;
   box-sizing: border-box;
@@ -454,7 +488,7 @@
     box-shadow: 0 0 0 0 var(--s-accent-soft);
   }
   70% {
-    box-shadow: 0 0 0 calc(7px * var(--ov-scale)) transparent;
+    box-shadow: 0 0 0 calc(var(--ov-dot-w) * var(--ov-scale)) transparent;
   }
 }
 .stimer {
@@ -462,11 +496,15 @@
   color: var(--s-faint);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  opacity: 0;
-  transition: opacity 240ms ease 80ms;
+  /* Only the open Live panel shows the elapsed time. Hidden with display rather
+     than opacity, so no closed pill can ever carry the timer's width: what a
+     resting pill shrinks to is the dot and the cancel button, the row
+     --ov-bare-w and overlay_geometry.rs both add up. OverlayCard renders it on
+     the open panel alone, so this is the guarantee, not the switch. */
+  display: none;
 }
 .scard.open .stimer {
-  opacity: 1;
+  display: block;
 }
 
 /* Waveform — reactive only after the first microphone callback. While arming,

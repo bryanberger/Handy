@@ -56,13 +56,20 @@ const CARD_CAP_MAX_H: f64 = 64.0;
 const CARD_CAP_PAD_FACTOR: f64 = 1.2;
 /// The control row's side-column floor at size_scale 1 while the cancel button
 /// is on the row: `--ov-side-min` 22. It exists to hold that button, so it
-/// drops to 0 with it and the row shrinks to what is left.
+/// drops to 0 with it and the row shrinks to what is left. `.sbase` scales it
+/// where it uses it, like every other length here, so the floors and the card
+/// they sit in shrink together.
 const CARD_SIDE_MIN_W: f64 = 22.0;
-/// The left column's own content at size_scale 1: `--ov-dot-col-w` 12, the
-/// recording dot's 7 px plus `.sbase-l`'s 5 px inset. Wider than nothing and
-/// narrower than the side floor, so it decides the left column only once the
-/// cancel button is gone.
+/// The left column's own content at size_scale 1 while the waveform is on the
+/// row: `--ov-dot-col-w` 12, the recording dot plus `.sbase-l`'s 5 px inset.
+/// Wider than nothing and narrower than the side floor, so it decides the left
+/// column only once the cancel button is gone.
 const CARD_DOT_COL_W: f64 = 12.0;
+/// The recording dot itself at size_scale 1: `--ov-dot-w` 7. A row with no
+/// waveform on it drops the inset above, so the dot sits one padding from the
+/// card's left edge as the cancel button does from the right, and this is what
+/// the left column measures there.
+const CARD_DOT_W: f64 = 7.0;
 /// The number of waveform bars: `WAVE_BARS` in `RecordingOverlay.tsx`, and the
 /// `9` in `--ov-wave-slot-w`.
 const CARD_WAVE_BARS: f64 = 9.0;
@@ -517,13 +524,19 @@ impl CardMetrics {
     }
 
     /// The control row's own width at size_scale 1 with an empty centre
-    /// column: the padding, the two element gaps, the left column (the dot, or
-    /// the side floor once that is wider) and the right column. This is
+    /// column: the padding, the two element gaps, the left column (the bare
+    /// dot, or the side floor once that is wider) and the right column. This is
     /// `--ov-bare-w`, what a resting pill shrinks to with no waveform, and 64
     /// at every inherit value.
+    ///
+    /// The dot is bare here, not [`CARD_DOT_COL_W`]: with no waveform to pad
+    /// the row, `.scard.nowave .sbase-l` drops the dot's inset so the dot and
+    /// the cancel button sit one padding from their own card edges. With the
+    /// button gone too the row is the dot between two paddings, 27, and
+    /// `.scard.nowave.nocancel .sbase` centres it in exactly that.
     fn bare_row_width(&self) -> f64 {
         let side = self.side_min();
-        2.0 * f64::from(self.padding) + self.gap_width() + side.max(CARD_DOT_COL_W) + side
+        2.0 * f64::from(self.padding) + self.gap_width() + side.max(CARD_DOT_W) + side
     }
 
     /// The centre column at size_scale 1: the waveform's nine bars and eight
@@ -534,14 +547,20 @@ impl CardMetrics {
             + CARD_WAVE_PAD_R
     }
 
-    /// The whole control row's width at size_scale 1, waveform included while
-    /// it is shown: `--ov-row-w`.
+    /// The whole control row's width at size_scale 1 with the waveform on it:
+    /// `--ov-row-w`. Only [`Self::resting_content_width`] asks, and only while
+    /// the waveform is shown.
+    ///
+    /// Written out rather than added to [`Self::bare_row_width`], because a row
+    /// with a waveform on it keeps the dot's inset: the two sums differ in
+    /// their left column as well as in the centre one.
     fn row_width(&self) -> f64 {
-        if self.show_waveform {
-            self.bare_row_width() + self.wave_column_width()
-        } else {
-            self.bare_row_width()
-        }
+        let side = self.side_min();
+        2.0 * f64::from(self.padding)
+            + self.gap_width()
+            + side.max(CARD_DOT_COL_W)
+            + side
+            + self.wave_column_width()
     }
 
     /// A resting shape's content width at size_scale 1: its tuned width plus
@@ -661,7 +680,7 @@ mod tests {
     use crate::overlay_theme::{
         GlassMaterial, GlassStyle, HexColor, BORDER_WIDTH_INHERIT, BORDER_WIDTH_MAX,
         ELEMENT_GAP_INHERIT, ELEMENT_GAP_MAX, PADDING_INHERIT, PADDING_MAX, SHADOW_OFFSET_Y_MAX,
-        WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
+        SIZE_SCALE_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
     };
 
     /// The metrics of today's card: nothing set, everything inherited.
@@ -1368,7 +1387,7 @@ mod tests {
 
         // And the narrowest bar still draws: 2px at the smallest scale is
         // 1.6px, which WebKit still paints.
-        assert!(f64::from(WAVEFORM_WIDTH_MIN) * crate::overlay_theme::SIZE_SCALE_MIN >= 1.0);
+        assert!(f64::from(WAVEFORM_WIDTH_MIN) * SIZE_SCALE_MIN >= 1.0);
     }
 
     /// The "a new token changes nothing until it is asked for" pin, for all
@@ -1663,6 +1682,8 @@ mod tests {
         let glass_shadow = inherit_shadow(Material::Glass);
 
         // 2 x 10 padding + 22 + 22 side columns, plus the hairline per edge.
+        // The dot is inside the left floor, its inset dropped with the
+        // waveform, so it costs the row nothing here.
         for shape in [OverlayCardShape::CompactRest, OverlayCardShape::LivePill] {
             assert_eq!(
                 hidden.window_size(shape, Material::Glass, glass_shadow),
@@ -1693,8 +1714,8 @@ mod tests {
             no_cancel.window_size(OverlayCardShape::CompactRest, Material::Glass, glass_shadow),
             (174.0, 42.0)
         );
-        // With the waveform gone too, the row is the dot's column alone:
-        // 2 x 10 padding + 12.
+        // With the waveform gone too, the row is the dot between two paddings,
+        // 2 x 10 + 7, and the stylesheet centres it in exactly that.
         let bare = metrics_of(OverlayTheme {
             show_waveform: Some(false),
             show_cancel: Some(false),
@@ -1703,7 +1724,7 @@ mod tests {
         for shape in [OverlayCardShape::CompactRest, OverlayCardShape::LivePill] {
             assert_eq!(
                 bare.window_size(shape, Material::Glass, glass_shadow),
-                (34.0, 42.0),
+                (29.0, 42.0),
                 "{shape:?}"
             );
         }
@@ -1724,6 +1745,67 @@ mod tests {
                 assert!(narrow <= wide, "{from:?} -> {to:?} is not a grow");
             }
         }
+    }
+
+    /// Every combination of the two switches, at both ends of the size scale,
+    /// written out. Under Glass the window is the card, so these are the
+    /// numbers the native frame is built from, and the stylesheet reaches the
+    /// same ones by scaling the same sums.
+    ///
+    /// The scale is what the row's own floors used to ignore. A card at 0.8 is
+    /// its size-scale-1 sum times 0.8, but `.sbase`'s two `minmax()` floors
+    /// stayed at 22 px, so with the waveform hidden the row needed 44 px of
+    /// floors inside a content box of 35.2 and the cancel button was pushed
+    /// through the card's right edge, where `overflow: hidden` cut it. The
+    /// last block is that arithmetic.
+    #[test]
+    fn the_resting_pill_measures_the_row_it_is_left_with() {
+        // (waveform, cancel, scale, the resting Minimal pill's window, the Live
+        // pill's), at size scale 1 and at 0.80, the smallest a theme can ask
+        // for. 172 and 184 hold their tuned widths while the waveform is on the
+        // row, whatever the cancel button does; without it they are the row,
+        // 64 with the button and 27 with the dot alone; every one plus the
+        // hairline per edge.
+        for (waveform, cancel, scale, compact, live) in [
+            (true, true, 1.0, (174.0, 42.0), (186.0, 42.0)),
+            (true, true, SIZE_SCALE_MIN, (140.0, 34.0), (149.0, 34.0)),
+            (true, false, 1.0, (174.0, 42.0), (186.0, 42.0)),
+            (true, false, SIZE_SCALE_MIN, (140.0, 34.0), (149.0, 34.0)),
+            (false, true, 1.0, (66.0, 42.0), (66.0, 42.0)),
+            (false, true, SIZE_SCALE_MIN, (53.0, 34.0), (53.0, 34.0)),
+            (false, false, 1.0, (29.0, 42.0), (29.0, 42.0)),
+            (false, false, SIZE_SCALE_MIN, (24.0, 34.0), (24.0, 34.0)),
+        ] {
+            let metrics = metrics_of(OverlayTheme {
+                size_scale: Some(scale),
+                show_waveform: Some(waveform),
+                show_cancel: Some(cancel),
+                ..OverlayTheme::default()
+            });
+            for (shape, expected) in [
+                (OverlayCardShape::CompactRest, compact),
+                (OverlayCardShape::LivePill, live),
+            ] {
+                assert_eq!(
+                    metrics.window_size(shape, Material::Glass, inherit_shadow(Material::Glass)),
+                    expected,
+                    "{shape:?} at scale {scale}, waveform {waveform}, cancel {cancel}"
+                );
+            }
+        }
+
+        // The row the stylesheet lays out inside the narrowest of those
+        // windows: the card at 0.8 less one scaled padding per side.
+        let row_box = 64.0 * SIZE_SCALE_MIN - 2.0 * f64::from(PADDING_INHERIT) * SIZE_SCALE_MIN;
+        assert_eq!(row_box, 35.2);
+        assert!(
+            2.0 * CARD_SIDE_MIN_W * SIZE_SCALE_MIN <= row_box,
+            "the scaled floors no longer fit the row they sit in"
+        );
+        assert!(
+            2.0 * CARD_SIDE_MIN_W > row_box,
+            "floors left at size scale 1 used to overflow this row, and this is the pin"
+        );
     }
 
     /// Under Flat the window covers the widest card its family can reach, and
@@ -1805,6 +1887,38 @@ mod tests {
             OverlayCardShape::initial_for("streaming"),
             OverlayCardShape::LivePill
         );
+    }
+
+    /// The row's side floors carry the size scale, as every other length in
+    /// the card does.
+    ///
+    /// [`CardMetrics`] adds the row up at size scale 1 and multiplies the sum
+    /// once, so a floor the stylesheet leaves at 22 px is wider than the row
+    /// the window was built for at any scale below 1. That is what pushed the
+    /// cancel button through the right edge of a waveless pill at 0.80.
+    #[test]
+    fn the_rows_side_floors_carry_the_size_scale() {
+        assert_eq!(
+            collapsed(css_declaration(
+                css_rule(OVERLAY_CSS, ".sbase {"),
+                "grid-template-columns"
+            )),
+            "minmax(calc(var(--ov-side-min) * var(--ov-scale)), 1fr) auto \
+             minmax(calc(var(--ov-side-min) * var(--ov-scale)), 1fr)"
+        );
+
+        // With the dot alone on the row the three columns collapse to their
+        // contents and the row centres them, which is how `bare_row_width`'s
+        // two paddings plus the dot land with the same padding on either side.
+        // The two element gaps have nothing left to fall between, so they
+        // become the free space that centring splits.
+        let dot_only = css_rule(OVERLAY_CSS, ".scard.nowave.nocancel .sbase {");
+        assert_eq!(
+            collapsed(css_declaration(dot_only, "grid-template-columns")),
+            "auto auto auto"
+        );
+        assert_eq!(css_declaration(dot_only, "justify-content"), "center");
+        assert_eq!(css_declaration(dot_only, "column-gap"), "0");
     }
 
     /// The card constants above and the `--ov-*` block in RecordingOverlay.css
@@ -1912,6 +2026,31 @@ mod tests {
         // disagree about a number.
         assert_eq!(css_px(OVERLAY_CSS, "--ov-side-min"), CARD_SIDE_MIN_W);
         assert_eq!(css_px(OVERLAY_CSS, "--ov-dot-col-w"), CARD_DOT_COL_W);
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-dot-w"), CARD_DOT_W);
+        // The left column is the dot plus an inset, and the two sums below take
+        // one part each: the row with a waveform on it keeps the inset, the bare
+        // row drops it with the rule that hides the waveform. So the
+        // stylesheet's own three numbers have to add up, and the dot and the
+        // inset have to reach the card through those very properties.
+        assert_eq!(
+            css_px(OVERLAY_CSS, "--ov-dot-w") + css_px(OVERLAY_CSS, "--ov-dot-inset"),
+            CARD_DOT_COL_W
+        );
+        assert_eq!(
+            css_declaration(css_rule(OVERLAY_CSS, ".sdot {"), "width"),
+            "calc(var(--ov-dot-w) * var(--ov-scale))"
+        );
+        assert_eq!(
+            css_declaration(css_rule(OVERLAY_CSS, ".sbase-l {"), "padding-left"),
+            "calc(var(--ov-dot-inset) * var(--ov-scale))"
+        );
+        assert_eq!(
+            css_declaration(
+                css_rule(OVERLAY_CSS, ".scard.nowave .sbase-l {"),
+                "padding-left"
+            ),
+            "0"
+        );
         assert_eq!(css_px(OVERLAY_CSS, "--ov-wave-pad-r"), CARD_WAVE_PAD_R);
         assert_eq!(tsx_const(OVERLAY_TSX, "const WAVE_BARS = "), CARD_WAVE_BARS);
         assert_eq!(
@@ -1928,11 +2067,11 @@ mod tests {
             ),
             (
                 "--ov-bare-w",
-                "calc( 2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +                  max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min) )",
+                "calc( 2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +                  max(var(--ov-side-min), var(--ov-dot-w)) + var(--ov-side-min) )",
             ),
             (
                 "--ov-row-w",
-                "calc( var(--ov-bare-w) + var(--ov-wave-slot-w) + var(--ov-wave-pad-r) )",
+                "calc( 2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +                  max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min) +                  var(--ov-wave-slot-w) + var(--ov-wave-pad-r) )",
             ),
         ] {
             assert_eq!(

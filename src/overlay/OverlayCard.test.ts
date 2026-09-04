@@ -93,13 +93,32 @@ describe("the resting Minimal pill", () => {
     expect(rowChildren(html)).toBe(3);
   });
 
-  test("hiding both leaves the dot alone on the row", () => {
+  test("hiding both leaves the dot alone on the row, to be centred", () => {
     const html = render({ showWaveform: false, showCancel: false });
     expect(html).not.toContain("swave");
     expect(html).not.toContain('class="sx"');
     expect(html).toContain('class="sdot ready"');
-    expect(cardClasses(html)).toEqual(["scard", "compact", "nowave"]);
+    // `nocancel` is what centres that dot. Without it the row keeps its three
+    // tracks and the dot sits one padding in, with the whole empty right
+    // column beside it.
+    expect(cardClasses(html)).toEqual([
+      "scard",
+      "compact",
+      "nowave",
+      "nocancel",
+    ]);
     expect(rowChildren(html)).toBe(3);
+  });
+
+  test("never carries the timer, whatever is hidden", () => {
+    // What a resting pill shrinks to is the dot and the cancel button, the row
+    // `--ov-bare-w` and `overlay_geometry.rs` both add up. A timer on that row
+    // would be width neither of them knows about.
+    for (const showWaveform of [true, false]) {
+      for (const showCancel of [true, false]) {
+        expect(render({ showWaveform, showCancel })).not.toContain("stimer");
+      }
+    }
   });
 });
 
@@ -212,6 +231,11 @@ describe("the Live card", () => {
       "scard",
       "nowave",
     ]);
+    expect(
+      cardClasses(render({ ...live, showWaveform: false, showCancel: false })),
+    ).toEqual(["scard", "nowave", "nocancel"]);
+    // Closed, so no timer: the pill is as wide as the row it is left with.
+    expect(render({ ...live, showWaveform: false })).not.toContain("stimer");
   });
 
   test("the open panel keeps its width and its timer", () => {

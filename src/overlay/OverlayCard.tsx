@@ -46,7 +46,8 @@ export interface OverlayCardProps {
    * The `show_cancel` token. False drops the button from every row; the
    * keyboard shortcut and `--cancel` still cancel. The apply layer takes the
    * row's 22 px side floor away with it, that floor being the room the button
-   * needed.
+   * needed. With the waveform gone too it adds `nocancel`, which centres the
+   * dot left alone on the row.
    */
   showCancel?: boolean;
   /**
@@ -200,10 +201,22 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
     </button>
   );
 
+  // The classes a resting shape takes from the two visibility tokens. `nowave`
+  // shrinks the pill to the row that is left; `nocancel` on top of it centres
+  // the dot that is then alone on that row. Neither ever reaches the working
+  // pill or the open panel, both tuned to their content, so every morph out of
+  // a shrunken shape stays a grow.
+  const restingClasses = showWaveform
+    ? ""
+    : showCancel
+      ? "nowave"
+      : "nowave nocancel";
+
   // dot (left) | waveform (center) | timer + cancel (right), same structure
   // for pill & panel, so the Live morph is a pure width change.
   // The grid keeps its three columns whatever is hidden, so the waveform and
   // the working label stay centred and the dot stays at the left of its track.
+  // Once the dot is alone on the row the stylesheet centres it instead.
   const listeningRow = (showTimer: boolean) => (
     <div className="sbase">
       <div className="sbase-l">
@@ -247,9 +260,9 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
         <div
           key={session}
           className={`scard ${open ? "open" : ""} ${collapsed ? "working" : ""} ${
-            // The Live pill, the one Live shape that rests. `nowave` never
-            // meets `open` or `working`, so the width rules cannot collide.
-            !open && !collapsed && !showWaveform ? "nowave" : ""
+            // The Live pill, the one Live shape that rests. The resting classes
+            // never meet `open` or `working`, so the width rules cannot collide.
+            !open && !collapsed ? restingClasses : ""
           }`}
         >
           <div className="stext">
@@ -300,7 +313,7 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
     >
       <div
         className={`scard compact ${working ? "cworking" : ""} ${
-          !working && !showWaveform ? "nowave" : ""
+          working ? "" : restingClasses
         }`}
       >
         {working ? workingRow(workLabel) : listeningRow(false)}

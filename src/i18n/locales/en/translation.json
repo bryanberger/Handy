@@ -408,7 +408,7 @@
       },
       "themeFile": {
         "title": "Theme file",
-        "description": "An optional JSON file that overrides overlay theme values, so external theming tools can drive the overlay.",
+        "description": "The JSON file your overlay theme lives in. Handy writes it whenever you change something here, and an edit from a text editor or a theming tool applies as soon as it is saved.",
         "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
         "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
         "managed": {

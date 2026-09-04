@@ -867,9 +867,10 @@ pub struct ThemeFileDiagnostic {
 
 /// Why Handy reads the theme file but will not write it.
 ///
-/// A stable, translatable identity, like [`ThemeFileDiagnosticCode`]. The
+/// A stable, translatable identity, like `ThemeFileDiagnosticCode`. The
 /// Appearance tab looks up an i18n string by reason and passes the ownership's
-/// `target` as its parameter.
+/// `target` as its parameter. Plain text, not an intra-doc link: this doc
+/// comment is copied verbatim into `src/bindings.ts`.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ManagedReason {
@@ -1035,7 +1036,7 @@ pub fn resolve(app: &AppHandle) -> ResolvedOverlayTheme {
         file,
         glass_support(app),
         crate::overlay::anchored_edge_room(app),
-        watching(),
+        crate::overlay_theme_watch::is_watching(),
     )
 }
 
@@ -1050,7 +1051,7 @@ pub fn resolve_authored(app: &AppHandle, theme: OverlayTheme) -> ResolvedOverlay
         crate::overlay_theme_file::cached(app),
         glass_support(app),
         crate::overlay::anchored_edge_room(app),
-        watching(),
+        crate::overlay_theme_watch::is_watching(),
     )
 }
 
@@ -1067,14 +1068,8 @@ pub fn resolve_reloading(app: &AppHandle) -> ResolvedOverlayTheme {
         file,
         glass_support(app),
         crate::overlay::anchored_edge_room(app),
-        watching(),
+        crate::overlay_theme_watch::is_watching(),
     )
-}
-
-/// Whether the theme file's watcher is running, so the tab knows whether it
-/// still needs its Reload button.
-fn watching() -> bool {
-    crate::overlay_theme_watch::is_watching()
 }
 
 /// The whole resolution rule with nothing to look up: clamp the tokens once,

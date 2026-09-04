@@ -28,8 +28,25 @@ use crate::overlay_theme_file::{
 use crate::settings::{get_settings, write_settings};
 use log::{debug, info, warn};
 use serde_json::{Map, Value};
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 use tauri::AppHandle;
+
+/// One writer at a time.
+///
+/// Two commits overlap easily: a debounced drag settles while a reset is
+/// already in flight, and each is a read-modify-write of the same document.
+/// Serialised, the later one reads what the earlier one wrote instead of the
+/// document both started from.
+static WRITE_LOCK: Mutex<()> = Mutex::new(());
+
+/// Makes each temp file's name its own, so an unlucky pair of writes cannot
+/// meet in one file. The lock above already keeps them apart in time; this
+/// keeps them apart on disk, and a temp file abandoned by a crash cannot be
+/// reused half-written.
+static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 /// Persist the overlay theme, and report where it went.
 ///
@@ -44,7 +61,17 @@ pub fn save(app: &AppHandle, theme: &OverlayTheme) -> Result<PathBuf, String> {
         )
     })?;
 
-    let ownership = overlay_theme_file::ownership_at(&path);
+    save_to(&path, theme)?;
+    debug!("Wrote the overlay theme to {}", path.display());
+    Ok(path)
+}
+
+/// [`save`] over a path already chosen, so the ownership guard does not depend
+/// on how the path was found, and a temp directory is enough to test it.
+fn save_to(path: &Path, theme: &OverlayTheme) -> Result<(), String> {
+    let _writing = writing();
+
+    let ownership = overlay_theme_file::ownership_at(path);
     if !ownership.writable {
         return Err(format!(
             "{} is not Handy's to write ({:?}); the Appearance tab is read-only while it is",
@@ -56,13 +83,31 @@ pub fn save(app: &AppHandle, theme: &OverlayTheme) -> Result<PathBuf, String> {
     // Best effort: an unreadable or malformed document simply contributes no
     // keys to preserve. Overwriting a broken file with the values on screen is
     // the user's explicit act, which is what a committed change is.
-    let existing = std::fs::read_to_string(&path).ok();
+    let existing = std::fs::read_to_string(path).ok();
     let normalized = theme.normalized();
     let text = document_text(&normalized, existing.as_deref())?;
-    install(&path, &text, &normalized)?;
+    install(path, &text, &normalized)
+}
 
-    debug!("Wrote the overlay theme to {}", path.display());
-    Ok(path)
+/// The write path itself, for the watcher's tests.
+///
+/// They need a real commit, temp file, `sync_all` and rename, landing in a
+/// watched folder, and a unit test has no `AppHandle` to route one through
+/// [`save`].
+#[cfg(test)]
+pub fn save_for_test(path: &Path, theme: &OverlayTheme) -> Result<(), String> {
+    save_to(path, theme)
+}
+
+/// Hold [`WRITE_LOCK`] for the rest of the caller's scope.
+///
+/// A poisoned lock is taken anyway: the guarded work is a read and a rename,
+/// so a panicking writer leaves the document either as it was or replaced,
+/// never half a file for the next writer to inherit.
+fn writing() -> std::sync::MutexGuard<'static, ()> {
+    WRITE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// The document to write: `version`, the set tokens in the contract's order,
@@ -71,7 +116,7 @@ pub fn save(app: &AppHandle, theme: &OverlayTheme) -> Result<PathBuf, String> {
 /// Pure over the previous document's text, so the preservation rules are
 /// testable without a filesystem. `existing` is whatever is on disk now;
 /// anything that is not a JSON object contributes nothing and is replaced.
-pub fn document_text(theme: &OverlayTheme, existing: Option<&str>) -> Result<String, String> {
+fn document_text(theme: &OverlayTheme, existing: Option<&str>) -> Result<String, String> {
     let previous = existing.and_then(object_of);
 
     let mut rows: Vec<(String, Value)> = vec![(VERSION_KEY.to_string(), version_row(&previous))];
@@ -159,25 +204,21 @@ fn render(rows: &[(String, Value)]) -> String {
 /// it into place.
 ///
 /// The temp file is in the target's own directory, so the rename stays within
-/// one filesystem and is atomic. It is hidden and named after the process, so
-/// two Handys cannot collide and a stray one is never mistaken for the theme
-/// (the reader only ever opens `overlay_theme.json`).
+/// one filesystem and is atomic. It is hidden and named per process and per
+/// write, so neither two Handys nor two commits can collide, and a stray one
+/// is never mistaken for the theme (the reader only ever opens
+/// `overlay_theme.json`).
 fn install(path: &Path, text: &str, expected: &OverlayTheme) -> Result<(), String> {
-    let directory = path
-        .parent()
-        .filter(|directory| !directory.as_os_str().is_empty())
+    let directory = overlay_theme_file::containing_directory(path)
         .ok_or_else(|| format!("{} names no folder to write into", path.display()))?;
 
     // The one directory Handy creates, and only under a path it owns: the
     // ownership check above has already refused anything else.
-    std::fs::create_dir_all(directory)
+    std::fs::create_dir_all(&directory)
         .map_err(|error| format!("Cannot create {}: {error}", directory.display()))?;
 
     let temp = temp_path(path);
-    std::fs::write(&temp, text)
-        .map_err(|error| format!("Cannot write {}: {error}", temp.display()))?;
-
-    if let Err(problem) = verify(&temp, expected) {
+    if let Err(problem) = write_temp(&temp, text).and_then(|()| verify(&temp, expected)) {
         let _ = std::fs::remove_file(&temp);
         return Err(problem);
     }
@@ -186,6 +227,21 @@ fn install(path: &Path, text: &str, expected: &OverlayTheme) -> Result<(), Strin
         let _ = std::fs::remove_file(&temp);
         format!("Cannot replace {}: {error}", path.display())
     })
+}
+
+/// Write the temp file and flush it all the way to the disk.
+///
+/// `sync_all` before the rename is what makes the rename atomic in a crash as
+/// well as to a reader: without it the directory entry can reach the disk
+/// while the bytes it points at have not, and the theme file comes back empty
+/// after a power cut.
+fn write_temp(temp: &Path, text: &str) -> Result<(), String> {
+    let mut file = std::fs::File::create(temp)
+        .map_err(|error| format!("Cannot write {}: {error}", temp.display()))?;
+    file.write_all(text.as_bytes())
+        .map_err(|error| format!("Cannot write {}: {error}", temp.display()))?;
+    file.sync_all()
+        .map_err(|error| format!("Cannot flush {}: {error}", temp.display()))
 }
 
 /// Read the temp file back through the reader's own parser and check the
@@ -207,28 +263,30 @@ fn verify(temp: &Path, expected: &OverlayTheme) -> Result<(), String> {
     Ok(())
 }
 
-/// Where the temp file goes: hidden, beside the target, named per process.
+/// Where the temp file goes: hidden, beside the target, named per process and
+/// per write, so nothing else in that folder can be mistaken for it.
 fn temp_path(path: &Path) -> PathBuf {
     let name = path
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_else(|| overlay_theme_file::THEME_FILE_NAME.to_string());
     let directory = path.parent().unwrap_or_else(|| Path::new("."));
-    directory.join(format!(".{name}.{}.tmp", std::process::id()))
+    let sequence = TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    directory.join(format!(".{name}.{}.{sequence}.tmp", std::process::id()))
 }
 
 /// What the one-time migration should do with the store's `overlay_theme`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Migration {
+enum Migration {
     /// It has already run. Nothing looks at the stored theme again.
     AlreadyDone,
     /// `HANDY_OVERLAY_THEME_FILE` is naming the file. Writing Handy's own
     /// location would create a document nothing reads, so this waits for the
     /// variable to go away rather than marking itself done.
     Deferred,
-    /// A theme file is already there. It wins, and the store is retired
-    /// unread, so deleting that file later means the built-in look rather
-    /// than a theme from before the file existed.
+    /// Something is already at one of Handy's locations. It wins, and the
+    /// store is retired unread, so deleting that file later means the built-in
+    /// look rather than a theme from before the file existed.
     FileWins,
     /// The store holds nothing but inherits. There is no theme to move, and
     /// the store is retired.
@@ -238,7 +296,7 @@ pub enum Migration {
 }
 
 /// The migration's rule, pure over the four facts it turns on.
-pub fn migration_step(
+fn migration_step(
     already_migrated: bool,
     env_override: bool,
     file_present: bool,
@@ -267,12 +325,15 @@ pub fn migration_step(
 /// Every outcome but [`Migration::Deferred`] retires the stored theme, so this
 /// is a one-time pass however it ends and a later deletion of the theme file
 /// cannot resurrect a theme from before the file was the theme.
-pub fn migrate_once(app: &AppHandle, file_present: bool) -> Option<PathBuf> {
+pub fn migrate_once(app: &AppHandle) -> Option<PathBuf> {
     let mut settings = get_settings(app);
+    // "Is a file there", not "did a file parse". A document Handy could not
+    // read is still somebody's, and a migration that replaced it would drop
+    // the keys and the typo the user is halfway through fixing.
     let step = migration_step(
         settings.overlay_theme_migrated,
         overlay_theme_file::env_override_in_effect(),
-        file_present,
+        overlay_theme_file::any_candidate_exists(app),
         settings.overlay_theme != OverlayTheme::default(),
     );
 
@@ -296,10 +357,10 @@ pub fn migrate_once(app: &AppHandle, file_present: bool) -> Option<PathBuf> {
             debug!("No stored overlay theme to move into the theme file");
             None
         }
-        Migration::Write => match overlay_theme_file::config_target(app) {
+        Migration::Write => match overlay_theme_file::config_theme_file(app) {
             Some(path) => {
                 let theme = settings.overlay_theme.normalized();
-                match document_text(&theme, None).and_then(|text| install(&path, &text, &theme)) {
+                match create_from_store(&path, &theme) {
                     Ok(()) => {
                         info!(
                             "Migrated the stored overlay theme to {}; it is the overlay theme \
@@ -329,6 +390,36 @@ pub fn migrate_once(app: &AppHandle, file_present: bool) -> Option<PathBuf> {
     settings.overlay_theme_migrated = true;
     write_settings(app, settings);
     written
+}
+
+/// Write the stored theme to `path`, but only onto nothing at all.
+///
+/// The migration is the one write with no user behind it, so it is the one
+/// that must never replace a document: not a file that will not parse, not a
+/// symlink a theming tool owns, not a read-only file. Both halves matter. The
+/// first refuses anything that is there, the second refuses a path that is
+/// not Handy's even when it is empty.
+fn create_from_store(path: &Path, theme: &OverlayTheme) -> Result<(), String> {
+    let _writing = writing();
+
+    if overlay_theme_file::anything_at(path) {
+        return Err(format!(
+            "{} already exists, so it is the overlay theme and the stored one is not migrated",
+            path.display()
+        ));
+    }
+
+    let ownership = overlay_theme_file::ownership_at(path);
+    if !ownership.writable {
+        return Err(format!(
+            "{} is not Handy's to create ({:?})",
+            path.display(),
+            ownership.reason
+        ));
+    }
+
+    let text = document_text(theme, None)?;
+    install(path, &text, theme)
 }
 
 #[cfg(test)]
@@ -519,6 +610,112 @@ mod tests {
                 .expect("the directory reads")
                 .count(),
             1
+        );
+    }
+
+    /// The write guard, which is the whole difference between "Handy owns this
+    /// file" and "Handy reads somebody else's". Refused, and the document is
+    /// left byte for byte as it was.
+    #[test]
+    fn a_commit_refuses_a_theme_file_handy_does_not_own() {
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let original = "{\n  \"version\": 1\n}\n";
+
+        let read_only = directory.path().join(overlay_theme_file::THEME_FILE_NAME);
+        std::fs::write(&read_only, original).expect("the temp dir is writable");
+        let mut permissions = std::fs::metadata(&read_only)
+            .expect("the file is there")
+            .permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&read_only, permissions).expect("permissions are settable");
+
+        assert!(save_to(&read_only, &a_theme()).is_err());
+        assert_eq!(
+            std::fs::read_to_string(&read_only).expect("the file is still there"),
+            original
+        );
+
+        #[cfg(unix)]
+        {
+            let real = directory.path().join("tokyo.json");
+            std::fs::write(&real, original).expect("the temp dir is writable");
+            let link = directory.path().join("linked.json");
+            std::os::unix::fs::symlink(&real, &link).expect("the temp dir takes a symlink");
+
+            assert!(save_to(&link, &a_theme()).is_err());
+            assert_eq!(
+                std::fs::read_to_string(&real).expect("the tool's document is untouched"),
+                original
+            );
+            assert!(link.is_symlink(), "and the link is still a link");
+        }
+    }
+
+    /// A document that will not parse keeps applying its last good values, and
+    /// the tab says so. Changing anything then is the user's explicit act, and
+    /// it has to leave a file that reads.
+    #[test]
+    fn a_commit_repairs_a_document_that_would_not_parse() {
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let path = directory.path().join(overlay_theme_file::THEME_FILE_NAME);
+        std::fs::write(&path, "{ \"accent\": ").expect("the temp dir is writable");
+
+        save_to(&path, &a_theme()).expect("a commit over a broken file lands");
+        assert_eq!(
+            overlay_theme_file::tokens_of(
+                &std::fs::read_to_string(&path).expect("the file is there")
+            )
+            .expect("and it reads"),
+            a_theme().normalized()
+        );
+    }
+
+    /// The migration is the one write with nobody behind it, so it may only
+    /// ever create. A file that parses, a file that does not and a link a
+    /// theming tool owns are all somebody's, and all three survive it.
+    #[test]
+    fn the_migration_never_touches_an_existing_file_parseable_or_not() {
+        // `create_from_store` asks whether an absent path is Handy's, which
+        // reads `HANDY_OVERLAY_THEME_FILE`.
+        let _lock = overlay_theme_file::env_var_test_lock();
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let theme = a_theme();
+
+        for (name, contents) in [
+            ("broken.json", "{ not json at all"),
+            ("good.json", "{\n  \"version\": 1\n}\n"),
+        ] {
+            let path = directory.path().join(name);
+            std::fs::write(&path, contents).expect("the temp dir is writable");
+            assert!(
+                create_from_store(&path, &theme).is_err(),
+                "{name} is already the overlay theme"
+            );
+            assert_eq!(
+                std::fs::read_to_string(&path).expect("the file is still there"),
+                contents
+            );
+        }
+
+        #[cfg(unix)]
+        {
+            let dangling = directory.path().join("dangling.json");
+            std::os::unix::fs::symlink(directory.path().join("nowhere.json"), &dangling)
+                .expect("the temp dir takes a symlink");
+            assert!(
+                create_from_store(&dangling, &theme).is_err(),
+                "a link that leads nowhere is still a link somebody made"
+            );
+            assert!(dangling.is_symlink());
+        }
+
+        // Nothing at all is the one case this exists for, folder and all.
+        let fresh = directory.path().join("handy").join("overlay_theme.json");
+        create_from_store(&fresh, &theme).expect("the migration creates its own file");
+        assert_eq!(
+            overlay_theme_file::tokens_of(&std::fs::read_to_string(&fresh).expect("it is there"))
+                .expect("and it reads"),
+            theme.normalized()
         );
     }
 

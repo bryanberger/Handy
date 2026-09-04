@@ -954,9 +954,11 @@ async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<ResolvedOv
  * paint.
  * 
  * Every draft that gets through leaves a mark, which
- * [`change_overlay_theme_setting`] clears. That guarantees the screen ends on
- * the file's own theme even when the commit that follows has nothing to
- * write, and it is why a draft is never recorded as a delivery.
+ * `change_overlay_theme_setting` clears (plain text, not an intra-doc link:
+ * this doc comment is copied verbatim into `src/bindings.ts`). That
+ * guarantees the screen ends on the file's own theme even when the commit
+ * that follows has nothing to write, and it is why a draft is never recorded
+ * as a delivery.
  */
 async previewOverlayThemeDraft(theme: OverlayTheme) : Promise<Result<null, string>> {
     try {
@@ -1359,9 +1361,10 @@ export type LogLevel = "trace" | "debug" | "info" | "warn" | "error"
 /**
  * Why Handy reads the theme file but will not write it.
  * 
- * A stable, translatable identity, like [`ThemeFileDiagnosticCode`]. The
+ * A stable, translatable identity, like `ThemeFileDiagnosticCode`. The
  * Appearance tab looks up an i18n string by reason and passes the ownership's
- * `target` as its parameter.
+ * `target` as its parameter. Plain text, not an intra-doc link: this doc
+ * comment is copied verbatim into `src/bindings.ts`.
  */
 export type ManagedReason = 
 /**

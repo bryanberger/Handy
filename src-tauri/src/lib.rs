@@ -998,14 +998,17 @@ pub fn run(cli_args: CliArgs) {
             // be known here or the first show would resize a window built for
             // the wrong scale. Also logs the file's diagnostics at startup,
             // where a user asking "why is my theme ignored" will find them.
-            let theme_file = overlay_theme_file::read(app.handle());
+            overlay_theme_file::read(app.handle());
 
             // The one-time move of a theme stored before the file was the
             // theme. It needs the settings, which are loaded above, and it has
             // to finish before anything shows the overlay, so the first frame
-            // is already drawn from the file. Re-read after a write, so the
-            // cache and the watcher start from the document on disk.
-            if overlay_theme_write::migrate_once(app.handle(), theme_file.present).is_some() {
+            // is already drawn from the file. It asks the filesystem itself
+            // whether a file is there, rather than taking the read above as
+            // the answer: a document that would not parse is still somebody's
+            // file. Re-read after a write, so the cache and the watcher start
+            // from the document on disk.
+            if overlay_theme_write::migrate_once(app.handle()).is_some() {
                 overlay_theme_file::read(app.handle());
             }
 

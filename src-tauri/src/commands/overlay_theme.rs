@@ -93,7 +93,11 @@ pub async fn change_overlay_theme_setting(
 ) -> Result<ResolvedOverlayTheme, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let normalized = theme.normalized();
-        let current = overlay_theme_file::cached(&app);
+        // Read, not the cache. "Nothing changed" has to be measured against
+        // the document on disk: a hand edit or a theming tool's write between
+        // two commits would otherwise look like no change at all, and the
+        // user's edit would be dropped instead of written.
+        let current = overlay_theme_file::read(&app);
 
         // A commit that writes what is already in the file has nothing to
         // persist and nothing to announce. It happens often: a debounced drag
@@ -138,9 +142,11 @@ pub async fn change_overlay_theme_setting(
 /// paint.
 ///
 /// Every draft that gets through leaves a mark, which
-/// [`change_overlay_theme_setting`] clears. That guarantees the screen ends on
-/// the file's own theme even when the commit that follows has nothing to
-/// write, and it is why a draft is never recorded as a delivery.
+/// `change_overlay_theme_setting` clears (plain text, not an intra-doc link:
+/// this doc comment is copied verbatim into `src/bindings.ts`). That
+/// guarantees the screen ends on the file's own theme even when the commit
+/// that follows has nothing to write, and it is why a draft is never recorded
+/// as a delivery.
 #[tauri::command]
 #[specta::specta]
 pub fn preview_overlay_theme_draft(app: AppHandle, theme: OverlayTheme) -> Result<(), String> {

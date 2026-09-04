@@ -303,12 +303,12 @@ export class DraftEngine {
 }
 
 export interface UseDraftSettingResult {
-  /** Values being edited but not yet committed. Read as `draft[key] ??
-   *  settings.overlay_theme[key]`, never alone as the persisted value. */
+  /** Values being edited but not yet committed. Read as `draft[key] ?? the
+   *  theme file's own value`, never alone as the persisted value. */
   draft: Draft;
-  /** Update the draft now, then commit to the store on a 120 ms trailing
-   *  debounce. The tab's controls read the draft; the on-screen overlay gets
-   *  it once per animation frame. */
+  /** Update the draft now, then write it to the theme file on a 120 ms
+   *  trailing debounce. The tab's controls read the draft; the on-screen
+   *  overlay gets it once per animation frame. */
   setDraft: <K extends OverlayThemeKey>(key: K, value: OverlayTheme[K]) => void;
   /** Commit a still-pending draft now. Wire to `onPointerUp` / `onFocusOut`
    *  so the debounce never outlives the drag or keystroke behind it, or "Show

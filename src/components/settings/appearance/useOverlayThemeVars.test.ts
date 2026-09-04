@@ -10,22 +10,16 @@ import {
 
 /**
  * Unit tests for `mergeDraft`, the rule a token row is painted by:
- * `locked ? resolved.theme[key] : (draft[key] ?? resolved.theme[key])`. The
- * theme file is the theme, so a draft is the value on its way into that file,
- * and only a file Handy does not write refuses one.
+ * `draft[key] ?? resolved.theme[key]`. The theme file is the theme, so a draft
+ * is the value on its way into that file, and the on-screen preview shows it
+ * before it gets there, managed file or not.
  */
 
 describe("mergeDraft", () => {
   test("a draft overrides the persisted value", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, radius: 24 };
-    const merged = mergeDraft(theme, { radius: 8 }, false);
+    const merged = mergeDraft(theme, { radius: 8 });
     expect(merged.radius).toBe(8);
-  });
-
-  test("a managed theme file ignores the draft entirely", () => {
-    const theme: OverlayTheme = { ...INHERIT_ALL, accent: "#7aa2f7" };
-    const merged = mergeDraft(theme, { accent: "#ff0000" }, true);
-    expect(merged.accent).toBe("#7aa2f7");
   });
 
   test("keys absent from the draft keep the resolved value", () => {
@@ -34,7 +28,7 @@ describe("mergeDraft", () => {
       surface: "#111111",
       text: "#eeeeee",
     };
-    const merged = mergeDraft(theme, { radius: 12 }, false);
+    const merged = mergeDraft(theme, { radius: 12 });
     expect(merged.surface).toBe("#111111");
     expect(merged.text).toBe("#eeeeee");
     expect(merged.radius).toBe(12);
@@ -42,25 +36,27 @@ describe("mergeDraft", () => {
 
   test("a draft value of null (an in-progress reset) still overrides", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, padding: 14 };
-    const merged = mergeDraft(theme, { padding: null }, false);
+    const merged = mergeDraft(theme, { padding: null });
     expect(merged.padding).toBeNull();
   });
 
-  test("locking is all or nothing: a managed file freezes every token", () => {
+  test("a managed file locks the rows, not the preview", () => {
+    // Contract point 4: Handy never writes this file, and the preview still
+    // paints what the user is dragging. Nothing here knows about ownership.
     const theme: OverlayTheme = {
       ...INHERIT_ALL,
       accent: "#7aa2f7",
       radius: 24,
     };
-    const merged = mergeDraft(theme, { accent: "#ff0000", radius: 4 }, true);
-    expect(merged.accent).toBe("#7aa2f7");
-    expect(merged.radius).toBe(24);
+    const merged = mergeDraft(theme, { accent: "#ff0000", radius: 4 });
+    expect(merged.accent).toBe("#ff0000");
+    expect(merged.radius).toBe(4);
   });
 
   test("does not mutate its inputs", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, radius: 24 };
     const draft = { radius: 8 };
-    mergeDraft(theme, draft, false);
+    mergeDraft(theme, draft);
     expect(theme.radius).toBe(24);
     expect(draft.radius).toBe(8);
   });

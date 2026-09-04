@@ -85,6 +85,22 @@ const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 /// only the payload, since a hostile document's unknown keys are unbounded.
 const MAX_DIAGNOSTICS: usize = 5;
 
+/// Serialises every test that reads or writes [`THEME_FILE_ENV_VAR`], here
+/// rather than in the test module because the write module's tests share it:
+/// the ownership guard reads the variable, so a test setting it would race a
+/// test asking whether an absent path is Handy's to create.
+#[cfg(test)]
+static ENV_VAR_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Hold [`ENV_VAR_TEST_LOCK`] for the rest of the caller's scope. A poisoned
+/// lock is taken anyway; it guards a variable, not an invariant.
+#[cfg(test)]
+pub fn env_var_test_lock() -> std::sync::MutexGuard<'static, ()> {
+    ENV_VAR_TEST_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 /// A token's key, and how a value for it becomes an [`OverlayTheme`] field.
 struct TokenSpec {
     key: &'static str,
@@ -312,29 +328,56 @@ pub fn candidate_paths(app: &AppHandle) -> Vec<PathBuf> {
 /// rather than a display string. `None` when [`THEME_FILE_ENV_VAR`] holds
 /// something that is not a path, and when there is nowhere to put a file.
 pub fn effective_target(app: &AppHandle) -> Option<PathBuf> {
-    match env_override() {
+    target_from(env_override(), || {
+        first_existing(&candidate_paths(app)).or_else(|| absent_path(app))
+    })
+}
+
+/// The write target's rule, pure over the variable and the search it would
+/// otherwise run, so every branch is testable without an `AppHandle`.
+///
+/// The search is a closure because the env var is exclusive: a value that is
+/// not a path resolves nowhere at all, and a value that is one is the answer
+/// present or not, so neither branch may pay for a candidate walk.
+fn target_from(env: EnvOverride, searched: impl FnOnce() -> Option<PathBuf>) -> Option<PathBuf> {
+    match env {
         EnvOverride::Invalid => None,
         // Exclusive, present or not: an explicit instruction cannot resolve
         // elsewhere, and the ownership check decides whether it may be written.
         EnvOverride::Path(path) => Some(path),
-        EnvOverride::Unset => first_existing(&candidate_paths(app), |path| path.is_file())
-            .or_else(|| absent_path(app)),
+        EnvOverride::Unset => searched(),
     }
 }
 
 /// The first candidate that holds a file, or `None` for a fresh install.
 ///
-/// Pure over the predicate, so the priority order is testable without a temp
-/// tree. `is_file` follows symlinks, exactly as opening the candidate does, so
-/// a symlinked theme file is found here as well as read.
-fn first_existing(candidates: &[PathBuf], is_file: impl Fn(&Path) -> bool) -> Option<PathBuf> {
-    candidates.iter().find(|path| is_file(path)).cloned()
+/// `is_file` follows symlinks, exactly as opening the candidate does, so a
+/// symlinked theme file is found here as well as read.
+fn first_existing(candidates: &[PathBuf]) -> Option<PathBuf> {
+    candidates.iter().find(|path| path.is_file()).cloned()
 }
 
 /// `~/.config/handy/overlay_theme.json`: where the migration puts the store's
 /// theme, and the path the Appearance tab prints with no file anywhere.
-pub fn config_target(app: &AppHandle) -> Option<PathBuf> {
-    config_theme_file(app)
+pub fn config_theme_file(app: &AppHandle) -> Option<PathBuf> {
+    config_home(app).map(|dir| dir.join(CONFIG_SUBDIR).join(THEME_FILE_NAME))
+}
+
+/// Whether anything at all sits at any location Handy would look in.
+///
+/// Asked by the one-time migration, which may only create a theme file where
+/// there is none. Deliberately not "did a document parse": a file that will
+/// not parse, a dangling symlink and a directory in the way are all somebody
+/// else's, and none of them is a path to write over.
+pub fn any_candidate_exists(app: &AppHandle) -> bool {
+    candidate_paths(app).iter().any(|path| anything_at(path))
+}
+
+/// Whether the path holds something, a broken file and a dangling symlink
+/// included. `Path::exists` follows symlinks and answers no for a dangling
+/// one, which would read as "nothing here" over a link a tool owns.
+pub fn anything_at(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok()
 }
 
 /// Whether [`THEME_FILE_ENV_VAR`] is naming the theme file.
@@ -464,8 +507,10 @@ fn location_to_reveal(
 /// The closest directory at or above `directory` that already exists.
 ///
 /// Reads only, creating nothing. `None` when nothing on the path is a
-/// directory, including a relative one whose ancestors end at `""`.
-fn nearest_existing(directory: &Path, is_directory: impl Fn(&Path) -> bool) -> Option<PathBuf> {
+/// directory, including a relative one whose ancestors end at `""`. The
+/// predicate is what lets the Open button's rule be tested without a temp
+/// tree; the watcher passes the real one.
+pub fn nearest_existing(directory: &Path, is_directory: impl Fn(&Path) -> bool) -> Option<PathBuf> {
     directory
         .ancestors()
         .filter(|ancestor| !ancestor.as_os_str().is_empty())
@@ -485,7 +530,10 @@ pub fn ensure_location(dir: &Path) -> Result<(), String> {
 
 /// The directory holding `path`, if it names one. A bare file name's parent is
 /// `""`, which nobody can open, so `None`, not the working directory.
-fn containing_directory(path: &Path) -> Option<PathBuf> {
+///
+/// The one answer to "which folder is the theme file in", shared by the Open
+/// button, the write path's `mkdir` and the watcher.
+pub fn containing_directory(path: &Path) -> Option<PathBuf> {
     path.parent()
         .filter(|dir| !dir.as_os_str().is_empty())
         .map(Path::to_path_buf)
@@ -705,12 +753,6 @@ fn config_home_from(xdg: Option<&OsStr>, home: Option<&Path>) -> Option<PathBuf>
     }
 }
 
-/// `~/.config/handy/overlay_theme.json`: the candidate the Appearance tab
-/// prints when no file exists anywhere, and the directory Open creates.
-fn config_theme_file(app: &AppHandle) -> Option<PathBuf> {
-    config_home(app).map(|dir| dir.join(CONFIG_SUBDIR).join(THEME_FILE_NAME))
-}
-
 /// The path to report when no candidate holds a file, from the real lookups.
 ///
 /// A missing home directory is only a `debug!` in [`config_home`], since
@@ -913,7 +955,7 @@ fn read_candidates(
         ));
     } else {
         debug!(
-            "No theme file at {}; the overlay theme comes from the settings",
+            "No theme file at {}; the overlay wears its built-in look until one is written",
             path.clone().unwrap_or_else(|| "any candidate".to_string())
         );
     }
@@ -1365,14 +1407,6 @@ fn store_cache(state: &ThemeFileState) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    /// Serializes the tests touching the real `HANDY_OVERLAY_THEME_FILE`, so
-    /// two cannot interleave under the multi-threaded runner and leave one
-    /// another's value behind. Almost every test here uses the pure
-    /// `env_candidate` / `env_candidate_os` seams and needs no lock. Only
-    /// `env_override` needs it.
-    static ENV_VAR_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     /// Sets [`THEME_FILE_ENV_VAR`] for the life of the guard and restores it
     /// on drop, panic included, since `Drop` runs while an assertion failure
@@ -1385,9 +1419,7 @@ mod tests {
 
     impl EnvVarGuard {
         fn set(value: impl AsRef<OsStr>) -> Self {
-            let lock = ENV_VAR_TEST_LOCK
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let lock = env_var_test_lock();
             let previous = std::env::var_os(THEME_FILE_ENV_VAR);
             std::env::set_var(THEME_FILE_ENV_VAR, value);
             EnvVarGuard {
@@ -1509,6 +1541,9 @@ mod tests {
     /// not, and neither is the symlink the test below covers.
     #[test]
     fn a_read_only_file_is_managed_and_a_plain_one_is_not() {
+        // The absent case below asks whether the env var names the file, so
+        // this shares the lock with the tests that set it.
+        let _lock = env_var_test_lock();
         let directory = tempfile::tempdir().expect("a temp dir");
         let plain = write(directory.path(), THEME_FILE_NAME, EXAMPLE_INHERIT);
         assert_eq!(ownership_at(&plain), ThemeFileOwnership::owned());
@@ -1577,24 +1612,45 @@ mod tests {
     /// never shows one path and writes another.
     #[test]
     fn the_write_target_is_the_first_file_that_exists() {
-        let portable = PathBuf::from("/opt/handy/Data/overlay_theme.json");
-        let config = PathBuf::from("/home/user/.config/handy/overlay_theme.json");
-        let app_data = PathBuf::from("/data/com.pais.handy/overlay_theme.json");
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let portable = directory.path().join("portable.json");
+        let config = directory.path().join("config.json");
+        let app_data = directory.path().join("app_data.json");
         let candidates = vec![portable.clone(), config.clone(), app_data.clone()];
 
-        // Priority order, not "the first one Handy would create".
-        assert_eq!(
-            first_existing(&candidates, |path| path == app_data),
-            Some(app_data.clone())
-        );
-        assert_eq!(
-            first_existing(&candidates, |path| path != portable),
-            Some(config)
-        );
-        assert_eq!(first_existing(&candidates, |_| true), Some(portable));
         // A fresh install has none of them, and the caller falls back to the
         // path the tab prints.
-        assert_eq!(first_existing(&candidates, |_| false), None);
+        assert_eq!(first_existing(&candidates), None);
+
+        // Priority order, not "the first one Handy would create".
+        std::fs::write(&app_data, EXAMPLE_INHERIT).expect("the temp dir is writable");
+        assert_eq!(first_existing(&candidates), Some(app_data));
+        std::fs::write(&config, EXAMPLE_INHERIT).expect("the temp dir is writable");
+        assert_eq!(first_existing(&candidates), Some(config));
+        std::fs::write(&portable, EXAMPLE_INHERIT).expect("the temp dir is writable");
+        assert_eq!(first_existing(&candidates), Some(portable));
+    }
+
+    /// The env var is exclusive in both directions: it names the target
+    /// outright, and a value that is not a path leaves nowhere to write rather
+    /// than falling back to a file the user did not name.
+    #[test]
+    fn an_unusable_env_value_leaves_nowhere_to_write() {
+        let searched = PathBuf::from("/home/user/.config/handy/overlay_theme.json");
+        let named = PathBuf::from("/themes/tokyo.json");
+
+        assert_eq!(
+            target_from(EnvOverride::Invalid, || Some(searched.clone())),
+            None
+        );
+        assert_eq!(
+            target_from(EnvOverride::Path(named.clone()), || Some(searched.clone())),
+            Some(named)
+        );
+        assert_eq!(
+            target_from(EnvOverride::Unset, || Some(searched.clone())),
+            Some(searched)
+        );
     }
 
     /// `~/.config/handy/` is documented, so it outranks app data, which stays

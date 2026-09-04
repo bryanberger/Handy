@@ -33,18 +33,20 @@ export const EMPTY_FILE_STATE: ResolvedOverlayTheme["file"] = {
 };
 
 /**
- * Merge a draft over a resolved theme, per key, unless the theme file is
- * managed and no edit can be persisted at all. Those controls are disabled, so
- * no draft can exist for them; this holds anyway.
+ * Merge a draft over a resolved theme, per key.
+ *
+ * A managed theme file does not change this. It locks every token row, so
+ * ordinarily there is no draft to merge, but the on-screen preview still works
+ * from drafts while the file is somebody else's: the base is always the file's
+ * own tokens, and a draft only ever paints over them. Dropping drafts here
+ * would freeze the preview instead of the file.
  *
  * Exported for the unit tests; nothing outside this file imports it.
  */
 export function mergeDraft(
   theme: OverlayTheme,
   draft: Partial<OverlayTheme>,
-  locked: boolean,
 ): OverlayTheme {
-  if (locked) return { ...theme };
   const merged: OverlayTheme = { ...theme };
   (Object.keys(draft) as OverlayThemeKey[]).forEach((key) => {
     const value = draft[key];
@@ -151,8 +153,8 @@ export interface UseOverlayThemeVarsResult {
    *  by something other than Handy. */
   locked: boolean;
   /** The value a control shows: the draft while one is in flight, else the
-   *  theme file's own value. A locked tab has no drafts, so it shows the
-   *  file's value throughout. */
+   *  theme file's own value. A locked tab has no drafts of its own, its rows
+   *  being disabled, so it shows the file's value throughout. */
   effectiveValue: <K extends OverlayThemeKey>(
     key: K,
   ) => NonNullable<OverlayTheme[K]> | null;
@@ -181,14 +183,10 @@ export function useOverlayThemeVars(
     return resolved
       ? {
           ...resolved,
-          theme: mergeDraft(
-            resolved.theme,
-            draft,
-            !resolved.file.ownership.writable,
-          ),
+          theme: mergeDraft(resolved.theme, draft),
         }
       : {
-          theme: mergeDraft(INHERIT_ALL, draft, false),
+          theme: mergeDraft(INHERIT_ALL, draft),
           effective_material: "flat" as const,
           // No resolved theme means no window, so the shadow has no screen edge
           // to keep clear of.
@@ -286,14 +284,12 @@ export function useOverlayThemeVars(
     <K extends OverlayThemeKey>(
       key: K,
     ): NonNullable<OverlayTheme[K]> | null => {
-      if (locked)
-        return (baseTheme[key] ?? null) as NonNullable<OverlayTheme[K]> | null;
       const draftValue = draft[key];
       if (draftValue !== undefined)
         return (draftValue ?? null) as NonNullable<OverlayTheme[K]> | null;
       return (baseTheme[key] ?? null) as NonNullable<OverlayTheme[K]> | null;
     },
-    [baseTheme, draft, locked],
+    [baseTheme, draft],
   );
 
   return {

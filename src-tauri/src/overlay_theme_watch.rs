@@ -34,8 +34,9 @@ use std::time::Duration;
 /// enough that a theme switch feels immediate.
 const DEBOUNCE: Duration = Duration::from_millis(150);
 
-/// How often the loop wakes with nothing to do, to notice that the directory
-/// it wants has finally been created.
+/// How often the loop wakes with nothing to do, to re-resolve the theme file:
+/// the folder it wants may have been created, and the file in effect may have
+/// moved to a location that outranks the one being watched.
 const RETARGET_TICK: Duration = Duration::from_secs(5);
 
 /// Whether a watcher is running, so the resolved theme can say so and the
@@ -82,34 +83,38 @@ fn run(app: tauri::AppHandle) {
     info!("Watching {} for overlay theme changes", target.display());
     WATCHING.store(true, Ordering::Relaxed);
 
-    loop {
-        match session.next_batch(RETARGET_TICK) {
-            Batch::Touched => {
-                // Off the main thread already, which is what `resolve_reloading`
-                // requires: it re-reads the file.
-                let resolved = overlay_theme::resolve_reloading(&app);
-                if overlay_theme::deliver_if_changed(&app, &resolved) {
-                    debug!("Applied a change to {}", session.target.display());
-                }
+    while let Some(batch) = session.next_batch(RETARGET_TICK) {
+        // Asked on every wake, because neither the file in effect nor the
+        // folder it sits in is settled for the life of the app. A file
+        // appearing at a higher-priority location moves the target, and the
+        // watched folder can be deleted out from under the watch.
+        let moved = session.follow(overlay_theme_file::effective_target(&app));
+        if batch == Batch::Touched || moved {
+            // Off the main thread already, which is what `resolve_reloading`
+            // requires: it re-reads the file.
+            let resolved = overlay_theme::resolve_reloading(&app);
+            if overlay_theme::deliver_if_changed(&app, &resolved) {
+                debug!("Applied a change to {}", session.target.display());
             }
-            Batch::Quiet => {}
-            Batch::Closed => break,
         }
     }
 
     WATCHING.store(false, Ordering::Relaxed);
     warn!("The overlay theme watcher stopped; Reload is the way to apply a hand edit now");
+    // `watching` is what hides the Appearance tab's Reload button, so a tab
+    // already open has to hear that it is needed again. Unconditional: only
+    // that flag changed, and `deliver_if_changed` is about the theme.
+    let resolved = overlay_theme::resolve_reloading(&app);
+    overlay_theme::deliver(&app, &resolved);
 }
 
 /// What one wake-up of the watch loop found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Batch {
+enum Batch {
     /// Something happened to the theme file. Re-read and deliver.
     Touched,
     /// Nothing that concerns the theme file. Go back to waiting.
     Quiet,
-    /// The watcher is gone and will send nothing more.
-    Closed,
 }
 
 /// A live watch on the theme file's directory.
@@ -118,17 +123,20 @@ pub enum Batch {
 /// because the atomic rename every careful writer performs replaces the inode
 /// a file watch would be holding. Non-recursive: one directory, and only the
 /// events naming `overlay_theme.json` count.
-pub struct Session {
-    /// Kept alive: dropping the debouncer stops the watch.
-    debouncer: Debouncer<notify::RecommendedWatcher>,
+struct Session {
+    /// Held only to be dropped: dropping the debouncer stops the watch, which
+    /// is how [`Session::follow`] moves it.
+    _debouncer: Debouncer<notify::RecommendedWatcher>,
     events: Receiver<DebounceEventResult>,
     /// The theme file itself, for the log line and the name test.
     target: PathBuf,
-    /// The directory being watched right now.
+    /// The directory being watched right now: the theme file's own parent, or
+    /// the nearest ancestor that exists while that parent does not.
     watched: PathBuf,
-    /// The directory that should be watched: the theme file's own parent. It
-    /// differs from `watched` only while that parent does not exist yet.
-    wanted: PathBuf,
+    /// Set when an event names the watched directory itself, which is how a
+    /// platform reports that directory being deleted or replaced. The watch is
+    /// then holding something nobody writes to, so it is re-opened.
+    stale: bool,
 }
 
 impl Session {
@@ -137,16 +145,11 @@ impl Session {
     /// The parent is canonicalized, so a symlinked config directory is watched
     /// where the writes actually land rather than at the link, which reports
     /// nothing. A parent that does not exist yet falls back to the nearest
-    /// ancestor that does, and [`Session::next_batch`] moves the watch onto
-    /// the real parent as soon as it appears.
-    pub fn open(target: &Path) -> Result<Session, String> {
-        let wanted = watch_directory(target);
-        // Canonical either way: notify's non-recursive filter compares an
-        // event's parent against the path it was handed, and on macOS a temp
-        // or home path is usually a symlink away from the one FSEvents reports.
-        let watched = nearest_existing(&wanted)
-            .map(|directory| std::fs::canonicalize(&directory).unwrap_or(directory))
-            .ok_or_else(|| format!("no existing folder above {}", wanted.display()))?;
+    /// ancestor that does, and [`Session::follow`] moves the watch onto the
+    /// real parent as soon as it appears.
+    fn open(target: &Path) -> Result<Session, String> {
+        let watched = watch_location(target)
+            .ok_or_else(|| format!("no existing folder above {}", target.display()))?;
 
         let (sender, events) = channel();
         let mut debouncer = new_debouncer(DEBOUNCE, move |result: DebounceEventResult| {
@@ -162,47 +165,42 @@ impl Session {
             .map_err(|error| format!("cannot watch {}: {error}", watched.display()))?;
 
         Ok(Session {
-            debouncer,
+            _debouncer: debouncer,
             events,
             target: target.to_path_buf(),
             watched,
-            wanted,
+            stale: false,
         })
     }
 
     /// Wait for one debounced batch, up to `timeout`.
     ///
-    /// A timeout is not idleness to report: it is the loop's chance to notice
-    /// that the directory it wanted has been created, and to move the watch
-    /// onto it. A move counts as a touch, because the file may have arrived
-    /// with the directory.
-    pub fn next_batch(&mut self, timeout: Duration) -> Batch {
+    /// A timeout is not a failure: it is the loop's chance to re-resolve the
+    /// theme file and move the watch, which is why the caller runs
+    /// [`Session::follow`] on every wake, quiet or not.
+    ///
+    /// `None` says the debouncer has stopped sending, which ends the watch. It
+    /// takes the debouncer's own thread dying, since this session owns the
+    /// sender for as long as it lives.
+    fn next_batch(&mut self, timeout: Duration) -> Option<Batch> {
         match self.events.recv_timeout(timeout) {
             Ok(Ok(events)) => {
+                self.stale |= events.iter().any(|event| event.path == self.watched);
                 let touched = events.iter().any(|event| self.concerns_target(&event.path));
-                // A batch in a stand-in directory may be the wanted one being
-                // created, so retarget before answering.
-                let moved = self.retarget();
-                if touched || moved {
+                Some(if touched {
                     Batch::Touched
                 } else {
                     Batch::Quiet
-                }
+                })
             }
             // The watcher itself failed on this batch. It is still alive, so
             // re-read rather than assume nothing happened.
             Ok(Err(error)) => {
                 debug!("The overlay theme watcher reported {error}");
-                Batch::Touched
+                Some(Batch::Touched)
             }
-            Err(RecvTimeoutError::Timeout) => {
-                if self.retarget() {
-                    Batch::Touched
-                } else {
-                    Batch::Quiet
-                }
-            }
-            Err(RecvTimeoutError::Disconnected) => Batch::Closed,
+            Err(RecvTimeoutError::Timeout) => Some(Batch::Quiet),
+            Err(RecvTimeoutError::Disconnected) => None,
         }
     }
 
@@ -217,58 +215,63 @@ impl Session {
         path.file_name() == self.target.file_name()
     }
 
-    /// Move the watch onto the theme file's own directory once it exists.
-    /// Returns whether the watch moved.
-    fn retarget(&mut self) -> bool {
-        if self.watched == self.wanted || !self.wanted.is_dir() {
+    /// Point the watch at the theme file in effect now, and re-open one that
+    /// has gone blind. Returns whether anything moved.
+    ///
+    /// Three things make a watch wrong, and none of them announces itself:
+    /// `~/.config/handy/` finally being created under a watch standing in at
+    /// an ancestor, a file appearing at a higher-priority location so that the
+    /// theme file is a different file, and the watched directory being deleted
+    /// or replaced. A move counts as a touch, because the file may have
+    /// arrived with the directory.
+    ///
+    /// `target` is the freshly resolved path, or `None` when there is nowhere
+    /// to write one; the watch then stays where it is rather than going deaf.
+    fn follow(&mut self, target: Option<PathBuf>) -> bool {
+        let target = target.unwrap_or_else(|| self.target.clone());
+        let location = watch_location(&target);
+        let settled = !self.stale
+            && target == self.target
+            && location.as_deref() == Some(self.watched.as_path())
+            && self.watched.is_dir();
+        if settled {
             return false;
         }
 
-        let wanted = watch_directory(&self.target);
-        if self
-            .debouncer
-            .watcher()
-            .watch(&wanted, RecursiveMode::NonRecursive)
-            .is_err()
-        {
-            return false;
+        // Re-opened rather than re-watched in place, because the watch may
+        // have to leave and re-enter the same path, and `unwatch` after
+        // `watch` would then undo the new one. Dropping the old session stops
+        // the old watch; a failure keeps it, and the next wake tries again.
+        match Session::open(&target) {
+            Ok(session) => {
+                debug!(
+                    "Moved the overlay theme watch from {} to {}",
+                    self.watched.display(),
+                    session.watched.display()
+                );
+                *self = session;
+                true
+            }
+            Err(problem) => {
+                debug!("Cannot move the overlay theme watch: {problem}");
+                false
+            }
         }
-
-        let previous = std::mem::replace(&mut self.watched, wanted.clone());
-        let _ = self.debouncer.watcher().unwatch(&previous);
-        debug!(
-            "Moved the overlay theme watch from {} to {}",
-            previous.display(),
-            wanted.display()
-        );
-        self.wanted = wanted;
-        true
     }
 }
 
-/// The directory a theme file's changes arrive in.
+/// The directory a watch on `target` belongs on right now: the file's own
+/// folder, or the nearest ancestor that exists while that folder does not, so
+/// a watch can start before `~/.config/handy/` does.
 ///
-/// Canonicalized when it exists, so a symlinked `~/.config` is watched at its
-/// real location. `canonicalize` fails on a directory that is not there yet,
-/// and then the plain parent is the right answer to keep waiting for.
-fn watch_directory(target: &Path) -> PathBuf {
-    let parent = target
-        .parent()
-        .filter(|directory| !directory.as_os_str().is_empty())
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| PathBuf::from("."));
-
-    std::fs::canonicalize(&parent).unwrap_or(parent)
-}
-
-/// The closest directory at or above `directory` that exists, so a watch can
-/// start before `~/.config/handy/` does.
-fn nearest_existing(directory: &Path) -> Option<PathBuf> {
-    directory
-        .ancestors()
-        .filter(|ancestor| !ancestor.as_os_str().is_empty())
-        .find(|ancestor| ancestor.is_dir())
-        .map(Path::to_path_buf)
+/// Canonical, because notify's non-recursive filter compares an event's parent
+/// against the path it was handed, and on macOS a temp or home path is usually
+/// a symlink away from the one FSEvents reports.
+fn watch_location(target: &Path) -> Option<PathBuf> {
+    let parent =
+        overlay_theme_file::containing_directory(target).unwrap_or_else(|| PathBuf::from("."));
+    overlay_theme_file::nearest_existing(&parent, |ancestor| ancestor.is_dir())
+        .map(|directory| std::fs::canonicalize(&directory).unwrap_or(directory))
 }
 
 #[cfg(test)]
@@ -280,15 +283,44 @@ mod tests {
     /// that a broken watch does not hang the suite.
     const PATIENCE: Duration = Duration::from_secs(10);
 
+    /// How long "and then nothing else happened" is given to be wrong.
+    const SILENCE: Duration = Duration::from_secs(1);
+
+    /// One turn of the watch loop, as `run` performs it: a batch, then the
+    /// re-resolve every wake does. Quiet wake-ups are ignored until the
+    /// patience runs out, and a watch that moved counts as a touch.
+    fn turn(session: &mut Session) -> Batch {
+        let batch = session
+            .next_batch(Duration::from_millis(250))
+            .expect("the watch is alive");
+        let moved = session.follow(None);
+        if moved {
+            Batch::Touched
+        } else {
+            batch
+        }
+    }
+
     /// Wait for a batch, ignoring the quiet wake-ups a retarget tick makes.
     fn wait_for_touch(session: &mut Session) -> Batch {
         let deadline = std::time::Instant::now() + PATIENCE;
         loop {
-            match session.next_batch(Duration::from_millis(250)) {
+            match turn(session) {
                 Batch::Quiet if std::time::Instant::now() < deadline => continue,
                 batch => return batch,
             }
         }
+    }
+
+    /// Whether the watch stays quiet for [`SILENCE`].
+    fn stays_quiet(session: &mut Session) -> bool {
+        let deadline = std::time::Instant::now() + SILENCE;
+        while std::time::Instant::now() < deadline {
+            if turn(session) == Batch::Touched {
+                return false;
+            }
+        }
+        true
     }
 
     /// The watcher's reason to exist: somebody else writes the theme file and
@@ -324,7 +356,7 @@ mod tests {
 
         assert!(!session.concerns_target(&directory.path().join("overlay_theme.json~")));
         assert!(!session.concerns_target(&directory.path().join(".overlay_theme.json.swp")));
-        assert!(!session.concerns_target(&directory.path().join(".overlay_theme.json.42.tmp")));
+        assert!(!session.concerns_target(&directory.path().join(".overlay_theme.json.42.7.tmp")));
         assert!(!session.concerns_target(directory.path()));
     }
 
@@ -337,19 +369,71 @@ mod tests {
         let directory = tempfile::tempdir().expect("a temp dir");
         let nested = directory.path().join("handy");
         let target = nested.join(THEME_FILE_NAME);
+        let canonical =
+            |path: &Path| std::fs::canonicalize(path).expect("a temp path canonicalizes");
 
         let mut session = Session::open(&target).expect("a watch above the missing directory");
-        assert_ne!(session.watched, session.wanted);
-        assert_eq!(
-            session.watched,
-            std::fs::canonicalize(directory.path()).expect("a temp dir canonicalizes")
-        );
+        assert_eq!(session.watched, canonical(directory.path()));
 
         std::fs::create_dir(&nested).expect("the directory is created");
         assert_eq!(wait_for_touch(&mut session), Batch::Touched);
-        assert_eq!(session.watched, session.wanted, "the watch moved onto it");
+        assert_eq!(
+            session.watched,
+            canonical(&nested),
+            "the watch moved onto it"
+        );
 
         std::fs::write(&target, "{\n  \"version\": 1\n}\n").expect("the file is created");
+        assert_eq!(wait_for_touch(&mut session), Batch::Touched);
+    }
+
+    /// The watch is on a directory, so it sees Handy's own commits as well as
+    /// everyone else's. One write has to arrive as one batch: the hidden temp
+    /// file it goes through is not the theme file, so only the rename counts,
+    /// and nothing follows it. (What makes the one batch cost no repaint is
+    /// `overlay_theme::deliver_if_changed`, tested with the resolver.)
+    #[test]
+    fn handys_own_write_arrives_once_and_is_then_quiet() {
+        // The write asks whether an absent path is Handy's, which reads
+        // `HANDY_OVERLAY_THEME_FILE`.
+        let _lock = crate::overlay_theme_file::env_var_test_lock();
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let target = directory.path().join(THEME_FILE_NAME);
+        let mut session = Session::open(&target).expect("a watch on an existing directory");
+
+        let theme = crate::overlay_theme::OverlayTheme {
+            radius: Some(12),
+            ..Default::default()
+        };
+        crate::overlay_theme_write::save_for_test(&target, &theme).expect("the write lands");
+
+        assert_eq!(wait_for_touch(&mut session), Batch::Touched);
+        assert!(
+            stays_quiet(&mut session),
+            "the temp file the write went through is not the theme file"
+        );
+    }
+
+    /// A theme file created at a higher-priority location is a different file
+    /// in effect, and the watch has to leave the old one for it.
+    #[test]
+    fn the_watch_follows_the_theme_file_to_another_folder() {
+        let directory = tempfile::tempdir().expect("a temp dir");
+        let first = directory.path().join("app-data");
+        let second = directory.path().join("config");
+        std::fs::create_dir_all(&first).expect("the temp dir is writable");
+        std::fs::create_dir_all(&second).expect("the temp dir is writable");
+
+        let mut session = Session::open(&first.join(THEME_FILE_NAME)).expect("a watch");
+        let moved = session.follow(Some(second.join(THEME_FILE_NAME)));
+        assert!(moved, "the target moved, so the watch moved with it");
+        assert_eq!(
+            session.watched,
+            std::fs::canonicalize(&second).expect("a temp path canonicalizes")
+        );
+
+        std::fs::write(second.join(THEME_FILE_NAME), "{\n  \"version\": 1\n}\n")
+            .expect("the file is created");
         assert_eq!(wait_for_touch(&mut session), Batch::Touched);
     }
 }

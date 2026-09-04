@@ -1006,6 +1006,24 @@ describe("the row's own tokens", () => {
   });
 });
 
+describe("the native-only token", () => {
+  // `edge_margin` moves the native window, not the card. If it ever wrote a
+  // custom property the overlay would inset itself *and* be moved, doubling
+  // the gap the user asked for.
+  test("the edge margin writes no CSS at all", () => {
+    for (const margin of [0, 24, 200]) {
+      expect(
+        resolveOverlayThemeVars(resolved({ edge_margin: margin })),
+      ).toEqual({});
+    }
+    // Nor does it disturb a theme that does write properties.
+    const withAccent = resolveOverlayThemeVars(resolved({ accent: "#7aa2f7" }));
+    expect(
+      resolveOverlayThemeVars(resolved({ accent: "#7aa2f7", edge_margin: 40 })),
+    ).toEqual(withAccent);
+  });
+});
+
 describe("the removal rule", () => {
   test("a token going back to inherit takes its properties with it", () => {
     const root = fakeRoot();

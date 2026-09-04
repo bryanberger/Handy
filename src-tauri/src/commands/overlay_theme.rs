@@ -11,17 +11,17 @@
 
 use crate::overlay_theme::{self, OverlayTheme, ResolvedOverlayTheme};
 use crate::overlay_theme_file::{self, RevealTarget};
-use crate::settings::{get_settings, write_settings};
+use crate::overlay_theme_write;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use tauri_plugin_opener::OpenerExt;
 
 /// Whether the overlay is currently painted with a value nobody has stored.
 ///
 /// Set by [`preview_overlay_theme_draft`], cleared by the commit below. A
-/// draft paints without touching the store, so a commit that stores what was
-/// already stored has nothing to do and would strand the draft on screen. The
-/// clearest case is a reset mid-drag, where the debounce is cancelled, the
+/// draft paints without touching the file, so a commit that writes what the
+/// file already says has nothing to do and would strand the draft on screen.
+/// The clearest case is a reset mid-drag, where the debounce is cancelled, the
 /// token was already inherit and the commit is a no-op.
 static OVERLAY_DRAFTED: AtomicBool = AtomicBool::new(false);
 
@@ -30,23 +30,23 @@ fn mark_overlay_drafted() {
     OVERLAY_DRAFTED.store(true, Ordering::SeqCst);
 }
 
-/// Read and clear the mark. A commit repaints the overlay from the store
-/// either way, so no draft is outstanding once this has been asked.
+/// Read and clear the mark. A commit repaints the overlay from the file either
+/// way, so no draft is outstanding once this has been asked.
 fn take_overlay_drafted() -> bool {
     OVERLAY_DRAFTED.swap(false, Ordering::SeqCst)
 }
 
-/// What a commit owes the overlay and the store.
+/// What a commit owes the overlay and the theme file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CommitEffect {
-    /// The store already holds this theme and the overlay is already painting
+    /// The file already holds this theme and the overlay is already painting
     /// it: no write, no broadcast, no repaint.
     Nothing,
-    /// The store already holds this theme, but the overlay shows a draft on
-    /// top of it. Nothing to persist, still a frame to send, because the
-    /// screen has to end on the stored value.
+    /// The file already holds this theme, but the overlay shows a draft on top
+    /// of it. Nothing to persist, still a frame to send, because the screen has
+    /// to end on the stored value.
     RepaintOnly,
-    /// The ordinary commit: persist, tell everyone, repaint.
+    /// The ordinary commit: write the file, tell everyone, repaint.
     PersistAndRepaint,
 }
 
@@ -63,67 +63,74 @@ fn commit_effect(theme_changed: bool, overlay_drafted: bool) -> CommitEffect {
     }
 }
 
-/// Persist the whole overlay theme.
+/// Write the whole overlay theme to the theme file.
 ///
-/// The frontend always sends the complete twenty-one-token object. Setting one
-/// token, clearing one (reset to inherit) and resetting the whole theme are
-/// all this one call with a different object, which keeps the settings store's
-/// optimistic write and rollback unchanged, both being keyed on a single
-/// `AppSettings` field.
+/// The theme file is the overlay theme, so this is where a committed change
+/// from the Appearance tab lands. The frontend always sends the complete
+/// twenty-two-token object: setting one token, clearing one (reset to inherit)
+/// and resetting the whole theme are all this one call with a different
+/// object.
 ///
-/// Values are clamped before they are stored, so nothing out of range reaches
-/// the store, the native geometry or the frontend. Returning the clamped theme
-/// lets the settings store correct its own optimistic write without a round
-/// trip back through `get_app_settings`.
+/// Values are clamped before they are written, so nothing out of range reaches
+/// the file, the native geometry or the frontend. The file is then read back
+/// and resolved, and that resolved theme is both the answer and what goes out
+/// to the two windows. Reading back is not ceremony: it makes the answer the
+/// document on disk rather than the intent, and it is what lets the watcher
+/// recognise Handy's own write and stay quiet.
+///
+/// A managed theme file (a symlink, or one Handy cannot write) is refused
+/// here as well as locked in the tab, so the guard does not depend on the UI.
+///
+/// `async` is load-bearing: Tauri runs a sync command inline on the IPC thread
+/// and spawns an `async fn` on the runtime, and the write then goes to a
+/// blocking thread, so neither the main thread nor an async worker waits on
+/// the filesystem.
 #[tauri::command]
 #[specta::specta]
-pub fn change_overlay_theme_setting(
+pub async fn change_overlay_theme_setting(
     app: AppHandle,
     theme: OverlayTheme,
-) -> Result<OverlayTheme, String> {
-    let normalized = theme.normalized();
-    let mut settings = get_settings(&app);
-    // A commit that stores what is already stored has nothing to persist and
-    // nothing to announce. It happens often. A debounced drag settles on a
-    // value an earlier commit in the same drag wrote, and a reset re-sends the
-    // theme it just reset to. What it may still owe is a frame; see
-    // `OVERLAY_DRAFTED`.
-    let effect = commit_effect(settings.overlay_theme != normalized, take_overlay_drafted());
-    if effect == CommitEffect::Nothing {
-        return Ok(normalized);
-    }
+) -> Result<ResolvedOverlayTheme, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let normalized = theme.normalized();
+        let current = overlay_theme_file::cached(&app);
 
-    if effect == CommitEffect::PersistAndRepaint {
-        settings.overlay_theme = normalized.clone();
-        write_settings(&app, settings);
-
-        // Everything else that reads `AppSettings`, the tray or another tab,
-        // still has to hear that the store moved. The settings store does not
-        // re-read on this one, because the normalized theme returned above is
-        // what a re-read would fetch.
-        let _ = app.emit(
-            "settings-changed",
-            serde_json::json!({ "setting": "overlay_theme" }),
+        // A commit that writes what is already in the file has nothing to
+        // persist and nothing to announce. It happens often: a debounced drag
+        // settles on a value an earlier commit in the same drag wrote, and a
+        // reset re-sends the theme it just reset to. What it may still owe is
+        // a frame; see `OVERLAY_DRAFTED`.
+        let effect = commit_effect(
+            current.tokens.normalized() != normalized,
+            take_overlay_drafted(),
         );
-    }
+        if effect == CommitEffect::Nothing {
+            return Ok(overlay_theme::resolve(&app));
+        }
 
-    // Resolved from the theme just written rather than read back out of the
-    // store, because this command already knows it. Delivered on the
-    // `RepaintOnly` path too, which exists to take an abandoned draft off the
-    // screen.
-    let resolved = overlay_theme::resolve_with(&app, normalized.clone());
-    overlay_theme::deliver(&app, &resolved);
+        if effect == CommitEffect::PersistAndRepaint {
+            overlay_theme_write::save(&app, &normalized)?;
+        }
 
-    Ok(normalized)
+        // Resolved from the document just written, not from the intent, so the
+        // tab and the overlay agree with the file byte for byte. Delivered on
+        // the `RepaintOnly` path too, which exists to take an abandoned draft
+        // off the screen.
+        let resolved = overlay_theme::resolve_reloading(&app);
+        overlay_theme::deliver(&app, &resolved);
+        Ok(resolved)
+    })
+    .await
+    .map_err(|error| format!("Failed to write the overlay theme file: {error}"))?
 }
 
 /// Paint a theme the user is still dragging, without persisting anything.
 ///
-/// The Appearance tab commits on a debounce, right for the store and far too
+/// The Appearance tab commits on a debounce, right for the file and far too
 /// slow for the eye. It also sends the draft here, coalesced to one call per
-/// animation frame, and this puts it on the overlay with no settings read, no
-/// settings write, no `settings-changed`, and no native window work unless a
-/// token the window is built from moved.
+/// animation frame, and this puts it on the overlay with nothing written, no
+/// broadcast to the settings window, and no native window work unless a token
+/// the window is built from moved.
 ///
 /// A no-op unless a preview is running and nothing is recording, as decided by
 /// `overlay_preview::accepts_theme_drafts`. Anywhere else the overlay belongs
@@ -131,8 +138,9 @@ pub fn change_overlay_theme_setting(
 /// paint.
 ///
 /// Every draft that gets through leaves a mark, which
-/// `change_overlay_theme_setting` clears. That guarantees the screen ends on a
-/// stored value even when the commit that follows has nothing to store.
+/// [`change_overlay_theme_setting`] clears. That guarantees the screen ends on
+/// the file's own theme even when the commit that follows has nothing to
+/// write, and it is why a draft is never recorded as a delivery.
 #[tauri::command]
 #[specta::specta]
 pub fn preview_overlay_theme_draft(app: AppHandle, theme: OverlayTheme) -> Result<(), String> {
@@ -140,7 +148,7 @@ pub fn preview_overlay_theme_draft(app: AppHandle, theme: OverlayTheme) -> Resul
         return Ok(());
     }
 
-    let resolved = overlay_theme::resolve_with(&app, theme.normalized());
+    let resolved = overlay_theme::resolve_authored(&app, theme.normalized());
     overlay_theme::deliver_draft(&app, &resolved);
     mark_overlay_drafted();
 
@@ -161,9 +169,11 @@ pub fn get_resolved_overlay_theme(app: AppHandle) -> Result<ResolvedOverlayTheme
 
 /// Re-read the theme file, resolve, deliver, and return the result.
 ///
-/// What the Appearance tab calls on mount and from its Reload button, and the
-/// only way a hand-edited theme file reaches the screen without recording,
-/// there being no file watcher.
+/// What the Appearance tab calls on mount, and what its Reload button calls on
+/// the machines where the watcher could not start. With the watcher running a
+/// hand edit arrives on its own, so the button is not shown; this stays the
+/// backstop, and the mount read stays because a tab opened after a change made
+/// while it was closed must not show a stale theme.
 ///
 /// `async` is load-bearing twice over. Tauri runs a sync command inline on the
 /// IPC thread and spawns an `async fn` on the runtime, and the read then goes
@@ -225,7 +235,7 @@ mod tests {
     use super::*;
 
     /// The ordinary case, and the one the early return exists for. A commit
-    /// that changes the store always repaints; one that changes nothing, over
+    /// that changes the file always repaints; one that changes nothing, over
     /// an overlay nobody drafted onto, does nothing.
     #[test]
     fn a_commit_that_changes_nothing_over_an_undrafted_overlay_does_nothing() {
@@ -235,9 +245,9 @@ mod tests {
     }
 
     /// The fix. A reset mid-drag cancels the debounce and commits `null` over
-    /// a token that was already inherit, so there is nothing to persist and
-    /// the overlay still shows the abandoned draft. It has to be repainted
-    /// from the store anyway.
+    /// a token that was already inherit, so there is nothing to write and the
+    /// overlay still shows the abandoned draft. It has to be repainted from
+    /// the file anyway.
     #[test]
     fn a_commit_over_a_drafted_overlay_repaints_even_with_nothing_to_store() {
         assert_eq!(commit_effect(false, true), CommitEffect::RepaintOnly);

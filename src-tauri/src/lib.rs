@@ -23,6 +23,8 @@ mod overlay_glass;
 mod overlay_preview;
 mod overlay_theme;
 mod overlay_theme_file;
+mod overlay_theme_watch;
+mod overlay_theme_write;
 mod paste_tx;
 pub mod portable;
 mod secure_input;
@@ -990,13 +992,28 @@ pub fn run(cli_args: CliArgs) {
 
             let mut settings = get_settings(app.handle());
 
-            // Warm the theme-file cache before anything reads the overlay theme.
-            // The overlay window is created further down with the resolved size
-            // scale, so a file-supplied scale must be known here or the first
-            // show would resize a window built for the settings' scale. Also
-            // logs the file's diagnostics at startup, where a user asking "why
-            // is my theme ignored" will find them.
-            overlay_theme_file::read(app.handle());
+            // Warm the theme-file cache before anything reads the overlay
+            // theme. The file is the overlay theme, and the overlay window is
+            // created further down with the resolved size scale, so it has to
+            // be known here or the first show would resize a window built for
+            // the wrong scale. Also logs the file's diagnostics at startup,
+            // where a user asking "why is my theme ignored" will find them.
+            let theme_file = overlay_theme_file::read(app.handle());
+
+            // The one-time move of a theme stored before the file was the
+            // theme. It needs the settings, which are loaded above, and it has
+            // to finish before anything shows the overlay, so the first frame
+            // is already drawn from the file. Re-read after a write, so the
+            // cache and the watcher start from the document on disk.
+            if overlay_theme_write::migrate_once(app.handle(), theme_file.present).is_some() {
+                overlay_theme_file::read(app.handle());
+            }
+
+            // From here a hand edit or a theming tool's write reaches the
+            // overlay and the Appearance tab on its own. Failing to start is
+            // not fatal: the tab keeps its Reload button and every overlay
+            // show still re-reads the file.
+            overlay_theme_watch::start(app.handle());
 
             // Apply the persisted appearance theme to the native title bar before
             // the window is shown, so it matches the in-app palette without a flash

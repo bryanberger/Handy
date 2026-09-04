@@ -694,10 +694,9 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
     // How much room the card needs and which Material to render it in both come
     // from the resolved overlay theme. Resolving re-reads the theme file, so it
     // happens here, on the calling thread, and only the result crosses to the
-    // main thread. It takes the tokens from the settings read just above, so
-    // this path deserializes the store once. Every show re-resolves, so a scale
-    // or Material changed since the last show is in effect on the first frame.
-    let resolved = crate::overlay_theme::resolve_reloading_for(app_handle, settings.overlay_theme);
+    // main thread. Every show re-reads, so a file changed since the last show
+    // is in effect on the first frame even if the watcher missed the write.
+    let resolved = crate::overlay_theme::resolve_reloading(app_handle);
 
     // The rest queries monitors and the cursor and mutates window geometry. On
     // Linux the monitor/cursor lookups hit GDK/Xlib on the process's shared X11

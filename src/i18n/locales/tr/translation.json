@@ -268,6 +268,7 @@
         "material": "Ekran Katmanı Malzemesi",
         "elements": "Ekran Katmanı Ögeleri",
         "size": "Ekran Katmanı Boyutu ve Boşlukları",
+        "waveform": "Dalga Formu",
         "themeFile": "Tema Dosyası"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "Normal",
           "clear": "Şeffaf"
+        }
+      },
+      "waveformStyle": {
+        "title": "Dalga Formu Stili",
+        "description": "Handy kayıt yaparken dalga formunun nasıl çizileceği. Çubuklar, Handy'nin kendi seviye göstergesidir; diğerleri aynı alanda bir tuval üzerine çizilir, böylece ekran katmanının boyutu hiç değişmez.",
+        "options": {
+          "bars": "Çubuklar",
+          "ribbon": "Şerit",
+          "bloom": "Tomurcuk",
+          "motes": "Kıvılcım",
+          "matrix": "Matris",
+          "steps": "Basamaklar"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "Dalga Formu Aralığı",
-          "description": "Dalga formu çubukları arasındaki boşluk."
+          "description": "Dalga formu çubukları arasındaki ya da Matris stilinin noktaları arasındaki boşluk."
         },
         "waveformWidth": {
           "title": "Dalga Formu Genişliği",
-          "description": "Her dalga formu çubuğunun genişliği."
+          "description": "Dalga formunun kendi şekillerinin genişliği: bir çubuk, bir kıvılcım, bir matris noktası ya da bir basamak."
         }
       },
       "themeFile": {

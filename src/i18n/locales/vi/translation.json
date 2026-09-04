@@ -268,6 +268,7 @@
         "material": "Chất liệu lớp phủ",
         "elements": "Các phần tử lớp phủ",
         "size": "Kích thước và khoảng cách lớp phủ",
+        "waveform": "Dạng sóng",
         "themeFile": "Tệp giao diện"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "Thường",
           "clear": "Trong suốt"
+        }
+      },
+      "waveformStyle": {
+        "title": "Kiểu dạng sóng",
+        "description": "Cách dạng sóng được vẽ trong khi Handy ghi âm. Thanh là bộ đo mức âm riêng của Handy; các kiểu còn lại được vẽ trên một canvas trong cùng khoảng đó, nên lớp phủ không bao giờ đổi kích thước.",
+        "options": {
+          "bars": "Thanh",
+          "ribbon": "Dải lụa",
+          "bloom": "Bung nở",
+          "motes": "Đốm sáng",
+          "matrix": "Ma trận",
+          "steps": "Bậc thang"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "Khoảng cách dạng sóng",
-          "description": "Khoảng cách giữa các thanh dạng sóng."
+          "description": "Khoảng cách giữa các thanh dạng sóng, hoặc giữa các chấm của kiểu Ma trận."
         },
         "waveformWidth": {
           "title": "Độ rộng dạng sóng",
-          "description": "Độ rộng của mỗi thanh dạng sóng."
+          "description": "Độ rộng các hình khối riêng của dạng sóng: một thanh, một đốm sáng, một chấm ma trận hay một bậc."
         }
       },
       "themeFile": {

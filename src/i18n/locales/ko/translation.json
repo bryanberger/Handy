@@ -268,6 +268,7 @@
         "material": "오버레이 재질",
         "elements": "오버레이 요소",
         "size": "오버레이 크기 및 간격",
+        "waveform": "파형",
         "themeFile": "테마 파일"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "기본",
           "clear": "투명"
+        }
+      },
+      "waveformStyle": {
+        "title": "파형 스타일",
+        "description": "Handy가 녹음하는 동안 파형을 그리는 방식입니다. 막대는 Handy 자체의 레벨 미터이고, 나머지는 같은 자리의 캔버스에 그려지므로 오버레이 크기는 변하지 않습니다.",
+        "options": {
+          "bars": "막대",
+          "ribbon": "리본",
+          "bloom": "블룸",
+          "motes": "입자",
+          "matrix": "도트 매트릭스",
+          "steps": "계단"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "파형 간격",
-          "description": "파형 막대 사이의 간격입니다."
+          "description": "파형 막대 사이, 또는 도트 매트릭스 스타일의 점 사이 간격입니다."
         },
         "waveformWidth": {
           "title": "파형 너비",
-          "description": "파형 막대 하나의 너비입니다."
+          "description": "파형 자체 도형의 너비입니다. 막대 하나, 입자 하나, 매트릭스의 점 하나, 계단 한 칸의 너비입니다."
         }
       },
       "themeFile": {

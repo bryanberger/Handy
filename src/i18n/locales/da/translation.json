@@ -268,6 +268,7 @@
         "material": "Overlaymateriale",
         "elements": "Overlayelementer",
         "size": "Overlaystørrelse og afstande",
+        "waveform": "Bølgeform",
         "themeFile": "Temafil"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "Normal",
           "clear": "Klar"
+        }
+      },
+      "waveformStyle": {
+        "title": "Bølgeformstil",
+        "description": "Hvordan bølgeformen tegnes, mens Handy optager. Søjler er Handys egen niveaumåler; de øvrige tegnes på et lærred i samme felt, så overlayet aldrig skifter størrelse.",
+        "options": {
+          "bars": "Søjler",
+          "ribbon": "Bånd",
+          "bloom": "Blomstring",
+          "motes": "Gnister",
+          "matrix": "Matrix",
+          "steps": "Trin"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "Bølgeformafstand",
-          "description": "Afstanden mellem bølgeformens søjler."
+          "description": "Afstanden mellem bølgeformens søjler eller mellem prikkerne i stilen Matrix."
         },
         "waveformWidth": {
           "title": "Bølgeformbredde",
-          "description": "Bredden på hver søjle i bølgeformen."
+          "description": "Hvor brede bølgeformens egne figurer er: en søjle, en gnist, en matrixprik eller et trin."
         }
       },
       "themeFile": {

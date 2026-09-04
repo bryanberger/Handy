@@ -268,6 +268,7 @@
         "material": "オーバーレイのマテリアル",
         "elements": "オーバーレイの要素",
         "size": "オーバーレイのサイズと余白",
+        "waveform": "波形",
         "themeFile": "テーマファイル"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "標準",
           "clear": "クリア"
+        }
+      },
+      "waveformStyle": {
+        "title": "波形のスタイル",
+        "description": "Handy の録音中に波形をどう描くかです。バーは Handy 本来のレベルメーターで、それ以外は同じ場所のキャンバスに描かれるため、オーバーレイの大きさは変わりません。",
+        "options": {
+          "bars": "バー",
+          "ribbon": "リボン",
+          "bloom": "ブルーム",
+          "motes": "パーティクル",
+          "matrix": "ドットマトリクス",
+          "steps": "階段"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "波形の間隔",
-          "description": "波形バーどうしの間隔です。"
+          "description": "波形バーどうしの間隔、またはドットマトリクスの点どうしの間隔です。"
         },
         "waveformWidth": {
           "title": "波形の幅",
-          "description": "波形バー 1 本ごとの幅です。"
+          "description": "波形そのものの形の幅です。バー 1 本、パーティクル 1 粒、マトリクスの点 1 つ、階段 1 段が対象です。"
         }
       },
       "themeFile": {

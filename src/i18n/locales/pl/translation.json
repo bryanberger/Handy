@@ -268,6 +268,7 @@
         "material": "Materiał nakładki",
         "elements": "Elementy nakładki",
         "size": "Rozmiar i odstępy nakładki",
+        "waveform": "Fala dźwiękowa",
         "themeFile": "Plik motywu"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "Zwykłe",
           "clear": "Przezroczyste"
+        }
+      },
+      "waveformStyle": {
+        "title": "Styl fali",
+        "description": "Jak rysowana jest fala dźwiękowa, gdy Handy nagrywa. Słupki to własny wskaźnik poziomu Handy; pozostałe rysowane są na płótnie w tym samym miejscu, więc nakładka nigdy nie zmienia rozmiaru.",
+        "options": {
+          "bars": "Słupki",
+          "ribbon": "Wstęga",
+          "bloom": "Rozkwit",
+          "motes": "Iskry",
+          "matrix": "Matryca",
+          "steps": "Schodki"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "Odstęp fali",
-          "description": "Odstęp między słupkami fali dźwiękowej."
+          "description": "Odstęp między słupkami fali dźwiękowej lub między punktami stylu Matryca."
         },
         "waveformWidth": {
           "title": "Szerokość fali",
-          "description": "Szerokość każdego słupka fali dźwiękowej."
+          "description": "Szerokość własnych kształtów fali: słupka, iskry, punktu matrycy lub schodka."
         }
       },
       "themeFile": {

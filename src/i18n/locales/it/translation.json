@@ -268,6 +268,7 @@
         "material": "Materiale dell'overlay",
         "elements": "Elementi dell'overlay",
         "size": "Dimensioni e spaziatura dell'overlay",
+        "waveform": "Forma d'onda",
         "themeFile": "File del tema"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "Normale",
           "clear": "Trasparente"
+        }
+      },
+      "waveformStyle": {
+        "title": "Stile della forma d'onda",
+        "description": "Come viene disegnata la forma d'onda mentre Handy registra. Barre è l'indicatore di livello di Handy; gli altri stili vengono disegnati su un canvas nello stesso spazio, così l'overlay non cambia mai dimensione.",
+        "options": {
+          "bars": "Barre",
+          "ribbon": "Nastro",
+          "bloom": "Fiore",
+          "motes": "Scintille",
+          "matrix": "Matrice",
+          "steps": "Gradini"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "Spaziatura della forma d'onda",
-          "description": "Lo spazio tra le barre della forma d'onda."
+          "description": "Lo spazio tra le barre della forma d'onda, o tra i punti dello stile Matrice."
         },
         "waveformWidth": {
           "title": "Larghezza della forma d'onda",
-          "description": "La larghezza di ogni barra della forma d'onda."
+          "description": "Quanto sono larghe le forme proprie della forma d'onda: una barra, una scintilla, un punto della matrice o un gradino."
         }
       },
       "themeFile": {

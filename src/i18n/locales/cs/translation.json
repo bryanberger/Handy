@@ -268,6 +268,7 @@
         "material": "Materiál překryvu",
         "elements": "Prvky překryvu",
         "size": "Velikost a rozestupy překryvu",
+        "waveform": "Zvuková křivka",
         "themeFile": "Soubor motivu"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "Obyčejné",
           "clear": "Průhledné"
+        }
+      },
+      "waveformStyle": {
+        "title": "Styl křivky",
+        "description": "Jak se vykresluje zvuková křivka, když Handy nahrává. Sloupce jsou vlastní ukazatel úrovně Handy; ostatní se kreslí na plátno na stejném místě, takže překryv nikdy nemění velikost.",
+        "options": {
+          "bars": "Sloupce",
+          "ribbon": "Stuha",
+          "bloom": "Rozkvět",
+          "motes": "Jiskry",
+          "matrix": "Matice",
+          "steps": "Schody"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "Rozestup křivky",
-          "description": "Mezera mezi sloupci zvukové křivky."
+          "description": "Mezera mezi sloupci zvukové křivky nebo mezi body stylu Matice."
         },
         "waveformWidth": {
           "title": "Šířka křivky",
-          "description": "Šířka každého sloupce zvukové křivky."
+          "description": "Jak široké jsou vlastní tvary křivky: sloupec, jiskra, bod matice nebo schod."
         }
       },
       "themeFile": {

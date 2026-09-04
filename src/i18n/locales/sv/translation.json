@@ -268,6 +268,7 @@
         "material": "Overlaymaterial",
         "elements": "Overlayelement",
         "size": "Overlaystorlek och avstånd",
+        "waveform": "Vågform",
         "themeFile": "Temafil"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "Normal",
           "clear": "Klar"
+        }
+      },
+      "waveformStyle": {
+        "title": "Vågformsstil",
+        "description": "Hur vågformen ritas medan Handy spelar in. Staplar är Handys egen nivåmätare; de övriga ritas på en canvas på samma yta, så overlayen ändrar aldrig storlek.",
+        "options": {
+          "bars": "Staplar",
+          "ribbon": "Band",
+          "bloom": "Blomning",
+          "motes": "Gnistor",
+          "matrix": "Matris",
+          "steps": "Trappsteg"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "Vågformsavstånd",
-          "description": "Avståndet mellan vågformens staplar."
+          "description": "Avståndet mellan vågformens staplar, eller mellan punkterna i stilen Matris."
         },
         "waveformWidth": {
           "title": "Vågformsbredd",
-          "description": "Bredden på varje stapel i vågformen."
+          "description": "Hur breda vågformens egna figurer är: en stapel, en gnista, en matrispunkt eller ett trappsteg."
         }
       },
       "themeFile": {

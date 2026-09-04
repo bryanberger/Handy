@@ -268,6 +268,7 @@
         "material": "懸浮窗材質",
         "elements": "懸浮窗元素",
         "size": "懸浮窗尺寸與間距",
+        "waveform": "波形",
         "themeFile": "主題檔案"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "標準",
           "clear": "透明"
+        }
+      },
+      "waveformStyle": {
+        "title": "波形樣式",
+        "description": "Handy 錄製時波形的繪製方式。長條是 Handy 內建的電平表；其餘樣式會在同一區域的畫布上繪製，因此懸浮窗尺寸始終不變。",
+        "options": {
+          "bars": "長條",
+          "ribbon": "飄帶",
+          "bloom": "綻放",
+          "motes": "粒子",
+          "matrix": "點陣",
+          "steps": "階梯"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "波形間距",
-          "description": "波形長條之間的間距。"
+          "description": "波形長條之間，或點陣樣式中各點之間的間距。"
         },
         "waveformWidth": {
           "title": "波形寬度",
-          "description": "每根波形長條的寬度。"
+          "description": "波形本身圖形的寬度：一根長條、一粒粒子、點陣中的一個點或一級階梯。"
         }
       },
       "themeFile": {

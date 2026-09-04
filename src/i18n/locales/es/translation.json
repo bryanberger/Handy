@@ -268,6 +268,7 @@
         "material": "Material de la superposición",
         "elements": "Elementos de la superposición",
         "size": "Tamaño y espaciado de la superposición",
+        "waveform": "Forma de onda",
         "themeFile": "Archivo de tema"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "Normal",
           "clear": "Transparente"
+        }
+      },
+      "waveformStyle": {
+        "title": "Estilo de la onda",
+        "description": "Cómo se dibuja la forma de onda mientras Handy graba. Barras es el medidor de nivel propio de Handy; las demás se dibujan en un lienzo en ese mismo espacio, así que la superposición nunca cambia de tamaño.",
+        "options": {
+          "bars": "Barras",
+          "ribbon": "Cinta",
+          "bloom": "Flor",
+          "motes": "Motas",
+          "matrix": "Matriz",
+          "steps": "Escalones"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "Separación de la onda",
-          "description": "La separación entre las barras de la forma de onda."
+          "description": "La separación entre las barras de la forma de onda, o entre los puntos del estilo Matriz."
         },
         "waveformWidth": {
           "title": "Ancho de la onda",
-          "description": "El ancho de cada barra de la forma de onda."
+          "description": "El ancho de las formas propias de la onda: una barra, una mota, un punto de la matriz o un escalón."
         }
       },
       "themeFile": {

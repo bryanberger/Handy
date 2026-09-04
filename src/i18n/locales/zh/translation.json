@@ -268,6 +268,7 @@
         "material": "悬浮窗材质",
         "elements": "悬浮窗元素",
         "size": "悬浮窗尺寸与间距",
+        "waveform": "波形",
         "themeFile": "主题文件"
       },
       "preview": {
@@ -311,6 +312,18 @@
         "options": {
           "regular": "标准",
           "clear": "透明"
+        }
+      },
+      "waveformStyle": {
+        "title": "波形样式",
+        "description": "Handy 录制时波形的绘制方式。柱条是 Handy 自带的电平表；其余样式在同一区域的画布上绘制，因此悬浮窗尺寸始终不变。",
+        "options": {
+          "bars": "柱条",
+          "ribbon": "飘带",
+          "bloom": "绽放",
+          "motes": "粒子",
+          "matrix": "点阵",
+          "steps": "阶梯"
         }
       },
       "color": {
@@ -387,11 +400,11 @@
         },
         "waveformGap": {
           "title": "波形间距",
-          "description": "波形柱之间的间距。"
+          "description": "波形柱条之间，或点阵样式中各点之间的间距。"
         },
         "waveformWidth": {
           "title": "波形宽度",
-          "description": "每根波形柱的宽度。"
+          "description": "波形自身图形的宽度：一根柱条、一粒粒子、点阵中的一个点或一级阶梯。"
         }
       },
       "themeFile": {

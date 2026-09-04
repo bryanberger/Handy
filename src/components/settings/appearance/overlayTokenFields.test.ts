@@ -19,6 +19,76 @@ describe("the token descriptors", () => {
     expect(missing).toEqual(["glass_material"]);
   });
 
+  test("the table is in contract order, and every group's rows are together", () => {
+    expect(keysOf(OVERLAY_TOKEN_FIELDS)).toEqual([
+      "accent",
+      "surface",
+      "surface_opacity",
+      "glass_tint",
+      "text",
+      "border",
+      "border_opacity",
+      "material",
+      "glass_style",
+      // Two rows for one token: a slider under Flat, a switch under Glass.
+      "shadow_strength",
+      "shadow_strength",
+      "shadow_offset_y",
+      "show_waveform",
+      "show_cancel",
+      "size_scale",
+      "radius",
+      "border_width",
+      "padding",
+      "element_gap",
+      "waveform_gap",
+      "waveform_width",
+    ]);
+    // Display order is table order, so each group's rows must occupy one
+    // unbroken run or a group would render rows out of contract sequence.
+    const groups = OVERLAY_TOKEN_FIELDS.map((field) => field.group);
+    for (const group of new Set(groups)) {
+      const rows = groups.flatMap((row, index) =>
+        row === group ? [index] : [],
+      );
+      const run = rows.map((_, offset) => rows[0] + offset);
+      expect(rows).toEqual(run);
+    }
+    expect([...new Set(groups)]).toEqual([
+      "color",
+      "material",
+      "elements",
+      "size",
+    ]);
+  });
+
+  test("the shadow is a slider under Flat and a switch under Glass", () => {
+    const rows = OVERLAY_TOKEN_FIELDS.filter(
+      (field) => field.key === "shadow_strength",
+    );
+    expect(rows.map((row) => [row.kind, row.onlyUnder])).toEqual([
+      ["factor", "flat"],
+      ["glassShadow", "glass"],
+    ]);
+    // macOS places its own window shadow and takes no offset, so that row is
+    // Flat's alone.
+    const offset = OVERLAY_TOKEN_FIELDS.find(
+      (field) => field.key === "shadow_offset_y",
+    );
+    expect(offset?.onlyUnder).toBe("flat");
+  });
+
+  test("the two switches sit in their own group, not among the sizes", () => {
+    expect(
+      keysOf(
+        OVERLAY_TOKEN_FIELDS.filter((field) => field.group === "elements"),
+      ),
+    ).toEqual(["show_waveform", "show_cancel"]);
+    for (const field of OVERLAY_TOKEN_FIELDS) {
+      if (field.group === "elements") expect(field.kind).toBe("toggle");
+    }
+  });
+
   test("the two alphas sit together in the Colour group, in contract order", () => {
     const colour = keysOf(
       OVERLAY_TOKEN_FIELDS.filter((field) => field.group === "color"),
@@ -71,20 +141,45 @@ describe("overlayTokenFieldsFor", () => {
     expect(glass.indexOf("glass_tint")).toBe(flat.indexOf("surface_opacity"));
   });
 
-  test("every other row is shown under both Materials", () => {
-    for (const group of ["color", "material", "size"] as const) {
-      const flat = keysOf(overlayTokenFieldsFor(group, "flat"));
-      const glass = keysOf(overlayTokenFieldsFor(group, "glass"));
-      const shared = flat.filter((key) => glass.includes(key));
-      expect(shared).toEqual(flat.filter((key) => key !== "surface_opacity"));
-      // The Material group is untouched by the rule.
-      if (group === "material") expect(flat).toEqual(glass);
+  test("the Material group swaps the shadow control and drops the offset", () => {
+    expect(keysOf(overlayTokenFieldsFor("material", "flat"))).toEqual([
+      "material",
+      "glass_style",
+      "shadow_strength",
+      "shadow_offset_y",
+    ]);
+    expect(keysOf(overlayTokenFieldsFor("material", "glass"))).toEqual([
+      "material",
+      "glass_style",
+      "shadow_strength",
+    ]);
+    expect(overlayTokenFieldsFor("material", "flat")[2].kind).toBe("factor");
+    expect(overlayTokenFieldsFor("material", "glass")[2].kind).toBe(
+      "glassShadow",
+    );
+  });
+
+  test("the Elements and Size groups are the same under both Materials", () => {
+    for (const group of ["elements", "size"] as const) {
+      expect(keysOf(overlayTokenFieldsFor(group, "flat"))).toEqual(
+        keysOf(overlayTokenFieldsFor(group, "glass")),
+      );
     }
+    expect(keysOf(overlayTokenFieldsFor("size", "flat"))).toEqual([
+      "size_scale",
+      "radius",
+      "border_width",
+      "padding",
+      // The gap follows the padding it is a sibling of, not the waveform.
+      "element_gap",
+      "waveform_gap",
+      "waveform_width",
+    ]);
   });
 
   test("a group only ever yields its own rows", () => {
     for (const material of ["flat", "glass"] as const) {
-      for (const group of ["color", "material", "size"] as const) {
+      for (const group of ["color", "material", "elements", "size"] as const) {
         for (const field of overlayTokenFieldsFor(group, material)) {
           expect(field.group).toBe(group);
         }
@@ -92,16 +187,57 @@ describe("overlayTokenFieldsFor", () => {
     }
   });
 
-  test("the three groups together are the whole table, on both Materials", () => {
-    for (const material of ["flat", "glass"] as const) {
-      const shown = (["color", "material", "size"] as const).flatMap((group) =>
+  test("the four groups together are every row the Material has", () => {
+    const shown = (material: "flat" | "glass") =>
+      (["color", "material", "elements", "size"] as const).flatMap((group) =>
         keysOf(overlayTokenFieldsFor(group, material)),
       );
-      const hiddenAlpha =
-        material === "glass" ? "surface_opacity" : "glass_tint";
-      expect(shown).toEqual(
-        keysOf(OVERLAY_TOKEN_FIELDS).filter((key) => key !== hiddenAlpha),
-      );
-    }
+
+    expect(shown("flat")).toEqual([
+      "accent",
+      "surface",
+      "surface_opacity",
+      "text",
+      "border",
+      "border_opacity",
+      "material",
+      "glass_style",
+      "shadow_strength",
+      "shadow_offset_y",
+      "show_waveform",
+      "show_cancel",
+      "size_scale",
+      "radius",
+      "border_width",
+      "padding",
+      "element_gap",
+      "waveform_gap",
+      "waveform_width",
+    ]);
+    expect(shown("glass")).toEqual([
+      "accent",
+      "surface",
+      "glass_tint",
+      "text",
+      "border",
+      "border_opacity",
+      "material",
+      "glass_style",
+      "shadow_strength",
+      "show_waveform",
+      "show_cancel",
+      "size_scale",
+      "radius",
+      "border_width",
+      "padding",
+      "element_gap",
+      "waveform_gap",
+      "waveform_width",
+    ]);
+    // Nineteen rows under Flat, eighteen under Glass: `glass_material` never
+    // has one, the two alphas share a slot, the shadow's two rows share one,
+    // and Glass has no shadow offset to show.
+    expect(shown("flat").length).toBe(19);
+    expect(shown("glass").length).toBe(18);
   });
 });

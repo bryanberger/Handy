@@ -31,8 +31,9 @@
 use crate::overlay_theme::{
     GlassMaterial, GlassStyle, HexColor, Material, OverlayTheme, ThemeFileDiagnostic,
     ThemeFileDiagnosticCode, ThemeFileState, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN,
-    BORDER_WIDTH_MAX, GLASS_TINT_MAX, GLASS_TINT_MIN, PADDING_MAX, RADIUS_MAX, SIZE_SCALE_MAX,
-    SIZE_SCALE_MIN, SURFACE_OPACITY_MAX, SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX,
+    BORDER_WIDTH_MAX, ELEMENT_GAP_MAX, GLASS_TINT_MAX, GLASS_TINT_MIN, PADDING_MAX, RADIUS_MAX,
+    SHADOW_OFFSET_Y_MAX, SHADOW_STRENGTH_MAX, SHADOW_STRENGTH_MIN, SIZE_SCALE_MAX, SIZE_SCALE_MIN,
+    SURFACE_OPACITY_MAX, SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX,
     WAVEFORM_WIDTH_MIN,
 };
 use log::{debug, warn};
@@ -71,7 +72,7 @@ const CONFIG_SUBDIR: &str = "handy";
 /// lookup. Per XDG, empty is unset and a relative value invalid.
 const CONFIG_HOME_ENV_VAR: &str = "XDG_CONFIG_HOME";
 
-/// Anything larger than this is not a sixteen-key document; refused unread.
+/// Anything larger than this is not a twenty-one-key document; refused unread.
 const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 
 /// Diagnostics carried in [`ThemeFileState`]. All reach the log; this bounds
@@ -107,13 +108,13 @@ const fn token(
     TokenSpec { key, parser }
 }
 
-/// The sixteen tokens in the token contract's order, which the Appearance tab,
+/// The twenty-one tokens in the token contract's order, which the Appearance tab,
 /// [`ThemeFileState::owned_keys`] and the per-key diagnostics all follow, so
 /// the payload does not depend on `serde_json`'s key order.
 ///
 /// One table, not a key list beside a match on it. Key, parser and bounds are
 /// one fact; splitting them made a mismatch a runtime debug assertion.
-const TOKENS: [TokenSpec; 16] = [
+const TOKENS: [TokenSpec; 21] = [
     token("accent", |key, value, tokens, diagnostics| {
         tokens.accent = parse_color(key, value, diagnostics);
         tokens.accent.is_some()
@@ -166,6 +167,28 @@ const TOKENS: [TokenSpec; 16] = [
         tokens.glass_style = parse_glass_style(key, value, diagnostics);
         tokens.glass_style.is_some()
     }),
+    token("shadow_strength", |key, value, tokens, diagnostics| {
+        tokens.shadow_strength = parse_ratio(
+            key,
+            value,
+            SHADOW_STRENGTH_MIN,
+            SHADOW_STRENGTH_MAX,
+            diagnostics,
+        );
+        tokens.shadow_strength.is_some()
+    }),
+    token("shadow_offset_y", |key, value, tokens, diagnostics| {
+        tokens.shadow_offset_y = parse_px(key, value, 0, SHADOW_OFFSET_Y_MAX, diagnostics);
+        tokens.shadow_offset_y.is_some()
+    }),
+    token("show_waveform", |key, value, tokens, diagnostics| {
+        tokens.show_waveform = parse_switch(key, value, diagnostics);
+        tokens.show_waveform.is_some()
+    }),
+    token("show_cancel", |key, value, tokens, diagnostics| {
+        tokens.show_cancel = parse_switch(key, value, diagnostics);
+        tokens.show_cancel.is_some()
+    }),
     token("size_scale", |key, value, tokens, diagnostics| {
         tokens.size_scale = parse_ratio(key, value, SIZE_SCALE_MIN, SIZE_SCALE_MAX, diagnostics);
         tokens.size_scale.is_some()
@@ -181,6 +204,10 @@ const TOKENS: [TokenSpec; 16] = [
     token("padding", |key, value, tokens, diagnostics| {
         tokens.padding = parse_px(key, value, 0, PADDING_MAX, diagnostics);
         tokens.padding.is_some()
+    }),
+    token("element_gap", |key, value, tokens, diagnostics| {
+        tokens.element_gap = parse_px(key, value, 0, ELEMENT_GAP_MAX, diagnostics);
+        tokens.element_gap.is_some()
     }),
     token("waveform_gap", |key, value, tokens, diagnostics| {
         tokens.waveform_gap = parse_px(key, value, 0, WAVEFORM_GAP_MAX, diagnostics);
@@ -1089,6 +1116,27 @@ fn parse_px(
     Some(clamped as u16)
 }
 
+/// A switch token (`show_waveform`, `show_cancel`), read as a JSON boolean.
+///
+/// The contract's first boolean, and deliberately the strictest reader in the
+/// file: `true` and `false` only. There is nothing to be lenient about, since
+/// no spelling question arises, and `"true"`, `1` and `"yes"` are all a
+/// theming tool emitting the wrong JSON type, which is exactly what
+/// `WrongType` is for.
+fn parse_switch(
+    key: &str,
+    value: &Value,
+    diagnostics: &mut Vec<ThemeFileDiagnostic>,
+) -> Option<bool> {
+    match value.as_bool() {
+        Some(switch) => Some(switch),
+        None => {
+            diagnostics.push(wrong_type(key, "true or false", value));
+            None
+        }
+    }
+}
+
 /// A JSON string, or a `WrongType` diagnostic. Numbers, booleans, objects and
 /// arrays are type errors. Leniency covers how a colour or an enum is spelled,
 /// never which JSON type carries it.
@@ -1229,10 +1277,15 @@ mod tests {
   "material": null,
   "glass_material": null,
   "glass_style": null,
+  "shadow_strength": null,
+  "shadow_offset_y": null,
+  "show_waveform": null,
+  "show_cancel": null,
   "size_scale": null,
   "radius": null,
   "border_width": null,
   "padding": null,
+  "element_gap": null,
   "waveform_gap": null,
   "waveform_width": null
 }"##;
@@ -1250,10 +1303,15 @@ mod tests {
   "material": "glass",
   "glass_material": "popover",
   "glass_style": "clear",
+  "shadow_strength": 0.35,
+  "shadow_offset_y": 6,
+  "show_waveform": true,
+  "show_cancel": false,
   "size_scale": 1.1,
   "radius": 12,
   "border_width": 1,
   "padding": 14,
+  "element_gap": 8,
   "waveform_gap": 2,
   "waveform_width": 4
 }"##;
@@ -1785,15 +1843,20 @@ mod tests {
                 material: Some(Material::Glass),
                 glass_material: Some(GlassMaterial::Popover),
                 glass_style: Some(GlassStyle::Clear),
+                shadow_strength: Some(0.35),
+                shadow_offset_y: Some(6),
+                show_waveform: Some(true),
+                show_cancel: Some(false),
                 size_scale: Some(1.1),
                 radius: Some(12),
                 border_width: Some(1),
                 padding: Some(14),
+                element_gap: Some(8),
                 waveform_gap: Some(2),
                 waveform_width: Some(4),
             }
         );
-        // Every key is owned, so the tab locks all sixteen.
+        // Every key is owned, so the tab locks all twenty-one.
         assert_eq!(
             parsed.owned_keys,
             TOKENS.iter().map(|token| token.key).collect::<Vec<_>>()
@@ -1813,16 +1876,21 @@ mod tests {
         assert_eq!(parsed.tokens.surface_opacity, Some(1.0));
         assert_eq!(parsed.tokens.material, Some(Material::Flat));
 
-        // The eleven tokens it does not mention still inherit.
+        // The sixteen tokens it does not mention still inherit.
         assert_eq!(parsed.tokens.glass_tint, None);
         assert_eq!(parsed.tokens.border, None);
         assert_eq!(parsed.tokens.border_opacity, None);
         assert_eq!(parsed.tokens.glass_material, None);
         assert_eq!(parsed.tokens.glass_style, None);
+        assert_eq!(parsed.tokens.shadow_strength, None);
+        assert_eq!(parsed.tokens.shadow_offset_y, None);
+        assert_eq!(parsed.tokens.show_waveform, None);
+        assert_eq!(parsed.tokens.show_cancel, None);
         assert_eq!(parsed.tokens.size_scale, None);
         assert_eq!(parsed.tokens.radius, None);
         assert_eq!(parsed.tokens.border_width, None);
         assert_eq!(parsed.tokens.padding, None);
+        assert_eq!(parsed.tokens.element_gap, None);
         assert_eq!(parsed.tokens.waveform_gap, None);
         assert_eq!(parsed.tokens.waveform_width, None);
 
@@ -2043,6 +2111,82 @@ mod tests {
         assert_eq!(invisible.tokens.border_opacity, Some(0.0));
         assert_eq!(invisible.tokens.border_width, Some(0));
         assert!(invisible.diagnostics.is_empty());
+    }
+
+    /// The shadow's two tokens and the element gap follow the same two
+    /// readers every other number does, so this pins their own bounds.
+    #[test]
+    fn the_shadow_and_gap_tokens_parse_and_clamp() {
+        let parsed = parse(
+            r##"{
+              "shadow_strength": 0.35,
+              "shadow_offset_y": 6,
+              "element_gap": 8
+            }"##,
+        );
+        assert_eq!(parsed.tokens.shadow_strength, Some(0.35));
+        assert_eq!(parsed.tokens.shadow_offset_y, Some(6));
+        assert_eq!(parsed.tokens.element_gap, Some(8));
+        assert!(parsed.diagnostics.is_empty());
+        assert_eq!(
+            parsed.owned_keys,
+            vec!["shadow_strength", "shadow_offset_y", "element_gap"]
+        );
+
+        let clamped = parse(
+            r##"{
+              "shadow_strength": 4,
+              "shadow_offset_y": 99,
+              "element_gap": -3
+            }"##,
+        );
+        assert_eq!(clamped.tokens.shadow_strength, Some(1.0));
+        assert_eq!(clamped.tokens.shadow_offset_y, Some(16));
+        assert_eq!(clamped.tokens.element_gap, Some(0));
+        assert_eq!(
+            codes(&clamped.diagnostics),
+            vec![
+                ThemeFileDiagnosticCode::OutOfBounds,
+                ThemeFileDiagnosticCode::OutOfBounds,
+                ThemeFileDiagnosticCode::OutOfBounds,
+            ]
+        );
+
+        // Zero is in bounds for both, and is what a Flat card and today's row
+        // already are, so a document may spell them out.
+        let off = parse(r##"{ "shadow_strength": 0, "shadow_offset_y": 0, "element_gap": 0 }"##);
+        assert_eq!(off.tokens.shadow_strength, Some(0.0));
+        assert_eq!(off.tokens.shadow_offset_y, Some(0));
+        assert_eq!(off.tokens.element_gap, Some(0));
+        assert!(off.diagnostics.is_empty());
+    }
+
+    /// The contract's first booleans. `true` and `false` and nothing else: a
+    /// string or a number is a theming tool emitting the wrong JSON type, and
+    /// gets the same `WrongType` diagnostic a mistyped number would.
+    #[test]
+    fn the_visibility_switches_take_json_booleans_only() {
+        let parsed = parse(r##"{ "show_waveform": false, "show_cancel": true }"##);
+        assert_eq!(parsed.tokens.show_waveform, Some(false));
+        assert_eq!(parsed.tokens.show_cancel, Some(true));
+        assert!(parsed.diagnostics.is_empty());
+        // `false` is a value the file owns, not an absence, so the tab locks
+        // the row rather than leaving it editable.
+        assert_eq!(parsed.owned_keys, vec!["show_waveform", "show_cancel"]);
+
+        for bad in ["\"true\"", "1", "0", "null", "[]", "{}"] {
+            let rejected = parse(&format!(r##"{{ "show_waveform": {bad} }}"##));
+            assert_eq!(rejected.tokens.show_waveform, None, "{bad}");
+            assert!(rejected.owned_keys.is_empty(), "{bad}");
+            // `null` is the contract's own spelling of inherit, so it is the
+            // one that passes silently.
+            let expected = if bad == "null" {
+                Vec::new()
+            } else {
+                vec![ThemeFileDiagnosticCode::WrongType]
+            };
+            assert_eq!(codes(&rejected.diagnostics), expected, "{bad}");
+        }
     }
 
     /// `glass_material` is hand-written, so the reader takes human separators.

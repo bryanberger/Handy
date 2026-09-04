@@ -155,7 +155,7 @@ export class DraftDebouncer<Key extends string, Value> {
  *
  * Reads the store's `overlay_theme` at call time, not a captured closure, so
  * two edits in flight compose instead of clobbering each other. It sends all
- * sixteen tokens through the one `change_overlay_theme_setting` command, which
+ * twenty-one tokens through the one `change_overlay_theme_setting` command, which
  * keeps the store's optimistic write and rollback (keyed on the single
  * `overlay_theme` `AppSettings` field) working unchanged.
  */
@@ -321,7 +321,7 @@ export interface UseDraftSettingResult {
 }
 
 /**
- * Local draft state for the sixteen overlay-theme tokens, shared by ColorField
+ * Local draft state for the overlay-theme tokens, shared by ColorField
  * and the token sliders.
  *
  * `ui/Slider` fires `onChange` on every pixel of drag (`Slider.tsx`), and a

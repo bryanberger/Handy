@@ -266,6 +266,7 @@
         "preview": "On-Screen Preview",
         "color": "Overlay Color",
         "material": "Overlay Material",
+        "elements": "Overlay Elements",
         "size": "Overlay Size & Spacing",
         "themeFile": "Theme File"
       },
@@ -346,9 +347,27 @@
           "title": "Border Opacity",
           "description": "How visible the card's edge is."
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "Size Scale",
-          "description": "Zooms every length in the card at once — widths, heights, padding and type. One of the three tokens that change how much room the overlay needs on screen; padding and border width are the others."
+          "description": "Zooms every length in the card at once — widths, heights, padding and type. One of the tokens that change how much room the overlay needs on screen; padding, border width and element gap are the others."
         },
         "radius": {
           "title": "Corner Radius",
@@ -361,6 +380,10 @@
         "padding": {
           "title": "Padding",
           "description": "The card's inner padding on all four sides. The overlay window grows with it."
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "Waveform Gap",

@@ -266,6 +266,7 @@
         "preview": "画面上のプレビュー",
         "color": "オーバーレイの色",
         "material": "オーバーレイのマテリアル",
+        "elements": "Overlay Elements",
         "size": "オーバーレイのサイズと余白",
         "themeFile": "テーマファイル"
       },
@@ -346,6 +347,24 @@
           "title": "境界線の不透明度",
           "description": "カードの縁がどれだけはっきり見えるかです。"
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "サイズ倍率",
           "description": "カード内のすべての長さを一度に拡大縮小します（幅、高さ、余白、文字サイズ）。オーバーレイが画面上で必要とする領域を変える 2 つの項目のうちの 1 つで、もう 1 つは境界線の太さです。"
@@ -361,6 +380,10 @@
         "padding": {
           "title": "余白",
           "description": "カードの四辺の内側の余白です。オーバーレイのウインドウもそれに合わせて大きくなります。"
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "波形の間隔",

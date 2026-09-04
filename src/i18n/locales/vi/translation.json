@@ -266,6 +266,7 @@
         "preview": "Xem trước trên màn hình",
         "color": "Màu lớp phủ",
         "material": "Chất liệu lớp phủ",
+        "elements": "Overlay Elements",
         "size": "Kích thước và khoảng cách lớp phủ",
         "themeFile": "Tệp giao diện"
       },
@@ -346,6 +347,24 @@
           "title": "Độ mờ đục của viền",
           "description": "Mức độ hiện rõ của viền thẻ."
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "Tỷ lệ kích thước",
           "description": "Phóng to mọi kích thước trong thẻ cùng lúc — chiều rộng, chiều cao, đệm trong và cỡ chữ. Một trong hai giá trị làm thay đổi khoảng không mà lớp phủ chiếm trên màn hình; giá trị còn lại là độ dày viền."
@@ -361,6 +380,10 @@
         "padding": {
           "title": "Đệm trong",
           "description": "Đệm trong của thẻ ở cả bốn phía. Cửa sổ lớp phủ cũng to ra theo."
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "Khoảng cách dạng sóng",

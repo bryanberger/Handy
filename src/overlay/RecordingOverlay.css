@@ -81,13 +81,47 @@
   --ov-scale: 1; /* size_scale: multiplies every length in the card */
   --ov-radius: 24px; /* radius: the card's corner radius */
   --ov-border-w: 1px; /* border_width: the card's stroke, one per edge. The card is content-box,
-                         so overlay_geometry.rs adds two to every footprint. With --ov-scale
-                         and --ov-pad, one of three tokens that change the native window's size. */
+                         so overlay_geometry.rs adds two to every footprint. With --ov-scale,
+                         --ov-pad and --ov-elem-gap, one of the four tokens that change the
+                         native window's size whatever the material. */
   --ov-pad: 10px; /* padding: the card's inner padding, all four sides. The control row is
                      --ov-row-core-h plus one above and below, the Live transcript's inset
                      follows it, and overlay_geometry.rs reads it into every card footprint. */
   --ov-wave-gap: 3px; /* waveform_gap: gap between bars */
   --ov-wave-w: 4px; /* waveform_width: width of one waveform bar */
+  --ov-elem-gap: 0px; /* element_gap: extra space between the row's elements. The row has
+                         two of them, so every card width below carries 2x. */
+  --ov-shadow-strength: 0; /* shadow_strength: Flat inherits no shadow, which is today's card.
+                              Glass ignores this property; there the shadow is macOS's own. */
+  --ov-shadow-y: 4px; /* shadow_offset_y: how far the shadow falls below the card */
+
+  /* Derived from the tokens above, not tokens themselves. */
+  --ov-shadow-blur: 20px; /* the shadow's blur radius. Fixed: strength and offset are the
+                             two controls, and the reach (blur + offset) is the window's slack. */
+  --ov-shadow-slack: 0px; /* the room .ov-stage leaves around the card for its shadow.
+                             Written by the apply layer ALREADY SCALED and rounded up, the one
+                             pre-scaled property in this file, because CSS cannot ceil and the
+                             native window must inset the card by the very same integer. */
+  --ov-side-min: 22px; /* the control row's side columns' floor: what the cancel button needs.
+                          The apply layer drops it to 0 when show_cancel takes that button away. */
+  --ov-dot-col-w: 12px; /* the left column's own content: .sdot's 7px + .sbase-l's 5px inset */
+  --ov-wave-pad-r: 8px; /* .swave's right padding, the last part of the centre column */
+  --ov-wave-slot-w: calc(
+    9 * var(--ov-wave-w) + 8 * var(--ov-wave-gap)
+  ); /* the waveform lane:
+                       nine bars and eight gaps, 60px at the inherit values, exactly what the
+                       nine flex children measure. */
+  /* The control row's own width, with an empty centre column and with the
+     waveform in it. The resting shapes take the larger of their tuned width and
+     --ov-row-w, so a roomy padding, bar or gap widens the pill instead of being
+     clipped by .scard's overflow. overlay_geometry.rs mirrors both sums. */
+  --ov-bare-w: calc(
+    2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +
+      max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min)
+  );
+  --ov-row-w: calc(
+    var(--ov-bare-w) + var(--ov-wave-slot-w) + var(--ov-wave-pad-r)
+  );
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -140,6 +174,11 @@
   justify-content: center; /* horizontal centering, kept for both forms */
   align-items: flex-end; /* bottom placement: flush to the bottom edge */
   font-family: var(--s-font);
+  /* Room for the card's own shadow, symmetric on all four sides. Taken raw:
+     the apply layer writes it already scaled and ceiled, and the native window
+     grew by twice this while keeping its screen-edge offset, so the card lifts
+     into the slack rather than the window moving. */
+  padding: var(--ov-shadow-slack);
 }
 .ov-stage.top {
   align-items: flex-start; /* top placement: flush to the top edge */
@@ -197,7 +236,10 @@
 
 /* Shared base card. Flat: theme surface + hairline border, no shadow or blur. */
 .scard {
-  width: calc(var(--ov-pill-w) * var(--ov-scale));
+  width: calc(
+    max(var(--ov-pill-w) + 2 * var(--ov-elem-gap), var(--ov-row-w)) *
+      var(--ov-scale)
+  );
   border-radius: calc(var(--ov-radius) * var(--ov-scale));
   overflow: hidden;
   display: flex;
@@ -208,7 +250,19 @@
   /* The stroke scales with everything else, so the card's footprint is its
      base size times the scale, border included. */
   border: calc(var(--ov-border-w) * var(--ov-scale)) solid var(--s-border);
-  /* Flat: no drop shadow, no backdrop blur/saturate (was a glassy gradient look). */
+  /* The card's drop shadow, off at the inherit strength of 0 and so invisible
+     until a theme asks for one. Two layers, the ambient/key pair: a soft one at
+     the offset, and a tight contact shadow. It follows the border box, so it
+     morphs and fades with the card, and .ov-stage's padding is the room it
+     falls into. Glass draws none; there the shadow is macOS's own window
+     shadow, outside the window this card fills. */
+  box-shadow:
+    0 calc(var(--ov-shadow-y) * var(--ov-scale))
+      calc(var(--ov-shadow-blur) * var(--ov-scale))
+      rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.4)),
+    0 calc(1px * var(--ov-scale)) calc(2px * var(--ov-scale))
+      rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.16));
+  /* No backdrop blur/saturate (was a glassy gradient look). */
   /* pop-in plays on mount; morph (width/radius) is a transition */
   animation: scard-pop var(--ov-morph-ms) cubic-bezier(0.22, 1, 0.36, 1);
   transition:
@@ -228,13 +282,13 @@
   }
 }
 .scard.open {
-  width: calc(var(--ov-open-w) * var(--ov-scale));
+  width: calc((var(--ov-open-w) + 2 * var(--ov-elem-gap)) * var(--ov-scale));
   /* Two thirds of the card radius, so today's 16px at the default 24px. A tall
      panel reads better slightly less round than the pill. */
   border-radius: calc(var(--ov-radius) * 2 / 3 * var(--ov-scale));
 }
 .scard.working {
-  width: calc(var(--ov-work-w) * var(--ov-scale));
+  width: calc((var(--ov-work-w) + 2 * var(--ov-elem-gap)) * var(--ov-scale));
   /* Three quarters of the card radius, so today's 18px at 24px. */
   border-radius: calc(var(--ov-radius) * 0.75 * var(--ov-scale));
 }
@@ -246,10 +300,20 @@
    center the longest label — the .swork-label ellipsis is only a safety net past it. */
 .scard.compact {
   animation: none;
-  width: calc(var(--ov-rest-w) * var(--ov-scale));
+  width: calc(
+    max(var(--ov-rest-w) + 2 * var(--ov-elem-gap), var(--ov-row-w)) *
+      var(--ov-scale)
+  );
 }
 .scard.compact.cworking {
-  width: calc(var(--ov-work-w) * var(--ov-scale));
+  width: calc((var(--ov-work-w) + 2 * var(--ov-elem-gap)) * var(--ov-scale));
+}
+/* show_waveform off, on the two shapes that rest: the pill shrinks to the row
+   that is left rather than holding a width tuned around a waveform. OverlayCard
+   only ever puts this class on those two, so it can never meet .open or
+   .working, and the morph out of it is still a grow. */
+.scard.nowave {
+  width: calc(var(--ov-bare-w) * var(--ov-scale));
 }
 
 /* text region — auto-height open via grid-rows trick; region fades as a whole */
@@ -335,12 +399,21 @@
   height: calc((var(--ov-row-core-h) + 2 * var(--ov-pad)) * var(--ov-scale));
   padding: calc(var(--ov-pad) * var(--ov-scale));
   display: grid;
-  /* Equal side columns (min 22px to hold the cancel button) keep the center item
-     — waveform or label — centered whether the pill is at min width or content-
-     sized. Both 22px floors stay unscaled, so the center stays centered at any
-     scale, and the pill scales with its content, so the floor never squeezes it. */
-  grid-template-columns: minmax(22px, 1fr) auto minmax(22px, 1fr);
+  /* Equal side columns (floor --ov-side-min, the room the cancel button needs)
+     keep the center item — waveform or label — centered whether the pill is at
+     min width or content-sized. Both floors stay unscaled, so the center stays
+     centered at any scale, and the pill scales with its content, so the floor
+     never squeezes it. With the cancel button hidden the floor is 0 and the two
+     tracks still take equal free space, so the centring survives. */
+  grid-template-columns:
+    minmax(var(--ov-side-min), 1fr)
+    auto
+    minmax(var(--ov-side-min), 1fr);
   align-items: center;
+  /* element_gap, once on each side of the centre column. Both the card's width
+     and this grow by the same two gaps, so the centre column's room never
+     changes. */
+  column-gap: calc(var(--ov-elem-gap) * var(--ov-scale));
 }
 .sbase-l {
   display: flex;
@@ -351,7 +424,8 @@
 .sbase-r {
   display: flex;
   align-items: center;
-  gap: calc(10px * var(--ov-scale));
+  /* The timer and the cancel button separate with the row's other elements. */
+  gap: calc((10px + var(--ov-elem-gap)) * var(--ov-scale));
   justify-self: end;
 }
 .sdot {
@@ -402,7 +476,11 @@
   display: flex;
   align-items: center;
   gap: calc(var(--ov-wave-gap) * var(--ov-scale));
-  padding-right: calc(8px * var(--ov-scale));
+  /* The lane is declared, not left to the nine children, so the centre column
+     is a known width whatever draws in it. At the inherit values the children
+     measure exactly this, so nothing moves. */
+  width: calc(var(--ov-wave-slot-w) * var(--ov-scale));
+  padding-right: calc(var(--ov-wave-pad-r) * var(--ov-scale));
   height: calc(18px * var(--ov-scale));
   flex: none;
 }
@@ -545,6 +623,12 @@
      the blur. */
   animation: none;
   will-change: opacity;
+}
+
+/* Under Glass the drop shadow is macOS's own, drawn outside a window this card
+   fills exactly, so the card must not draw a second one inside it. */
+:root[data-material="glass"] .scard {
+  box-shadow: none;
 }
 
 /* The control row holds its height while the window grows. The text region takes

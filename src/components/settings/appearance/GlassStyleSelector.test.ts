@@ -111,7 +111,15 @@ describe("the Glass style descriptor", () => {
     const materialGroup = OVERLAY_TOKEN_FIELDS.filter(
       (candidate) => candidate.group === "material",
     ).map((candidate) => candidate.key);
-    expect(materialGroup).toEqual(["material", "glass_style"]);
+    // The shadow rows follow it: how the card sits against the desktop is the
+    // same group's subject, and `shadow_strength` has one row per Material.
+    expect(materialGroup).toEqual([
+      "material",
+      "glass_style",
+      "shadow_strength",
+      "shadow_strength",
+      "shadow_offset_y",
+    ]);
   });
 
   test("carries its own label and description keys", () => {

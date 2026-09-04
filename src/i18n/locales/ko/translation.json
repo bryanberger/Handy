@@ -266,6 +266,7 @@
         "preview": "화면 미리보기",
         "color": "오버레이 색상",
         "material": "오버레이 재질",
+        "elements": "Overlay Elements",
         "size": "오버레이 크기 및 간격",
         "themeFile": "테마 파일"
       },
@@ -346,6 +347,24 @@
           "title": "테두리 불투명도",
           "description": "카드 가장자리가 얼마나 잘 보이는지입니다."
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "크기 배율",
           "description": "카드의 모든 길이를 한 번에 조절합니다 — 너비, 높이, 여백, 글자 크기. 오버레이가 화면에서 차지하는 공간을 바꾸는 두 값 중 하나이며, 다른 하나는 테두리 두께입니다."
@@ -361,6 +380,10 @@
         "padding": {
           "title": "안쪽 여백",
           "description": "카드 네 면의 안쪽 여백입니다. 오버레이 윈도우도 그만큼 커집니다."
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "파형 간격",

@@ -1,6 +1,6 @@
 //! Overlay theme: storage, per-key merge, and delivery.
 //!
-//! Sixteen optional tokens decide how the recording overlay's card looks.
+//! Twenty-one optional tokens decide how the recording overlay's card looks.
 //! Absent means inherit, Handy's built-in theme-aware value, so a theme that
 //! sets nothing reproduces today's overlay exactly.
 //!
@@ -335,6 +335,18 @@ pub const WAVEFORM_WIDTH_MIN: u16 = 2;
 /// `padding` changes the height. Pinned by
 /// `overlay::tests::the_waveform_never_outgrows_the_working_pill`.
 pub const WAVEFORM_WIDTH_MAX: u16 = 6;
+/// Lowest accepted `shadow_strength`. Zero is legitimate, and is what Flat
+/// inherits: today's card casts no shadow at all.
+pub const SHADOW_STRENGTH_MIN: f64 = 0.00;
+/// Highest accepted `shadow_strength`.
+pub const SHADOW_STRENGTH_MAX: f64 = 1.00;
+/// Highest accepted `shadow_offset_y`, in px at scale 1. Past 16 the card
+/// stops reading as something sitting above the desktop.
+pub const SHADOW_OFFSET_Y_MAX: u16 = 16;
+/// Highest accepted `element_gap`, in px at scale 1. At the bound the row's
+/// two gaps add 80 px to every card, which is a deliberately airy pill rather
+/// than a broken one.
+pub const ELEMENT_GAP_MAX: u16 = 40;
 
 /// The `border_width` an unset token inherits, in px at scale 1: today's
 /// hairline (`--ov-border-w: 1px`, `RecordingOverlay.css`).
@@ -343,15 +355,34 @@ pub const BORDER_WIDTH_INHERIT: u16 = 1;
 /// (`--ov-pad: 10px`, `RecordingOverlay.css`). At this value the control row
 /// is the 40 px it has always been and the Live transcript's inset is 12 px.
 pub const PADDING_INHERIT: u16 = 10;
+/// The `waveform_gap` an unset token inherits, in px at scale 1: today's gap
+/// (`--ov-wave-gap: 3px`, `RecordingOverlay.css`).
+pub const WAVEFORM_GAP_INHERIT: u16 = 3;
 /// The `waveform_width` an unset token inherits, in px at scale 1: today's
 /// bar (`--ov-wave-w: 4px`, `RecordingOverlay.css`).
-///
-/// Test-only, unlike [`BORDER_WIDTH_INHERIT`], since a bar's width never
-/// reaches the native window geometry. It exists so
-/// `overlay_window_constants_match_overlay_css` can pin the stylesheet's
-/// declared inherit value to the token table.
-#[cfg(test)]
 pub const WAVEFORM_WIDTH_INHERIT: u16 = 4;
+/// The `shadow_offset_y` an unset token inherits, in px at scale 1
+/// (`--ov-shadow-y: 4px`, `RecordingOverlay.css`). Invisible at Flat's
+/// inherit strength of 0, and never read under Glass, where macOS owns the
+/// shadow and offers no offset.
+pub const SHADOW_OFFSET_Y_INHERIT: u16 = 4;
+/// The `element_gap` an unset token inherits, in px at scale 1
+/// (`--ov-elem-gap: 0px`, `RecordingOverlay.css`): today's row.
+pub const ELEMENT_GAP_INHERIT: u16 = 0;
+
+/// The `shadow_strength` an unset token inherits, which is the one token whose
+/// inherit differs per Material.
+///
+/// Flat inherits 0, today's shadowless card. Glass inherits 1, macOS's own
+/// window shadow, which a Glass overlay has always cast. So the token adds a
+/// shadow to Flat and takes one away from Glass, and unset reproduces both.
+/// Must match `SHADOW_STRENGTH_INHERIT` in `src/lib/overlayTheme.ts`.
+pub const fn shadow_strength_inherit(material: Material) -> f64 {
+    match material {
+        Material::Flat => 0.0,
+        Material::Glass => 1.0,
+    }
+}
 
 /// A token whose stored value does not parse becomes `None`, meaning inherit,
 /// rather than failing the whole [`OverlayTheme`] and making `salvage_settings`
@@ -378,11 +409,11 @@ where
     }
 }
 
-/// The sixteen overlay-theme tokens. `None` means inherit.
+/// The twenty-one overlay-theme tokens. `None` means inherit.
 ///
 /// Field names are the theme-file keys, and every field deserializes
 /// leniently: a wrong type or shape degrades to `None` with a `warn!`, so one
-/// bad token never costs the other fifteen, as `salvage_settings` does one
+/// bad token never costs the other twenty, as `salvage_settings` does one
 /// level up. The store salvages silently (log only); the theme file applies
 /// the same rules but reports diagnostics, so it runs its own per-key pass
 /// instead of deserializing an `OverlayTheme`.
@@ -438,6 +469,37 @@ pub struct OverlayTheme {
     /// `liquid` engine, so ignored under Flat and before macOS 26.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub glass_style: Option<GlassStyle>,
+    /// How heavy the card's drop shadow is, 0.00 to 1.00.
+    ///
+    /// The two Materials draw a shadow in two different places, so this token
+    /// means two things. Under Flat it shapes a CSS `box-shadow` on the card,
+    /// and the window grows a symmetric margin for it to fall into. Under
+    /// Glass, where the window is the card, the shadow is macOS's own and
+    /// `NSWindow` offers no strength, so any value above zero switches it on
+    /// and zero switches it off.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub shadow_strength: Option<f64>,
+    /// How far the card's shadow is pushed below it at scale 1, 0 to 16 px.
+    ///
+    /// Flat only. macOS places its own window shadow, so this is ignored under
+    /// Glass. It sizes the window's shadow slack together with the fixed blur
+    /// radius, so it is one of the values the native window is built from.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub shadow_offset_y: Option<u16>,
+    /// Whether the control row shows the waveform. Unset means it does.
+    ///
+    /// Hiding it empties the row's centre column, and the two resting shapes
+    /// (the Minimal pill and the Live pill) shrink to what the row still
+    /// holds. The working pill and the open panel keep their tuned widths.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub show_waveform: Option<bool>,
+    /// Whether the control row shows the cancel button. Unset means it does.
+    ///
+    /// The keyboard shortcut and `--cancel` still cancel; only the button on
+    /// the card goes. With it the row's side columns lose the 22 px floor that
+    /// existed to hold it.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub show_cancel: Option<bool>,
     /// One factor multiplying every length in the card, 0.80 to 1.50.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub size_scale: Option<f64>,
@@ -455,6 +517,14 @@ pub struct OverlayTheme {
     /// the native window is computed from it too.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub padding: Option<u16>,
+    /// Extra horizontal space between the control row's elements (the dot, the
+    /// waveform, the timer and the cancel button) at scale 1, 0 to 40 px.
+    ///
+    /// The row has two of these, so every card is twice the gap wider and the
+    /// native window follows. The centre column's room is unchanged, since the
+    /// card gains exactly what the two gaps take.
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub element_gap: Option<u16>,
     /// Gap between waveform bars at scale 1, 0 to 5 px.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub waveform_gap: Option<u16>,
@@ -516,6 +586,68 @@ impl OverlayTheme {
         self.padding.unwrap_or(PADDING_INHERIT).min(PADDING_MAX)
     }
 
+    /// The `waveform_gap` in px at `size_scale` 1: unset ⇒
+    /// [`WAVEFORM_GAP_INHERIT`], otherwise clamped to `0..=WAVEFORM_GAP_MAX`.
+    ///
+    /// The card's resting shapes are sized from it (see
+    /// `overlay_geometry::CardMetrics`), so the geometry and the card must
+    /// agree on how wide the waveform lane may get.
+    pub fn waveform_gap(&self) -> u16 {
+        self.waveform_gap
+            .unwrap_or(WAVEFORM_GAP_INHERIT)
+            .min(WAVEFORM_GAP_MAX)
+    }
+
+    /// The `waveform_width` in px at `size_scale` 1: unset ⇒
+    /// [`WAVEFORM_WIDTH_INHERIT`], otherwise clamped to the bar's bounds.
+    pub fn waveform_width(&self) -> u16 {
+        self.waveform_width
+            .unwrap_or(WAVEFORM_WIDTH_INHERIT)
+            .clamp(WAVEFORM_WIDTH_MIN, WAVEFORM_WIDTH_MAX)
+    }
+
+    /// The `shadow_strength` under `material`: unset ⇒
+    /// [`shadow_strength_inherit`], otherwise clamped to `0.00..=1.00`.
+    ///
+    /// The Material is a parameter because this is the one token whose inherit
+    /// depends on it. Asking for it unconditionally keeps callers from having
+    /// to know that.
+    pub fn shadow_strength(&self, material: Material) -> f64 {
+        match self.shadow_strength {
+            Some(value) if value.is_finite() => {
+                value.clamp(SHADOW_STRENGTH_MIN, SHADOW_STRENGTH_MAX)
+            }
+            _ => shadow_strength_inherit(material),
+        }
+    }
+
+    /// The `shadow_offset_y` in px at `size_scale` 1: unset ⇒
+    /// [`SHADOW_OFFSET_Y_INHERIT`], otherwise clamped to
+    /// `0..=SHADOW_OFFSET_Y_MAX`. Half of the window's shadow slack.
+    pub fn shadow_offset_y(&self) -> u16 {
+        self.shadow_offset_y
+            .unwrap_or(SHADOW_OFFSET_Y_INHERIT)
+            .min(SHADOW_OFFSET_Y_MAX)
+    }
+
+    /// The `element_gap` in px at `size_scale` 1: unset ⇒
+    /// [`ELEMENT_GAP_INHERIT`], otherwise clamped to `0..=ELEMENT_GAP_MAX`.
+    pub fn element_gap(&self) -> u16 {
+        self.element_gap
+            .unwrap_or(ELEMENT_GAP_INHERIT)
+            .min(ELEMENT_GAP_MAX)
+    }
+
+    /// Whether the control row draws the waveform: unset ⇒ yes.
+    pub fn show_waveform(&self) -> bool {
+        self.show_waveform.unwrap_or(true)
+    }
+
+    /// Whether the control row draws the cancel button: unset ⇒ yes.
+    pub fn show_cancel(&self) -> bool {
+        self.show_cancel.unwrap_or(true)
+    }
+
     /// A copy with every token clamped to this module's bounds.
     ///
     /// Applied before persisting and again after merging, so no out-of-range
@@ -549,6 +681,17 @@ impl OverlayTheme {
             material: self.material,
             glass_material: self.glass_material,
             glass_style: self.glass_style,
+            shadow_strength: clamp_float(
+                self.shadow_strength,
+                SHADOW_STRENGTH_MIN,
+                SHADOW_STRENGTH_MAX,
+                "shadow_strength",
+            ),
+            shadow_offset_y: self
+                .shadow_offset_y
+                .map(|value| value.min(SHADOW_OFFSET_Y_MAX)),
+            show_waveform: self.show_waveform,
+            show_cancel: self.show_cancel,
             size_scale: clamp_float(
                 self.size_scale,
                 SIZE_SCALE_MIN,
@@ -558,6 +701,7 @@ impl OverlayTheme {
             radius: self.radius.map(|value| value.min(RADIUS_MAX)),
             border_width: self.border_width.map(|value| value.min(BORDER_WIDTH_MAX)),
             padding: self.padding.map(|value| value.min(PADDING_MAX)),
+            element_gap: self.element_gap.map(|value| value.min(ELEMENT_GAP_MAX)),
             waveform_gap: self.waveform_gap.map(|value| value.min(WAVEFORM_GAP_MAX)),
             waveform_width: self
                 .waveform_width
@@ -747,10 +891,15 @@ pub fn merge(file: &OverlayTheme, settings: &OverlayTheme) -> OverlayTheme {
         // it, so the store cannot be the source.
         glass_material: file.glass_material,
         glass_style: file.glass_style.or(settings.glass_style),
+        shadow_strength: file.shadow_strength.or(settings.shadow_strength),
+        shadow_offset_y: file.shadow_offset_y.or(settings.shadow_offset_y),
+        show_waveform: file.show_waveform.or(settings.show_waveform),
+        show_cancel: file.show_cancel.or(settings.show_cancel),
         size_scale: file.size_scale.or(settings.size_scale),
         radius: file.radius.or(settings.radius),
         border_width: file.border_width.or(settings.border_width),
         padding: file.padding.or(settings.padding),
+        element_gap: file.element_gap.or(settings.element_gap),
         waveform_gap: file.waveform_gap.or(settings.waveform_gap),
         waveform_width: file.waveform_width.or(settings.waveform_width),
     }
@@ -943,10 +1092,15 @@ mod tests {
         assert_eq!(theme.material, None);
         assert_eq!(theme.glass_material, None);
         assert_eq!(theme.glass_style, None);
+        assert_eq!(theme.shadow_strength, None);
+        assert_eq!(theme.shadow_offset_y, None);
+        assert_eq!(theme.show_waveform, None);
+        assert_eq!(theme.show_cancel, None);
         assert_eq!(theme.size_scale, None);
         assert_eq!(theme.radius, None);
         assert_eq!(theme.border_width, None);
         assert_eq!(theme.padding, None);
+        assert_eq!(theme.element_gap, None);
         assert_eq!(theme.waveform_gap, None);
         assert_eq!(theme.waveform_width, None);
 
@@ -956,6 +1110,17 @@ mod tests {
         assert_eq!(theme.glass_material(), GlassMaterial::HudWindow);
         assert_eq!(theme.glass_style(), GlassStyle::Regular);
         assert_eq!(theme.border_width(), 1);
+        assert_eq!(theme.padding(), 10);
+        assert_eq!(theme.waveform_gap(), 3);
+        assert_eq!(theme.waveform_width(), 4);
+        // The one token whose inherit differs per Material: no shadow on
+        // today's Flat card, macOS's own on today's Glass one.
+        assert_eq!(theme.shadow_strength(Material::Flat), 0.0);
+        assert_eq!(theme.shadow_strength(Material::Glass), 1.0);
+        assert_eq!(theme.shadow_offset_y(), 4);
+        assert_eq!(theme.element_gap(), 0);
+        assert!(theme.show_waveform());
+        assert!(theme.show_cancel());
 
         // A store written before this field existed, and an explicit
         // all-null document, are the same thing.
@@ -1076,7 +1241,7 @@ mod tests {
     }
 
     /// Salvage tier one: a token whose value is unusable inherits, and the
-    /// other fifteen survive untouched.
+    /// other twenty survive untouched.
     #[test]
     fn one_bad_token_inherits_and_keeps_its_siblings() {
         let parsed: OverlayTheme = serde_json::from_value(json!({
@@ -1198,10 +1363,15 @@ mod tests {
             material: Some(Material::Glass),
             glass_material: Some(GlassMaterial::Menu),
             glass_style: Some(GlassStyle::Clear),
+            shadow_strength: Some(2.0),
+            shadow_offset_y: Some(99),
+            show_waveform: Some(false),
+            show_cancel: Some(false),
             size_scale: Some(3.0),
             radius: Some(99),
             border_width: Some(99),
             padding: Some(99),
+            element_gap: Some(99),
             waveform_gap: Some(99),
             waveform_width: Some(99),
         }
@@ -1214,8 +1384,14 @@ mod tests {
         assert_eq!(over.radius, Some(32));
         assert_eq!(over.border_width, Some(4));
         assert_eq!(over.padding, Some(20));
+        assert_eq!(over.element_gap, Some(40));
         assert_eq!(over.waveform_gap, Some(5));
         assert_eq!(over.waveform_width, Some(6));
+        assert_eq!(over.shadow_strength, Some(1.00));
+        assert_eq!(over.shadow_offset_y, Some(16));
+        // Booleans have no range to clamp; they only survive.
+        assert_eq!(over.show_waveform, Some(false));
+        assert_eq!(over.show_cancel, Some(false));
         // Colours and the enum are already canonical; clamping leaves them be.
         assert_eq!(over.accent, hex("#7aa2f7"));
         assert_eq!(over.surface, hex("#1a1b26"));
@@ -1231,6 +1407,7 @@ mod tests {
             border_opacity: Some(-0.5),
             size_scale: Some(0.1),
             waveform_width: Some(0),
+            shadow_strength: Some(-0.5),
             ..Default::default()
         }
         .normalized();
@@ -1242,6 +1419,8 @@ mod tests {
         assert_eq!(under.glass_tint, Some(0.00));
         assert_eq!(under.size_scale, Some(0.80));
         assert_eq!(under.waveform_width, Some(2));
+        // The shadow's floor is 0 too. "No shadow" is the value Flat inherits.
+        assert_eq!(under.shadow_strength, Some(0.00));
 
         // Unset stays unset. Clamping must never invent a value, or every
         // token would start writing a custom property.
@@ -1257,6 +1436,7 @@ mod tests {
             surface_opacity: Some(f64::NAN),
             glass_tint: Some(f64::NAN),
             size_scale: Some(f64::INFINITY),
+            shadow_strength: Some(f64::NAN),
             ..Default::default()
         }
         .normalized();
@@ -1264,6 +1444,8 @@ mod tests {
         assert_eq!(non_finite.glass_tint, None);
         assert_eq!(non_finite.size_scale, None);
         assert_eq!(non_finite.size_scale(), 1.0);
+        assert_eq!(non_finite.shadow_strength, None);
+        assert_eq!(non_finite.shadow_strength(Material::Flat), 0.0);
         // `to_value(..).is_ok()` would not do here, because serde_json turns a
         // non-finite float into `null` and would pass even without the drop.
         // What matters is that the token is gone, so it serializes as absent.
@@ -1328,6 +1510,8 @@ mod tests {
         let file = OverlayTheme {
             accent: hex("#7aa2f7"),
             size_scale: Some(1.1),
+            shadow_strength: Some(0.35),
+            show_waveform: Some(false),
             ..Default::default()
         };
         let settings = OverlayTheme {
@@ -1339,6 +1523,11 @@ mod tests {
             border_width: Some(3),
             glass_style: Some(GlassStyle::Clear),
             waveform_width: Some(5),
+            shadow_strength: Some(0.9),
+            shadow_offset_y: Some(8),
+            show_waveform: Some(true),
+            show_cancel: Some(false),
+            element_gap: Some(6),
             ..Default::default()
         };
 
@@ -1355,6 +1544,13 @@ mod tests {
         assert_eq!(merged.border_width, Some(3));
         assert_eq!(merged.glass_style, Some(GlassStyle::Clear));
         assert_eq!(merged.waveform_width, Some(5));
+        assert_eq!(merged.shadow_offset_y, Some(8));
+        assert_eq!(merged.show_cancel, Some(false));
+        assert_eq!(merged.element_gap, Some(6));
+        // …including where both set the same key, file first, and where the
+        // file's value is the falsy one, which `or` must not skip.
+        assert_eq!(merged.shadow_strength, Some(0.35));
+        assert_eq!(merged.show_waveform, Some(false));
         // …and a key neither of them sets still inherits.
         assert_eq!(merged.text, None);
 
@@ -1495,6 +1691,74 @@ mod tests {
         );
     }
 
+    /// The shadow's strength is the second token with a per-Material inherit,
+    /// after the border's alpha, and the only one whose two inherits are the
+    /// ends of its own range: Flat has never had a shadow, Glass has always
+    /// had macOS's.
+    #[test]
+    fn the_shadow_strength_inherits_per_material_and_clamps() {
+        let strength = |value: Option<f64>, material: Material| {
+            OverlayTheme {
+                shadow_strength: value,
+                ..Default::default()
+            }
+            .shadow_strength(material)
+        };
+
+        assert_eq!(strength(None, Material::Flat), 0.00);
+        assert_eq!(strength(None, Material::Glass), 1.00);
+        // A set value is that value on both Materials; only the inherit splits.
+        for material in [Material::Flat, Material::Glass] {
+            assert_eq!(strength(Some(0.00), material), 0.00);
+            assert_eq!(strength(Some(0.35), material), 0.35);
+            assert_eq!(strength(Some(1.00), material), 1.00);
+            assert_eq!(strength(Some(9.0), material), 1.00);
+            assert_eq!(strength(Some(-9.0), material), 0.00);
+        }
+        // A non-finite value is no strength at all, so it inherits.
+        assert_eq!(strength(Some(f64::NAN), Material::Glass), 1.00);
+        assert_eq!(strength(Some(f64::INFINITY), Material::Flat), 0.00);
+    }
+
+    /// The offset, the gap and the two visibility switches, at their inherit
+    /// values and at their bounds. The literals are the token table's, not the
+    /// module's constants.
+    #[test]
+    fn the_shadow_offset_gap_and_switches_inherit_todays_row() {
+        assert_eq!(OverlayTheme::default().shadow_offset_y(), 4);
+        assert_eq!(
+            OverlayTheme {
+                shadow_offset_y: Some(99),
+                ..Default::default()
+            }
+            .shadow_offset_y(),
+            16
+        );
+        assert_eq!(OverlayTheme::default().element_gap(), 0);
+        assert_eq!(
+            OverlayTheme {
+                element_gap: Some(99),
+                ..Default::default()
+            }
+            .element_gap(),
+            40
+        );
+
+        // Unset means shown, so a theme that says nothing draws today's row.
+        assert!(OverlayTheme::default().show_waveform());
+        assert!(OverlayTheme::default().show_cancel());
+        assert!(!OverlayTheme {
+            show_waveform: Some(false),
+            ..Default::default()
+        }
+        .show_waveform());
+        assert!(!OverlayTheme {
+            show_cancel: Some(false),
+            ..Default::default()
+        }
+        .show_cancel());
+    }
+
     /// The token contract's bounds are written twice: here, where Rust clamps
     /// the store, the theme file and the native geometry, and in
     /// `OVERLAY_TOKEN_BOUNDS` (`src/lib/overlayTheme.ts`), where TypeScript
@@ -1528,12 +1792,18 @@ mod tests {
         assert_eq!(max("waveform_gap"), f64::from(WAVEFORM_GAP_MAX));
         assert_eq!(min("waveform_width"), f64::from(WAVEFORM_WIDTH_MIN));
         assert_eq!(max("waveform_width"), f64::from(WAVEFORM_WIDTH_MAX));
+        assert_eq!(min("shadow_strength"), SHADOW_STRENGTH_MIN);
+        assert_eq!(max("shadow_strength"), SHADOW_STRENGTH_MAX);
+        assert_eq!(min("shadow_offset_y"), 0.0);
+        assert_eq!(max("shadow_offset_y"), f64::from(SHADOW_OFFSET_Y_MAX));
+        assert_eq!(min("element_gap"), 0.0);
+        assert_eq!(max("element_gap"), f64::from(ELEMENT_GAP_MAX));
 
-        // ...and neither table has a token the other lacks. The nine
+        // ...and neither table has a token the other lacks. The twelve
         // asserted above are every numeric token there is, on both sides.
         assert_eq!(
             bounds.matches("step:").count(),
-            9,
+            12,
             "a numeric token gained or lost a bound in the apply layer"
         );
     }
@@ -1558,6 +1828,8 @@ mod tests {
             ("padding", "--ov-pad"),
             ("waveform_gap", "--ov-wave-gap"),
             ("waveform_width", "--ov-wave-w"),
+            ("shadow_offset_y", "--ov-shadow-y"),
+            ("element_gap", "--ov-elem-gap"),
         ] {
             assert_eq!(
                 ts_number_field(inherit, token),
@@ -1616,6 +1888,41 @@ mod tests {
         assert_eq!(
             ts_number_field(inherit, "waveform_width"),
             f64::from(WAVEFORM_WIDTH_INHERIT)
+        );
+        assert_eq!(
+            ts_number_field(inherit, "waveform_gap"),
+            f64::from(WAVEFORM_GAP_INHERIT)
+        );
+        assert_eq!(
+            ts_number_field(inherit, "shadow_offset_y"),
+            f64::from(SHADOW_OFFSET_Y_INHERIT)
+        );
+        assert_eq!(
+            ts_number_field(inherit, "element_gap"),
+            f64::from(ELEMENT_GAP_INHERIT)
+        );
+
+        // The shadow's strength cannot sit in that table: its inherit differs
+        // per Material, like the border's alpha. Its two numbers are pinned to
+        // the apply layer's own record instead, which is what the tab shows and
+        // what the card is painted with.
+        let shadow_inherit = ts_declaration_block(APPLY_LAYER_TS, "SHADOW_STRENGTH_INHERIT");
+        for material in [Material::Flat, Material::Glass] {
+            let key = match material {
+                Material::Flat => "flat",
+                Material::Glass => "glass",
+            };
+            assert_eq!(
+                ts_number_field(shadow_inherit, key),
+                shadow_strength_inherit(material),
+                "the {key} shadow inherit has drifted"
+            );
+        }
+        // Flat's inherit is also the number the stylesheet paints while no
+        // token is set, so the two agree that today's Flat card has no shadow.
+        assert_eq!(
+            css_number(OVERLAY_CSS, "--ov-shadow-strength"),
+            shadow_strength_inherit(Material::Flat)
         );
     }
 }

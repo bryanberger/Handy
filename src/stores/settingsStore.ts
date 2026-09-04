@@ -195,7 +195,7 @@ const settingUpdaters: {
     commands.changeTranscribeGpuDevice(value as string | null),
   extra_recording_buffer_ms: (value) =>
     commands.changeExtraRecordingBufferSetting(value as number),
-  // One key carries all sixteen tokens. Every write sends the whole object, so
+  // One key carries all twenty-one tokens. Every write sends the whole object, so
   // the store's optimistic write and rollback work unchanged, and a whole-theme
   // reset is `resetSetting("overlay_theme")`.
   //

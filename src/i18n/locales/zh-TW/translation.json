@@ -266,6 +266,7 @@
         "preview": "螢幕上的預覽",
         "color": "懸浮窗顏色",
         "material": "懸浮窗材質",
+        "elements": "Overlay Elements",
         "size": "懸浮窗尺寸與間距",
         "themeFile": "主題檔案"
       },
@@ -346,6 +347,24 @@
           "title": "邊框不透明度",
           "description": "卡片邊緣的明顯程度。"
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "尺寸縮放",
           "description": "一次縮放卡片中的所有尺寸——寬度、高度、內邊距與文字。這是會改變懸浮窗在螢幕上所佔空間的兩個項目之一，另一個是邊框寬度。"
@@ -361,6 +380,10 @@
         "padding": {
           "title": "內邊距",
           "description": "卡片四邊的內邊距。懸浮窗視窗也會隨之變大。"
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "波形間距",

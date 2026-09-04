@@ -24,5 +24,7 @@ declare module "bun:test" {
 
   export function describe(label: string, body: () => void): void;
   export function test(label: string, body: () => void | Promise<void>): void;
+  export function beforeAll(body: () => void | Promise<void>): void;
+  export function afterAll(body: () => void | Promise<void>): void;
   export function expect(value: unknown): Matchers;
 }

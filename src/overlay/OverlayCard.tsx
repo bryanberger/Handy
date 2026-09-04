@@ -28,6 +28,20 @@ export interface OverlayCardProps {
   workKind: StreamWorkKind;
   elapsed: number;
   position: "top" | "bottom";
+  /**
+   * The `show_waveform` token. False empties the control row's centre column
+   * and puts `nowave` on the two resting shapes, which then shrink to the row
+   * that is left (`--ov-bare-w`). The working pill and the open panel keep
+   * their tuned widths, so every morph stays a grow.
+   */
+  showWaveform?: boolean;
+  /**
+   * The `show_cancel` token. False drops the button from every row; the
+   * keyboard shortcut and `--cancel` still cancel. The apply layer takes the
+   * row's 22 px side floor away with it, that floor being the room the button
+   * needed.
+   */
+  showCancel?: boolean;
   /** Bumped to remount the card fresh (replays the pop-in). */
   session: number;
   direction: "ltr" | "rtl";
@@ -62,6 +76,8 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
   workKind,
   elapsed,
   position,
+  showWaveform = true,
+  showCancel = true,
   session,
   direction,
   inert = false,
@@ -137,12 +153,14 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
 
   // dot (left) | waveform (center) | timer + cancel (right), same structure
   // for pill & panel, so the Live morph is a pure width change.
-  const listeningRow = (showTimer: boolean, showCancel: boolean) => (
+  // The grid keeps its three columns whatever is hidden, so the waveform and
+  // the working label stay centred and the dot stays at the left of its track.
+  const listeningRow = (showTimer: boolean) => (
     <div className="sbase">
       <div className="sbase-l">
         <span className={`sdot ${captureReady ? "ready" : "arming"}`} />
       </div>
-      {waveform}
+      {showWaveform ? waveform : <span />}
       <div className="sbase-r">
         {showTimer && <span className="stimer">{fmtTime(elapsed)}</span>}
         {showCancel && cancelBtn}
@@ -152,7 +170,7 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
 
   // spinner (left) | label (center) | cancel (right), the same 3-zone grid as
   // the listening row, so the label is centered.
-  const workingRow = (label: string, showCancel: boolean) => (
+  const workingRow = (label: string) => (
     <div className="sbase">
       <div className="sbase-l">
         <span className="sspinner" />
@@ -179,7 +197,11 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
       >
         <div
           key={session}
-          className={`scard ${open ? "open" : ""} ${collapsed ? "working" : ""}`}
+          className={`scard ${open ? "open" : ""} ${collapsed ? "working" : ""} ${
+            // The Live pill, the one Live shape that rests. `nowave` never
+            // meets `open` or `working`, so the width rules cannot collide.
+            !open && !collapsed && !showWaveform ? "nowave" : ""
+          }`}
         >
           <div className="stext">
             <div className="stext-clip">
@@ -205,9 +227,8 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
                 workKind === "polishing"
                   ? t("overlay.processing")
                   : t("overlay.transcribing"),
-                true,
               )
-            : listeningRow(open, true)}
+            : listeningRow(open)}
         </div>
       </div>
     );
@@ -228,8 +249,12 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
       className={`ov-stage ${position} ov-fade show`}
       {...inertAttribute(inert)}
     >
-      <div className={`scard compact ${working ? "cworking" : ""}`}>
-        {working ? workingRow(workLabel, true) : listeningRow(false, true)}
+      <div
+        className={`scard compact ${working ? "cworking" : ""} ${
+          !working && !showWaveform ? "nowave" : ""
+        }`}
+      >
+        {working ? workingRow(workLabel) : listeningRow(false)}
       </div>
     </div>
   );

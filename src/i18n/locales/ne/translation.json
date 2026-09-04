@@ -266,6 +266,7 @@
         "preview": "स्क्रिनमा पूर्वावलोकन",
         "color": "ओभरलेको रङ",
         "material": "ओभरलेको म्याटेरियल",
+        "elements": "Overlay Elements",
         "size": "ओभरलेको आकार र खाली ठाउँ",
         "themeFile": "थिम फाइल"
       },
@@ -346,6 +347,24 @@
           "title": "बोर्डरको अपारदर्शिता",
           "description": "कार्डको किनारा कति देखिन्छ।"
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "साइज स्केल",
           "description": "कार्डका सबै लम्बाइ एकैपटक ठूलो-सानो पार्छ — चौडाइ, उचाइ, प्याडिङ र अक्षर। ओभरलेलाई स्क्रिनमा कति ठाउँ चाहिन्छ भन्ने बदल्ने दुई मानमध्ये एक; अर्को चाहिँ बोर्डरको मोटाइ हो।"
@@ -361,6 +380,10 @@
         "padding": {
           "title": "प्याडिङ",
           "description": "कार्डका चारै पट्टिको भित्री प्याडिङ। ओभरले विन्डो पनि सँगै ठूलो हुन्छ।"
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "वेभफर्म ग्याप",

@@ -8,6 +8,7 @@ import type {
 import {
   applyOverlayTheme,
   autoForeground,
+  BOOLEAN_INHERIT,
   BORDER_INHERIT,
   BORDER_INHERIT_CLEAR,
   BORDER_OPACITY_INHERIT,
@@ -22,8 +23,11 @@ import {
   OVERLAY_TOKEN_BOUNDS,
   overlayThemeStyleDelta,
   resolveOverlayThemeVars,
+  SHADOW_BLUR_PX,
+  SHADOW_STRENGTH_INHERIT,
   storeOverlayTheme,
   SURFACE_OPACITY_INHERIT,
+  switchToken,
 } from "./overlayTheme";
 
 /**
@@ -157,8 +161,10 @@ describe("inherit", () => {
       radius: 24,
       border_width: 1,
       padding: 10,
+      element_gap: 0,
       waveform_gap: 3,
       waveform_width: 4,
+      shadow_offset_y: 4,
     };
     for (const [key, expected] of Object.entries(lengths)) {
       expect(
@@ -188,6 +194,29 @@ describe("inherit", () => {
     expect(inheritedTokenValue("glass_tint", "glass", "clear")).toBe(
       GLASS_TINT_INHERIT,
     );
+  });
+
+  // The second token whose inherit depends on the Material, and the only one
+  // whose two inherits are the ends of its own range. Flat's card has never
+  // cast a shadow; Glass's window has always cast macOS's.
+  test("the shadow inherits none under Flat and macOS's under Glass", () => {
+    expect(SHADOW_STRENGTH_INHERIT).toEqual({ flat: 0, glass: 1 });
+    for (const glassStyle of ["regular", "clear"] as const) {
+      expect(inheritedTokenValue("shadow_strength", "flat", glassStyle)).toBe(
+        0,
+      );
+      expect(inheritedTokenValue("shadow_strength", "glass", glassStyle)).toBe(
+        1,
+      );
+    }
+  });
+
+  // Both switches are on, so an unset theme draws today's row.
+  test("both row elements are shown while unset", () => {
+    expect(BOOLEAN_INHERIT).toEqual({
+      show_waveform: true,
+      show_cancel: true,
+    });
   });
 
   // The one token whose inherit is not a single number. The card's edge is
@@ -349,10 +378,15 @@ describe("derivations", () => {
       // glass is a look; an invisible Flat card is not.
       glass_tint: { min: 0.0, max: 1.0, step: 0.01 },
       border_opacity: { min: 0.0, max: 1.0, step: 0.01 },
+      // The shadow reaches zero on both Materials: that is Flat's inherit, and
+      // under Glass it is how macOS's own shadow is turned off.
+      shadow_strength: { min: 0.0, max: 1.0, step: 0.01 },
+      shadow_offset_y: { min: 0, max: 16, step: 1 },
       size_scale: { min: 0.8, max: 1.5, step: 0.05 },
       radius: { min: 0, max: 32, step: 1 },
       border_width: { min: 0, max: 4, step: 1 },
       padding: { min: 0, max: 20, step: 1 },
+      element_gap: { min: 0, max: 40, step: 1 },
       waveform_gap: { min: 0, max: 5, step: 1 },
       waveform_width: { min: 2, max: 6, step: 1 },
     });
@@ -366,6 +400,7 @@ describe("derivations", () => {
           radius: 12,
           border_width: 2,
           padding: 14,
+          element_gap: 6,
           waveform_gap: 2,
           waveform_width: 5,
         }),
@@ -375,6 +410,7 @@ describe("derivations", () => {
       "--ov-radius": "12px",
       "--ov-border-w": "2px",
       "--ov-pad": "14px",
+      "--ov-elem-gap": "6px",
       "--ov-wave-gap": "2px",
       "--ov-wave-w": "5px",
     });
@@ -630,7 +666,7 @@ describe("the two alphas", () => {
 });
 
 describe("the worked example", () => {
-  /** The README's "A full theme", all sixteen tokens set. */
+  /** The README's "A full theme", all twenty-one tokens set. */
   const FULL_THEME: Partial<OverlayTheme> = {
     accent: "#7aa2f7",
     surface: "#1a1b26",
@@ -642,10 +678,15 @@ describe("the worked example", () => {
     material: "glass",
     glass_material: "popover",
     glass_style: "clear",
+    shadow_strength: 0.35,
+    shadow_offset_y: 6,
+    show_waveform: true,
+    show_cancel: false,
     size_scale: 1.1,
     radius: 12,
     border_width: 1,
     padding: 14,
+    element_gap: 8,
     waveform_gap: 2,
     waveform_width: 4,
   };
@@ -657,7 +698,7 @@ describe("the worked example", () => {
   // `glass_material` and `glass_style` write no CSS, each setting a native
   // view property. The neutrals mix from `var(--s-text)`, resolving to the
   // `--s-text` beside them, while a set `border` replaces it for the edge.
-  test("resolves to exactly the fourteen properties listed", () => {
+  test("resolves to exactly the nineteen properties listed", () => {
     expect(resolveOverlayThemeVars(resolved(FULL_THEME))).toEqual({
       "--s-accent": "#7aa2f7",
       "--s-accent-soft": "color-mix(in srgb, #7aa2f7 20%, transparent)",
@@ -671,8 +712,16 @@ describe("the worked example", () => {
       "--ov-radius": "12px",
       "--ov-border-w": "1px",
       "--ov-pad": "14px",
+      "--ov-elem-gap": "8px",
       "--ov-wave-gap": "2px",
       "--ov-wave-w": "4px",
+      // show_cancel: false takes the row's side floor with the button.
+      "--ov-side-min": "0px",
+      // The Flat shadow at the example's own strength and offset, its slack
+      // ceil((20 + 6) * 1.1) = 29.
+      "--ov-shadow-strength": "0.35",
+      "--ov-shadow-y": "6px",
+      "--ov-shadow-slack": "29px",
     });
   });
 
@@ -680,15 +729,133 @@ describe("the worked example", () => {
     // Every token set means the module writes all it can, so the lists must
     // match. One missing from OVERLAY_THEME_CSS_PROPERTIES paints on after its
     // token returns to inherit; one listed but never written is dead weight.
-    const written = Object.keys(
-      resolveOverlayThemeVars(resolved(FULL_THEME, "glass")),
-    );
+    // Read under Flat, the Material that draws its own shadow; under Glass the
+    // three shadow properties are deliberately absent (macOS draws it).
+    const written = Object.keys(resolveOverlayThemeVars(resolved(FULL_THEME)));
     for (const property of written) {
       expect(OVERLAY_THEME_CSS_PROPERTIES).toContain(property);
     }
     expect([...written].sort()).toEqual(
       [...OVERLAY_THEME_CSS_PROPERTIES].sort(),
     );
+  });
+});
+
+describe("the shadow", () => {
+  test("Flat writes the strength, the offset and a slack it has ceiled", () => {
+    expect(resolveOverlayThemeVars(resolved({ shadow_strength: 0.5 }))).toEqual(
+      {
+        "--ov-shadow-strength": "0.5",
+        // The offset falls back to its inherit, so the slack is 20 + 4.
+        "--ov-shadow-y": "4px",
+        "--ov-shadow-slack": "24px",
+      },
+    );
+
+    expect(
+      resolveOverlayThemeVars(
+        resolved({ shadow_strength: 1, shadow_offset_y: 16 }),
+      )["--ov-shadow-slack"],
+    ).toBe("36px");
+  });
+
+  test("the slack is the reach scaled and rounded up, never a fraction", () => {
+    // CSS cannot ceil and the native window inset the card by an integer, so
+    // the apply layer is the one that rounds. 0.8 x 24 is 19.2.
+    for (const [scale, offset, slack] of [
+      [0.8, 4, "20px"],
+      [1, 0, "20px"],
+      [1.1, 6, "29px"],
+      [1.5, 4, "36px"],
+      [1.5, 16, "54px"],
+    ] as const) {
+      expect(
+        resolveOverlayThemeVars(
+          resolved({
+            shadow_strength: 0.4,
+            shadow_offset_y: offset,
+            size_scale: scale,
+          }),
+        )["--ov-shadow-slack"],
+      ).toBe(slack);
+    }
+    expect(SHADOW_BLUR_PX).toBe(20);
+  });
+
+  test("no shadow means no properties at all, which is what Flat inherits", () => {
+    expect(resolveOverlayThemeVars(resolved({}))).toEqual({});
+    expect(
+      resolveOverlayThemeVars(
+        resolved({ shadow_strength: 0, shadow_offset_y: 12 }),
+      ),
+    ).toEqual({});
+  });
+
+  test("Glass writes none of them, because macOS draws that shadow", () => {
+    const vars = resolveOverlayThemeVars(
+      resolved({ shadow_strength: 1, shadow_offset_y: 8 }, "glass"),
+    );
+    expect(vars["--ov-shadow-strength"]).toBeUndefined();
+    expect(vars["--ov-shadow-y"]).toBeUndefined();
+    expect(vars["--ov-shadow-slack"]).toBeUndefined();
+
+    // …and an unset strength under Glass inherits 1, still writing nothing.
+    const inherited = resolveOverlayThemeVars(resolved({}, "glass"));
+    expect(inherited["--ov-shadow-slack"]).toBeUndefined();
+  });
+
+  test("a Glass theme downgraded to Flat draws Flat's shadow", () => {
+    // `effective_material` decides, as it does for every other property. A
+    // Mac that cannot render Glass shows the Flat card, so it shows the CSS
+    // shadow the theme asked for.
+    expect(
+      resolveOverlayThemeVars(
+        resolved({ material: "glass", shadow_strength: 0.6 }, "flat"),
+      )["--ov-shadow-strength"],
+    ).toBe("0.6");
+  });
+});
+
+describe("the row's own tokens", () => {
+  test("the element gap is written raw, like every other length", () => {
+    expect(resolveOverlayThemeVars(resolved({ element_gap: 12 }))).toEqual({
+      "--ov-elem-gap": "12px",
+    });
+    // Zero is a value, not "unset": it is the gap the stylesheet already has,
+    // but writing it keeps the removal rule honest.
+    expect(resolveOverlayThemeVars(resolved({ element_gap: 0 }))).toEqual({
+      "--ov-elem-gap": "0px",
+    });
+  });
+
+  test("hiding the cancel button drops the row's side floor", () => {
+    expect(resolveOverlayThemeVars(resolved({ show_cancel: false }))).toEqual({
+      "--ov-side-min": "0px",
+    });
+    // Shown, whether by inherit or by an explicit true, is the stylesheet's
+    // own 22px, so nothing is written and the CSS is not duplicated here.
+    expect(resolveOverlayThemeVars(resolved({ show_cancel: true }))).toEqual(
+      {},
+    );
+    expect(resolveOverlayThemeVars(resolved({}))).toEqual({});
+  });
+
+  test("hiding the waveform is markup only, no custom property", () => {
+    // The card renders no `.swave` and takes the `nowave` width rule; there is
+    // nothing for the apply layer to write.
+    expect(resolveOverlayThemeVars(resolved({ show_waveform: false }))).toEqual(
+      {},
+    );
+  });
+
+  test("a switch is a switch only when it is a boolean", () => {
+    // The card reads these two rather than a custom property, so they are
+    // re-validated where it reads them.
+    for (const key of ["show_waveform", "show_cancel"] as const) {
+      expect(switchToken({ ...INHERIT_ALL, [key]: false }, key)).toBe(false);
+      expect(switchToken({ ...INHERIT_ALL, [key]: true }, key)).toBe(true);
+      expect(switchToken(INHERIT_ALL, key)).toBe(BOOLEAN_INHERIT[key]);
+    }
   });
 });
 
@@ -729,15 +896,26 @@ describe("the boundary re-validation", () => {
         "border_opacity": 5,
         "border_width": 9,
         "padding": "14px",
+        "element_gap": 99,
         "waveform_gap": null,
-        "waveform_width": 1
+        "waveform_width": 1,
+        "shadow_strength": 9,
+        "shadow_offset_y": "6px",
+        "show_waveform": "false",
+        "show_cancel": 0
       },
       "effective_material": "opaque",
       "glass_support": { "supported": true, "available": true, "engine": "liquid" },
       "file": null
     }`) as ResolvedOverlayTheme;
 
+    // An out-of-range strength is unset, so no shadow is drawn rather than a
+    // maximal one, and `"false"` is a string, not the switch it looks like.
     expect(resolveOverlayThemeVars(stale)).toEqual({});
+    // The switches the card's markup reads take the same treatment: a string
+    // and a 0 are not booleans, so both elements stay on the row.
+    expect(switchToken(stale.theme, "show_waveform")).toBe(true);
+    expect(switchToken(stale.theme, "show_cancel")).toBe(true);
 
     const root = fakeRoot();
     applyOverlayTheme(root.element, stale);

@@ -266,6 +266,7 @@
         "preview": "Ekranda Önizleme",
         "color": "Ekran Katmanı Rengi",
         "material": "Ekran Katmanı Malzemesi",
+        "elements": "Overlay Elements",
         "size": "Ekran Katmanı Boyutu ve Boşlukları",
         "themeFile": "Tema Dosyası"
       },
@@ -346,6 +347,24 @@
           "title": "Kenarlık Opaklığı",
           "description": "Kartın kenarının ne kadar görünür olduğu."
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "Boyut Ölçeği",
           "description": "Karttaki tüm uzunlukları aynı anda ölçekler — genişlikler, yükseklikler, iç boşluklar ve yazı. Ekran katmanının ekranda ne kadar yer kapladığını değiştiren iki değerden biri; diğeri kenarlık kalınlığıdır."
@@ -361,6 +380,10 @@
         "padding": {
           "title": "İç Boşluk",
           "description": "Kartın dört tarafındaki iç boşluk. Ekran katmanı penceresi de onunla birlikte büyür."
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "Dalga Formu Aralığı",

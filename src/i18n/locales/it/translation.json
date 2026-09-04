@@ -266,6 +266,7 @@
         "preview": "Anteprima sullo schermo",
         "color": "Colore dell'overlay",
         "material": "Materiale dell'overlay",
+        "elements": "Overlay Elements",
         "size": "Dimensioni e spaziatura dell'overlay",
         "themeFile": "File del tema"
       },
@@ -346,6 +347,24 @@
           "title": "Opacità del bordo",
           "description": "Quanto è visibile il bordo della scheda."
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "Scala delle dimensioni",
           "description": "Ridimensiona tutte le lunghezze della scheda insieme — larghezze, altezze, spaziatura interna e testo. Uno dei due valori che cambiano quanto spazio occupa l'overlay sullo schermo; l'altro è lo spessore del bordo."
@@ -361,6 +380,10 @@
         "padding": {
           "title": "Spaziatura interna",
           "description": "La spaziatura interna della scheda su tutti e quattro i lati. La finestra dell'overlay cresce di conseguenza."
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "Spaziatura della forma d'onda",

@@ -243,6 +243,7 @@
         "preview": "المعاينة على الشاشة",
         "color": "لون التراكب",
         "material": "خامة التراكب",
+        "elements": "Overlay Elements",
         "size": "حجم التراكب وتباعده",
         "themeFile": "ملف السمة"
       },
@@ -323,6 +324,24 @@
           "title": "عتامة الحدّ",
           "description": "مدى وضوح حافة البطاقة."
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "مقياس الحجم",
           "description": "يكبّر كل أبعاد البطاقة دفعة واحدة — العروض والارتفاعات والتباعد الداخلي والخط. واحدة من قيمتين تغيّران مساحة التراكب على الشاشة؛ والأخرى هي سُمك الحدّ."
@@ -338,6 +357,10 @@
         "padding": {
           "title": "التباعد الداخلي",
           "description": "التباعد الداخلي للبطاقة من الجهات الأربع. تكبر نافذة التراكب معه."
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "تباعد الموجة",

@@ -33,17 +33,23 @@ export type OverlayThemeKey = keyof OverlayTheme;
 /** The four tokens whose value is a colour. */
 export type OverlayColorKey = "accent" | "surface" | "text" | "border";
 
-/** The nine tokens whose value is a number. */
+/** The twelve tokens whose value is a number. */
 export type OverlayNumericKey =
   | "surface_opacity"
   | "glass_tint"
   | "border_opacity"
+  | "shadow_strength"
+  | "shadow_offset_y"
   | "size_scale"
   | "radius"
   | "border_width"
   | "padding"
+  | "element_gap"
   | "waveform_gap"
   | "waveform_width";
+
+/** The two tokens whose value is a switch. */
+export type OverlayBooleanKey = "show_waveform" | "show_cancel";
 
 /**
  * The numeric tokens' bounds, the same numbers Rust clamps to. Read by the
@@ -58,10 +64,13 @@ export const OVERLAY_TOKEN_BOUNDS: Record<
   surface_opacity: { min: 0.3, max: 1.0, step: 0.01 },
   glass_tint: { min: 0.0, max: 1.0, step: 0.01 },
   border_opacity: { min: 0.0, max: 1.0, step: 0.01 },
+  shadow_strength: { min: 0.0, max: 1.0, step: 0.01 },
+  shadow_offset_y: { min: 0, max: 16, step: 1 },
   size_scale: { min: 0.8, max: 1.5, step: 0.05 },
   radius: { min: 0, max: 32, step: 1 },
   border_width: { min: 0, max: 4, step: 1 },
   padding: { min: 0, max: 20, step: 1 },
+  element_gap: { min: 0, max: 40, step: 1 },
   waveform_gap: { min: 0, max: 5, step: 1 },
   waveform_width: { min: 2, max: 6, step: 1 },
 };
@@ -78,10 +87,15 @@ export const INHERIT_ALL: OverlayTheme = {
   material: null,
   glass_material: null,
   glass_style: null,
+  shadow_strength: null,
+  shadow_offset_y: null,
+  show_waveform: null,
+  show_cancel: null,
   size_scale: null,
   radius: null,
   border_width: null,
   padding: null,
+  element_gap: null,
   waveform_gap: null,
   waveform_width: null,
 };
@@ -199,6 +213,39 @@ export const BORDER_OPACITY_INHERIT: Record<Material, number> = {
  */
 export const BORDER_OPACITY_INHERIT_CLEAR = 0.35;
 
+/**
+ * The alpha an unset `shadow_strength` resolves to, per Material, the second
+ * token after the border's alpha whose inherit depends on it, and the only one
+ * whose two inherits are the ends of its own range.
+ *
+ * Flat has never cast a shadow: its window is larger than its card and
+ * transparent around it, so a window shadow would trace a rectangle nobody can
+ * see, and no CSS shadow was ever drawn. Glass has always cast macOS's own,
+ * because there the window is the card exactly. So both Materials inherit what
+ * they already looked like, and the token adds a shadow to one and takes one
+ * away from the other. `shadow_strength_inherit` in
+ * `src-tauri/src/overlay_theme.rs` is the same pair.
+ */
+export const SHADOW_STRENGTH_INHERIT: Record<Material, number> = {
+  flat: 0,
+  glass: 1,
+};
+
+/**
+ * The blur radius of the Flat card's drop shadow, px at size scale 1, and the
+ * `--ov-shadow-blur` the stylesheet paints with.
+ *
+ * Derived, not a token: `shadow_strength` and `shadow_offset_y` are the two
+ * controls the shadow gets, a third for the blur would make it a project, and a
+ * shadow that is not black is a tint, which the border tokens already cover.
+ *
+ * With the offset it is how far the shadow reaches from the card's edge, which
+ * is exactly the window's shadow slack. `overlay_geometry.rs` holds the same
+ * number as `CARD_SHADOW_BLUR` and pins both against this one, since the two
+ * sides must round the same product to the same integer.
+ */
+export const SHADOW_BLUR_PX = 20;
+
 /** The Glass style an unset `glass_style` resolves to, re-validated. */
 function effectiveGlassStyleOf(theme: OverlayTheme): GlassStyle {
   return theme.glass_style === "clear" ? "clear" : "regular";
@@ -222,15 +269,17 @@ export function inheritedBorder(
 
 /** Each numeric token's single-number inherit, from `RecordingOverlay.css`. */
 const STATIC_NUMERIC_INHERIT: Record<
-  Exclude<OverlayNumericKey, "border_opacity">,
+  Exclude<OverlayNumericKey, "border_opacity" | "shadow_strength">,
   number
 > = {
   surface_opacity: SURFACE_OPACITY_INHERIT, // --s-surface's own 98%
   glass_tint: GLASS_TINT_INHERIT, // measured, not a CSS default
+  shadow_offset_y: 4, // --ov-shadow-y
   size_scale: 1, // --ov-scale
   radius: 24, // --ov-radius
   border_width: 1, // --ov-border-w
   padding: 10, // --ov-pad
+  element_gap: 0, // --ov-elem-gap
   waveform_gap: 3, // --ov-wave-gap
   waveform_width: 4, // --ov-wave-w
 };
@@ -257,9 +306,32 @@ export function inheritedTokenValue(
   material: Material,
   glassStyle: GlassStyle,
 ): number {
-  return key === "border_opacity"
-    ? inheritedBorder(material, glassStyle).opacity
-    : STATIC_NUMERIC_INHERIT[key];
+  if (key === "border_opacity")
+    return inheritedBorder(material, glassStyle).opacity;
+  if (key === "shadow_strength") return SHADOW_STRENGTH_INHERIT[material];
+  return STATIC_NUMERIC_INHERIT[key];
+}
+
+/** What a switch resolves to while unset: both elements are on the row, which
+ *  is today's card. No per-Material split, so this is a constant rather than a
+ *  function of the Material like the two above. */
+export const BOOLEAN_INHERIT: Record<OverlayBooleanKey, boolean> = {
+  show_waveform: true,
+  show_cancel: true,
+};
+
+/**
+ * A switch token, re-validated like the numbers and the colours are: anything
+ * that is not a boolean is treated as unset and inherits (rule 2). The overlay
+ * reads its switches out of the localStorage mirror at boot, which bypasses
+ * Rust, so a hand-edited `"true"` or `1` must not reach the card's markup.
+ */
+export function switchToken(
+  theme: OverlayTheme,
+  key: OverlayBooleanKey,
+): boolean {
+  const value = theme[key];
+  return typeof value === "boolean" ? value : BOOLEAN_INHERIT[key];
 }
 
 /**
@@ -314,8 +386,13 @@ export const OVERLAY_THEME_LENGTH_PROPERTIES: readonly string[] = [
   "--ov-radius",
   "--ov-border-w",
   "--ov-pad",
+  "--ov-elem-gap",
   "--ov-wave-gap",
   "--ov-wave-w",
+  "--ov-side-min",
+  "--ov-shadow-strength",
+  "--ov-shadow-y",
+  "--ov-shadow-slack",
 ];
 
 /**
@@ -515,6 +592,36 @@ export function resolveOverlayThemeVars(
 
   const waveformWidth = validToken(theme, "waveform_width");
   if (waveformWidth !== null) vars["--ov-wave-w"] = `${waveformWidth}px`;
+
+  // The row's own two gaps, which every card width pays for twice.
+  const elementGap = validToken(theme, "element_gap");
+  if (elementGap !== null) vars["--ov-elem-gap"] = `${elementGap}px`;
+
+  // The side columns' floor exists to hold the cancel button, so it goes with
+  // it. Written only for the value that is not the stylesheet's, which keeps
+  // the 22 out of this file: the CSS declares it, and this says "there is no
+  // button any more".
+  if (theme.show_cancel === false) vars["--ov-side-min"] = "0px";
+
+  // The shadow, Flat's only. Under Glass it is macOS's own, drawn outside a
+  // window this card fills exactly, and `shadow_strength` merely switches it
+  // (`overlay_glass::window_shadow`), so no property is written there.
+  //
+  // The slack is the one pre-scaled property in the file. CSS cannot round, and
+  // the native window inset the card by `ceil(reach * scale)`; a fractional
+  // disagreement would drift the card off its screen offset, so the integer is
+  // computed once, here.
+  const strength =
+    validToken(theme, "shadow_strength") ?? SHADOW_STRENGTH_INHERIT[material];
+  if (!glass && strength > 0) {
+    const offsetY =
+      validToken(theme, "shadow_offset_y") ??
+      STATIC_NUMERIC_INHERIT.shadow_offset_y;
+    const slack = Math.ceil((SHADOW_BLUR_PX + offsetY) * (scale ?? 1));
+    vars["--ov-shadow-strength"] = String(strength);
+    vars["--ov-shadow-y"] = `${offsetY}px`;
+    vars["--ov-shadow-slack"] = `${slack}px`;
+  }
 
   return vars;
 }

@@ -88,6 +88,10 @@ _Avoid_: effect, blur mode, vibrancy, acrylic, frosted (implementation terms)
 The single factor that zooms every length in the card at once, including widths, heights, paddings, and type. With border width and padding, it is one of the tokens that change how much room the overlay needs on screen.
 _Avoid_: zoom, size, scale factor (bare), DPI, density
 
+**Element gap**:
+The extra space between the elements of the card's control row. The row carries one on each side of its middle, so every card is twice the gap wider and the middle keeps the room it had.
+_Avoid_: spacing, item gap, column gap, padding (which insets the card)
+
 **Resolved overlay theme**:
 The overlay theme after the per-token merge of theme file, then settings, then inherit, clamped. It also carries the material actually rendered, whether Glass is available, and the theme file's state. The single thing both windows read.
 _Avoid_: merged theme, effective theme, computed theme
@@ -99,6 +103,10 @@ _Avoid_: theme applier, style engine, renderer
 **Window slack**:
 The extra native window area around the card, per overlay state, that keeps the card's animations inside the window. Zero under Glass so the blur never paints outside the card.
 _Avoid_: padding, margin, window bleed
+
+**Shadow slack**:
+The window margin, the same on all four sides, that the card is inset by so its own shadow falls inside the window. Zero under Glass, where macOS draws the shadow outside the card, and zero when the shadow strength is zero. The window keeps its distance from the screen edge, so the slack lifts the card rather than moving the window.
+_Avoid_: shadow padding, shadow margin, window slack (which is the room a morph needs)
 
 **Glass style**:
 Which Liquid Glass recipe the surface is drawn with under Glass on macOS 26 and later: Regular or Clear.

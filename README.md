@@ -76,7 +76,7 @@ The app data directory is `~/Library/Application Support/com.pais.handy/` on mac
 
 The Appearance tab shows the path in effect, or `~/.config/handy/overlay_theme.json` when there is no file anywhere, with a button that opens its folder, creating `~/.config/handy/` first if it does not exist. Under `HANDY_OVERLAY_THEME_FILE` nothing is created, and the button opens the nearest folder along that path that already exists.
 
-**What the file may contain.** A JSON object with an optional `version` plus any of the sixteen overlay-theme tokens:
+**What the file may contain.** A JSON object with an optional `version` plus any of the twenty-one overlay-theme tokens:
 
 | Key               | Type       | Range                                                                                                                           |
 | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
@@ -91,16 +91,25 @@ The Appearance tab shows the path in effect, or `~/.config/handy/overlay_theme.j
 | `material`        | string     | `"flat"` or `"glass"`                                                                                                           |
 | `glass_material`  | string     | `"hud_window"`, `"popover"`, `"menu"`, `"sidebar"`, `"under_window_background"`, `"sheet"`, `"tooltip"`, `"content_background"` |
 | `glass_style`     | string     | `"regular"` or `"clear"`                                                                                                        |
+| `shadow_strength` | number     | 0.00 to 1.00                                                                                                                    |
+| `shadow_offset_y` | integer px | 0 to 16                                                                                                                         |
+| `show_waveform`   | boolean    | `true` or `false`                                                                                                               |
+| `show_cancel`     | boolean    | `true` or `false`                                                                                                               |
 | `size_scale`      | number     | 0.80 to 1.50                                                                                                                    |
 | `radius`          | integer px | 0 to 32                                                                                                                         |
 | `border_width`    | integer px | 0 to 4                                                                                                                          |
 | `padding`         | integer px | 0 to 20                                                                                                                         |
+| `element_gap`     | integer px | 0 to 40                                                                                                                         |
 | `waveform_gap`    | integer px | 0 to 5                                                                                                                          |
 | `waveform_width`  | integer px | 2 to 6                                                                                                                          |
 
-`surface_opacity` and `glass_tint` are the card's two alphas, one per material. `surface_opacity` is how opaque the Flat card is, and `glass_tint` is how much of the same `surface` colour covers the glass. Each is ignored under the other material, so one theme can hold an opaque Flat card and see-through Glass, and picking Glass shows glass straight away. The Appearance tab shows whichever applies to the material in effect. `glass_style` picks which Liquid Glass draws the Glass surface on macOS 26 and later, and is the one the Appearance tab shows; `glass_material` picks the `NSVisualEffectMaterial` blur on older macOS. `glass_material` is **theme-file only**. It drives the fallback engine, has no row in the Appearance tab, and Handy reads it from this file and nowhere else. Each is read by one engine and ignored by the other, so a file can carry both, and both do nothing while `material` is `"flat"` or off macOS. `border`, `border_opacity` and `border_width` are the card's edge. An unset edge is a foreground hairline everywhere except Clear glass, where it is white at 35 %, the highlight Spotlight's own capsule carries. Clear is the one surface dark enough in both app themes for it to read. Under Glass the overlay window also casts macOS's own drop shadow, because there the window is the card exactly; Flat has none. `padding` insets the card on all four sides, so it makes the card taller as well as roomier. With `size_scale` and `border_width` it is one of the three tokens that change how much room the overlay needs on screen.
+`surface_opacity` and `glass_tint` are the card's two alphas, one per material. `surface_opacity` is how opaque the Flat card is, and `glass_tint` is how much of the same `surface` colour covers the glass. Each is ignored under the other material, so one theme can hold an opaque Flat card and see-through Glass, and picking Glass shows glass straight away. The Appearance tab shows whichever applies to the material in effect. `glass_style` picks which Liquid Glass draws the Glass surface on macOS 26 and later, and is the one the Appearance tab shows; `glass_material` picks the `NSVisualEffectMaterial` blur on older macOS. `glass_material` is **theme-file only**. It drives the fallback engine, has no row in the Appearance tab, and Handy reads it from this file and nowhere else. Each is read by one engine and ignored by the other, so a file can carry both, and both do nothing while `material` is `"flat"` or off macOS. `border`, `border_opacity` and `border_width` are the card's edge. An unset edge is a foreground hairline everywhere except Clear glass, where it is white at 35 %, the highlight Spotlight's own capsule carries. Clear is the one surface dark enough in both app themes for it to read. `shadow_strength` and `shadow_offset_y` are the card's drop shadow, and they mean something different on each material, because each draws its shadow somewhere else. Under Flat the card draws its own, so the strength shapes it and the offset pushes it further below the card; unset, the strength is 0 and the offset 4, today's shadowless card. Under Glass the shadow is macOS's own, drawn outside a window the card fills exactly, and `NSWindow` offers no strength, radius or offset at all, so any value above zero is that shadow and zero turns it off; unset it is 1, the Glass overlay that has always shipped, and `shadow_offset_y` is ignored. A Flat shadow grows the overlay window on every side to fall into, and the card is inset from the window's edges by the same amount, so turning a shadow on lifts a bottom overlay (and lowers a top one) by however far its shadow reaches. The window keeps its distance from the screen edge, so it never grows over the Dock, the taskbar or the menu bar and never swallows a click meant for them.
 
-**Inherit.** Every token is optional, and an absent key does exactly what an explicit `null` does. Both inherit Handy's own theme-aware value for that token. The merge is per key, `file, else settings window, else built-in`, so a file that sets only `surface` leaves the other fifteen tokens under the Appearance tab's control. Tokens the file sets are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are valid documents that change nothing, and deleting the file stops the override.
+`show_waveform` and `show_cancel` take those two elements off the overlay, for a more minimal card. Both are `true` unset, so a theme that says nothing draws today's row. The recording dot and the Live timer stay. Hiding the waveform also shrinks the resting pill to what is left of the row; the working pill and the Live panel keep their widths. Hiding the cancel button does not take cancelling away: the keyboard shortcut and `--cancel` still work.
+
+`padding` insets the card on all four sides, so it makes the card taller as well as roomier. `element_gap` puts extra space between the row's elements, twice per row, so the card is twice the gap wider; unset it is 0. With `size_scale` and `border_width` those two are the four tokens that change how much room the overlay needs on screen under either material. Under Flat the two shadow tokens add to them, because the window grows on every side to hold the shadow. Under Glass, where the window is the card exactly, `waveform_gap`, `waveform_width`, `show_waveform` and `show_cancel` do instead, because they decide how wide a resting pill is.
+
+**Inherit.** Every token is optional, and an absent key does exactly what an explicit `null` does. Both inherit Handy's own theme-aware value for that token. The merge is per key, `file, else settings window, else built-in`, so a file that sets only `surface` leaves the other twenty tokens under the Appearance tab's control. Tokens the file sets are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are valid documents that change nothing, and deleting the file stops the override.
 
 **A full theme:**
 
@@ -117,16 +126,21 @@ The Appearance tab shows the path in effect, or `~/.config/handy/overlay_theme.j
   "material": "glass",
   "glass_material": "popover",
   "glass_style": "clear",
+  "shadow_strength": 0.35,
+  "shadow_offset_y": 6,
+  "show_waveform": true,
+  "show_cancel": false,
   "size_scale": 1.1,
   "radius": 12,
   "border_width": 1,
   "padding": 14,
+  "element_gap": 8,
   "waveform_gap": 2,
   "waveform_width": 4
 }
 ```
 
-**What a theming tool might emit.** Color parsing is lenient. It accepts `#RGB` shorthand, a missing `#`, any case, surrounding whitespace, and a UTF-8 BOM. The three enums are lenient too. `material` ignores case and surrounding whitespace; `glass_material` and `glass_style` also drop everything that is not a letter or a digit, so `"HUD Window"`, `"hud-window"` and `"hud_window"` all read as `"hud_window"`, and `"Clear"` and `"clear "` both read as `"clear"`. Everything else must be a correctly typed JSON value. Unknown keys are ignored, so `"_comment"` is the supported way to annotate a document:
+**What a theming tool might emit.** Color parsing is lenient. It accepts `#RGB` shorthand, a missing `#`, any case, surrounding whitespace, and a UTF-8 BOM. The three enums are lenient too. `material` ignores case and surrounding whitespace; `glass_material` and `glass_style` also drop everything that is not a letter or a digit, so `"HUD Window"`, `"hud-window"` and `"hud_window"` all read as `"hud_window"`, and `"Clear"` and `"clear "` both read as `"clear"`. Everything else must be a correctly typed JSON value, including the two switches, which take `true` and `false` and not `"true"` or `1`. Unknown keys are ignored, so `"_comment"` is the supported way to annotate a document:
 
 ```json
 {
@@ -141,7 +155,7 @@ The Appearance tab shows the path in effect, or `~/.config/handy/overlay_theme.j
 }
 ```
 
-That resolves to accent `#8aadf4`, surface `#24273a`, text `#ccaadd`, surface opacity 1.0 and material Flat; `app_theme` is ignored with a warning, and the eleven unmentioned tokens inherit.
+That resolves to accent `#8aadf4`, surface `#24273a`, text `#ccaadd`, surface opacity 1.0 and material Flat; `app_theme` is ignored with a warning, and the sixteen unmentioned tokens inherit.
 
 **When it is re-read.** At launch, every time the overlay is shown, when the Appearance tab is opened, and from the tab's Reload button. There is no file watcher, so a theme switch takes effect on the next dictation rather than instantly. No restart is needed.
 

@@ -266,6 +266,7 @@
         "preview": "Podgląd na ekranie",
         "color": "Kolor nakładki",
         "material": "Materiał nakładki",
+        "elements": "Overlay Elements",
         "size": "Rozmiar i odstępy nakładki",
         "themeFile": "Plik motywu"
       },
@@ -346,6 +347,24 @@
           "title": "Krycie obramowania",
           "description": "Jak bardzo widoczna jest krawędź karty."
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "Skala rozmiaru",
           "description": "Skaluje wszystkie wymiary karty naraz — szerokości, wysokości, odstępy wewnętrzne i tekst. Jedna z dwóch wartości, które zmieniają ilość miejsca zajmowanego przez nakładkę na ekranie; drugą jest grubość obramowania."
@@ -361,6 +380,10 @@
         "padding": {
           "title": "Odstęp wewnętrzny",
           "description": "Odstęp wewnętrzny karty ze wszystkich czterech stron. Okno nakładki powiększa się razem z nim."
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "Odstęp fali",

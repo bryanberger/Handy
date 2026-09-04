@@ -26,15 +26,19 @@ describe("moreDiagnosticsCount", () => {
 
 describe("lockedTokenCounts", () => {
   test("the total is the rows on screen, not every token there is", () => {
-    // Two short of the contract's sixteen on either Material. `glass_material`
+    // Nineteen of the contract's twenty-one under Flat. `glass_material`
     // drives the pre-macOS-26 fallback engine and has no row; the two alphas
     // share one slot, Flat's surface opacity or Glass's tint, never both.
-    for (const material of ["flat", "glass"] as const) {
-      const { total } = lockedTokenCounts([], material);
-      expect(total).toBe(14);
-      expect(total).toBe(OVERLAY_TOKEN_FIELDS.length - 1);
-      expect(total).toBe(Object.keys(INHERIT_ALL).length - 2);
-    }
+    expect(lockedTokenCounts([], "flat").total).toBe(19);
+    expect(Object.keys(INHERIT_ALL).length).toBe(21);
+
+    // One fewer under Glass: macOS places its own window shadow and takes no
+    // offset, so that row is not on screen to be locked.
+    expect(lockedTokenCounts([], "glass").total).toBe(18);
+
+    // The two shadow rows are one token, so the table has one entry more than
+    // the tokens it covers.
+    expect(OVERLAY_TOKEN_FIELDS.length).toBe(21);
   });
 
   test("counts the owned tokens the tab can show as locked", () => {
@@ -56,14 +60,25 @@ describe("lockedTokenCounts", () => {
     const bothAlphas = ["surface_opacity", "glass_tint"];
     expect(lockedTokenCounts(bothAlphas, "flat")).toEqual({
       count: 1,
-      total: 14,
+      total: 19,
     });
     expect(lockedTokenCounts(bothAlphas, "glass")).toEqual({
       count: 1,
-      total: 14,
+      total: 18,
     });
     expect(lockedTokenCounts(["glass_tint"], "flat").count).toBe(0);
     expect(lockedTokenCounts(["surface_opacity"], "glass").count).toBe(0);
+  });
+
+  test("the shadow offset counts only where it has a row", () => {
+    // The token still applies under Glass; it just has nothing to lock there,
+    // so counting it would promise a row the user cannot find.
+    expect(lockedTokenCounts(["shadow_offset_y"], "flat").count).toBe(1);
+    expect(lockedTokenCounts(["shadow_offset_y"], "glass").count).toBe(0);
+    // The strength has a row on both, a slider or a switch.
+    for (const material of ["flat", "glass"] as const) {
+      expect(lockedTokenCounts(["shadow_strength"], material).count).toBe(1);
+    }
   });
 });
 

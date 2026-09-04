@@ -65,7 +65,7 @@ fn commit_effect(theme_changed: bool, overlay_drafted: bool) -> CommitEffect {
 
 /// Persist the whole overlay theme.
 ///
-/// The frontend always sends the complete sixteen-token object. Setting one
+/// The frontend always sends the complete twenty-one-token object. Setting one
 /// token, clearing one (reset to inherit) and resetting the whole theme are
 /// all this one call with a different object, which keeps the settings store's
 /// optimistic write and rollback unchanged, both being keyed on a single

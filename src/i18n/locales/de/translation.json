@@ -266,6 +266,7 @@
         "preview": "Vorschau auf dem Bildschirm",
         "color": "Overlay-Farbe",
         "material": "Overlay-Material",
+        "elements": "Overlay Elements",
         "size": "Overlay-Größe & Abstände",
         "themeFile": "Designdatei"
       },
@@ -346,6 +347,24 @@
           "title": "Deckkraft des Rahmens",
           "description": "Wie sichtbar die Kartenkante ist."
         },
+        "shadowStrength": {
+          "title": "Shadow",
+          "description": "How heavy the shadow the card casts on the desktop is. Turn it down to nothing for a card that sits flat.",
+          "glassDescription": "Whether the overlay casts a shadow on the desktop.",
+          "glassNote": "macOS draws the shadow for a Glass overlay, so it can only be turned on or off, and the shadow offset has no effect."
+        },
+        "shadowOffsetY": {
+          "title": "Shadow Offset",
+          "description": "How far below the card its shadow falls. The overlay makes room for the shadow, so a heavier one sits a little further from the screen edge."
+        },
+        "showWaveform": {
+          "title": "Show Waveform",
+          "description": "Show the waveform while recording. With it hidden the overlay shrinks to a small pill."
+        },
+        "showCancel": {
+          "title": "Show Cancel Button",
+          "description": "Show the cancel button on the overlay. Your keyboard shortcut still cancels either way."
+        },
         "sizeScale": {
           "title": "Größenskalierung",
           "description": "Skaliert alle Längen der Karte auf einmal — Breiten, Höhen, Innenabstände und Schrift. Einer von zwei Werten, die ändern, wie viel Platz das Overlay auf dem Bildschirm braucht; der andere ist die Rahmenstärke."
@@ -361,6 +380,10 @@
         "padding": {
           "title": "Innenabstand",
           "description": "Der Innenabstand der Karte auf allen vier Seiten. Das Overlay-Fenster wächst mit."
+        },
+        "elementGap": {
+          "title": "Element Gap",
+          "description": "Extra space between the overlay's dot, waveform, timer and cancel button. The overlay window grows with it."
         },
         "waveformGap": {
           "title": "Wellenform-Abstand",

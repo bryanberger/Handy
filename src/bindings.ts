@@ -910,7 +910,7 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 /**
  * Persist the whole overlay theme.
  * 
- * The frontend always sends the complete sixteen-token object. Setting one
+ * The frontend always sends the complete twenty-one-token object. Setting one
  * token, clearing one (reset to inherit) and resetting the whole theme are
  * all this one call with a different object, which keeps the settings store's
  * optimistic write and rollback unchanged, both being keyed on a single
@@ -1420,11 +1420,11 @@ export type OverlayPosition = "top" | "bottom"
  */
 export type OverlayStyle = "none" | "minimal" | "live"
 /**
- * The sixteen overlay-theme tokens. `None` means inherit.
+ * The twenty-one overlay-theme tokens. `None` means inherit.
  * 
  * Field names are the theme-file keys, and every field deserializes
  * leniently: a wrong type or shape degrades to `None` with a `warn!`, so one
- * bad token never costs the other fifteen, as `salvage_settings` does one
+ * bad token never costs the other twenty, as `salvage_settings` does one
  * level up. The store salvages silently (log only); the theme file applies
  * the same rules but reports diagnostics, so it runs its own per-key pass
  * instead of deserializing an `OverlayTheme`.
@@ -1490,6 +1490,41 @@ glass_material?: GlassMaterial | null;
  */
 glass_style?: GlassStyle | null; 
 /**
+ * How heavy the card's drop shadow is, 0.00 to 1.00.
+ * 
+ * The two Materials draw a shadow in two different places, so this token
+ * means two things. Under Flat it shapes a CSS `box-shadow` on the card,
+ * and the window grows a symmetric margin for it to fall into. Under
+ * Glass, where the window is the card, the shadow is macOS's own and
+ * `NSWindow` offers no strength, so any value above zero switches it on
+ * and zero switches it off.
+ */
+shadow_strength?: number | null; 
+/**
+ * How far the card's shadow is pushed below it at scale 1, 0 to 16 px.
+ * 
+ * Flat only. macOS places its own window shadow, so this is ignored under
+ * Glass. It sizes the window's shadow slack together with the fixed blur
+ * radius, so it is one of the values the native window is built from.
+ */
+shadow_offset_y?: number | null; 
+/**
+ * Whether the control row shows the waveform. Unset means it does.
+ * 
+ * Hiding it empties the row's centre column, and the two resting shapes
+ * (the Minimal pill and the Live pill) shrink to what the row still
+ * holds. The working pill and the open panel keep their tuned widths.
+ */
+show_waveform?: boolean | null; 
+/**
+ * Whether the control row shows the cancel button. Unset means it does.
+ * 
+ * The keyboard shortcut and `--cancel` still cancel; only the button on
+ * the card goes. With it the row's side columns lose the 22 px floor that
+ * existed to hold it.
+ */
+show_cancel?: boolean | null; 
+/**
  * One factor multiplying every length in the card, 0.80 to 1.50.
  */
 size_scale?: number | null; 
@@ -1510,6 +1545,15 @@ border_width?: number | null;
  * the native window is computed from it too.
  */
 padding?: number | null; 
+/**
+ * Extra horizontal space between the control row's elements (the dot, the
+ * waveform, the timer and the cancel button) at scale 1, 0 to 40 px.
+ * 
+ * The row has two of these, so every card is twice the gap wider and the
+ * native window follows. The centre column's room is unchanged, since the
+ * card gains exactly what the two gaps take.
+ */
+element_gap?: number | null; 
 /**
  * Gap between waveform bars at scale 1, 0 to 5 px.
  */

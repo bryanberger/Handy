@@ -2,7 +2,8 @@
 //!
 //! Everything the overlay window's size and its blur's corner radius are a
 //! function of lives here: the card's shapes, the transparent slack around
-//! them, and the three theme tokens that change how much room the card needs.
+//! them, the room a Flat card's drop shadow needs, and the theme tokens that
+//! change how much room the card needs.
 //! It is pure code, with no `AppHandle`, no platform `cfg` and no AppKit, so
 //! the arithmetic deciding whether a card fits its window is tested on its
 //! own, not through the window creation, monitor queries and show/hide
@@ -20,9 +21,9 @@ use serde::{Deserialize, Serialize};
 /// `(content + card_border(width)) × scale`.
 ///
 /// A function, not a constant, because `border_width` is a token (0-4 px,
-/// inherit 1). With `size_scale` and `padding` it is one of the three tokens
-/// that change how much room the card needs. At the inherit width it is 2.0,
-/// today's hairline on both edges.
+/// inherit 1). With `size_scale`, `padding` and `element_gap` it is one of the
+/// four tokens that change how much room the card needs on either Material.
+/// At the inherit width it is 2.0, today's hairline on both edges.
 const fn card_border(border_width: u16) -> f64 {
     2.0 * border_width as f64
 }
@@ -53,6 +54,27 @@ const CARD_CAP_MAX_H: f64 = 64.0;
 /// `--ov-cap-pad-f`. A factor rather than a length so the inset follows the
 /// padding token; at the inherit padding of 10 it is today's 12 px.
 const CARD_CAP_PAD_FACTOR: f64 = 1.2;
+/// The control row's side-column floor at size_scale 1 while the cancel button
+/// is on the row: `--ov-side-min` 22. It exists to hold that button, so it
+/// drops to 0 with it and the row shrinks to what is left.
+const CARD_SIDE_MIN_W: f64 = 22.0;
+/// The left column's own content at size_scale 1: `--ov-dot-col-w` 12, the
+/// recording dot's 7 px plus `.sbase-l`'s 5 px inset. Wider than nothing and
+/// narrower than the side floor, so it decides the left column only once the
+/// cancel button is gone.
+const CARD_DOT_COL_W: f64 = 12.0;
+/// The number of waveform bars: `WAVE_BARS` in `RecordingOverlay.tsx`, and the
+/// `9` in `--ov-wave-slot-w`.
+const CARD_WAVE_BARS: f64 = 9.0;
+/// `.swave`'s right padding at size_scale 1: `--ov-wave-pad-r` 8. The waveform
+/// lane plus this is the centre column.
+const CARD_WAVE_PAD_R: f64 = 8.0;
+/// The blur radius of Flat's drop shadow at size_scale 1: `--ov-shadow-blur`
+/// 20. Derived, not a token: `shadow_strength` and `shadow_offset_y` are the
+/// two controls, and a third for the blur would make the shadow a project.
+/// With the offset it is how far the shadow reaches, which is the window's
+/// shadow slack.
+const CARD_SHADOW_BLUR: f64 = 20.0;
 
 /// The card's morph between two shapes, in milliseconds: `--ov-morph-ms`,
 /// `.scard`'s width and border-radius transitions. The overlay webview reads
@@ -134,17 +156,24 @@ impl Card {
     /// the window equals the exact current [`OverlayCardShape`] instead.
     ///
     /// Takes the whole [`CardMetrics`] because the height follows the padding
-    /// token as well as the border. Only those two are read; the caller
+    /// token and the width the element gap, as well as the border. The caller
     /// applies the scale, so every number returned is at size_scale 1.
+    ///
+    /// The widest card is always a working or open shape, never a resting one,
+    /// so the resting shapes' own `max()` against the row (see
+    /// [`CardMetrics::resting_content_width`]) cannot reach here: the row fits
+    /// the working pill at every combination of tokens, which
+    /// `the_waveform_never_outgrows_the_working_pill` pins.
     fn widest_footprint(self, metrics: &CardMetrics) -> (f64, f64) {
         let border = card_border(metrics.border_width);
+        let gaps = metrics.gap_width();
         match self {
             Self::Pill => (
-                CARD_COMPACT_CONTENT_W + border,
+                CARD_COMPACT_CONTENT_W + gaps + border,
                 metrics.row_height() + border,
             ),
             Self::Panel => (
-                CARD_LIVE_CONTENT_W + border,
+                CARD_LIVE_CONTENT_W + gaps + border,
                 metrics.live_content_height() + border,
             ),
         }
@@ -246,12 +275,20 @@ impl OverlayCardShape {
     fn card_footprint(self, metrics: &CardMetrics) -> (f64, f64) {
         let border = card_border(metrics.border_width);
         let row = metrics.row_height();
+        let gaps = metrics.gap_width();
         let (content_width, content_height) = match self {
-            Self::CompactRest => (CARD_COMPACT_REST_CONTENT_W, row),
-            Self::CompactWorking => (CARD_COMPACT_CONTENT_W, row),
-            Self::LivePill => (CARD_LIVE_PILL_CONTENT_W, row),
-            Self::LiveWorking => (CARD_COMPACT_CONTENT_W, row),
-            Self::LiveOpen => (CARD_LIVE_CONTENT_W, metrics.live_content_height()),
+            // The two resting shapes are the only ones sized to their contents:
+            // they shrink when the waveform is hidden and grow when the row
+            // outgrows their tuned width. The other three are tuned to
+            // translated labels and to the transcript and stay put.
+            Self::CompactRest => (
+                metrics.resting_content_width(CARD_COMPACT_REST_CONTENT_W),
+                row,
+            ),
+            Self::CompactWorking => (CARD_COMPACT_CONTENT_W + gaps, row),
+            Self::LivePill => (metrics.resting_content_width(CARD_LIVE_PILL_CONTENT_W), row),
+            Self::LiveWorking => (CARD_COMPACT_CONTENT_W + gaps, row),
+            Self::LiveOpen => (CARD_LIVE_CONTENT_W + gaps, metrics.live_content_height()),
         };
         (content_width + border, content_height + border)
     }
@@ -291,25 +328,80 @@ impl OverlayCardShape {
     }
 }
 
-/// The four theme tokens the card's rectangle is a function of, clamped once.
+/// The theme tokens the card's rectangle is a function of, clamped once.
 ///
 /// They always travel together. The size scale zooms every length, the border
 /// width adds two strokes, the padding insets the control row on every edge
-/// and carries the Live card's breathing room, and the radius rounds the
-/// corners the blur matches. So `from_theme` builds all four once and callers
-/// ask the result for a window size or a corner radius, rather than passing
-/// them one at a time to functions that must remember what was clamped.
+/// and carries the Live card's breathing room, the element gap widens every
+/// card by two gaps, the two switches and the waveform's own two lengths
+/// decide how wide the row's contents make a resting pill, and the radius
+/// rounds the corners the blur matches. So `from_theme` builds them once and
+/// callers ask the result for a window size or a corner radius, rather than
+/// passing them one at a time to functions that must remember what was
+/// clamped.
 ///
 /// The constructor clamps, so no caller has to and the geometry never trusts
-/// an unclamped number. Same bounds as [`OverlayTheme::size_scale`],
-/// [`OverlayTheme::border_width`] and [`OverlayTheme::padding`], so window and
-/// card cannot disagree about how far a token was allowed to go.
+/// an unclamped number. Same bounds as the accessors on [`OverlayTheme`], so
+/// window and card cannot disagree about how far a token was allowed to go.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct CardMetrics {
     scale: f64,
     border_width: u16,
     padding: u16,
+    element_gap: u16,
+    waveform_gap: u16,
+    waveform_width: u16,
+    show_waveform: bool,
+    show_cancel: bool,
     radius_px: f64,
+}
+
+/// The room a Flat card's drop shadow needs around it, clamped once.
+///
+/// Beside [`CardMetrics`] rather than inside it, because these two do not
+/// describe the card's rectangle at all: they describe the space around it.
+/// The window grows by twice the slack on both axes and keeps its screen-edge
+/// offset, so the card lifts into the slack it gained and the window still
+/// covers exactly the strip it always covered.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ShadowMetrics {
+    /// 0.00 to 1.00, resolved against the Material's own inherit. Under Flat
+    /// it shapes the CSS shadow; under Glass it only switches macOS's.
+    strength: f64,
+    /// How far the shadow falls below the card, px at size_scale 1. Flat only.
+    offset_y: u16,
+}
+
+impl ShadowMetrics {
+    /// The shadow a resolved theme asks for on the Material being painted.
+    ///
+    /// The Material is a parameter because `shadow_strength`'s inherit depends
+    /// on it: none under Flat, macOS's own under Glass.
+    pub(crate) fn from_theme(theme: &OverlayTheme, material: Material) -> Self {
+        Self {
+            strength: theme.shadow_strength(material),
+            offset_y: theme.shadow_offset_y(),
+        }
+    }
+
+    /// Whether the card casts a shadow at all. Zero strength is the Flat
+    /// inherit, and the whole point of the token under Glass.
+    fn casts(&self) -> bool {
+        self.strength > 0.0
+    }
+
+    /// How far the shadow reaches from the card's edge at size_scale 1: the
+    /// fixed blur radius plus the offset, which is the worst case on the side
+    /// the shadow falls towards.
+    fn reach(&self) -> f64 {
+        CARD_SHADOW_BLUR + f64::from(self.offset_y)
+    }
+
+    /// The strength the native window shadow is switched from. Only
+    /// `overlay_glass` reads it, and only under Glass.
+    pub(crate) fn strength(&self) -> f64 {
+        self.strength
+    }
 }
 
 impl CardMetrics {
@@ -327,6 +419,11 @@ impl CardMetrics {
             scale: theme.size_scale(),
             border_width: theme.border_width(),
             padding: theme.padding(),
+            element_gap: theme.element_gap(),
+            waveform_gap: theme.waveform_gap(),
+            waveform_width: theme.waveform_width(),
+            show_waveform: theme.show_waveform(),
+            show_cancel: theme.show_cancel(),
             radius_px: theme
                 .radius
                 .map(f64::from)
@@ -343,17 +440,48 @@ impl CardMetrics {
     ///
     /// Rounds the scaled card up before adding the slack, so the window is
     /// never a fraction short of its card and every result is a whole point.
-    pub(crate) fn window_size(&self, shape: OverlayCardShape, material: Material) -> (f64, f64) {
+    ///
+    /// The shadow's own slack goes on last, twice per axis, since it is
+    /// symmetric: the card is inset from every window edge by it, so the
+    /// shadow has room to fall inside the window rather than outside it. The
+    /// placement does not compensate, so the *window* keeps the screen-edge
+    /// offset and the card floats the slack further in. At the Flat inherit
+    /// strength of 0 the slack is 0 and every window is the one this overlay
+    /// has always used.
+    pub(crate) fn window_size(
+        &self,
+        shape: OverlayCardShape,
+        material: Material,
+        shadow: ShadowMetrics,
+    ) -> (f64, f64) {
         let (card_width, card_height) = match material {
             Material::Glass => shape.card_footprint(self),
             Material::Flat => shape.card().widest_footprint(self),
         };
         let (slack_width, slack_height) = shape.card().slack(material);
+        let shadow_slack = self.shadow_slack(material, shadow);
 
         (
-            (card_width * self.scale).ceil() + slack_width,
-            (card_height * self.scale).ceil() + slack_height,
+            (card_width * self.scale).ceil() + slack_width + 2.0 * shadow_slack,
+            (card_height * self.scale).ceil() + slack_height + 2.0 * shadow_slack,
         )
+    }
+
+    /// The transparent margin the card's own shadow needs, per window side, in
+    /// whole logical points.
+    ///
+    /// Zero under Glass, where the window is the card and macOS draws the
+    /// shadow outside it, and zero at strength 0, so a theme that asks for no
+    /// shadow gets today's window byte for byte. Scaled and rounded up here
+    /// because CSS cannot round: `--ov-shadow-slack` is the one custom
+    /// property the apply layer writes already scaled, so `.ov-stage`'s padding
+    /// and this number are the same integer and the card cannot land on a
+    /// fraction of a point.
+    pub(crate) fn shadow_slack(&self, material: Material, shadow: ShadowMetrics) -> f64 {
+        if material == Material::Glass || !shadow.casts() {
+            return 0.0;
+        }
+        (shadow.reach() * self.scale).ceil()
     }
 
     /// The control row's height at size_scale 1: the core the stylesheet
@@ -368,6 +496,67 @@ impl CardMetrics {
     /// rather than a length of its own.
     fn live_content_height(&self) -> f64 {
         self.row_height() + CARD_CAP_MAX_H + CARD_CAP_PAD_FACTOR * f64::from(self.padding)
+    }
+
+    /// What the row's two element gaps add to every card's width at
+    /// size_scale 1. Both sides of every `max()` below carry it, so the gap
+    /// widens a card without ever changing which of the two won.
+    fn gap_width(&self) -> f64 {
+        2.0 * f64::from(self.element_gap)
+    }
+
+    /// The row's side-column floor at size_scale 1 (`--ov-side-min`): 22 px
+    /// while the cancel button is on the row, 0 without it, since holding that
+    /// button is the only reason the floor exists.
+    fn side_min(&self) -> f64 {
+        if self.show_cancel {
+            CARD_SIDE_MIN_W
+        } else {
+            0.0
+        }
+    }
+
+    /// The control row's own width at size_scale 1 with an empty centre
+    /// column: the padding, the two element gaps, the left column (the dot, or
+    /// the side floor once that is wider) and the right column. This is
+    /// `--ov-bare-w`, what a resting pill shrinks to with no waveform, and 64
+    /// at every inherit value.
+    fn bare_row_width(&self) -> f64 {
+        let side = self.side_min();
+        2.0 * f64::from(self.padding) + self.gap_width() + side.max(CARD_DOT_COL_W) + side
+    }
+
+    /// The centre column at size_scale 1: the waveform's nine bars and eight
+    /// gaps (`--ov-wave-slot-w`) plus `.swave`'s right padding.
+    fn wave_column_width(&self) -> f64 {
+        CARD_WAVE_BARS * f64::from(self.waveform_width)
+            + (CARD_WAVE_BARS - 1.0) * f64::from(self.waveform_gap)
+            + CARD_WAVE_PAD_R
+    }
+
+    /// The whole control row's width at size_scale 1, waveform included while
+    /// it is shown: `--ov-row-w`.
+    fn row_width(&self) -> f64 {
+        if self.show_waveform {
+            self.bare_row_width() + self.wave_column_width()
+        } else {
+            self.bare_row_width()
+        }
+    }
+
+    /// A resting shape's content width at size_scale 1: its tuned width plus
+    /// the element gaps, but never narrower than the row it has to hold, and
+    /// the bare row alone once the waveform is hidden.
+    ///
+    /// The `max()` is the fix for a clipping this overlay always had. At the
+    /// maximum padding, waveform width and waveform gap the row measures 186,
+    /// past the 172 the resting pill was tuned to, and `overflow: hidden` cut
+    /// the waveform off. `.scard.compact`'s own `max()` mirrors this exactly.
+    fn resting_content_width(&self, tuned: f64) -> f64 {
+        if !self.show_waveform {
+            return self.bare_row_width();
+        }
+        (tuned + self.gap_width()).max(self.row_width())
     }
 
     /// A shape's corner radius in px, mirroring the CSS
@@ -399,22 +588,48 @@ pub(crate) struct OverlayWindowState {
     material: Material,
     glass: GlassAppearance,
     metrics: CardMetrics,
+    shadow: ShadowMetrics,
 }
 
 impl OverlayWindowState {
     /// The state `resolved` asks for, at the card shape on screen right now.
     pub(crate) fn new(shape: OverlayCardShape, resolved: &ResolvedOverlayTheme) -> Self {
+        Self::for_material(shape, resolved, resolved.effective_material)
+    }
+
+    /// The state a window being created starts in: the resting compact pill
+    /// under Flat, whatever the theme asks for.
+    ///
+    /// Glass cannot be in effect yet. `overlay_glass::install` needs the window
+    /// this is sizing, so it has not run, and the first show resolves again and
+    /// resizes once Glass is installed.
+    pub(crate) fn initial(resolved: &ResolvedOverlayTheme) -> Self {
+        Self::for_material(OverlayCardShape::CompactRest, resolved, Material::Flat)
+    }
+
+    fn for_material(
+        shape: OverlayCardShape,
+        resolved: &ResolvedOverlayTheme,
+        material: Material,
+    ) -> Self {
         Self {
             shape,
-            material: resolved.effective_material,
+            material,
             glass: GlassAppearance::from_theme(&resolved.theme),
             metrics: CardMetrics::from_theme(&resolved.theme),
+            shadow: ShadowMetrics::from_theme(&resolved.theme, material),
         }
     }
 
     /// The window this state wants, in logical points.
     pub(crate) fn window_size(&self) -> (f64, f64) {
-        self.metrics.window_size(self.shape, self.material)
+        self.metrics
+            .window_size(self.shape, self.material, self.shadow)
+    }
+
+    /// The `shadow_strength` the native window shadow is switched from.
+    pub(crate) fn shadow_strength(&self) -> f64 {
+        self.shadow.strength()
     }
 
     /// The corner radius the native blur has to take to match the card.
@@ -439,12 +654,14 @@ pub(crate) fn native_update_needed(
 mod tests {
     use super::*;
     use crate::frontend_source::{
-        css_declaration, css_ms, css_number, css_px, css_rule, tsx_const, OVERLAY_CSS, OVERLAY_TSX,
+        css_declaration, css_ms, css_number, css_px, css_rule, tsx_const, APPLY_LAYER_TS,
+        OVERLAY_CSS, OVERLAY_TSX,
     };
     use crate::overlay_glass::GlassAppearance;
     use crate::overlay_theme::{
         GlassMaterial, GlassStyle, HexColor, BORDER_WIDTH_INHERIT, BORDER_WIDTH_MAX,
-        PADDING_INHERIT, PADDING_MAX, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
+        ELEMENT_GAP_INHERIT, ELEMENT_GAP_MAX, PADDING_INHERIT, PADDING_MAX, SHADOW_OFFSET_Y_MAX,
+        WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
     };
 
     /// The metrics of today's card: nothing set, everything inherited.
@@ -452,10 +669,34 @@ mod tests {
         CardMetrics::from_theme(&OverlayTheme::default())
     }
 
+    /// A CSS value with its whitespace collapsed and its brackets closed up, so
+    /// a pinned declaration survives Prettier moving a line break inside a
+    /// `calc()` while still failing on a changed term.
+    fn collapsed(value: &str) -> String {
+        value
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .replace("( ", "(")
+            .replace(" )", ")")
+    }
+
+    /// The shadow an unset theme asks for on `material`: none under Flat, and
+    /// macOS's own (which needs no slack) under Glass.
+    fn inherit_shadow(material: Material) -> ShadowMetrics {
+        ShadowMetrics::from_theme(&OverlayTheme::default(), material)
+    }
+
     /// The window `shape` gets at `scale` under `material`, with the inherit
-    /// border width. The shorthand the dimension tests below use.
+    /// border width and no shadow. The shorthand the dimension tests below use.
     fn window(shape: OverlayCardShape, scale: f64, material: Material) -> (f64, f64) {
         window_at(shape, scale, material, BORDER_WIDTH_INHERIT)
+    }
+
+    /// The metrics a theme built from `tokens` asks for, everything else
+    /// inherited.
+    fn metrics_of(tokens: OverlayTheme) -> CardMetrics {
+        CardMetrics::from_theme(&tokens)
     }
 
     /// The same, for tests that vary the border width, through the constructor's
@@ -466,7 +707,7 @@ mod tests {
         material: Material,
         border_width: u16,
     ) -> (f64, f64) {
-        metrics_for(scale, border_width).window_size(shape, material)
+        metrics_for(scale, border_width).window_size(shape, material, inherit_shadow(material))
     }
 
     fn metrics_for(scale: f64, border_width: u16) -> CardMetrics {
@@ -490,7 +731,7 @@ mod tests {
             padding: Some(padding),
             ..OverlayTheme::default()
         })
-        .window_size(shape, material)
+        .window_size(shape, material, inherit_shadow(material))
     }
 
     fn window_state() -> OverlayWindowState {
@@ -504,6 +745,7 @@ mod tests {
                 glass_tint: None,
             },
             metrics: inherit_metrics(),
+            shadow: inherit_shadow(Material::Flat),
         }
     }
 
@@ -547,8 +789,14 @@ mod tests {
                     scale,
                     border_width,
                     padding,
+                    element_gap,
+                    waveform_gap,
+                    waveform_width,
+                    show_waveform,
+                    show_cancel,
                     radius_px,
                 },
+            shadow: ShadowMetrics { strength, offset_y },
         } = base.clone();
 
         // Each variant differs from `base` in exactly the field it names, and
@@ -559,6 +807,10 @@ mod tests {
         };
         let metrics_variant = |metrics: CardMetrics| OverlayWindowState {
             metrics,
+            ..base.clone()
+        };
+        let shadow_variant = |shadow: ShadowMetrics| OverlayWindowState {
+            shadow,
             ..base.clone()
         };
         let variants = [
@@ -591,6 +843,40 @@ mod tests {
             metrics_variant(CardMetrics {
                 radius_px: radius_px + 12.0,
                 ..base.metrics
+            }),
+            // The element gap widens every card, and the four below decide how
+            // wide the row's contents make a resting pill, so all five reach
+            // the window under Glass.
+            metrics_variant(CardMetrics {
+                element_gap: element_gap + 8,
+                ..base.metrics
+            }),
+            metrics_variant(CardMetrics {
+                waveform_gap: waveform_gap + 1,
+                ..base.metrics
+            }),
+            metrics_variant(CardMetrics {
+                waveform_width: waveform_width + 1,
+                ..base.metrics
+            }),
+            metrics_variant(CardMetrics {
+                show_waveform: !show_waveform,
+                ..base.metrics
+            }),
+            metrics_variant(CardMetrics {
+                show_cancel: !show_cancel,
+                ..base.metrics
+            }),
+            // The shadow does not change the card at all; it changes the window
+            // around it, on both axes and in its placement, so both halves have
+            // to reach the native side.
+            shadow_variant(ShadowMetrics {
+                strength: strength + 0.5,
+                ..base.shadow
+            }),
+            shadow_variant(ShadowMetrics {
+                offset_y: offset_y + 4,
+                ..base.shadow
             }),
             // The four Glass-only tokens. Only the liquid engine reads the
             // style and tint, but all are live property writes on the
@@ -639,8 +925,9 @@ mod tests {
         assert!(native_update_needed(None, &window_state()));
     }
 
-    /// A window state answers both native questions itself, from the shape it
-    /// carries, which is why it holds [`CardMetrics`] not three loose numbers.
+    /// A window state answers every native question itself, from the shape it
+    /// carries, which is why it holds [`CardMetrics`] and [`ShadowMetrics`] not
+    /// a handful of loose numbers.
     #[test]
     fn a_window_state_sizes_and_rounds_its_own_card() {
         let state = window_state();
@@ -648,6 +935,7 @@ mod tests {
             state.window_size(),
             window(OverlayCardShape::LivePill, 1.0, Material::Flat)
         );
+        assert_eq!(state.shadow_strength(), 0.0);
         assert_eq!(
             state.corner_radius(),
             inherit_metrics().corner_radius(OverlayCardShape::LivePill)
@@ -1000,32 +1288,465 @@ mod tests {
     }
 
     /// Why `waveform_width` stops at 6 and `padding` at 20: at every token's
-    /// maximum the control row still fits the working pill, so no spacing
-    /// token can force the window wider. Only `size_scale` and `border_width`
-    /// do. Padding makes the window taller, which
-    /// `overlay_dimensions_follow_the_padding` pins.
+    /// maximum the control row still fits the *working* pill, so no spacing
+    /// token can force that window wider whatever else changes.
+    ///
+    /// It never fitted the *resting* pill. At those three maxima the row
+    /// measures 186 against the 172 the resting pill was tuned to, and
+    /// `overflow: hidden` clipped the waveform. The resting pill now takes the
+    /// row when the row is wider, so the second assertion is that the two
+    /// numbers this test computes are exactly what the metrics produce, rather
+    /// than that the row fits.
+    ///
+    /// Both halves are gap-invariant: the element gap adds two gaps to the row
+    /// and to every card, so it cancels.
     #[test]
     fn the_waveform_never_outgrows_the_working_pill() {
-        // The three frontend-owned inputs, read from the frontend: the bar count
-        // from the component that renders them, `.swave`'s right padding and
-        // `.sbase`'s two side columns (recording dot, cancel button) from the CSS.
+        // The frontend-owned inputs, read from the frontend: the bar count from
+        // the component that renders them, and the row's own lengths from the
+        // CSS the card is painted with.
         let bars = tsx_const(OVERLAY_TSX, "const WAVE_BARS = ");
-        let wave_padding_right = css_px(css_rule(OVERLAY_CSS, ".swave {"), "padding-right");
-        let side_column = css_px(css_rule(OVERLAY_CSS, ".sbase {"), "grid-template-columns");
+        let wave_padding_right = css_px(OVERLAY_CSS, "--ov-wave-pad-r");
+        let side_column = css_px(OVERLAY_CSS, "--ov-side-min");
+        let dot_column = css_px(OVERLAY_CSS, "--ov-dot-col-w");
 
-        let widest_row = bars * f64::from(WAVEFORM_WIDTH_MAX)
-            + (bars - 1.0) * f64::from(WAVEFORM_GAP_MAX)
-            + wave_padding_right
-            + 2.0 * f64::from(PADDING_MAX)
-            + 2.0 * side_column;
+        // (element gap, the row it measures): the expectation is the literal
+        // the arithmetic lands on, so a drifted length shows as a number rather
+        // than as two sides agreeing on the wrong one.
+        for (gap, row) in [(0, 186.0), (ELEMENT_GAP_MAX, 266.0)] {
+            let widest = metrics_of(OverlayTheme {
+                padding: Some(PADDING_MAX),
+                waveform_gap: Some(WAVEFORM_GAP_MAX),
+                waveform_width: Some(WAVEFORM_WIDTH_MAX),
+                element_gap: Some(gap),
+                ..OverlayTheme::default()
+            });
+            // The same width built from the frontend's own numbers, so a length
+            // changed in the CSS or in the component fails here too.
+            let from_the_frontend = bars * f64::from(WAVEFORM_WIDTH_MAX)
+                + (bars - 1.0) * f64::from(WAVEFORM_GAP_MAX)
+                + wave_padding_right
+                + 2.0 * f64::from(PADDING_MAX)
+                + 2.0 * f64::from(gap)
+                + side_column.max(dot_column)
+                + side_column;
 
-        assert!(
-            widest_row <= CARD_COMPACT_CONTENT_W,
-            "the row at every maximum is {widest_row}, wider than the {CARD_COMPACT_CONTENT_W} working pill"
+            assert_eq!(from_the_frontend, row, "gap {gap}");
+            assert_eq!(widest.row_width(), row, "gap {gap}");
+            assert!(
+                row <= CARD_COMPACT_CONTENT_W + 2.0 * f64::from(gap),
+                "the row at every maximum is {row}, wider than the working pill"
+            );
+
+            // …and the resting pill, which it does not fit, grows to hold it
+            // instead of clipping it.
+            assert!(row > CARD_COMPACT_REST_CONTENT_W + 2.0 * f64::from(gap));
+            assert_eq!(
+                widest.resting_content_width(CARD_COMPACT_REST_CONTENT_W),
+                row,
+                "gap {gap}"
+            );
+            assert_eq!(
+                widest.resting_content_width(CARD_LIVE_PILL_CONTENT_W),
+                row,
+                "gap {gap}"
+            );
+        }
+
+        // At the inherit values the row is well inside the resting pill, so
+        // nothing about today's card moves: 20 + 22 + 68 + 22.
+        let inherit = inherit_metrics();
+        assert_eq!(inherit.row_width(), 132.0);
+        assert_eq!(
+            inherit.resting_content_width(CARD_COMPACT_REST_CONTENT_W),
+            CARD_COMPACT_REST_CONTENT_W
         );
+        assert_eq!(
+            inherit.resting_content_width(CARD_LIVE_PILL_CONTENT_W),
+            CARD_LIVE_PILL_CONTENT_W
+        );
+
         // And the narrowest bar still draws: 2px at the smallest scale is
         // 1.6px, which WebKit still paints.
         assert!(f64::from(WAVEFORM_WIDTH_MIN) * crate::overlay_theme::SIZE_SCALE_MIN >= 1.0);
+    }
+
+    /// The "a new token changes nothing until it is asked for" pin, for all
+    /// five at once: an all-inherit theme gets the four windows this overlay
+    /// has always used, on both Materials, and no shadow slack anywhere.
+    #[test]
+    fn a_shadowless_theme_keeps_todays_windows() {
+        let metrics = inherit_metrics();
+        for material in [Material::Flat, Material::Glass] {
+            let shadow = inherit_shadow(material);
+            assert_eq!(metrics.shadow_slack(material, shadow), 0.0, "{material:?}");
+        }
+
+        // Flat: the two windows overlay.rs used to hardcode.
+        for shape in [
+            OverlayCardShape::CompactRest,
+            OverlayCardShape::CompactWorking,
+        ] {
+            assert_eq!(
+                window(shape, 1.0, Material::Flat),
+                (256.0, 46.0),
+                "{shape:?}"
+            );
+        }
+        for shape in [
+            OverlayCardShape::LivePill,
+            OverlayCardShape::LiveWorking,
+            OverlayCardShape::LiveOpen,
+        ] {
+            assert_eq!(
+                window(shape, 1.0, Material::Flat),
+                (400.0, 120.0),
+                "{shape:?}"
+            );
+        }
+
+        // Glass: the five card footprints, unchanged by the row's new tokens.
+        for (shape, expected) in [
+            (OverlayCardShape::CompactRest, (174.0, 42.0)),
+            (OverlayCardShape::CompactWorking, (218.0, 42.0)),
+            (OverlayCardShape::LivePill, (186.0, 42.0)),
+            (OverlayCardShape::LiveWorking, (218.0, 42.0)),
+            (OverlayCardShape::LiveOpen, (394.0, 118.0)),
+        ] {
+            assert_eq!(window(shape, 1.0, Material::Glass), expected, "{shape:?}");
+        }
+
+        // And setting each new token to its own inherit value by hand is the
+        // same window as leaving it unset. `shadow_strength` is the one whose
+        // inherit splits per Material, so the by-hand theme carries that
+        // Material's own value and the shadow is read from that theme, not
+        // from the unset one.
+        for material in [Material::Flat, Material::Glass] {
+            let theme = OverlayTheme {
+                shadow_strength: Some(match material {
+                    Material::Flat => 0.0,
+                    Material::Glass => 1.0,
+                }),
+                shadow_offset_y: Some(4),
+                show_waveform: Some(true),
+                show_cancel: Some(true),
+                element_gap: Some(ELEMENT_GAP_INHERIT),
+                ..OverlayTheme::default()
+            };
+            let by_hand = CardMetrics::from_theme(&theme);
+            let shadow = ShadowMetrics::from_theme(&theme, material);
+            for shape in OverlayCardShape::ALL {
+                assert_eq!(
+                    by_hand.window_size(shape, material, shadow),
+                    window(shape, 1.0, material),
+                    "{shape:?} {material:?}"
+                );
+            }
+        }
+    }
+
+    /// A Flat shadow grows the window by twice its reach on every side, so the
+    /// shadow has somewhere to fall. The expectations are `blur + offset`
+    /// scaled and rounded up, written out, never `shadow_slack()` again.
+    #[test]
+    fn the_flat_shadow_grows_the_window_on_every_side() {
+        // (offset, scale, slack per side, the resting pill's window at that
+        // slack): the blur is a fixed 20, and the windows without it are 256 x
+        // 46 at scale 1, 213 x 38 at 0.8 and 365 x 67 at 1.5.
+        for (offset, scale, slack, window_size) in [
+            (0, 1.00, 20.0, (296.0, 86.0)),
+            (4, 1.00, 24.0, (304.0, 94.0)),
+            (16, 1.00, 36.0, (328.0, 118.0)),
+            (4, 0.80, 20.0, (253.0, 78.0)), // 19.2, rounded up
+            (4, 1.50, 36.0, (437.0, 139.0)),
+            (16, 1.50, 54.0, (473.0, 175.0)),
+            (0, 0.80, 16.0, (245.0, 70.0)),
+        ] {
+            let metrics = metrics_of(OverlayTheme {
+                size_scale: Some(scale),
+                ..OverlayTheme::default()
+            });
+            let shadow = ShadowMetrics::from_theme(
+                &OverlayTheme {
+                    shadow_strength: Some(0.5),
+                    shadow_offset_y: Some(offset),
+                    ..OverlayTheme::default()
+                },
+                Material::Flat,
+            );
+            assert_eq!(
+                metrics.shadow_slack(Material::Flat, shadow),
+                slack,
+                "offset {offset} at {scale}"
+            );
+
+            assert_eq!(
+                metrics.window_size(OverlayCardShape::CompactRest, Material::Flat, shadow),
+                window_size,
+                "offset {offset} at {scale}"
+            );
+        }
+
+        // The four windows at the inherit offset and a mid strength, as
+        // literals: today's plus 2 x 24 on both axes.
+        let shadow = ShadowMetrics::from_theme(
+            &OverlayTheme {
+                shadow_strength: Some(0.5),
+                ..OverlayTheme::default()
+            },
+            Material::Flat,
+        );
+        let metrics = inherit_metrics();
+        assert_eq!(
+            metrics.window_size(OverlayCardShape::CompactRest, Material::Flat, shadow),
+            (304.0, 94.0)
+        );
+        assert_eq!(
+            metrics.window_size(OverlayCardShape::LiveOpen, Material::Flat, shadow),
+            (448.0, 168.0)
+        );
+
+        // The strength only decides whether there is a shadow at all; the
+        // slack is the offset's and the scale's.
+        for strength in [0.01, 0.35, 1.00] {
+            let any = ShadowMetrics::from_theme(
+                &OverlayTheme {
+                    shadow_strength: Some(strength),
+                    ..OverlayTheme::default()
+                },
+                Material::Flat,
+            );
+            assert_eq!(
+                metrics.shadow_slack(Material::Flat, any),
+                24.0,
+                "{strength}"
+            );
+        }
+        // …and at zero there is none, which is what Flat inherits.
+        let off = ShadowMetrics::from_theme(
+            &OverlayTheme {
+                shadow_strength: Some(0.0),
+                shadow_offset_y: Some(SHADOW_OFFSET_Y_MAX),
+                ..OverlayTheme::default()
+            },
+            Material::Flat,
+        );
+        assert_eq!(metrics.shadow_slack(Material::Flat, off), 0.0);
+    }
+
+    /// Under Glass the window is the card, so it can have no slack at all: the
+    /// shadow is macOS's, drawn outside the window, and `shadow_strength` only
+    /// switches it. A Glass window is byte-identical at every strength.
+    #[test]
+    fn glass_keeps_zero_slack_whatever_the_shadow_says() {
+        let metrics = inherit_metrics();
+        for strength in [0.0, 0.01, 0.5, 1.0] {
+            for offset in [0, 4, SHADOW_OFFSET_Y_MAX] {
+                let shadow = ShadowMetrics::from_theme(
+                    &OverlayTheme {
+                        shadow_strength: Some(strength),
+                        shadow_offset_y: Some(offset),
+                        ..OverlayTheme::default()
+                    },
+                    Material::Glass,
+                );
+                assert_eq!(metrics.shadow_slack(Material::Glass, shadow), 0.0);
+                for shape in OverlayCardShape::ALL {
+                    assert_eq!(
+                        metrics.window_size(shape, Material::Glass, shadow),
+                        window(shape, 1.0, Material::Glass),
+                        "{shape:?} at {strength}/{offset}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// The slack is computed in two languages, and CSS cannot round, so the
+    /// apply layer writes `--ov-shadow-slack` already scaled and ceiled. Both
+    /// sides must therefore start from the same blur radius and the same
+    /// expression; this reads the frontend for both.
+    #[test]
+    fn the_shadow_slack_is_the_apply_layers() {
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-shadow-blur"), CARD_SHADOW_BLUR);
+        assert_eq!(
+            tsx_const(APPLY_LAYER_TS, "export const SHADOW_BLUR_PX = "),
+            CARD_SHADOW_BLUR
+        );
+        assert!(
+            APPLY_LAYER_TS.contains("Math.ceil((SHADOW_BLUR_PX + offsetY) * (scale ?? 1))"),
+            "the apply layer no longer ceils blur + offset, scaled"
+        );
+        // The stage takes the number verbatim, unscaled, because it arrives
+        // scaled. A `* var(--ov-scale)` here would square the factor.
+        assert_eq!(
+            css_declaration(css_rule(OVERLAY_CSS, ".ov-stage {"), "padding"),
+            "var(--ov-shadow-slack)"
+        );
+    }
+
+    /// `element_gap` widens every card by two gaps, on both Materials, and
+    /// nothing else about the card moves.
+    #[test]
+    fn element_gap_widens_every_pill_by_twice_the_gap() {
+        // (gap, the five Glass windows' widths, the two Flat ones): every
+        // width written out, the footprints at gap 0 and the same five two
+        // gaps wider. `ELEMENT_GAP_MAX` is 40, so its row adds 80.
+        for (gap, glass, flat) in [
+            (0, [174.0, 218.0, 186.0, 218.0, 394.0], [256.0, 400.0]),
+            (8, [190.0, 234.0, 202.0, 234.0, 410.0], [272.0, 416.0]),
+            (20, [214.0, 258.0, 226.0, 258.0, 434.0], [296.0, 440.0]),
+            (
+                ELEMENT_GAP_MAX,
+                [254.0, 298.0, 266.0, 298.0, 474.0],
+                [336.0, 480.0],
+            ),
+        ] {
+            let metrics = metrics_of(OverlayTheme {
+                element_gap: Some(gap),
+                ..OverlayTheme::default()
+            });
+
+            // Glass sizes the window to the exact card, so the growth shows per
+            // shape.
+            for (shape, width, height) in [
+                (OverlayCardShape::CompactRest, glass[0], 42.0),
+                (OverlayCardShape::CompactWorking, glass[1], 42.0),
+                (OverlayCardShape::LivePill, glass[2], 42.0),
+                (OverlayCardShape::LiveWorking, glass[3], 42.0),
+                (OverlayCardShape::LiveOpen, glass[4], 118.0),
+            ] {
+                assert_eq!(
+                    metrics.window_size(shape, Material::Glass, inherit_shadow(Material::Glass)),
+                    (width, height),
+                    "{shape:?} at gap {gap}"
+                );
+            }
+
+            // Flat's window covers the widest card of the family, which grew
+            // by the same two gaps.
+            for (shape, width, height) in [
+                (OverlayCardShape::CompactRest, flat[0], 46.0),
+                (OverlayCardShape::LiveOpen, flat[1], 120.0),
+            ] {
+                assert_eq!(
+                    metrics.window_size(shape, Material::Flat, inherit_shadow(Material::Flat)),
+                    (width, height),
+                    "{shape:?} at gap {gap}"
+                );
+            }
+        }
+
+        // A gap that reached the geometry unclamped is treated as the bound.
+        assert_eq!(
+            metrics_of(OverlayTheme {
+                element_gap: Some(999),
+                ..OverlayTheme::default()
+            }),
+            metrics_of(OverlayTheme {
+                element_gap: Some(ELEMENT_GAP_MAX),
+                ..OverlayTheme::default()
+            })
+        );
+    }
+
+    /// Hiding the waveform shrinks the two resting shapes to the row that is
+    /// left and nothing else. The working pill and the open panel are tuned to
+    /// translated labels and to the transcript, so they keep their widths and
+    /// every morph stays a grow.
+    #[test]
+    fn hiding_the_waveform_shrinks_only_the_resting_shapes() {
+        let hidden = metrics_of(OverlayTheme {
+            show_waveform: Some(false),
+            ..OverlayTheme::default()
+        });
+        let glass_shadow = inherit_shadow(Material::Glass);
+
+        // 2 x 10 padding + 22 + 22 side columns, plus the hairline per edge.
+        for shape in [OverlayCardShape::CompactRest, OverlayCardShape::LivePill] {
+            assert_eq!(
+                hidden.window_size(shape, Material::Glass, glass_shadow),
+                (66.0, 42.0),
+                "{shape:?}"
+            );
+        }
+        for (shape, expected) in [
+            (OverlayCardShape::CompactWorking, (218.0, 42.0)),
+            (OverlayCardShape::LiveWorking, (218.0, 42.0)),
+            (OverlayCardShape::LiveOpen, (394.0, 118.0)),
+        ] {
+            assert_eq!(
+                hidden.window_size(shape, Material::Glass, glass_shadow),
+                expected,
+                "{shape:?}"
+            );
+        }
+
+        // Losing the cancel button drops the row's 22 px side floor, which the
+        // button was the only reason for. Alone it shrinks nothing, because
+        // the 172 resting pill is still wider than the row.
+        let no_cancel = metrics_of(OverlayTheme {
+            show_cancel: Some(false),
+            ..OverlayTheme::default()
+        });
+        assert_eq!(
+            no_cancel.window_size(OverlayCardShape::CompactRest, Material::Glass, glass_shadow),
+            (174.0, 42.0)
+        );
+        // With the waveform gone too, the row is the dot's column alone:
+        // 2 x 10 padding + 12.
+        let bare = metrics_of(OverlayTheme {
+            show_waveform: Some(false),
+            show_cancel: Some(false),
+            ..OverlayTheme::default()
+        });
+        for shape in [OverlayCardShape::CompactRest, OverlayCardShape::LivePill] {
+            assert_eq!(
+                bare.window_size(shape, Material::Glass, glass_shadow),
+                (34.0, 42.0),
+                "{shape:?}"
+            );
+        }
+
+        // Every morph out of a shrunken resting shape is still a grow, which
+        // the card's width transition and the native frame morph both assume.
+        for metrics in [hidden, bare] {
+            for (from, to) in [
+                (
+                    OverlayCardShape::CompactRest,
+                    OverlayCardShape::CompactWorking,
+                ),
+                (OverlayCardShape::LivePill, OverlayCardShape::LiveWorking),
+                (OverlayCardShape::LivePill, OverlayCardShape::LiveOpen),
+            ] {
+                let (narrow, _) = metrics.window_size(from, Material::Glass, glass_shadow);
+                let (wide, _) = metrics.window_size(to, Material::Glass, glass_shadow);
+                assert!(narrow <= wide, "{from:?} -> {to:?} is not a grow");
+            }
+        }
+    }
+
+    /// Under Flat the window covers the widest card its family can reach, and
+    /// neither switch changes that card, so a Flat window never moves for
+    /// either of them.
+    #[test]
+    fn flat_windows_ignore_the_visibility_tokens() {
+        for show_waveform in [true, false] {
+            for show_cancel in [true, false] {
+                let metrics = metrics_of(OverlayTheme {
+                    show_waveform: Some(show_waveform),
+                    show_cancel: Some(show_cancel),
+                    ..OverlayTheme::default()
+                });
+                for shape in OverlayCardShape::ALL {
+                    assert_eq!(
+                        metrics.window_size(shape, Material::Flat, inherit_shadow(Material::Flat)),
+                        window(shape, 1.0, Material::Flat),
+                        "{shape:?} with waveform {show_waveform}, cancel {show_cancel}"
+                    );
+                }
+            }
+        }
     }
 
     /// Every variant survives the round trip through the byte the atomic stores,
@@ -1184,5 +1905,120 @@ mod tests {
         // one sized from above.
         assert!(css_px(OVERLAY_CSS, "--ov-rest-w") <= css_px(OVERLAY_CSS, "--ov-work-w"));
         assert!(css_px(OVERLAY_CSS, "--ov-pill-w") <= css_px(OVERLAY_CSS, "--ov-open-w"));
+
+        // The row's own lengths, which decide how wide a resting pill has to
+        // be. The stylesheet declares each one and this side reads it, so the
+        // `max()` in `.scard.compact` and `resting_content_width` cannot
+        // disagree about a number.
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-side-min"), CARD_SIDE_MIN_W);
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-dot-col-w"), CARD_DOT_COL_W);
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-wave-pad-r"), CARD_WAVE_PAD_R);
+        assert_eq!(tsx_const(OVERLAY_TSX, "const WAVE_BARS = "), CARD_WAVE_BARS);
+        assert_eq!(
+            css_px(OVERLAY_CSS, "--ov-elem-gap"),
+            f64::from(ELEMENT_GAP_INHERIT)
+        );
+        // The three derived widths, as text, since none of them is a number:
+        // the bar count and the two side columns are the same sums Rust adds
+        // up. Whitespace is collapsed, because Prettier owns the line breaks.
+        for (name, expected) in [
+            (
+                "--ov-wave-slot-w",
+                "calc(9 * var(--ov-wave-w) + 8 * var(--ov-wave-gap))",
+            ),
+            (
+                "--ov-bare-w",
+                "calc( 2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +                  max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min) )",
+            ),
+            (
+                "--ov-row-w",
+                "calc( var(--ov-bare-w) + var(--ov-wave-slot-w) + var(--ov-wave-pad-r) )",
+            ),
+        ] {
+            assert_eq!(
+                collapsed(css_declaration(OVERLAY_CSS, name)),
+                collapsed(expected),
+                "{name}"
+            );
+        }
+        // …and the widths the card is actually drawn at, each carrying the two
+        // element gaps and, for the two resting shapes, the `max()` against the
+        // row that stops the waveform being clipped.
+        for (selector, expected) in [
+            (
+                "\n.scard {",
+                "calc(max(var(--ov-pill-w) + 2 * var(--ov-elem-gap), var(--ov-row-w)) * var(--ov-scale))",
+            ),
+            (
+                ".scard.compact {",
+                "calc(max(var(--ov-rest-w) + 2 * var(--ov-elem-gap), var(--ov-row-w)) * var(--ov-scale))",
+            ),
+            (
+                ".scard.nowave {",
+                "calc(var(--ov-bare-w) * var(--ov-scale))",
+            ),
+            (
+                ".scard.open {",
+                "calc((var(--ov-open-w) + 2 * var(--ov-elem-gap)) * var(--ov-scale))",
+            ),
+            (
+                ".scard.working {",
+                "calc((var(--ov-work-w) + 2 * var(--ov-elem-gap)) * var(--ov-scale))",
+            ),
+            (
+                ".scard.compact.cworking {",
+                "calc((var(--ov-work-w) + 2 * var(--ov-elem-gap)) * var(--ov-scale))",
+            ),
+        ] {
+            assert_eq!(
+                collapsed(css_declaration(css_rule(OVERLAY_CSS, selector), "width")),
+                collapsed(expected),
+                "{selector}"
+            );
+        }
+        // The row's gaps are the token itself, twice per row, which is what
+        // the four widths above pay for.
+        assert_eq!(
+            collapsed(css_declaration(
+                css_rule(OVERLAY_CSS, ".sbase {"),
+                "column-gap"
+            )),
+            "calc(var(--ov-elem-gap) * var(--ov-scale))"
+        );
+
+        // The shadow's four `:root` declarations. The strength and the offset
+        // are the tokens' own inherits, the slack is written by the apply layer
+        // and the blur is derived, living only here and in `CARD_SHADOW_BLUR`.
+        assert_eq!(css_number(OVERLAY_CSS, "--ov-shadow-strength"), 0.0);
+        assert_eq!(
+            css_px(OVERLAY_CSS, "--ov-shadow-y"),
+            f64::from(crate::overlay_theme::SHADOW_OFFSET_Y_INHERIT)
+        );
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-shadow-blur"), CARD_SHADOW_BLUR);
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-shadow-slack"), 0.0);
+        // The card's own shadow: two layers, both scaled, both at an alpha the
+        // strength multiplies, so strength 0 is fully transparent and Flat is
+        // pixel-identical to what it always was.
+        assert_eq!(
+            collapsed(css_declaration(css_rule(OVERLAY_CSS, "\n.scard {"), "box-shadow")),
+            collapsed(
+                "0 calc(var(--ov-shadow-y) * var(--ov-scale))                  calc(var(--ov-shadow-blur) * var(--ov-scale))                  rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.4)),                  0 calc(1px * var(--ov-scale)) calc(2px * var(--ov-scale))                  rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.16))"
+            )
+        );
+        // Under Glass the shadow is macOS's own, outside the window, so the
+        // card draws none.
+        assert_eq!(
+            css_declaration(
+                css_rule(OVERLAY_CSS, ":root[data-material=\"glass\"] .scard {"),
+                "box-shadow"
+            ),
+            "none"
+        );
+        // The apply layer's own copy of the blur, so the two languages compute
+        // the same slack.
+        assert_eq!(
+            tsx_const(APPLY_LAYER_TS, "export const SHADOW_BLUR_PX = "),
+            CARD_SHADOW_BLUR
+        );
     }
 }

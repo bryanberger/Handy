@@ -10,7 +10,12 @@ import type {
   StreamWorkKind,
 } from "@/bindings";
 import i18n, { syncLanguageFromSettings } from "@/i18n";
-import { applyOverlayTheme, storeOverlayTheme } from "@/lib/overlayTheme";
+import {
+  applyOverlayTheme,
+  BOOLEAN_INHERIT,
+  storeOverlayTheme,
+  switchToken,
+} from "@/lib/overlayTheme";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 import OverlayCard, { type OverlayState } from "./OverlayCard";
 import { useCardShapeReporter } from "./useCardShapeReporter";
@@ -19,20 +24,43 @@ import { useCardShapeReporter } from "./useCardShapeReporter";
 // every overlay form). Mic levels arrive as 16 FFT buckets; we take the first N.
 const WAVE_BARS = 9;
 
-// Paint a resolved overlay theme. Returns whether the effective Material is
-// Glass, the only theme fact this component keeps in state.
-const paintOverlayTheme = (resolved: ResolvedOverlayTheme): boolean => {
+/** The theme facts this component keeps in state, because the card's markup
+ *  reads them rather than a custom property. */
+interface OverlayThemeFacts {
+  /** Whether the effective Material is Glass. Gates the card-shape reports. */
+  glass: boolean;
+  /** `show_waveform`, unset meaning shown. */
+  showWaveform: boolean;
+  /** `show_cancel`, unset meaning shown. */
+  showCancel: boolean;
+}
+
+// The resolved theme can come from the localStorage mirror, which bypasses
+// Rust, so the two switches go through the apply layer's re-validation like
+// every number and colour it paints.
+const themeFacts = (resolved: ResolvedOverlayTheme): OverlayThemeFacts => ({
+  glass: resolved.effective_material === "glass",
+  showWaveform: switchToken(resolved.theme, "show_waveform"),
+  showCancel: switchToken(resolved.theme, "show_cancel"),
+});
+
+// Paint a resolved overlay theme and report the facts the markup needs.
+const paintOverlayTheme = (
+  resolved: ResolvedOverlayTheme,
+): OverlayThemeFacts => {
   applyOverlayTheme(document.documentElement, resolved);
-  return resolved.effective_material === "glass";
+  return themeFacts(resolved);
 };
 
 // Paint a persisted theme and store it for the next boot. The show pull and the
 // change push both do this. A draft does not. It is unpersisted, so mirroring it
 // would paint a restart's first frame with a theme the user never settled on.
-const paintAndStoreOverlayTheme = (resolved: ResolvedOverlayTheme): boolean => {
-  const glass = paintOverlayTheme(resolved);
+const paintAndStoreOverlayTheme = (
+  resolved: ResolvedOverlayTheme,
+): OverlayThemeFacts => {
+  const facts = paintOverlayTheme(resolved);
   storeOverlayTheme(resolved);
-  return glass;
+  return facts;
 };
 
 const RecordingOverlay: React.FC = () => {
@@ -56,9 +84,14 @@ const RecordingOverlay: React.FC = () => {
   // Overlay placement (top vs bottom of the screen). The Live panel grows downward
   // from a top overlay (oldest line under the pill) and upward from a bottom one.
   const [position, setPosition] = useState<"top" | "bottom">("bottom");
-  // Whether the effective Material is Glass, from the resolved theme painted
-  // below. Gates the card-shape reports that only Glass needs.
-  const [glassActive, setGlassActive] = useState(false);
+  // The theme facts the markup reads, from the resolved theme painted below:
+  // whether Glass is in effect (which gates the card-shape reports) and which
+  // of the row's two elements the theme keeps.
+  const [theme, setTheme] = useState<OverlayThemeFacts>({
+    glass: false,
+    showWaveform: BOOLEAN_INHERIT.show_waveform,
+    showCancel: BOOLEAN_INHERIT.show_cancel,
+  });
 
   const smoothedLevelsRef = useRef<number[]>(Array(16).fill(0));
   const direction = getLanguageDirection(i18n.language);
@@ -96,7 +129,7 @@ const RecordingOverlay: React.FC = () => {
             // Painted here, not in an effect. The custom properties and
             // `data-material` must be on the root before the first painted
             // frame, which an effect would leave to React's batching.
-            setGlassActive(paintAndStoreOverlayTheme(resolved.data));
+            setTheme(paintAndStoreOverlayTheme(resolved.data));
           }
         } catch {
           // Keep the previous/default placement and theme if either read fails.
@@ -140,13 +173,13 @@ const RecordingOverlay: React.FC = () => {
       // The theme can change while the overlay is visible (a token committed
       // in the Appearance tab), so repaint on every push too.
       const unlistenTheme = await events.resolvedOverlayTheme.listen((event) =>
-        setGlassActive(paintAndStoreOverlayTheme(event.payload)),
+        setTheme(paintAndStoreOverlayTheme(event.payload)),
       );
 
       // The same repaint for a theme still being edited. A draft arrives per
       // animation frame while a slider is dragged, so this handler only paints.
       const unlistenDraft = await events.overlayThemeDraft.listen((event) =>
-        setGlassActive(paintOverlayTheme(event.payload.resolved)),
+        setTheme(paintOverlayTheme(event.payload.resolved)),
       );
 
       const unlistenPhase = await events.streamPhaseEvent.listen((event) => {
@@ -182,7 +215,13 @@ const RecordingOverlay: React.FC = () => {
     return () => clearInterval(id);
   }, [state, isVisible, captureReady]);
 
-  useCardShapeReporter({ isVisible, glassActive, state, streamText, phase });
+  useCardShapeReporter({
+    isVisible,
+    glassActive: theme.glass,
+    state,
+    streamText,
+    phase,
+  });
 
   if (!isVisible) return null;
 
@@ -199,6 +238,8 @@ const RecordingOverlay: React.FC = () => {
       workKind={workKind}
       elapsed={elapsed}
       position={position}
+      showWaveform={theme.showWaveform}
+      showCancel={theme.showCancel}
       session={session}
       direction={direction}
       onCancel={() => commands.cancelOperation()}

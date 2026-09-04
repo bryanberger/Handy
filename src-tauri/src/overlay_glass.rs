@@ -139,19 +139,28 @@ pub fn glass_action(material: Material, request: GlassRequest) -> GlassAction {
 /// overlay measures 15 pt and macOS draws the same shadow for it. Under Flat
 /// the window is deliberately larger than the card and transparent around it,
 /// so that shadow would trace a rectangle nobody can see, floating away from
-/// the card's corners. Flat has never had one.
+/// the card's corners. Flat draws its own shadow in CSS instead, inside the
+/// window, where a strength and an offset can actually exist.
+///
+/// `shadow_strength` is the switch. `NSWindow` exposes `hasShadow`,
+/// `setHasShadow:` and `invalidateShadow` and nothing else: no strength, no
+/// radius, no offset, no colour. So under Glass the token can only turn macOS's
+/// shadow on or off, which is still new capability, since a Glass user could
+/// never turn it off before. Its Glass inherit is 1, so leaving the token unset
+/// is the Glass overlay that has always shipped.
 ///
 /// Pure, so "Flat stays shadowless" is a test rather than a call-site reading.
-pub fn window_shadow(material: Material) -> bool {
-    matches!(material, Material::Glass)
+pub fn window_shadow(material: Material, shadow_strength: f64) -> bool {
+    matches!(material, Material::Glass) && shadow_strength > 0.0
 }
 
 /// Where a session has got to, as far as the window's shadow is concerned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShadowPhase {
-    /// A card is on screen, or about to paint into the window, in this
-    /// Material: a show, a Material switch, a reveal, a frame morph.
-    Showing(Material),
+    /// A card is on screen, or about to paint into the window, and the theme
+    /// asks for macOS's shadow or does not ([`window_shadow`] answered that at
+    /// the call site): a show, a Material switch, a reveal, a frame morph.
+    Showing { shadow: bool },
     /// The hide has started. Card and blur fade out together and the window
     /// stays mapped 300 ms more, empty (`overlay::hide_recording_overlay`).
     Leaving,
@@ -170,7 +179,7 @@ pub enum ShadowPhase {
 /// Pure, so both halves are a test rather than a call-site reading.
 pub fn window_shadow_at(phase: ShadowPhase) -> bool {
     match phase {
-        ShadowPhase::Showing(material) => window_shadow(material),
+        ShadowPhase::Showing { shadow } => shadow,
         ShadowPhase::Leaving => false,
     }
 }
@@ -227,13 +236,24 @@ pub fn support(_app: &AppHandle) -> GlassSupport {
 /// Every property is a live setter, so a token switch writes to the existing
 /// view, never re-creating it, which is why a second view can never appear.
 #[cfg(target_os = "macos")]
-pub fn apply_material(app: &AppHandle, material: Material, appearance: GlassAppearance) {
-    native::apply_material(app, material, appearance);
+pub fn apply_material(
+    app: &AppHandle,
+    material: Material,
+    shadow: bool,
+    appearance: GlassAppearance,
+) {
+    native::apply_material(app, material, shadow, appearance);
 }
 
 /// Off macOS there is no glass view to hide or re-dress.
 #[cfg(not(target_os = "macos"))]
-pub fn apply_material(_app: &AppHandle, _material: Material, _appearance: GlassAppearance) {}
+pub fn apply_material(
+    _app: &AppHandle,
+    _material: Material,
+    _shadow: bool,
+    _appearance: GlassAppearance,
+) {
+}
 
 /// Re-write the installed view's appearance from the theme as it resolves now,
 /// because the app appearance changed under it.
@@ -251,9 +271,11 @@ pub fn apply_material(_app: &AppHandle, _material: Material, _appearance: GlassA
 #[cfg(target_os = "macos")]
 pub fn reapply_appearance(app: &AppHandle) {
     let resolved = crate::overlay_theme::resolve(app);
+    let material = resolved.effective_material;
     apply_material(
         app,
-        resolved.effective_material,
+        material,
+        window_shadow(material, resolved.theme.shadow_strength(material)),
         GlassAppearance::from_theme(&resolved.theme),
     );
 }
@@ -276,13 +298,13 @@ pub fn reapply_appearance(_app: &AppHandle) {}
 /// Idempotent: a call while already visible only updates the radius. A no-op
 /// when Glass is not installed.
 #[cfg(target_os = "macos")]
-pub fn show_glass(app: &AppHandle, material: Material, radius: f64) {
-    native::show_glass(app, material, radius);
+pub fn show_glass(app: &AppHandle, material: Material, shadow: bool, radius: f64) {
+    native::show_glass(app, material, shadow, radius);
 }
 
 /// Off macOS there is no glass view to reveal.
 #[cfg(not(target_os = "macos"))]
-pub fn show_glass(_app: &AppHandle, _material: Material, _radius: f64) {}
+pub fn show_glass(_app: &AppHandle, _material: Material, _shadow: bool, _radius: f64) {}
 
 /// Move the panel frame to `size`, keeping the anchored screen edge and the
 /// horizontal centre fixed, set the radius, and reveal the glass view.
@@ -298,11 +320,12 @@ pub fn show_glass(_app: &AppHandle, _material: Material, _radius: f64) {}
 pub fn morph_frame(
     app: &AppHandle,
     material: Material,
+    shadow: bool,
     size: (f64, f64),
     radius: f64,
     duration_ms: u32,
 ) {
-    native::morph_frame(app, material, size, radius, duration_ms);
+    native::morph_frame(app, material, shadow, size, radius, duration_ms);
 }
 
 /// Off macOS there is no native frame to animate.
@@ -310,6 +333,7 @@ pub fn morph_frame(
 pub fn morph_frame(
     _app: &AppHandle,
     _material: Material,
+    _shadow: bool,
     _size: (f64, f64),
     _radius: f64,
     _duration_ms: u32,
@@ -483,7 +507,12 @@ mod native {
         AnyClass::get(c"NSGlassEffectView").is_some()
     }
 
-    pub(super) fn apply_material(app: &AppHandle, material: Material, appearance: GlassAppearance) {
+    pub(super) fn apply_material(
+        app: &AppHandle,
+        material: Material,
+        shadow: bool,
+        appearance: GlassAppearance,
+    ) {
         on_window(app, move |window, _mtm| {
             if let Some(view) = glass_view() {
                 match glass_action(material, GlassRequest::ApplyMaterial) {
@@ -500,7 +529,7 @@ mod native {
             // After the view work, so the invalidation re-derives the shadow
             // from what the window paints now. Outside the lookup, so a failed
             // install still stops casting a Glass shadow when it falls to Flat.
-            sync_window_shadow(window, ShadowPhase::Showing(material));
+            sync_window_shadow(window, ShadowPhase::Showing { shadow });
         });
     }
 
@@ -575,7 +604,7 @@ mod native {
         }
     }
 
-    pub(super) fn show_glass(app: &AppHandle, material: Material, radius: f64) {
+    pub(super) fn show_glass(app: &AppHandle, material: Material, shadow: bool, radius: f64) {
         on_window(app, move |window, _mtm| {
             if let Some(view) = glass_view() {
                 match glass_action(material, GlassRequest::Reveal) {
@@ -589,13 +618,14 @@ mod native {
             // Last, because the shape the shadow traces has just changed (a
             // reveal put content into an empty window, or the radius moved),
             // and the invalidation inside has to see the new one.
-            sync_window_shadow(window, ShadowPhase::Showing(material));
+            sync_window_shadow(window, ShadowPhase::Showing { shadow });
         });
     }
 
     pub(super) fn morph_frame(
         app: &AppHandle,
         material: Material,
+        shadow: bool,
         size: (f64, f64),
         radius: f64,
         duration_ms: u32,
@@ -647,7 +677,7 @@ mod native {
                 // the block and runs it on the main thread when the group ends.
                 let settled = window.retain();
                 let invalidate: RcBlock<dyn Fn()> = RcBlock::new(move || {
-                    sync_window_shadow(&settled, ShadowPhase::Showing(material));
+                    sync_window_shadow(&settled, ShadowPhase::Showing { shadow });
                 });
                 context.setCompletionHandler(Some(&invalidate));
                 // A second `animator().setFrame_display:` on the same window
@@ -665,7 +695,7 @@ mod native {
             // both where they will stay. An animated morph handed the same call
             // to its completion handler above.
             if snaps {
-                sync_window_shadow(window, ShadowPhase::Showing(material));
+                sync_window_shadow(window, ShadowPhase::Showing { shadow });
             }
         });
     }
@@ -700,7 +730,8 @@ mod native {
     /// window paints; an invalidation before the reveal, the frame move or the
     /// fade would re-cache the shape being left and the next would never be
     /// asked for. Under Flat it paints nothing outside the card and
-    /// [`window_shadow_at`] answers `false` anyway. Under Glass it is the glass
+    /// [`window_shadow_at`] answers `false` anyway (Flat's own shadow is drawn
+    /// by the card, in CSS, inside the window). Under Glass it is the glass
     /// view's rounded rectangle, filling the window.
     ///
     /// Unconditional, because every caller reaches here exactly when that shape
@@ -1109,8 +1140,21 @@ mod tests {
     /// around it, and has been shadowless since long before this feature.
     #[test]
     fn only_glass_casts_a_window_shadow() {
-        assert!(window_shadow(Material::Glass));
-        assert!(!window_shadow(Material::Flat));
+        assert!(window_shadow(Material::Glass, 1.0));
+        assert!(!window_shadow(Material::Flat, 1.0));
+
+        // `shadow_strength` switches it, the only control AppKit offers: any
+        // strength above zero is macOS's shadow, and zero is none. The Glass
+        // inherit is 1, so an unset token is the Glass overlay that shipped.
+        assert!(!window_shadow(Material::Glass, 0.0));
+        assert!(window_shadow(Material::Glass, 0.01));
+        assert!(window_shadow(Material::Glass, 0.5));
+
+        // Flat never casts a *window* shadow, whatever the strength. Its own
+        // shadow is CSS, inside a window that is bigger than the card.
+        for strength in [0.0, 0.01, 0.5, 1.0] {
+            assert!(!window_shadow(Material::Flat, strength), "{strength}");
+        }
     }
 
     /// The other half of the same rule, and the defect it was written for. A
@@ -1119,8 +1163,8 @@ mod tests {
     /// Material carries one out.
     #[test]
     fn the_shadow_goes_out_with_the_card() {
-        assert!(window_shadow_at(ShadowPhase::Showing(Material::Glass)));
-        assert!(!window_shadow_at(ShadowPhase::Showing(Material::Flat)));
+        assert!(window_shadow_at(ShadowPhase::Showing { shadow: true }));
+        assert!(!window_shadow_at(ShadowPhase::Showing { shadow: false }));
         assert!(!window_shadow_at(ShadowPhase::Leaving));
     }
 }

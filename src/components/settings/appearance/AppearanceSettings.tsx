@@ -5,8 +5,11 @@ import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import { useResolvedOverlayTheme } from "@/hooks/useResolvedOverlayTheme";
 import { useSettings } from "@/hooks/useSettings";
 import {
+  BOOLEAN_INHERIT,
   inheritedTokenValue,
   INHERIT_ALL,
+  SHADOW_STRENGTH_INHERIT,
+  type OverlayBooleanKey,
   type OverlayThemeKey,
 } from "@/lib/overlayTheme";
 import type {
@@ -21,6 +24,7 @@ import { ThemeSelector } from "../ThemeSelector";
 import { GlassStyleSelector } from "./GlassStyleSelector";
 import { MaterialSelector } from "./MaterialSelector";
 import { OnScreenPreview } from "./OnScreenPreview";
+import { OverlaySwitchRow } from "./OverlaySwitchRow";
 import {
   overlayTokenFieldsFor,
   type OverlayTokenField,
@@ -38,6 +42,26 @@ const NO_GLASS: GlassSupport = {
   engine: "none",
 };
 
+// A switch is one value, not the tail of a drag, so it commits straight
+// through, as the Material and the Glass style do. One handler per switch,
+// declared here rather than in the component, so every switch row keeps the
+// same `onChange` for the tab's life and stays memoised through a slider drag.
+const TOGGLE_HANDLERS: Record<OverlayBooleanKey, (next: boolean) => void> = {
+  show_waveform: (next) => {
+    void setOverlayThemeToken("show_waveform", next);
+  },
+  show_cancel: (next) => {
+    void setOverlayThemeToken("show_cancel", next);
+  },
+};
+
+// Under Glass the shadow is macOS's own and `NSWindow` offers no strength, so
+// the switch writes the two ends of the token's range rather than a boolean
+// the contract has no room for.
+const handleGlassShadow = (next: boolean) => {
+  void setOverlayThemeToken("shadow_strength", next ? 1 : 0);
+};
+
 function isOverlayThemeDefault(theme: OverlayTheme): boolean {
   return (Object.values(theme) as unknown[]).every(
     (value) => value === null || value === undefined,
@@ -47,9 +71,9 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
 /**
  * The Appearance tab. App theme picker, overlay style/position (both reused
  * unchanged from About/Advanced), on-screen preview, overlay-theme tokens as
- * Color / Material / Size & Spacing, and the Theme File group. Groups 4 on read
- * `OVERLAY_TOKEN_FIELDS` rather than hardcoded rows, so that table alone
- * declares a token's shape.
+ * Color / Material / Elements / Size & Spacing, and the Theme File group.
+ * Groups 4 on read `OVERLAY_TOKEN_FIELDS` rather than hardcoded rows, so that
+ * table alone declares a token's shape.
  */
 export const AppearanceSettings: React.FC = () => (
   <ErrorBoundary context="Appearance tab">
@@ -150,6 +174,38 @@ const AppearanceSettingsInner: React.FC = () => {
           />
         );
 
+      case "toggle":
+        return (
+          <OverlaySwitchRow
+            key={field.key}
+            labelKey={field.labelKey}
+            descriptionKey={field.descriptionKey}
+            checked={
+              vars.effectiveValue(field.key) ?? BOOLEAN_INHERIT[field.key]
+            }
+            onChange={TOGGLE_HANDLERS[field.key]}
+            locked={locked}
+            lockedDescription={lockedDescription}
+          />
+        );
+
+      case "glassShadow":
+        return (
+          <OverlaySwitchRow
+            key={`${field.key}-glass`}
+            labelKey={field.labelKey}
+            descriptionKey={field.descriptionKey}
+            noteKey={field.noteKey}
+            checked={
+              (vars.effectiveValue(field.key) ??
+                SHADOW_STRENGTH_INHERIT[vars.effectiveMaterial]) > 0
+            }
+            onChange={handleGlassShadow}
+            locked={locked}
+            lockedDescription={lockedDescription}
+          />
+        );
+
       case "color":
         return (
           <OverlayTokenRow
@@ -233,6 +289,12 @@ const AppearanceSettingsInner: React.FC = () => {
 
           <SettingsGroup title={t("settings.appearance.groups.material")}>
             {overlayTokenFieldsFor("material", vars.effectiveMaterial).map(
+              renderField,
+            )}
+          </SettingsGroup>
+
+          <SettingsGroup title={t("settings.appearance.groups.elements")}>
+            {overlayTokenFieldsFor("elements", vars.effectiveMaterial).map(
               renderField,
             )}
           </SettingsGroup>

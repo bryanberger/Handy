@@ -33,10 +33,10 @@ export interface OverlayTokenRowProps {
  *
  * Memoised, the whole reason it is a component and not a `renderField` closure
  * in the tab. A slider drag re-renders the tab per input event, which before
- * this split re-rendered all sixteen rows, roughly 1200 row renders in a
- * two-second drag, sixteen of them the row actually moving. Its props are the
- * value, three booleans/strings and three callbacks the tab holds stable, so
- * every row but the dragged one bails out.
+ * this split re-rendered every row: roughly 1200 row renders in a two-second
+ * drag over the sixteen rows the tab had then, when only the dragged row was
+ * moving. Its props are the value, three booleans/strings and three callbacks
+ * the tab holds stable, so every row but the dragged one bails out.
  */
 const OverlayTokenRowInner: React.FC<OverlayTokenRowProps> = ({
   field,

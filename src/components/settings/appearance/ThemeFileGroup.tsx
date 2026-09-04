@@ -38,9 +38,10 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
 
 /** The tokens with a row in the Appearance tab under one Material. It asks
  *  for rows exactly as the groups render them, so a token that gains, loses
- *  or shares a row needs no second edit. Two of the sixteen never appear:
- *  `glass_material`, which only drives the pre-macOS-26 fallback engine and
- *  is set from the theme file, and the other Material's alpha. */
+ *  or shares a row needs no second edit. Never on screen: `glass_material`,
+ *  which only drives the pre-macOS-26 fallback engine and is set from the
+ *  theme file, the other Material's alpha, and, under Glass, the shadow
+ *  offset macOS gives no say over. */
 function keysWithARow(material: Material): Set<OverlayThemeKey> {
   return new Set<OverlayThemeKey>(
     OVERLAY_TOKEN_GROUPS.flatMap((group) =>
@@ -54,10 +55,10 @@ function keysWithARow(material: Material): Set<OverlayThemeKey> {
  * tab can show as locked right now, on the Material being painted.
  *
  * Otherwise a file setting a row-less token would count as owning a value
- * with no control, and the total would promise rows that are not there.
- * `glass_material` has no row and the two alphas share one slot, so fourteen
- * of the sixteen ever show. The tokens still apply; this rule counts one
- * sentence, not the file.
+ * with no control, and the total would promise rows that are not there. So the
+ * total differs per Material: nineteen of the twenty-one under Flat, eighteen
+ * under Glass, which has no shadow offset. The tokens still apply; this rule
+ * counts one sentence, not the file.
  */
 export function lockedTokenCounts(
   ownedKeys: readonly string[],

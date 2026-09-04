@@ -517,11 +517,24 @@ impl CardMetrics {
         self.row_height() + CARD_CAP_MAX_H + CARD_CAP_PAD_FACTOR * f64::from(self.padding)
     }
 
-    /// What the row's two element gaps add to every card's width at
+    /// What the row's two element gaps add to a card's own width at
     /// size_scale 1. Both sides of every `max()` below carry it, so the gap
     /// widens a card without ever changing which of the two won.
+    ///
+    /// Every card tuned to its contents pays for two, because its row keeps
+    /// all three columns. [`Self::row_gap_width`] is what the row itself
+    /// measures, which is not the same thing once a column is gone.
     fn gap_width(&self) -> f64 {
         2.0 * f64::from(self.element_gap)
+    }
+
+    /// What the element gaps add to the control row with a waveform on it at
+    /// size_scale 1: one on each side of the waveform, or one alone once the
+    /// cancel button has taken the right column away. `--ov-row-gaps` in the
+    /// stylesheet, which the apply layer drops to 1 with that button.
+    fn row_gap_width(&self) -> f64 {
+        let gaps = if self.show_cancel { 2.0 } else { 1.0 };
+        gaps * f64::from(self.element_gap)
     }
 
     /// The row's side-column floor at size_scale 1 (`--ov-side-min`): 22 px
@@ -569,11 +582,16 @@ impl CardMetrics {
     ///
     /// Written out rather than added to [`Self::bare_row_width`], because a row
     /// with a waveform on it keeps the dot's inset: the two sums differ in
-    /// their left column as well as in the centre one.
+    /// their left column as well as in the centre one, and in how many element
+    /// gaps they count.
+    ///
+    /// Without the cancel button the sum collapses to the padding, the dot
+    /// column, one gap and the waveform lane, since the side floor is 0 there
+    /// and the right column is gone with it.
     fn row_width(&self) -> f64 {
         let side = self.side_min();
         2.0 * f64::from(self.padding)
-            + self.gap_width()
+            + self.row_gap_width()
             + side.max(CARD_DOT_COL_W)
             + side
             + self.wave_column_width()
@@ -581,7 +599,13 @@ impl CardMetrics {
 
     /// A resting shape's content width at size_scale 1: its tuned width plus
     /// the element gaps, but never narrower than the row it has to hold, and
-    /// the bare row alone once the waveform is hidden.
+    /// the row alone once either element is hidden.
+    ///
+    /// The tuned width is what the pill is roomy enough for, and it is only
+    /// worth holding while every element is on the row. Take the cancel button
+    /// away and the tuned width would keep an empty column where it was, so
+    /// the pill becomes exactly the row instead; take the waveform away too
+    /// and the row is the bare one.
     ///
     /// The `max()` is the fix for a clipping this overlay always had. At the
     /// maximum padding, waveform width and waveform gap the row measures 186,
@@ -590,6 +614,9 @@ impl CardMetrics {
     fn resting_content_width(&self, tuned: f64) -> f64 {
         if !self.show_waveform {
             return self.bare_row_width();
+        }
+        if !self.show_cancel {
+            return self.row_width();
         }
         (tuned + self.gap_width()).max(self.row_width())
     }
@@ -1919,22 +1946,22 @@ mod tests {
             );
         }
 
-        // Losing the cancel button drops the row's 22 px side floor, which the
-        // button was the only reason for. Alone it shrinks nothing, because
-        // the 172 resting pill is still wider than the row.
+        // Losing the cancel button drops the row's 22 px side floor and the
+        // right column it held, so a resting pill is the row that is left
+        // rather than its tuned width with a gap where the button was:
+        // 2 x 10 padding + the 12 px dot column + the 68 px waveform lane,
+        // plus the hairline per edge. The Live pill lands on the same row.
         let no_cancel = metrics_of(OverlayTheme {
             show_cancel: Some(false),
             ..OverlayTheme::default()
         });
-        assert_eq!(
-            no_cancel.window_size(
-                OverlayCardShape::CompactRest,
-                Material::Glass,
-                glass_shadow,
-                0.0
-            ),
-            (174.0, 42.0)
-        );
+        for shape in [OverlayCardShape::CompactRest, OverlayCardShape::LivePill] {
+            assert_eq!(
+                no_cancel.window_size(shape, Material::Glass, glass_shadow, 0.0),
+                (102.0, 42.0),
+                "{shape:?}"
+            );
+        }
         // With the waveform gone too, the pill is a square as wide as the row
         // is tall, 20 + 2 x 10, with the dot centred in it.
         let bare = metrics_of(OverlayTheme {
@@ -1983,15 +2010,15 @@ mod tests {
     fn the_resting_pill_measures_the_row_it_is_left_with() {
         // (waveform, cancel, scale, the resting Minimal pill's window, the Live
         // pill's), at size scale 1 and at 0.80, the smallest a theme can ask
-        // for. 172 and 184 hold their tuned widths while the waveform is on the
-        // row, whatever the cancel button does; without it they are the row,
-        // 64 with the button and a 40 square with the dot alone; every one
-        // plus the hairline per edge.
+        // for. 172 and 184 hold their tuned widths only while every element is
+        // on the row; hide either and the pill is the row itself, which is 100
+        // with the waveform alone, 64 with the button alone and a 40 square
+        // with the dot alone; every one plus the hairline per edge.
         for (waveform, cancel, scale, compact, live) in [
             (true, true, 1.0, (174.0, 42.0), (186.0, 42.0)),
             (true, true, SIZE_SCALE_MIN, (140.0, 34.0), (149.0, 34.0)),
-            (true, false, 1.0, (174.0, 42.0), (186.0, 42.0)),
-            (true, false, SIZE_SCALE_MIN, (140.0, 34.0), (149.0, 34.0)),
+            (true, false, 1.0, (102.0, 42.0), (102.0, 42.0)),
+            (true, false, SIZE_SCALE_MIN, (82.0, 34.0), (82.0, 34.0)),
             (false, true, 1.0, (66.0, 42.0), (66.0, 42.0)),
             (false, true, SIZE_SCALE_MIN, (53.0, 34.0), (53.0, 34.0)),
             (false, false, 1.0, (42.0, 42.0), (42.0, 42.0)),
@@ -2031,6 +2058,41 @@ mod tests {
         assert!(
             2.0 * CARD_SIDE_MIN_W > row_box,
             "floors left at size scale 1 used to overflow this row, and this is the pin"
+        );
+
+        // And the same question for the row the cancel button leaves behind,
+        // which is two tracks with the waveform in the right one. The card is
+        // exactly that row, so the space beside the waveform is the dot column
+        // and nothing else, which is what the left track floors at. Every term
+        // carries --ov-scale, so it holds at 0.80 as it does here.
+        let no_cancel = metrics_of(OverlayTheme {
+            show_cancel: Some(false),
+            ..OverlayTheme::default()
+        });
+        assert_eq!(no_cancel.row_width(), 100.0);
+        assert_eq!(
+            no_cancel.row_width()
+                - 2.0 * f64::from(PADDING_INHERIT)
+                - no_cancel.wave_column_width(),
+            CARD_DOT_COL_W
+        );
+
+        // The right column takes one of the row's two element gaps with it, so
+        // a resting pill without the button pays for one: 100 + 40, plus the
+        // hairline per edge.
+        let one_gap = metrics_of(OverlayTheme {
+            element_gap: Some(ELEMENT_GAP_MAX),
+            show_cancel: Some(false),
+            ..OverlayTheme::default()
+        });
+        assert_eq!(
+            one_gap.window_size(
+                OverlayCardShape::CompactRest,
+                Material::Glass,
+                inherit_shadow(Material::Glass),
+                0.0
+            ),
+            (142.0, 42.0)
         );
     }
 
@@ -2138,13 +2200,35 @@ mod tests {
              minmax(calc(var(--ov-side-min) * var(--ov-scale)), 1fr)"
         );
 
-        // With the dot alone on the row the three columns collapse to their
+        // Without the cancel button the row is two tracks and one gap, which is
+        // the row `row_width` adds up. The left track floors at the dot column,
+        // not at `--ov-side-min`, which went to 0 with the button; scaled, like
+        // every length around it.
+        assert_eq!(
+            collapsed(css_declaration(
+                css_rule(OVERLAY_CSS, ".scard.nocancel .sbase {"),
+                "grid-template-columns"
+            )),
+            "minmax(calc(var(--ov-dot-col-w) * var(--ov-scale)), 1fr) auto"
+        );
+        // The column that held the button is gone rather than empty, so the row
+        // has one gap to pay for. Only the resting shapes carry `.nocancel`, so
+        // the open Live panel keeps the column its timer sits in.
+        assert_eq!(
+            css_declaration(
+                css_rule(OVERLAY_CSS, ".scard.nocancel .sbase-r {"),
+                "display"
+            ),
+            "none"
+        );
+
+        // With the dot alone on the row both remaining tracks collapse to their
         // contents and the row centres them in the square `bare_row_width`
         // hands back, so the dot sits the same distance from every edge.
         let dot_only = css_rule(OVERLAY_CSS, ".scard.nowave.nocancel .sbase {");
         assert_eq!(
             collapsed(css_declaration(dot_only, "grid-template-columns")),
-            "auto auto auto"
+            "auto auto"
         );
         assert_eq!(css_declaration(dot_only, "justify-content"), "center");
         assert_eq!(css_declaration(dot_only, "column-gap"), "0");
@@ -2286,6 +2370,28 @@ mod tests {
             css_px(OVERLAY_CSS, "--ov-elem-gap"),
             f64::from(ELEMENT_GAP_INHERIT)
         );
+        // How many of those gaps the row with a waveform on it counts, which
+        // `row_gap_width` mirrors and the apply layer drops to 1 with the
+        // cancel button.
+        assert_eq!(css_number(OVERLAY_CSS, "--ov-row-gaps"), 2.0);
+        assert_eq!(inherit_metrics().row_gap_width(), 0.0);
+        assert_eq!(
+            metrics_of(OverlayTheme {
+                element_gap: Some(6),
+                ..OverlayTheme::default()
+            })
+            .row_gap_width(),
+            12.0
+        );
+        assert_eq!(
+            metrics_of(OverlayTheme {
+                element_gap: Some(6),
+                show_cancel: Some(false),
+                ..OverlayTheme::default()
+            })
+            .row_gap_width(),
+            6.0
+        );
         // The three derived widths, as text, since none of them is a number:
         // the bar count and the two side columns are the same sums Rust adds
         // up. Whitespace is collapsed, because Prettier owns the line breaks.
@@ -2300,7 +2406,7 @@ mod tests {
             ),
             (
                 "--ov-row-w",
-                "calc( 2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +                  max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min) +                  var(--ov-wave-slot-w) + var(--ov-wave-pad-r) )",
+                "calc( 2 * var(--ov-pad) + var(--ov-row-gaps) * var(--ov-elem-gap) +                  max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min) +                  var(--ov-wave-slot-w) + var(--ov-wave-pad-r) )",
             ),
         ] {
             assert_eq!(
@@ -2324,6 +2430,10 @@ mod tests {
             (
                 ".scard.nowave {",
                 "calc(var(--ov-bare-w) * var(--ov-scale))",
+            ),
+            (
+                ".scard.nocancel {",
+                "calc(var(--ov-row-w) * var(--ov-scale))",
             ),
             (
                 ".scard.nowave.nocancel {",
@@ -2356,13 +2466,11 @@ mod tests {
                 css_rule(OVERLAY_CSS, ".scard.nowave.nocancel {"),
                 "width"
             )),
-            collapsed(css_declaration(
-                css_rule(OVERLAY_CSS, ".sbase {"),
-                "height"
-            ))
+            collapsed(css_declaration(css_rule(OVERLAY_CSS, ".sbase {"), "height"))
         );
-        // The row's gaps are the token itself, twice per row, which is what
-        // the four widths above pay for.
+        // The row's gap is the token itself, once per column boundary, which is
+        // what the widths above pay for: twice while the row keeps its three
+        // columns, once for the pill the cancel button left as two.
         assert_eq!(
             collapsed(css_declaration(
                 css_rule(OVERLAY_CSS, ".sbase {"),

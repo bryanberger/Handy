@@ -44,10 +44,11 @@ export interface OverlayCardProps {
   showWaveform?: boolean;
   /**
    * The `show_cancel` token. False drops the button from every row; the
-   * keyboard shortcut and `--cancel` still cancel. The apply layer takes the
-   * row's 22 px side floor away with it, that floor being the room the button
-   * needed. With the waveform gone too it adds `nocancel`, and the pill is
-   * a square with that dot, left alone on the row, centred in it.
+   * keyboard shortcut and `--cancel` still cancel. It also puts `nocancel` on
+   * the two resting shapes, which lose the row's right column with the button
+   * rather than keep an empty one, and the apply layer takes the 22 px side
+   * floor and one of the row's two element gaps away with it. With the
+   * waveform gone too the pill is a square, that dot centred in it.
    */
   showCancel?: boolean;
   /**
@@ -201,22 +202,26 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
     </button>
   );
 
-  // The classes a resting shape takes from the two visibility tokens. `nowave`
-  // shrinks the pill to the row that is left; `nocancel` on top of it squares
-  // the pill around the dot that is then alone on that row. Neither ever reaches the working
-  // pill or the open panel, both tuned to their content, so every morph out of
-  // a shrunken shape stays a grow.
-  const restingClasses = showWaveform
-    ? ""
-    : showCancel
-      ? "nowave"
-      : "nowave nocancel";
+  // The classes a resting shape takes from the two visibility tokens. Either
+  // one shrinks the pill to the row it is left with; together they square it
+  // around the dot that is then alone on that row. Neither ever reaches the
+  // working pill or the open panel, both tuned to their content, so every
+  // morph out of a shrunken shape stays a grow, and the open panel keeps the
+  // right column its timer sits in.
+  const restingClasses = [
+    showWaveform ? null : "nowave",
+    showCancel ? null : "nocancel",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   // dot (left) | waveform (center) | timer + cancel (right), same structure
   // for pill & panel, so the Live morph is a pure width change.
-  // The grid keeps its three columns whatever is hidden, so the waveform and
+  // The markup keeps its three children whatever is hidden, so the waveform and
   // the working label stay centred and the dot stays at the left of its track.
-  // Once the dot is alone on the row the stylesheet centres it instead.
+  // On a resting shape without the cancel button the stylesheet hides the right
+  // column and lays the row out in two tracks; once the dot is alone on it, it
+  // centres the dot instead.
   const listeningRow = (showTimer: boolean) => (
     <div className="sbase">
       <div className="sbase-l">

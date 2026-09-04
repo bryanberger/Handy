@@ -125,18 +125,24 @@
   ); /* the waveform lane:
                        nine bars and eight gaps, 60px at the inherit values, exactly what the
                        nine flex children measure. */
+  --ov-row-gaps: 2; /* how many element gaps the row with a waveform on it carries: one on
+                       each side of the waveform. The apply layer drops it to 1 when
+                       show_cancel takes the right column and the gap beside it away. A
+                       count, not a length, so --ov-elem-gap stays the only gap value. */
   /* The control row's own width, with an empty centre column and with the
      waveform in it. The resting shapes take the larger of their tuned width and
      --ov-row-w, so a roomy padding, bar or gap widens the pill instead of being
      clipped by .scard's overflow. overlay_geometry.rs mirrors both sums.
      They differ in the left column, not only in the waveform: the row that
-     carries a waveform keeps the dot's inset, the bare row drops it. */
+     carries a waveform keeps the dot's inset, the bare row drops it, and the
+     bare row always has three columns to fall between, so it counts two gaps
+     where --ov-row-w counts --ov-row-gaps. */
   --ov-bare-w: calc(
     2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +
       max(var(--ov-side-min), var(--ov-dot-w)) + var(--ov-side-min)
   );
   --ov-row-w: calc(
-    2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +
+    2 * var(--ov-pad) + var(--ov-row-gaps) * var(--ov-elem-gap) +
       max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min) +
       var(--ov-wave-slot-w) + var(--ov-wave-pad-r)
   );
@@ -340,6 +346,13 @@
 .scard.nowave {
   width: calc(var(--ov-bare-w) * var(--ov-scale));
 }
+/* show_cancel off, on those same two shapes: the pill is exactly the row that
+   is left, so no empty column sits where the button was. --ov-row-w collapses
+   to the padding, the dot column, one element gap and the waveform lane,
+   because --ov-side-min and --ov-row-gaps both go with the button. */
+.scard.nocancel {
+  width: calc(var(--ov-row-w) * var(--ov-scale));
+}
 /* Both elements off: the pill is a square as wide as the row is tall, the dot
    centred in it, so the radius token rounds something symmetrical. The element
    gaps have nothing left to fall between and do not widen it. overlay_geometry.rs
@@ -437,9 +450,10 @@
      around it does: the card is a size-scale-1 sum times --ov-scale, so a floor
      left at 22px is wider than the row it sits in below scale 1 and pushes the
      cancel button through the card's edge. With that button hidden the floor is
-     0 and the two tracks still take equal free space, so the centring survives.
-     .scard.nowave.nocancel below replaces this when the dot is all that is
-     left. */
+     0 and the two tracks still take equal free space, so the centring survives
+     wherever three columns are still drawn: the working pill and the open Live
+     panel. The two .nocancel rules below replace this on the resting shapes,
+     which drop the right column with the button. */
   grid-template-columns:
     minmax(calc(var(--ov-side-min) * var(--ov-scale)), 1fr)
     auto
@@ -470,14 +484,29 @@
 .scard.nowave .sbase-l {
   padding-left: 0;
 }
-/* No cancel button either, so the dot is alone on the row. The three columns
+/* No cancel button, so the row's right column goes with it and the grid is two
+   tracks with one gap between them, exactly what --ov-row-w now adds up. The
+   left track floors at the dot column rather than at --ov-side-min, which the
+   button took to 0, so the dot keeps its room at any size scale; the card being
+   the row makes that floor exactly the free space beside the waveform. */
+.scard.nocancel .sbase {
+  grid-template-columns:
+    minmax(calc(var(--ov-dot-col-w) * var(--ov-scale)), 1fr)
+    auto;
+}
+/* The right column itself. Emptied rather than unmounted, because the open Live
+   panel still puts its timer in one and only the resting shapes carry
+   .nocancel. */
+.scard.nocancel .sbase-r {
+  display: none;
+}
+/* No waveform either, so the dot is alone on the row. Both remaining tracks
    collapse to their contents and the row centres them, which is the only way
    the dot lands in the middle of the square: left-aligned in its own track it
-   would sit one padding in, with the whole empty right column beside it. The
-   element gaps have nothing left to fall between, and the width above does not
-   pay for them. */
+   would sit one padding in, with the free space beside it. The element gap has
+   nothing left to fall between, and the width above does not pay for it. */
 .scard.nowave.nocancel .sbase {
-  grid-template-columns: auto auto auto;
+  grid-template-columns: auto auto;
   justify-content: center;
   column-gap: 0;
 }

@@ -83,14 +83,18 @@ describe("the resting Minimal pill", () => {
     expect(rowChildren(html)).toBe(3);
   });
 
-  test("hiding the cancel button drops it and nothing else", () => {
+  test("hiding the cancel button shrinks the pill to the row that is left", () => {
     const html = render({ showCancel: false });
     expect(html).not.toContain('class="sx"');
     expect(html).toContain('class="swave ready"');
     expect(html).toContain('class="sdot ready"');
-    // The width rule is the waveform's, so the pill keeps its tuned width.
-    expect(cardClasses(html)).toEqual(["scard", "compact"]);
+    // `nocancel` is the width rule and the two-track row: the stylesheet hides
+    // the empty right column, so no space is left where the button was.
+    expect(cardClasses(html)).toEqual(["scard", "compact", "nocancel"]);
+    // The markup is untouched; the column goes in CSS, because the open Live
+    // panel still puts its timer in one.
     expect(rowChildren(html)).toBe(3);
+    expect(html).toContain('class="sbase-r"');
   });
 
   test("hiding both leaves the dot alone in a square pill", () => {
@@ -219,6 +223,9 @@ describe("the working pill", () => {
     const html = render({ state: "transcribing", showCancel: false });
     expect(html).not.toContain('class="sx"');
     expect(html).toContain('class="sspinner"');
+    // No `nocancel`: the label is centred by three columns, and the pill is
+    // tuned to hold it, so the row keeps the column the button sat in.
+    expect(cardClasses(html)).toEqual(["scard", "compact", "cworking"]);
     expect(rowChildren(html)).toBe(3);
   });
 });
@@ -226,11 +233,15 @@ describe("the working pill", () => {
 describe("the Live card", () => {
   const live: Partial<OverlayCardProps> = { state: "streaming" };
 
-  test("the resting pill shrinks with the waveform, and only it", () => {
+  test("the resting pill shrinks with either element, and only it", () => {
     expect(cardClasses(render(live))).toEqual(["scard"]);
     expect(cardClasses(render({ ...live, showWaveform: false }))).toEqual([
       "scard",
       "nowave",
+    ]);
+    expect(cardClasses(render({ ...live, showCancel: false }))).toEqual([
+      "scard",
+      "nocancel",
     ]);
     expect(
       cardClasses(render({ ...live, showWaveform: false, showCancel: false })),
@@ -244,11 +255,15 @@ describe("the Live card", () => {
       ...live,
       streamText: { committed: "hello", tentative: "" },
       showWaveform: false,
+      showCancel: false,
     };
     const html = render(open);
-    // Open, so no `nowave`: the panel is tuned to the transcript, and every
-    // morph out of the shrunken pill has to stay a grow.
+    // Open, so neither resting class: the panel is tuned to the transcript,
+    // and every morph out of the shrunken pill has to stay a grow. Without
+    // `nocancel` the stylesheet leaves the right column alone, which is where
+    // the timer is.
     expect(cardClasses(html)).toEqual(["scard", "open"]);
+    expect(html).toContain('class="sbase-r"');
     expect(html).toContain('class="stimer"');
     expect(html).not.toContain("swave");
   });

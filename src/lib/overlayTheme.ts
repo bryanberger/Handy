@@ -431,6 +431,7 @@ export const OVERLAY_THEME_LENGTH_PROPERTIES: readonly string[] = [
   "--ov-wave-gap",
   "--ov-wave-w",
   "--ov-side-min",
+  "--ov-row-gaps",
   "--ov-shadow-strength",
   "--ov-shadow-y",
   "--ov-shadow-slack",
@@ -657,10 +658,15 @@ export function resolveOverlayThemeVars(
   if (elementGap !== null) vars["--ov-elem-gap"] = `${elementGap}px`;
 
   // The side columns' floor exists to hold the cancel button, so it goes with
-  // it. Written only for the value that is not the stylesheet's, which keeps
-  // the 22 out of this file: the CSS declares it, and this says "there is no
-  // button any more".
-  if (theme.show_cancel === false) vars["--ov-side-min"] = "0px";
+  // it, and so do the row's right column and the element gap beside it: the row
+  // is then the dot column, one gap and the waveform lane. Written only for the
+  // values that are not the stylesheet's, which keeps the 22 and the 2 out of
+  // this file: the CSS declares both, and this says "there is no button any
+  // more".
+  if (theme.show_cancel === false) {
+    vars["--ov-side-min"] = "0px";
+    vars["--ov-row-gaps"] = "1";
+  }
 
   // The shadow, Flat's only. Under Glass it is macOS's own, drawn outside a
   // window this card fills exactly, and `shadow_strength` merely switches it

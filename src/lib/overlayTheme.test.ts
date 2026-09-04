@@ -706,7 +706,7 @@ describe("the worked example", () => {
   // view property, and `waveform_style` writes none either, being a renderer
   // the card picks rather than a value it paints. The neutrals mix from `var(--s-text)`, resolving to the
   // `--s-text` beside them, while a set `border` replaces it for the edge.
-  test("resolves to exactly the twenty properties listed", () => {
+  test("resolves to exactly the twenty-one properties listed", () => {
     expect(resolveOverlayThemeVars(resolved(FULL_THEME))).toEqual({
       "--s-accent": "#7aa2f7",
       "--s-accent-soft": "color-mix(in srgb, #7aa2f7 20%, transparent)",
@@ -723,8 +723,10 @@ describe("the worked example", () => {
       "--ov-elem-gap": "8px",
       "--ov-wave-gap": "2px",
       "--ov-wave-w": "4px",
-      // show_cancel: false takes the row's side floor with the button.
+      // show_cancel: false takes the row's side floor and one of its two
+      // element gaps with the button, the right column being gone.
       "--ov-side-min": "0px",
+      "--ov-row-gaps": "1",
       // The Flat shadow at the example's own strength and offset, its slack
       // ceil((20 + 6) * 1.1) = 29.
       "--ov-shadow-strength": "0.35",
@@ -873,12 +875,16 @@ describe("the row's own tokens", () => {
     });
   });
 
-  test("hiding the cancel button drops the row's side floor", () => {
+  test("hiding the cancel button drops the row's side floor and a gap", () => {
+    // The right column goes with the button, so the row is two tracks with one
+    // gap between them, not three with two.
     expect(resolveOverlayThemeVars(resolved({ show_cancel: false }))).toEqual({
       "--ov-side-min": "0px",
+      "--ov-row-gaps": "1",
     });
     // Shown, whether by inherit or by an explicit true, is the stylesheet's
-    // own 22px, so nothing is written and the CSS is not duplicated here.
+    // own 22px and its own two gaps, so nothing is written and the CSS is not
+    // duplicated here.
     expect(resolveOverlayThemeVars(resolved({ show_cancel: true }))).toEqual(
       {},
     );

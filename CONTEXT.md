@@ -89,7 +89,7 @@ The single factor that zooms every length in the card at once, including widths,
 _Avoid_: zoom, size, scale factor (bare), DPI, density
 
 **Element gap**:
-The extra space between the elements of the card's control row. The row carries one on each side of its middle, so every card is twice the gap wider and the middle keeps the room it had.
+The extra space between the elements of the card's control row. The row carries one at each boundary between its columns, so a card with the full row is twice the gap wider and its middle keeps the room it had. A resting pill that lost the cancel button, and with it the right column, carries one.
 _Avoid_: spacing, item gap, column gap, padding (which insets the card)
 
 **Waveform style**:

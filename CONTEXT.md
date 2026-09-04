@@ -53,7 +53,7 @@ The tokens that decide how the overlay looks: accent, surface, text, border, mat
 _Avoid_: overlay skin, overlay colors, overlay CSS, customization
 
 **Token**:
-One named, user-settable value in the overlay theme, such as the accent color or the corner radius. Every token is optional and settable from the settings window or the theme file.
+One named, user-settable value in the overlay theme, such as the accent color or the corner radius. Every token is optional, and setting one from the settings window and setting one in the theme file are the same act: the tab writes the file.
 _Avoid_: variable, property, knob, option
 
 **Inherit**:
@@ -101,7 +101,7 @@ The fixed slot the waveform occupies in the control row, sized from the waveform
 _Avoid_: waveform area, canvas, slot, container
 
 **Resolved overlay theme**:
-The overlay theme after the per-token merge of theme file, then settings, then inherit, clamped. It also carries the material actually rendered, whether Glass is available, and the theme file's state. The single thing both windows read.
+The theme file's tokens, clamped, with every unset one left to inherit. It also carries the material actually rendered, whether Glass is available, the theme file's state and whether the watcher is running. The single thing both windows read.
 _Avoid_: merged theme, effective theme, computed theme
 
 **Apply layer**:
@@ -125,8 +125,12 @@ Which native view draws Glass on the running system: Liquid Glass, the older vis
 _Avoid_: backend, renderer, implementation (for this concept)
 
 **Theme file**:
-A file on disk that supplies overlay-theme tokens, so external theming tools can drive the overlay without the settings window.
-_Avoid_: config file, user stylesheet, custom CSS
+`overlay_theme.json` on disk. It is the overlay theme, not a second opinion about it: the Appearance tab writes it, a text editor or a theming tool writes the same document, and a watcher makes either one live. Every token it does not set inherits, and no file at all is today's overlay.
+_Avoid_: config file, user stylesheet, custom CSS, override file
+
+**Managed**:
+What a theme file is when Handy reads it but will not write it: a symlink, a read-only file, or a path `HANDY_OVERLAY_THEME_FILE` named that does not exist. The Appearance tab locks every token row and says which of those it is.
+_Avoid_: locked, read-only theme, external theme, owned by a tool
 
 **Preview**:
 The real overlay held on screen with synthetic activity while the user edits the overlay theme, so the user judges every change on the actual card. Started and stopped from the Appearance tab.

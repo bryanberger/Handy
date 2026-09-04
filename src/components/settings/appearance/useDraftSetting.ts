@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { commands } from "@/bindings";
 import type { OverlayTheme } from "@/bindings";
+import {
+  commitOverlayTheme,
+  persistedOverlayTheme,
+} from "@/hooks/useResolvedOverlayTheme";
 import { INHERIT_ALL, type OverlayThemeKey } from "@/lib/overlayTheme";
-import { useSettingsStore } from "@/stores/settingsStore";
 
 export const DRAFT_DEBOUNCE_MS = 120;
 
@@ -151,25 +154,23 @@ export class DraftDebouncer<Key extends string, Value> {
 }
 
 /**
- * Commit one overlay-theme token. `value: null` resets that token to inherit.
+ * Commit one overlay-theme token. `value: null` resets that token to inherit,
+ * which takes the key out of the theme file.
  *
- * Reads the store's `overlay_theme` at call time, not a captured closure, so
- * two edits in flight compose instead of clobbering each other. It sends all
- * twenty-two tokens through one `change_overlay_theme_setting` command, which
- * keeps the store's optimistic write and rollback (keyed on the single
- * `overlay_theme` `AppSettings` field) working unchanged.
+ * Reads the persisted theme at call time, not a captured closure, so two edits
+ * in flight compose instead of clobbering each other. It sends all twenty-two
+ * tokens through one `change_overlay_theme_setting` command, which writes the
+ * theme file and answers with the document it read back.
  */
 export async function setOverlayThemeToken<K extends keyof OverlayTheme>(
   key: K,
   value: OverlayTheme[K],
 ): Promise<void> {
-  const store = useSettingsStore.getState();
-  const current = store.settings?.overlay_theme ?? INHERIT_ALL;
-  await store.updateSetting("overlay_theme", { ...current, [key]: value });
+  await commitOverlayTheme({ ...persistedOverlayTheme(), [key]: value });
 }
 
-/** The persisted theme with every uncommitted draft laid over it. What the
- *  overlay would look like if the user stopped dragging now. */
+/** The theme file's tokens with every uncommitted draft laid over them. What
+ *  the overlay would look like if the user stopped dragging now. */
 function themeWithDrafts(stored: OverlayTheme, draft: Draft): OverlayTheme {
   return { ...INHERIT_ALL, ...stored, ...draft };
 }
@@ -186,8 +187,8 @@ export interface DraftEffects {
     key: K,
     value: OverlayTheme[K],
   ) => void | Promise<void>;
-  /** The persisted tokens, read at call time, not captured. Two edits in
-   *  flight must compose instead of clobbering each other. */
+  /** The tokens as the theme file has them, read at call time, not captured.
+   *  Two edits in flight must compose instead of clobbering each other. */
   storedTheme: () => OverlayTheme;
   /** The draft map changed; the tab re-renders from this. */
   onDraftChange: (draft: Draft) => void;
@@ -200,8 +201,8 @@ export interface DraftEffects {
  * The two clocks of live editing, and the rules that keep them in step.
  *
  * A token edit goes two places at two rates, the overlay at frame rate and the
- * store on a 120 ms debounce, so every bug this class prevents is an ordering
- * bug between them. The rules live in one place, testable as rules rather than
+ * theme file on a 120 ms debounce, so every bug this class prevents is an
+ * ordering bug between them. The rules live in one place, testable as rules rather than
  * as React wiring:
  *
  *  1. The last frame is never dropped. A commit flushes the coalescer first,
@@ -210,7 +211,7 @@ export interface DraftEffects {
  *     it can repaint over what replaces it, and paints the corrected theme
  *     itself so the screen does not wait on the round trip.
  *  3. The screen ends on a stored value. The reset then commits `null`; when
- *     that commit finds nothing to store, Rust still re-delivers, because the
+ *     that commit finds nothing to write, Rust still re-delivers, because the
  *     draft left a mark (`OVERLAY_DRAFTED` in `commands/overlay_theme.rs`).
  *     Both halves are needed, one instant, one authoritative.
  *  4. Nothing is painted onto an overlay the tab does not own. `canPaint`
@@ -328,9 +329,9 @@ export interface UseDraftSettingResult {
  * native `<input type="color">` fires `onInput` continuously inside the OS
  * picker. Those two rates need two treatments, and [`DraftEngine`] runs both:
  *
- *  - it writes the store on a 120 ms trailing debounce (`DraftDebouncer`),
- *    because persisting per pixel means a settings read, write and broadcast
- *    per frame;
+ *  - it writes the theme file on a 120 ms trailing debounce
+ *    (`DraftDebouncer`), because persisting per pixel means a file read,
+ *    write and broadcast per frame;
  *  - the on-screen overlay gets the draft at frame rate (`FrameCoalescer` ->
  *    `preview_overlay_theme_draft`), because a trailing debounce never fires
  *    during an unbroken drag, so the card only caught up when the user stopped.
@@ -358,8 +359,7 @@ export function useDraftSetting(overlayIsOurs: boolean): UseDraftSettingResult {
         void commands.previewOverlayThemeDraft(theme);
       },
       commit: (key, value) => setOverlayThemeToken(key, value),
-      storedTheme: () =>
-        useSettingsStore.getState().settings?.overlay_theme ?? INHERIT_ALL,
+      storedTheme: persistedOverlayTheme,
       onDraftChange: setDraftState,
       canPaint: () => overlayIsOursRef.current,
     });

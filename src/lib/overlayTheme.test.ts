@@ -63,11 +63,13 @@ function resolved(
       version: null,
       tokens: INHERIT_ALL,
       owned_keys: [],
+      ownership: { writable: true, reason: null, target: null },
       diagnostics: [],
       // Added with the theme file, after this fixture was written.
       diagnostics_total: 0,
       stale: false,
     },
+    watching: true,
   };
 }
 

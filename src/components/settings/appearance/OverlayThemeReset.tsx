@@ -5,23 +5,21 @@ import { Dialog } from "@/components/ui/Dialog";
 import ResetIcon from "@/components/icons/ResetIcon";
 
 export interface OverlayThemeResetProps {
-  /** Disabled once every overlay-theme token already inherits the default. */
+  /** Disabled once every overlay-theme token already inherits the default, and
+   *  while the theme file is managed by something other than Handy. */
   disabled: boolean;
-  /** True when the theme file owns at least one token. The confirmation
-   *  wording changes, since those values survive the reset. */
-  hasThemeFileOwnership: boolean;
   onConfirm: () => void;
 }
 
 /**
  * The whole-theme reset. A small ghost button in the On-Screen Preview card
  * that, after a confirming dialog, restores every overlay color, size and
- * spacing token to inherit. Overlay style and position survive, since it
- * resets `overlay_theme` only.
+ * spacing token to inherit, which leaves the theme file holding its version
+ * row and nothing else. Overlay style and position survive, being settings
+ * rather than overlay-theme tokens.
  */
 export const OverlayThemeReset: React.FC<OverlayThemeResetProps> = ({
   disabled,
-  hasThemeFileOwnership,
   onConfirm,
 }) => {
   const { t } = useTranslation();
@@ -67,9 +65,7 @@ export const OverlayThemeReset: React.FC<OverlayThemeResetProps> = ({
         }
       >
         <p className="text-sm text-mid-gray">
-          {hasThemeFileOwnership
-            ? t("settings.appearance.reset.descriptionWithThemeFile")
-            : t("settings.appearance.reset.description")}
+          {t("settings.appearance.reset.description")}
         </p>
       </Dialog>
     </>

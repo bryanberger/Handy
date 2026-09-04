@@ -25,12 +25,11 @@ const RECORDING_POLL_MS = 1500;
 
 export interface OnScreenPreviewProps {
   style: OverlayStyle;
-  /** The settings-window theme alone, which is what "Copy theme as JSON"
-   *  copies. Deliberately not the resolved theme, whose folded-in theme-file
-   *  values would hand a tool author a document echoing its own input. */
+  /** The overlay theme as persisted, which is what "Copy theme as JSON"
+   *  copies: the same document the theme file holds, for pasting into a
+   *  dotfile or a theming tool. */
   settingsTheme: OverlayTheme;
   resetDisabled: boolean;
-  hasThemeFileOwnership: boolean;
   onResetConfirm: () => void;
   /** Awaited before the preview starts, so the overlay never shows tokens a
    *  pending debounce hasn't sent yet. */
@@ -64,7 +63,6 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
   style,
   settingsTheme,
   resetDisabled,
-  hasThemeFileOwnership,
   onResetConfirm,
   onFlushDrafts,
   lastSurfaceChange = null,
@@ -296,7 +294,6 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
       <div className="flex items-center gap-2">
         <OverlayThemeReset
           disabled={resetDisabled}
-          hasThemeFileOwnership={hasThemeFileOwnership}
           onConfirm={onResetConfirm}
         />
         <Button variant="ghost" size="sm" onClick={handleCopy}>

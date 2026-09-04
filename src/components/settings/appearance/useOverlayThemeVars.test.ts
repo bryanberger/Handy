@@ -9,59 +9,58 @@ import {
 } from "./useOverlayThemeVars";
 
 /**
- * Unit tests for `mergeDraft`, the file-owned locking rule:
- * `owned_keys.includes(key) ? resolved.theme[key] : (draft[key] ??
- * resolved.theme[key])`. A settings draft never outranks a file-owned token.
+ * Unit tests for `mergeDraft`, the rule a token row is painted by:
+ * `locked ? resolved.theme[key] : (draft[key] ?? resolved.theme[key])`. The
+ * theme file is the theme, so a draft is the value on its way into that file,
+ * and only a file Handy does not write refuses one.
  */
 
 describe("mergeDraft", () => {
-  test("an unowned key takes the draft value", () => {
+  test("a draft overrides the persisted value", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, radius: 24 };
-    const merged = mergeDraft(theme, { radius: 8 }, []);
+    const merged = mergeDraft(theme, { radius: 8 }, false);
     expect(merged.radius).toBe(8);
   });
 
-  test("a file-owned key ignores the draft entirely", () => {
+  test("a managed theme file ignores the draft entirely", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, accent: "#7aa2f7" };
-    const merged = mergeDraft(theme, { accent: "#ff0000" }, ["accent"]);
+    const merged = mergeDraft(theme, { accent: "#ff0000" }, true);
     expect(merged.accent).toBe("#7aa2f7");
   });
 
-  test("keys absent from the draft keep the resolved value, owned or not", () => {
+  test("keys absent from the draft keep the resolved value", () => {
     const theme: OverlayTheme = {
       ...INHERIT_ALL,
       surface: "#111111",
       text: "#eeeeee",
     };
-    const merged = mergeDraft(theme, { radius: 12 }, ["surface"]);
+    const merged = mergeDraft(theme, { radius: 12 }, false);
     expect(merged.surface).toBe("#111111");
     expect(merged.text).toBe("#eeeeee");
     expect(merged.radius).toBe(12);
   });
 
-  test("a draft value of null (an in-progress reset) still overrides an unowned key", () => {
+  test("a draft value of null (an in-progress reset) still overrides", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, padding: 14 };
-    const merged = mergeDraft(theme, { padding: null }, []);
+    const merged = mergeDraft(theme, { padding: null }, false);
     expect(merged.padding).toBeNull();
   });
 
-  test("locking is per key: other tokens in the same draft still apply", () => {
+  test("locking is all or nothing: a managed file freezes every token", () => {
     const theme: OverlayTheme = {
       ...INHERIT_ALL,
       accent: "#7aa2f7",
       radius: 24,
     };
-    const merged = mergeDraft(theme, { accent: "#ff0000", radius: 4 }, [
-      "accent",
-    ]);
-    expect(merged.accent).toBe("#7aa2f7"); // locked: draft ignored
-    expect(merged.radius).toBe(4); // not locked: draft applies
+    const merged = mergeDraft(theme, { accent: "#ff0000", radius: 4 }, true);
+    expect(merged.accent).toBe("#7aa2f7");
+    expect(merged.radius).toBe(24);
   });
 
   test("does not mutate its inputs", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, radius: 24 };
     const draft = { radius: 8 };
-    mergeDraft(theme, draft, []);
+    mergeDraft(theme, draft, false);
     expect(theme.radius).toBe(24);
     expect(draft.radius).toBe(8);
   });
@@ -194,6 +193,7 @@ describe("sameStringMap", () => {
       shadow_edge_slack: 15,
       glass_support: { supported: true, available: true, engine: "liquid" },
       file: EMPTY_FILE_STATE,
+      watching: true,
     });
     const first = resolveOverlayThemeVars(withScale(0.85));
     const second = resolveOverlayThemeVars(withScale(0.85));

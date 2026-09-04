@@ -908,20 +908,30 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 }
 },
 /**
- * Persist the whole overlay theme.
+ * Write the whole overlay theme to the theme file.
  * 
- * The frontend always sends the complete twenty-one-token object. Setting one
- * token, clearing one (reset to inherit) and resetting the whole theme are
- * all this one call with a different object, which keeps the settings store's
- * optimistic write and rollback unchanged, both being keyed on a single
- * `AppSettings` field.
+ * The theme file is the overlay theme, so this is where a committed change
+ * from the Appearance tab lands. The frontend always sends the complete
+ * twenty-two-token object: setting one token, clearing one (reset to inherit)
+ * and resetting the whole theme are all this one call with a different
+ * object.
  * 
- * Values are clamped before they are stored, so nothing out of range reaches
- * the store, the native geometry or the frontend. Returning the clamped theme
- * lets the settings store correct its own optimistic write without a round
- * trip back through `get_app_settings`.
+ * Values are clamped before they are written, so nothing out of range reaches
+ * the file, the native geometry or the frontend. The file is then read back
+ * and resolved, and that resolved theme is both the answer and what goes out
+ * to the two windows. Reading back is not ceremony: it makes the answer the
+ * document on disk rather than the intent, and it is what lets the watcher
+ * recognise Handy's own write and stay quiet.
+ * 
+ * A managed theme file (a symlink, or one Handy cannot write) is refused
+ * here as well as locked in the tab, so the guard does not depend on the UI.
+ * 
+ * `async` is load-bearing: Tauri runs a sync command inline on the IPC thread
+ * and spawns an `async fn` on the runtime, and the write then goes to a
+ * blocking thread, so neither the main thread nor an async worker waits on
+ * the filesystem.
  */
-async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<OverlayTheme, string>> {
+async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<ResolvedOverlayTheme, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_overlay_theme_setting", { theme }) };
 } catch (e) {
@@ -932,11 +942,11 @@ async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<OverlayThe
 /**
  * Paint a theme the user is still dragging, without persisting anything.
  * 
- * The Appearance tab commits on a debounce, right for the store and far too
+ * The Appearance tab commits on a debounce, right for the file and far too
  * slow for the eye. It also sends the draft here, coalesced to one call per
- * animation frame, and this puts it on the overlay with no settings read, no
- * settings write, no `settings-changed`, and no native window work unless a
- * token the window is built from moved.
+ * animation frame, and this puts it on the overlay with nothing written, no
+ * broadcast to the settings window, and no native window work unless a token
+ * the window is built from moved.
  * 
  * A no-op unless a preview is running and nothing is recording, as decided by
  * `overlay_preview::accepts_theme_drafts`. Anywhere else the overlay belongs
@@ -944,8 +954,9 @@ async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<OverlayThe
  * paint.
  * 
  * Every draft that gets through leaves a mark, which
- * `change_overlay_theme_setting` clears. That guarantees the screen ends on a
- * stored value even when the commit that follows has nothing to store.
+ * [`change_overlay_theme_setting`] clears. That guarantees the screen ends on
+ * the file's own theme even when the commit that follows has nothing to
+ * write, and it is why a draft is never recorded as a delivery.
  */
 async previewOverlayThemeDraft(theme: OverlayTheme) : Promise<Result<null, string>> {
     try {
@@ -974,9 +985,11 @@ async getResolvedOverlayTheme() : Promise<Result<ResolvedOverlayTheme, string>> 
 /**
  * Re-read the theme file, resolve, deliver, and return the result.
  * 
- * What the Appearance tab calls on mount and from its Reload button, and the
- * only way a hand-edited theme file reaches the screen without recording,
- * there being no file watcher.
+ * What the Appearance tab calls on mount, and what its Reload button calls on
+ * the machines where the watcher could not start. With the watcher running a
+ * hand edit arrives on its own, so the button is not shown; this stays the
+ * backstop, and the mount read stays because a tab opened after a change made
+ * while it was closed must not show a stale theme.
  * 
  * `async` is load-bearing twice over. Tauri runs a sync command inline on the
  * IPC thread and spawns an `async fn` on the runtime, and the read then goes
@@ -1170,11 +1183,24 @@ vad_backend?: VadBackend;
  */
 overlay_style?: OverlayStyle; 
 /**
- * Overlay theme tokens (accent, surface, material, sizes, spacing). Every
- * token is optional; an absent one inherits Handy's built-in, theme-aware
- * value. A store from before this field existed still draws today's overlay.
+ * The overlay theme as builds before the theme file became the theme
+ * stored it.
+ * 
+ * Kept for compatibility, and read exactly once: the one-time migration
+ * in `overlay_theme_write::migrate_once` copies it into
+ * `~/.config/handy/overlay_theme.json`. Nothing writes it and nothing
+ * resolves from it after that; `overlay_theme.json` is the overlay theme.
  */
-overlay_theme?: OverlayTheme }
+overlay_theme?: OverlayTheme; 
+/**
+ * Whether the one-time migration of `overlay_theme` into the theme file
+ * has run.
+ * 
+ * It makes "once" literal. Without it, deleting the theme file would
+ * resurrect a theme the store still holds, and deleting the file has to
+ * mean the overlay goes back to its built-in look.
+ */
+overlay_theme_migrated?: boolean }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type AvailableAccelerators = { transcribe: string[]; ort: string[]; gpu_devices: GpuDeviceOption[] }
@@ -1330,6 +1356,35 @@ key_down: number; key_up: number; flags_changed: number; mouse: number; duration
 export type KeyboardImplementation = "tauri" | "handy_keys"
 export type LLMPrompt = { id: string; name: string; prompt: string }
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error"
+/**
+ * Why Handy reads the theme file but will not write it.
+ * 
+ * A stable, translatable identity, like [`ThemeFileDiagnosticCode`]. The
+ * Appearance tab looks up an i18n string by reason and passes the ownership's
+ * `target` as its parameter.
+ */
+export type ManagedReason = 
+/**
+ * The file itself is a symlink. Whoever made the link owns the document,
+ * which is how a dotfile or Omarchy-style setup says "this one is mine",
+ * so Handy follows it to read and never writes through it.
+ */
+"symlink" | 
+/**
+ * The file is there and its permissions refuse a write.
+ */
+"read_only" | 
+/**
+ * There is no file, and this is not a path Handy creates. Only
+ * `HANDY_OVERLAY_THEME_FILE` names such a path: it was given to be read.
+ */
+"not_creatable" | 
+/**
+ * The path could not be inspected at all. Reading may still have
+ * succeeded from the last good document, so this locks the tab rather
+ * than assuming a write would land.
+ */
+"unknown"
 /**
  * How the overlay surface is rendered: Flat (opaque) or Glass (translucent,
  * blurring whatever is behind it).
@@ -1626,8 +1681,8 @@ export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "
  */
 export type ResolvedOverlayTheme = { 
 /**
- * `file ?? settings ?? inherit`, per key, clamped. `None` still means
- * inherit: the apply layer writes no custom property for it.
+ * The theme file's tokens, clamped. `None` still means inherit: the apply
+ * layer writes no custom property for it.
  */
 theme: OverlayTheme; 
 /**
@@ -1655,10 +1710,17 @@ glass_support: GlassSupport;
  */
 shadow_edge_slack?: number; 
 /**
- * What the theme file contributed, including which tokens it owns and what
- * the reader had to ignore.
+ * The theme file behind `theme`: where it is, whether Handy writes it,
+ * which tokens it sets and what the reader had to ignore.
  */
-file: ThemeFileState }
+file: ThemeFileState; 
+/**
+ * Whether a file watcher is delivering changes to that file. False means
+ * the Appearance tab keeps its Reload button, the only way a hand edit
+ * reaches the screen then. Process-wide, so it rides here rather than on
+ * the file state, which is cached per read.
+ */
+watching: boolean }
 export type SecretMap = Partial<{ [key in string]: string }>
 export type SecureInputStatus = { 
 /**
@@ -1808,6 +1870,27 @@ export type ThemeFileDiagnosticCode =
  */
 "unreadable"
 /**
+ * Whether the Appearance tab's changes are written to the theme file.
+ * 
+ * Handy owns the path when it is absent in one of Handy's own locations, or a
+ * regular, writable file. Anything else belongs to the user or to a tool, and
+ * Handy reads it without ever writing back.
+ */
+export type ThemeFileOwnership = { 
+/**
+ * True when a committed change from the Appearance tab writes this path.
+ */
+writable: boolean; 
+/**
+ * Why not, when `writable` is false.
+ */
+reason: ManagedReason | null; 
+/**
+ * A symlink's target, the one reason carrying a detail. The tab shows it,
+ * so the user can find the file really in charge.
+ */
+target: string | null }
+/**
  * What the theme file currently contributes.
  * 
  * Only the theme-file reader reads the file, and it fills this in. Everything
@@ -1828,14 +1911,20 @@ present: boolean;
  */
 version: number | null; 
 /**
- * The file's contribution to the merge.
+ * The overlay theme this document holds, which is the overlay theme.
  */
 tokens: OverlayTheme; 
 /**
- * The keys the file actually sets. These are the tab's lock markers: a
- * file-owned token cannot be edited from the settings window.
+ * The keys the document actually sets, in contract order. What the tab's
+ * "sets N of M values" line counts; the rest of the document's tokens
+ * inherit.
  */
 owned_keys: string[]; 
+/**
+ * Whether Handy writes this path, and why not when it does not. A managed
+ * file locks every token row in the Appearance tab.
+ */
+ownership: ThemeFileOwnership; 
 /**
  * Everything the reader had to ignore or clamp, in contract order (the
  * token table's, not the document's, since `serde_json` sorts an object's

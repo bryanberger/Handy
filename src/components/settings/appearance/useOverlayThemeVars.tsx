@@ -30,7 +30,7 @@ export const EMPTY_FILE_STATE: ResolvedOverlayTheme["file"] = {
 
 /**
  * Merge a draft on top of a resolved theme, per key, skipping any key the
- * theme file owns — a settings-level edit must never outrank a file-owned
+ * theme file owns. A settings-level edit must never outrank a file-owned
  * token. File-owned controls are disabled, so no draft can exist for them in
  * practice; this makes the rule true even if one did.
  *
@@ -61,11 +61,11 @@ function clampedHex(n: number): string {
 }
 
 /**
- * One numeric channel, which must **not** be followed by another digit, a dot
- * or a `%`. The `%` guard is the whole point: without it `rgb(100% 50% 25%)`
+ * One numeric channel, which must not be followed by another digit, a dot
+ * or a `%`. The `%` guard is the whole point. Without it `rgb(100% 50% 25%)`
  * would match as `rgb(100, 50, 25)` and paint a plausible-looking but entirely
  * wrong color. A percentage form is a shape this parser does not handle, so it
- * must fail to match and let the caller fall back, not guess.
+ * must fail to match and let the caller fall back rather than guess.
  */
 const CHANNEL = String.raw`([\d.]+)(?![\d.%])`;
 const COLOR_SRGB = new RegExp(
@@ -83,14 +83,14 @@ const RGB_FUNCTION = new RegExp(
  *  - legacy comma syntax: `rgb(r, g, b)` / `rgba(r, g, b, a)`, 0-255 integers;
  *  - CSS Color 4 space syntax: `rgb(r g b / a)`, 0-255 integers;
  *  - CSS Color 4 `color()`: `color(srgb r g b)` / `color(srgb r g b / a)`,
- *    which is what a `color-mix()` computed *in* the srgb color space
- *    serializes to once alpha is involved — channels are 0-1 *fractions*,
- *    not 0-255 integers.
+ *    which is what a `color-mix()` computed in the srgb color space
+ *    serializes to once alpha is involved. Its channels are 0-1 fractions
+ *    rather than 0-255 integers.
  * All three are accepted so the same probe works for a plain color token
  * (`accent`, `text`) and a translucent one (`surface`, mixed with its
- * opacity). Anything else — a percentage-channel form, a named color, a
- * `lab()` — returns `null`, and the caller shows a neutral placeholder rather
- * than a made-up hex.
+ * opacity). Anything else returns `null`, whether a percentage-channel form,
+ * a named color or a `lab()`, and the caller shows a neutral placeholder
+ * rather than a made-up hex.
  *
  * Exported for the unit tests; nothing outside this file imports it.
  */
@@ -107,16 +107,17 @@ export function parseComputedColor(value: string): string | null {
 /**
  * Whether two flat maps hold the same entries.
  *
- * The preview hangs its layout effects off two such maps — the resolved custom
- * properties and the probed colours — and object *identity* is not a safe
+ * The preview hangs its layout effects off two such maps, the resolved custom
+ * properties and the probed colours, and object identity is not a safe
  * stand-in for "unchanged" for either of them. React is free to re-derive a
  * `useState` value (it re-runs a functional updater on a re-render, and does so
  * twice per render under `StrictMode`), so `draft` can arrive as a fresh object
  * holding exactly the same tokens; anything memoized on its identity then
  * churns too. When a layout effect keyed on that identity also sets state
  * unconditionally, every commit leaves another sync update pending and React
- * eventually throws "Maximum update depth exceeded". Comparing by value at both
- * ends — the memo's key and the effect's payload — is what breaks that cycle.
+ * eventually throws "Maximum update depth exceeded". Comparing by value at
+ * both ends, the memo's key and the effect's payload, is what breaks that
+ * cycle.
  *
  * Exported for the unit tests; nothing outside this file imports it.
  */
@@ -130,9 +131,9 @@ export function sameStringMap(
 }
 
 /**
- * `next`, but with a reference that only changes when its entries do — the
- * "hold the last value" cache React documents for refs, so a fresh-but-equal
- * map cannot invalidate a dependency array.
+ * `next`, but with a reference that only changes when its entries do. This is
+ * the "hold the last value" cache React documents for refs, so a
+ * fresh-but-equal map cannot invalidate a dependency array.
  */
 function useStableMap<T extends Record<string, string | null>>(next: T): T {
   const held = useRef(next);
@@ -142,15 +143,15 @@ function useStableMap<T extends Record<string, string | null>>(next: T): T {
 
 export interface UseOverlayThemeVarsResult {
   /** The measuring device this hook reads its `resolvedDefaults` off, already
-   *  wired: render it anywhere inside the tab and nothing else is needed.
+   *  wired. Render it anywhere inside the tab and nothing else is needed.
    *  Hiding it here rather than handing the caller its three props is the
-   *  point — mounting it wrong is what would silently leave every resolved
-   *  default `null` forever. */
+   *  point, because mounting it wrong is what would silently leave every
+   *  resolved default `null` forever. */
   probes: React.ReactElement;
   effectiveMaterial: Material;
-  /** The probed, theme-aware default for each color token — what a ColorField
-   *  shows (muted, italic) while that token is unset. `null` until the first
-   *  measurement. */
+  /** The probed, theme-aware default for each color token, which is what a
+   *  ColorField shows (muted, italic) while that token is unset. `null` until
+   *  the first measurement. */
   resolvedDefaults: Record<OverlayColorKey, string | null>;
   isLocked: (key: OverlayThemeKey) => boolean;
   /** The value a control should show: the file's value when locked, else the
@@ -166,8 +167,9 @@ export interface UseOverlayThemeVarsResult {
  * field shows what it will actually inherit rather than a hardcoded guess.
  *
  * `remeasureSignal` should be a value that changes whenever something outside
- * `resolved`/`draft` could change what a custom property resolves to — the
- * app theme, concretely, since `--color-logo-primary` etc. flip with it.
+ * `resolved`/`draft` could change what a custom property resolves to.
+ * Concretely that is the app theme, since `--color-logo-primary` etc. flip
+ * with it.
  */
 export function useOverlayThemeVars(
   resolved: ResolvedOverlayTheme | null,
@@ -176,8 +178,8 @@ export function useOverlayThemeVars(
 ): UseOverlayThemeVarsResult {
   const baseTheme = resolved?.theme ?? INHERIT_ALL;
 
-  // Memoized so most renders reuse the same object. It is deliberately *not*
-  // what the layout effect below keys off: `draft` can be re-derived into a
+  // Memoized so most renders reuse the same object. It is deliberately not
+  // what the layout effect below keys off. `draft` can be re-derived into a
   // fresh-but-equal object, which would give this a new identity too (see
   // `sameStringMap`).
   const mergedTheme: ResolvedOverlayTheme = useMemo(() => {
@@ -200,8 +202,8 @@ export function useOverlayThemeVars(
 
   // What the probe host wears and what the readback layout effect below
   // depends on, so its reference must change if and only if a custom property
-  // the probes could resolve *differently* actually changed. The lengths are
-  // left out on purpose: no `--s-…` colour is derived from `--ov-scale` or
+  // the probes could resolve differently actually changed. The lengths are
+  // left out on purpose. No `--s-…` colour is derived from `--ov-scale` or
   // `--ov-radius`, so carrying them would re-style the host and force four
   // style recalculations on every frame of a Size Scale drag for nothing.
   const colorVars = useStableMap(
@@ -214,9 +216,9 @@ export function useOverlayThemeVars(
       );
     }, [mergedTheme]),
   );
-  // Only the colours reach the probe host: it exists to read colours back, and
-  // a length written there would re-style it on every frame of a Size Scale
-  // drag to re-measure four values that cannot have moved.
+  // Only the colours reach the probe host. It exists to read colours back,
+  // and a length written there would re-style it on every frame of a Size
+  // Scale drag to re-measure four values that cannot have moved.
   const probeVars = colorVars as unknown as CSSProperties;
 
   const accentRef = useRef<HTMLSpanElement>(null);
@@ -224,9 +226,9 @@ export function useOverlayThemeVars(
   const textRef = useRef<HTMLSpanElement>(null);
   const borderRef = useRef<HTMLSpanElement>(null);
   // The four refs are stable for the hook's lifetime, but the object holding
-  // them would be a fresh identity every render — and it is passed straight
-  // into a child's props, so memoizing it keeps that child out of the same
-  // "new object every render" trap that caused the render loop above.
+  // them would be a fresh identity every render. It is passed straight into a
+  // child's props, so memoizing it keeps that child out of the same "new
+  // object every render" trap that caused the render loop above.
   const colorProbeRefs = useMemo(
     () => ({
       accent: accentRef,
@@ -244,8 +246,8 @@ export function useOverlayThemeVars(
     null,
   );
 
-  // Runs before paint, so the first frame already shows a measured value —
-  // re-read whenever the vars we just wrote (or the app theme) could have
+  // Runs before paint, so the first frame already shows a measured value. It
+  // re-reads whenever the vars we just wrote (or the app theme) could have
   // changed what the probes resolve to.
   useLayoutEffect(() => {
     const read = (ref: React.RefObject<HTMLSpanElement>) =>
@@ -259,8 +261,8 @@ export function useOverlayThemeVars(
       border: read(borderRef),
     };
     // Skipping the call, rather than relying on React to bail out of it, is
-    // the point: a *scheduled* update inside a layout effect counts towards
-    // the nested-update limit even when it renders to the same tree.
+    // the point. A scheduled update inside a layout effect counts towards the
+    // nested-update limit even when it renders to the same tree.
     if (lastMeasured.current && sameStringMap(lastMeasured.current, measured)) {
       return;
     }

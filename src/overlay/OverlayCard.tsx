@@ -5,10 +5,10 @@ import { liveCardState } from "./cardShape";
 
 /**
  * `inert` is a standard HTML boolean attribute, but this project's pinned
- * `@types/react` (18.3.26) does not type it on `HTMLAttributes` yet, and — as
- * a boolean HTML attribute — its mere *presence* is what makes an element
- * inert, so a naive `inert={false}` risks React writing a falsy-looking value
- * the browser still treats as present. Spreading the attribute in only when
+ * `@types/react` (18.3.26) does not type it on `HTMLAttributes` yet. Being a
+ * boolean HTML attribute, its mere presence is what makes an element inert,
+ * so a naive `inert={false}` risks React writing a falsy-looking value the
+ * browser still treats as present. Spreading the attribute in only when
  * active sidesteps both problems.
  */
 function inertAttribute(active: boolean): { inert?: string } {
@@ -35,8 +35,8 @@ export interface OverlayCardProps {
   session: number;
   direction: "ltr" | "rtl";
   /**
-   * True for a decorative, non-interactive rendering — the Appearance tab's
-   * preview. Applies the native `inert` attribute (no focus, no pointer
+   * True for a decorative, non-interactive rendering, which is the Appearance
+   * tab's preview. Applies the native `inert` attribute (no focus, no pointer
    * events, hidden from assistive tech) to the whole card.
    */
   inert?: boolean;
@@ -45,22 +45,22 @@ export interface OverlayCardProps {
 }
 
 /**
- * The overlay's presentational half: the `.ov-stage` / `.scard` tree for every
+ * The overlay's presentational half, the `.ov-stage` / `.scard` tree for every
  * state. Extracted from `RecordingOverlay.tsx` (which keeps every Tauri
  * listener, the elapsed timer and the position fetch) so the Appearance tab's
- * preview can render the exact markup a real dictation does — a preview that
- * could drift from the overlay would be worse than none. Owns the DOM
- * concerns that belong to the card itself: the live-text scroll pin and the
- * top-edge overflow fade.
+ * preview can render the exact markup a real dictation does. A preview that
+ * could drift from the overlay would be worse than none. This component owns
+ * the DOM concerns that belong to the card itself: the live-text scroll pin
+ * and the top-edge overflow fade.
  *
  * The markup is verbatim except for the three class names that read
  * `isVisible`, which is state `RecordingOverlay` keeps and this component
  * never receives. All three were already constant at the point they ran,
  * because `RecordingOverlay` returns `null` before rendering the card when
- * `!isVisible`: `isVisible ? "" : "leaving"` was always `""` (the `.leaving`
+ * `!isVisible`. `isVisible ? "" : "leaving"` was always `""` (the `.leaving`
  * rule was dead CSS and is deleted), and both `isVisible ? "show" : ""` and
- * `working && isVisible` were always their true branch. They are inlined at
- * those values here.
+ * `working && isVisible` were always their true branch. This file inlines all
+ * three at those values.
  */
 const OverlayCard: React.FC<OverlayCardProps> = ({
   state,
@@ -86,8 +86,9 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
   const capRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
 
-  // Stick to the bottom as text streams in — but only while pinned, so a user who
-  // has scrolled up to read history isn't yanked back down by the next chunk.
+  // Stick to the bottom as text streams in, but only while pinned, so a user
+  // who has scrolled up to read history isn't yanked back down by the next
+  // chunk.
   useLayoutEffect(() => {
     const el = capRef.current;
     if (!el) return;
@@ -112,15 +113,15 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
   const fmtTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
-  // ---- Shared building blocks (one visual language for every overlay form) ----
+  // ---- Shared building blocks (one visual language, every overlay style) ----
   const waveform = (
     <div className={`swave ${captureReady ? "ready" : "arming"}`}>
       {levels.map((v, i) => (
         <i
           key={i}
           style={{
-            // The bar heights are computed here, so they are the one length the
-            // CSS cannot scale on its own: multiply by --ov-scale inline.
+            // The bar heights are computed here, so they are the one length
+            // the CSS cannot scale on its own. Multiply by --ov-scale inline.
             height: `calc(${Math.max(3, Math.min(18, 3 + Math.pow(v, 0.7) * 15))}px * var(--ov-scale))`,
           }}
         />
@@ -145,8 +146,8 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
     </button>
   );
 
-  // dot (left) | waveform (center) | timer + cancel (right) — same structure for
-  // pill & panel, so the Live morph is a pure width change.
+  // dot (left) | waveform (center) | timer + cancel (right), same structure
+  // for pill & panel, so the Live morph is a pure width change.
   const listeningRow = (showTimer: boolean, showCancel: boolean) => (
     <div className="sbase">
       <div className="sbase-l">
@@ -160,8 +161,8 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
     </div>
   );
 
-  // spinner (left) | label (center) | cancel (right) — same 3-zone grid as the
-  // listening row, so the label is centered.
+  // spinner (left) | label (center) | cancel (right), the same 3-zone grid as
+  // the listening row, so the label is centered.
   const workingRow = (label: string, showCancel: boolean) => (
     <div className="sbase">
       <div className="sbase-l">
@@ -204,7 +205,7 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
                     {streamText.committed ? streamText.committed + " " : ""}
                   </span>
                   <span className="tentative">{streamText.tentative}</span>
-                  {/* Drop the blinking caret once finalizing — it's no longer
+                  {/* Drop the blinking caret once finalizing. It's no longer
                       capturing, and a static spinner conveys the work. */}
                   {!working && <span className="scaret" />}
                 </p>
@@ -224,9 +225,10 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
     );
   }
 
-  // ---- Minimal overlay: exactly one row at a time — waveform (recording), or a
-  // spinner + label (transcribing / processing). Never both. The pill animates its
-  // width between them; the cancel button is in both rows so it stays put.
+  // ---- Minimal overlay: exactly one row at a time. Waveform (recording), or
+  // a spinner + label (transcribing / processing). Never both. The pill
+  // animates its width between them; the cancel button is in both rows so it
+  // stays put.
   const working = state === "transcribing" || state === "processing";
   const workLabel =
     state === "processing"

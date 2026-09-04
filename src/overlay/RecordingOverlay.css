@@ -50,10 +50,10 @@
   --s-hair: var(--light-s-hair);
 
   /* Card geometry — single source of truth for the visible overlay sizes. The
-     native overlay window (overlay.rs) is sized from these: it must be at least
-     the card's max footprint (--ov-work-w for compact, --ov-open-w for Live),
-     since the card is anchored flush to the screen edge in CSS. Keep overlay.rs
-     in sync when these change. */
+     native overlay window (overlay_geometry.rs) is sized from these: it must
+     be at least the card's max footprint (--ov-work-w for compact, --ov-open-w
+     for Live), since the card is anchored flush to the screen edge in CSS.
+     Keep overlay_geometry.rs in sync when these change. */
   --ov-rest-w: 172px; /* resting compact pill (minimal, recording) -- roomy enough
                          for the English working label before the grow starts */
   --ov-pill-w: 184px; /* base width / Live pill before it opens or collapses */
@@ -65,12 +65,12 @@
   --ov-cap-pad-y: 12px; /* .stext-cap breathing room; the Live card's only
                            non-variable length */
 
-  /* Card timings, in ms — the single source for all three sides of them.
-     The transitions below read them; the overlay page reads --ov-morph-ms at
-     runtime (src/overlay/cardShape.ts) and sends it with every card-shape
-     report, so the native window morph under Glass runs exactly as long as the
-     CSS morph would have; overlay.rs pins both to its own CARD_MORPH_MS /
-     CARD_FADE_MS with overlay_window_constants_match_overlay_css. */
+  /* Card timings, in ms. Three places read them. The transitions below use
+     them directly. The overlay page reads --ov-morph-ms at runtime
+     (src/overlay/cardShape.ts) and sends it with every card-shape report, so
+     the native window morph under Glass runs exactly as long as the CSS morph
+     would have. overlay_geometry.rs pins both against its own CARD_MORPH_MS
+     and CARD_FADE_MS in overlay_window_constants_match_overlay_css. */
   --ov-morph-ms: 460ms; /* .scard width + radius morph, and the pop-in */
   --ov-fade-ms: 200ms; /* .ov-fade in and out, and the native blur's own fade */
 
@@ -82,9 +82,10 @@
   --ov-scale: 1; /* size_scale: multiplies every length in the card */
   --ov-radius: 24px; /* radius: the card's corner radius */
   --ov-border-w: 1px; /* border_width: the card's stroke, one per edge. The
-                         card is content-box, so overlay.rs adds two of these
-                         to every card footprint -- with --ov-scale, the only
-                         token that changes the native window's size. */
+                         card is content-box, so overlay_geometry.rs adds two
+                         of these to every card footprint. With --ov-scale, it
+                         is one of the two tokens that change the native
+                         window's size. */
   --ov-pad-x: 10px; /* padding: the control row's horizontal padding */
   --ov-wave-gap: 3px; /* waveform_gap: gap between waveform bars */
   --ov-wave-w: 4px; /* waveform_width: the width of one waveform bar */
@@ -230,13 +231,13 @@
 }
 .scard.open {
   width: calc(var(--ov-open-w) * var(--ov-scale));
-  /* Derived from the card radius: 2/3 of it, i.e. today's 16px at the default
-     24px. A tall panel reads better slightly less round than the pill. */
+  /* Two thirds of the card radius, so today's 16px at the default 24px. A
+     tall panel reads better slightly less round than the pill. */
   border-radius: calc(var(--ov-radius) * 2 / 3 * var(--ov-scale));
 }
 .scard.working {
   width: calc(var(--ov-work-w) * var(--ov-scale));
-  /* Derived from the card radius: 3/4 of it, i.e. today's 18px at 24px. */
+  /* Three quarters of the card radius, so today's 18px at 24px. */
   border-radius: calc(var(--ov-radius) * 0.75 * var(--ov-scale));
 }
 
@@ -335,9 +336,9 @@
   display: grid;
   /* Equal side columns (min 22px to hold the cancel button) keep the center item
      — waveform or label — centered whether the pill is at min width or content-
-     sized. The floor is deliberately left unscaled: both sides carry the same
-     one, so the center stays centered at any scale, and the pill scales with
-     its content, so the floor can never squeeze it. */
+     sized. The 22px floor stays unscaled. Both sides carry the same floor,
+     so the center stays centered at any scale, and the pill scales with its
+     content, so the floor can never squeeze it. */
   grid-template-columns: minmax(22px, 1fr) auto minmax(22px, 1fr);
   align-items: center;
 }
@@ -409,8 +410,8 @@
   width: calc(var(--ov-wave-w) * var(--ov-scale));
   min-height: calc(3px * var(--ov-scale));
   max-height: calc(18px * var(--ov-scale));
-  /* Half the bar's width, so a bar is a capsule at every width -- at the
-     inherit 4px this is today's 2px. */
+  /* Half the bar's width, so a bar is a capsule at every width. At the
+     inherit 4px that is today's 2px. */
   border-radius: calc(var(--ov-wave-w) / 2 * var(--ov-scale));
   background: var(--s-accent);
   transition:
@@ -511,16 +512,17 @@
 }
 
 /* ============================================================
-   Glass Material (macOS). The native NSVisualEffectView fills the whole overlay
-   window and overlay.rs sizes that window to the card exactly (window slack 0),
-   so under Glass the card is the window: no CSS width/height morph and no radius
-   transition — the native window frame animates instead and the card follows it.
-   Colour work is done by the apply layer (it writes --s-surface and the neutrals
-   at their Glass strengths), so only structure lives here.
-   `:root[...]` scopes the geometry to the real overlay document; the settings
-   window's preview puts data-material on a wrapper element, which these
-   root-scoped selectors deliberately never match — the preview keeps the CSS
-   morph, because it has no native window to animate.
+   Glass Material (macOS). The native glass view, NSGlassEffectView or
+   NSVisualEffectView, fills the whole overlay window, and overlay_geometry.rs
+   gives that window zero slack under Glass, so the card is the window. That is
+   why the CSS width, height and radius transitions are off here. The native
+   window frame animates instead and the card follows it.
+   The apply layer does the colour work, writing --s-surface and the neutrals at
+   their Glass strengths, so only structure lives here.
+   `:root[...]` scopes the geometry to the overlay document. The settings window
+   puts data-material on the probes wrapper, and these root-scoped selectors
+   never match it, so the probes read Glass colours without taking on Glass
+   geometry.
    ============================================================ */
 :root[data-material="glass"] .scard,
 :root[data-material="glass"] .scard.compact,
@@ -532,27 +534,27 @@
   /* .scard is content-box (the only other box-sizing in this file is .sdot),
      so without this the border would push the card two --ov-border-w past
      the window and body{overflow:hidden} would clip it. The window is sized
-     to the card *including* its border, so border-box is what makes the two
+     to the card including its border, so border-box is what makes the two
      rectangles the same one at every border width. */
   box-sizing: border-box;
-  /* The window frame is the animation: only the card's own morph is killed,
-     so its border and the blur's edge stay on one rectangle. Named properties
-     rather than a blanket `transition: none`, which would also take out any
-     fade the card grows later; the compact pill's fade lives on .ov-fade
-     above and is deliberately left untouched. */
+  /* The window frame is the animation. Killing only the card's own morph
+     keeps its border and the blur's edge on one rectangle. These are named
+     properties rather than a blanket `transition: none`, which would also
+     take out any fade the card grows later. The compact pill's fade lives on
+     .ov-fade above and stays untouched. */
   transition:
     width 0s,
     border-radius 0s;
-  /* scard-pop scales the card from 0.92; the blur cannot scale with it, so
-     the pop would show a blurred halo around a smaller card. Both forms fade
-     instead — .ov-fade for compact, the native alpha fade for the blur. */
+  /* scard-pop scales the card from 0.92, and the blur cannot scale with it,
+     so the pop would show a blurred halo around a smaller card. Both fade
+     instead, .ov-fade for the card and the native alpha fade for the blur. */
   animation: none;
   will-change: opacity;
 }
 
-/* The control row holds its height while the window grows; the text region
-   takes the slack and clips — which is what the grid-rows transition above
-   did under Flat. */
+/* The control row holds its height while the window grows. The text region
+   takes the difference and clips, which is what the grid-rows transition
+   above does under Flat. */
 :root[data-material="glass"] .sbase {
   flex: none;
 }
@@ -560,14 +562,15 @@
   flex: 1 1 auto;
   min-height: 0;
   grid-template-rows: 1fr;
-  /* Same rule as the card: the row morph goes, the opacity fade stays. */
+  /* Same rule as the card. The row morph goes, the opacity fade stays. */
   transition:
     grid-template-rows 0s,
     opacity 260ms ease;
 }
 
-/* A blurred surface, not a near-opaque one: drop the 10% dimming the flat card
-   could afford. Unscoped, so the preview's stand-in gets it too. */
+/* A blurred surface cannot afford the 10% dimming the Flat card can, so the
+   transcript paints at full strength. Left unscoped so it applies to any
+   element carrying data-material="glass". */
 [data-material="glass"] .stext-cap {
   color: var(--s-text);
 }

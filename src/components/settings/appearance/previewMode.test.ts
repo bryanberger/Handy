@@ -14,10 +14,10 @@ import {
 } from "./previewMode";
 
 /**
- * Unit tests for preview mode's state machine — the tab's half of the
+ * Unit tests for preview mode's state machine, the tab's half of the
  * contract. The backend enforces the same rules for itself (a preview refuses
  * to start while recording, ends when a real recording takes the overlay);
- * these pin what the *tab* does about them.
+ * these pin what the tab does about them.
  */
 
 const running = (state: PreviewState = "cycle"): PreviewMode => ({
@@ -161,7 +161,7 @@ describe("reducePreview", () => {
 
   test("a real recording ends the preview without a call", () => {
     // The backend already stopped driving, and deliberately left the overlay
-    // to the recording that took it — telling it to stop would hide a session
+    // to the recording that took it. Telling it to stop would hide a session
     // the user actually started.
     const { mode, call } = reducePreview(running("listening"), {
       kind: "preempted",
@@ -238,7 +238,7 @@ describe("autoStartFor", () => {
     ).toBeNull();
   });
 
-  /** The same refusals the Start button obeys: what may not be started by
+  /** The same refusals the Start button obeys. What may not be started by
    *  hand may not be started on the user's behalf. */
   test("it refuses for every reason the button refuses", () => {
     expect(
@@ -252,9 +252,9 @@ describe("autoStartFor", () => {
     ).toBeNull();
   });
 
-  /** Glass the machine supports but cannot draw right now — macOS Reduce
-   *  Transparency is the case that prompted this — renders Flat, so starting
-   *  a preview would answer "show me glass" with the card already there. */
+  /** Glass the machine supports but cannot draw right now renders Flat, so
+   *  starting a preview would answer "show me glass" with the card already
+   *  there. macOS Reduce Transparency is the case that prompted this. */
   test("Glass that would not actually render shows nothing", () => {
     expect(
       autoStartFor(
@@ -301,7 +301,7 @@ describe("answerPreviewRequest", () => {
 
   test("a request already answered is never answered again", () => {
     expect(answerPreviewRequest(glass, glass.seq, IDLE_TAB)).toBeNull();
-    // Not even once the state around it moves: this is what keeps a later
+    // Not even once the state around it moves. That is what keeps a later
     // style, recording or availability change from re-firing an answered pick.
     expect(
       answerPreviewRequest(glass, glass.seq, {
@@ -312,7 +312,7 @@ describe("answerPreviewRequest", () => {
   });
 
   test("an answer of 'leave the screen alone' still counts as answered", () => {
-    // Picking Flat starts nothing, but the pick was dealt with — the next
+    // Picking Flat starts nothing, but the pick was dealt with, so the next
     // render must not reconsider it.
     const flat: PreviewChangeRequest = {
       change: { kind: "material", to: "flat" },

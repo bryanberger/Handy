@@ -38,14 +38,14 @@ tauri_panel! {
     })
 }
 
-/// The shape the overlay window is sized for right now: the shape most
-/// recently shown or reported by the webview, or [`OverlayCardShape::CompactRest`]
-/// before the first show (and again once the overlay is fully hidden — see
-/// `hide_recording_overlay`).
+/// The shape the overlay window is sized for right now. That is the shape
+/// most recently shown or reported by the webview, or
+/// [`OverlayCardShape::CompactRest`] before the first show, and again once
+/// the overlay is fully hidden (see `hide_recording_overlay`).
 ///
-/// Replaces the old `OVERLAY_SHOWS_LIVE` bool: under zero-slack Glass the
-/// window must track the *exact* shape, not merely compact-vs-Live, and which
-/// card it is remains recoverable from it, so this is one atomic, not two.
+/// Under zero-slack Glass the window has to track the exact shape rather
+/// than only compact versus Live. Which card is showing is recoverable from
+/// the shape, so one atomic covers both.
 static OVERLAY_CARD_SHAPE: AtomicU8 = AtomicU8::new(OverlayCardShape::CompactRest as u8);
 
 /// The shape the overlay window is currently sized for.
@@ -53,27 +53,27 @@ fn current_card_shape() -> OverlayCardShape {
     OverlayCardShape::from_u8(OVERLAY_CARD_SHAPE.load(Ordering::SeqCst))
 }
 
-/// Store a new shape, returning the one it replaced — used by
-/// [`set_card_shape`] to decide whether a report actually changed anything
-/// (coalescing by identity, never by time).
+/// Store a new shape, returning the one it replaced. [`set_card_shape`] uses
+/// that to decide whether a report actually changed anything, coalescing by
+/// identity rather than by time.
 fn set_current_card_shape(shape: OverlayCardShape) -> OverlayCardShape {
     OverlayCardShape::from_u8(OVERLAY_CARD_SHAPE.swap(shape as u8, Ordering::SeqCst))
 }
 
-/// The compact window at the scale in effect: the size the overlay window is
-/// created at, before any card has been shown.
+/// The compact window at the scale in effect, which is the size the overlay
+/// window is created at, before any card has been shown.
 ///
-/// Always sized for Flat: at window-creation time `overlay_glass::install`
-/// has not run yet (it needs the window this function's own caller is about
-/// to build), so Glass can never be *available* here regardless of what is
-/// persisted. The very first real show (`show_overlay_state_on_main`)
-/// resolves fresh and resizes correctly once Glass is installed — the same
-/// "cosmetic first-show resize" tradeoff the theme file's launch-time read
-/// already accepts.
+/// Always sized for Flat, because at window-creation time
+/// `overlay_glass::install` has not run yet (it needs the window this
+/// function's own caller is about to build), so Glass can never be available
+/// here regardless of what is persisted. The very first real show
+/// (`show_overlay_state_on_main`) resolves fresh and resizes correctly once
+/// Glass is installed, the same "cosmetic first-show resize" tradeoff the
+/// theme file's launch-time read already accepts.
 ///
-/// Resolves from the theme-file cache — no filesystem IO — so it is safe on
-/// the main thread, where the geometry runs. The show path resolves with a
-/// fresh file read instead, off the main thread.
+/// Resolves from the theme-file cache with no filesystem IO, so it is safe
+/// on the main thread, where the geometry runs. The show path resolves with
+/// a fresh file read instead, off the main thread.
 fn initial_overlay_dimensions(app_handle: &AppHandle) -> (f64, f64) {
     let metrics = CardMetrics::from_theme(&crate::overlay_theme::resolve(app_handle).theme);
     metrics.window_size(OverlayCardShape::CompactRest, Material::Flat)
@@ -109,12 +109,12 @@ fn configure_layer_shell_position(gtk_window: &gtk::ApplicationWindow, position:
     gtk_window.set_layer_shell_margin(opposite_edge, 0);
 }
 
-/// Configures a GTK layer surface: its size, and its edge and offset.
+/// Configures a GTK layer surface's size, edge and offset.
 ///
 /// Tauri's normal `set_size` path calls `gtk_window_resize`, but layer surfaces
 /// derive their dimensions from GTK's size request. gtk-layer-shell documents
 /// the `set_size_request` + `resize(1, 1)` sequence for forcing a new size, and
-/// commits the new size request itself, including while the surface is mapped —
+/// commits the new size request itself, including while the surface is mapped,
 /// so this is also how a visible overlay follows a size-scale change.
 #[cfg(target_os = "linux")]
 fn configure_layer_shell_surface(
@@ -378,7 +378,7 @@ fn place_windows_overlay(
 /// Creates the recording overlay window and keeps it hidden by default
 #[cfg(not(target_os = "macos"))]
 pub fn create_recording_overlay(app_handle: &AppHandle) {
-    // A brand-new window is configured by nothing yet.
+    // The new window is not configured for anything yet.
     forget_window_state();
     // Created at the compact size for the scale in effect. Every show resizes
     // the window anyway; starting at the right size saves the first show one
@@ -427,8 +427,8 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     match builder.build() {
         Ok(window) => {
             // Installs the native blur behind the webview, hidden until a
-            // Glass show reveals it. A no-op on every platform this branch
-            // compiles for, called anyway so the Glass module has exactly one
+            // Glass show reveals it. A no-op on every platform this cfg
+            // covers; called anyway so the Glass module has exactly one
             // install site per creation path.
             crate::overlay_glass::install(app_handle);
 
@@ -453,7 +453,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
 /// Creates the recording overlay panel and keeps it hidden by default (macOS)
 #[cfg(target_os = "macos")]
 pub fn create_recording_overlay(app_handle: &AppHandle) {
-    // A brand-new panel is configured by nothing yet.
+    // The new panel is not configured for anything yet.
     forget_window_state();
     // Created at the compact size for the scale in effect. Every show resizes
     // the panel anyway; starting at the right size saves the first show one
@@ -509,10 +509,10 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
     // How much room the card needs, and which Material to render it in, both
     // come from the resolved overlay theme. Resolving re-reads the theme
     // file, so it happens here, on the calling thread, and only the result
-    // crosses to the main thread; it is handed the tokens from the settings
-    // just read above, so this path deserializes the store once, not twice.
-    // Every show re-resolves, so a scale or Material changed since the last
-    // one is in effect on the first frame.
+    // crosses to the main thread. It is handed the tokens from the settings
+    // just read above, so this path deserializes the store only once. Every
+    // show re-resolves, so a scale or Material changed since the last one is
+    // in effect on the first frame.
     let resolved = crate::overlay_theme::resolve_reloading_for(app_handle, settings.overlay_theme);
 
     // The rest queries monitors and the cursor and mutates window geometry. On
@@ -536,8 +536,8 @@ fn show_overlay_state_on_main(
 ) {
     let material = resolved.effective_material;
 
-    // The shape is recorded before anything else — including under Flat,
-    // where nothing reads it until a possible later Glass switch — so a
+    // The shape is recorded before anything else, including under Flat,
+    // where nothing reads it until a possible later Glass switch. That way a
     // reposition landing mid-session always has the card actually on screen
     // to size from, never a stale default.
     let shape = OverlayCardShape::initial_for(state);
@@ -553,7 +553,7 @@ fn show_overlay_state_on_main(
     );
 
     // A show configures the window from the same inputs a reposition does, so
-    // it keeps the same record — otherwise the first theme edit of a session
+    // it keeps the same record. Otherwise the first theme edit of a session
     // would always repeat work the show had just done.
     let window = OverlayWindowState::new(shape, &resolved);
     let (width, height) = window.window_size();
@@ -639,7 +639,7 @@ fn show_overlay_state_on_main(
 
         {
             // The emit and the record of it are one step, under the lock the
-            // readiness signal also takes: a signal landing between them would
+            // readiness signal also takes. A signal landing between them would
             // find an empty slot and leave this show unreplayed forever.
             let mut pending = pending_show_slot();
             if let Err(error) = overlay_window.emit("show-overlay", state) {
@@ -652,10 +652,10 @@ fn show_overlay_state_on_main(
             *pending = pending_show_for(webview_ready, state, generation);
         }
 
-        // The glass view is revealed by the webview's first card-shape report
-        // for this session, not here: at this point the webview has only just
-        // been handed `show-overlay` and is still fetching the resolved theme,
-        // so revealing now would put a blurred rectangle on screen before the
+        // The webview's first card-shape report for this session reveals the
+        // glass view, not this call. Right now the webview has only just been
+        // handed `show-overlay` and is still fetching the resolved theme, so
+        // revealing here would put a blurred rectangle on screen before the
         // card painted into it. This only arms the fallback for a webview that
         // never reports at all. A no-op under Flat and off macOS.
         if material == Material::Glass {
@@ -672,13 +672,13 @@ const OVERLAY_WEBVIEW_READY_EVENT: &str = "overlay-webview-ready";
 /// Whether the overlay page is listening yet.
 ///
 /// Tauri hands an event only to webviews that already registered a listener
-/// for it, and the overlay page registers its own after its bundle has loaded
-/// — well after the window itself exists. A `show-overlay` emitted before
-/// that is dropped, which is what made the first `--preview-overlay` after a
-/// launch map a window with nothing painted in it.
+/// for it, and the overlay page registers its own after its bundle has
+/// loaded, well after the window itself exists. A `show-overlay` emitted
+/// before that is dropped, which is what made the first `--preview-overlay`
+/// after a launch map a window with nothing painted in it.
 ///
-/// Latched and never cleared: the page loads once, at startup, and lives as
-/// long as the process.
+/// Latched and never cleared, because the page loads once, at startup, and
+/// lives as long as the process.
 static OVERLAY_WEBVIEW_READY: AtomicBool = AtomicBool::new(false);
 
 /// A show that reached the overlay window before its page was listening.
@@ -696,8 +696,8 @@ static PENDING_SHOW: Mutex<Option<PendingShow>> = Mutex::new(None);
 
 /// What a show has to leave behind for the readiness signal.
 ///
-/// A show the page actually received needs no replay — and clears whatever an
-/// earlier one left, so at most one show is ever pending.
+/// A show the page actually received needs no replay, and it clears whatever
+/// an earlier one left, so at most one show is ever pending.
 fn pending_show_for(webview_ready: bool, state: &str, generation: u64) -> Option<PendingShow> {
     (!webview_ready).then(|| PendingShow {
         state: state.to_string(),
@@ -705,11 +705,11 @@ fn pending_show_for(webview_ready: bool, state: &str, generation: u64) -> Option
     })
 }
 
-/// Which show the readiness signal replays: the remembered one, unless the
-/// overlay has moved on since.
+/// Which show the readiness signal replays. That is the remembered one,
+/// unless the overlay has moved on since.
 ///
-/// A hide clears the pending show outright; the generation catches the rest —
-/// a show that raced the readiness signal bumped the counter and reached the
+/// A hide clears the pending show outright; the generation catches the rest.
+/// A show that raced the readiness signal bumped the counter and reached the
 /// page on its own, so replaying the older state would put the wrong card on
 /// screen.
 fn show_to_replay(pending: Option<PendingShow>, generation: u64) -> Option<String> {
@@ -718,15 +718,15 @@ fn show_to_replay(pending: Option<PendingShow>, generation: u64) -> Option<Strin
         .map(|pending| pending.state)
 }
 
-/// The pending-show slot, recovered from a poisoned lock: it holds a plain
-/// record with no invariant a panic could have left broken.
+/// The pending-show slot, recovered from a poisoned lock, since it holds a
+/// plain record with no invariant a panic could have left broken.
 fn pending_show_slot() -> std::sync::MutexGuard<'static, Option<PendingShow>> {
     PENDING_SHOW
         .lock()
         .unwrap_or_else(|error| error.into_inner())
 }
 
-/// Remember — or, with `None`, forget — the show waiting on the overlay page.
+/// Remember the show waiting on the overlay page, or forget it with `None`.
 fn set_pending_show(pending: Option<PendingShow>) {
     *pending_show_slot() = pending;
 }
@@ -742,7 +742,7 @@ pub fn listen_for_overlay_webview_ready(app_handle: &AppHandle) {
     });
 }
 
-/// The overlay page has registered its listeners: latch that, and re-run the
+/// The overlay page has registered its listeners. Latch that, and re-run the
 /// show it was too young to hear, if there was one.
 fn note_overlay_webview_ready(app_handle: &AppHandle) {
     // Latched and read out under one lock, so a show running concurrently
@@ -759,21 +759,21 @@ fn note_overlay_webview_ready(app_handle: &AppHandle) {
     };
 
     log::debug!("Overlay page ready; re-running the '{state}' show it missed");
-    // Off the event's own thread: a show re-reads the theme file, which must
-    // not happen on the main thread.
+    // Off the event's own thread, because a show re-reads the theme file,
+    // which must not happen on the main thread.
     let handle = app_handle.clone();
     std::thread::spawn(move || show_overlay_state(&handle, &state));
 }
 
 /// True from the moment a show maps the overlay window until the hide that
 /// ends that session is requested. Read by the Glass fallback reveal, which
-/// must not fade a blur in on a card that is already fading out — the show
+/// must not fade a blur in on a card that is already fading out. The show
 /// generation alone cannot tell that apart, because a hide does not start a
 /// new session.
 static OVERLAY_SESSION_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 /// How long the show path waits for the overlay webview's first card-shape
-/// report before revealing the glass view itself: twice the card's own fade,
+/// report before revealing the glass view itself. Twice the card's own fade,
 /// which is well past the webview's first paint on any machine that renders
 /// the card at all.
 const GLASS_FALLBACK_REVEAL_MS: u64 = CARD_FADE_MS as u64 * 2;
@@ -783,23 +783,23 @@ const GLASS_FALLBACK_REVEAL_MS: u64 = CARD_FADE_MS as u64 * 2;
 ///
 /// The reveal belongs to the first card-shape report, which is the only
 /// moment Rust knows the card has painted. This is the safety net for a
-/// webview that never reports — an overlay page left over from an older
-/// build, or one whose script failed — which would otherwise show a
+/// webview that never reports, such as an overlay page left over from an
+/// older build or one whose script failed, which would otherwise show a
 /// completely transparent window under Glass.
 ///
 /// Guarded by [`OVERLAY_SHOW_GENERATION`], exactly like the delayed hide is,
 /// so a newer session's reveal cannot be undone by an older one's; and by
 /// [`OVERLAY_SESSION_ACTIVE`], so a session that ended inside the delay never
-/// has a blur faded in on its way out. Revealing twice is harmless:
+/// has a blur faded in on its way out. Revealing twice is harmless, because
 /// [`crate::overlay_glass::show_glass`] only updates the radius when the view
 /// is already fully visible.
 ///
-/// The Material is resolved *here*, when the timer fires, and never taken
-/// from the show that armed it: a switch to Flat inside the delay hides the
-/// blur and gives the window its slack back, and a reveal carrying the show's
-/// stale Glass would put a translucent capsule around the Flat card — the
-/// shape of this exact bug. Resolving is a settings read, so it happens on
-/// this thread rather than the main one.
+/// The Material is resolved when the timer fires, in this function, and never
+/// taken from the show that armed it. A switch to Flat inside the delay hides
+/// the blur and gives the window its slack back, and a reveal carrying the
+/// show's stale Glass would put a translucent capsule around the Flat card,
+/// which is the shape of this exact bug. Resolving is a settings read, so it
+/// happens on this thread rather than the main one.
 fn schedule_glass_fallback_reveal(app_handle: &AppHandle, radius: f64) {
     let scheduled_at = OVERLAY_SHOW_GENERATION.load(Ordering::SeqCst);
     let app_handle = app_handle.clone();
@@ -855,8 +855,8 @@ pub fn show_processing_overlay(app_handle: &AppHandle) {
 
 /// Updates the overlay window position and size from the current settings.
 ///
-/// For callers that changed something other than the overlay theme — the
-/// position and style commands — and therefore have no resolved scale in hand.
+/// For callers that changed something other than the overlay theme and so
+/// have no resolved scale in hand: the position and style commands.
 pub fn update_overlay_position(app_handle: &AppHandle) {
     update_overlay_window(app_handle);
 }
@@ -874,7 +874,7 @@ fn record_window_state(state: OverlayWindowState) {
     }
 }
 
-/// Forget what the window was configured for — the window is new.
+/// Forget what the window was configured for, because the window is new.
 fn forget_window_state() {
     if let Ok(mut last) = LAST_WINDOW_STATE.lock() {
         *last = None;
@@ -884,7 +884,7 @@ fn forget_window_state() {
 /// Reposition the overlay for a theme the caller has already resolved, unless
 /// the window is already configured exactly that way.
 ///
-/// The skip is the point: an accent or a padding edit changes nothing the
+/// The skip is the point. An accent or a padding edit changes nothing the
 /// native window is built from, and the overlay theme is now delivered on
 /// every frame of a slider drag.
 pub fn update_overlay_position_for_theme(
@@ -920,7 +920,7 @@ fn update_overlay_position_on_main(
 ) {
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
         // Resolved here only for the callers that have no theme of their own
-        // to pass — the position and style commands. Cache-only, no filesystem
+        // to pass: the position and style commands. Cache-only, no filesystem
         // IO, safe on the main thread.
         let resolved = resolved.unwrap_or_else(|| crate::overlay_theme::resolve(app_handle));
         let material = resolved.effective_material;
@@ -938,7 +938,7 @@ fn update_overlay_position_on_main(
         // Every platform recomputes the size from the card on screen and the
         // size scale, rather than reading the window's current size back from
         // the OS. A scale change therefore resizes the window even while it is
-        // visible — without it the card would repaint larger inside the old
+        // visible. Without that the card would repaint larger inside the old
         // window and be clipped.
         let window = OverlayWindowState::new(current_card_shape(), &resolved);
         let (width, height) = window.window_size();
@@ -980,18 +980,18 @@ fn update_overlay_position_on_main(
             }
         }
 
-        // The window now matches `shape` at `scale`; bring the glass view's
-        // corner radius in line with it — but only while the card is actually
-        // on screen. Revealing the blur on a hidden window would leave it at
-        // full alpha for the next show to flash before the card paints, and a
-        // reposition is common while the overlay is down (every theme, style
-        // and position change makes one). The radius is recomputed by the
-        // first card-shape report of the next session anyway. Whether this
-        // reveals or hides is `material`'s call, not this function's — under
-        // Flat it takes the blur off screen a second time, which is the whole
-        // point of routing every reveal through the same door. `is_visible`
-        // is an AppKit read, and this function already runs on the main
-        // thread.
+        // The window now matches the current card shape at the current size
+        // scale, so bring the glass view's corner radius in line with it, but
+        // only while the card is actually on screen. Revealing the blur on a
+        // hidden window would leave it at full alpha for the next show to
+        // flash before the card paints, and a reposition is common while the
+        // overlay is down (every theme, style and position change makes one).
+        // The radius is recomputed by the first card-shape report of the next
+        // session anyway. Whether this reveals or hides is `material`'s call,
+        // not this function's. Under Flat it takes the blur off screen a
+        // second time, which is the whole point of routing every reveal
+        // through the same door. `is_visible` is an AppKit read, and this
+        // function already runs on the main thread.
         if overlay_window.is_visible().unwrap_or(false) {
             crate::overlay_glass::show_glass(app_handle, material, radius);
         }
@@ -1001,29 +1001,29 @@ fn update_overlay_position_on_main(
 /// Record a card-shape report from the overlay webview and, under Glass,
 /// move and reveal the native blur to match.
 ///
-/// This is also where a Glass session's blur is first revealed: the report
+/// This is also where a Glass session's blur is first revealed. The report
 /// that arrives on the first frame of a session repeats the shape the show
-/// path seeded, so it takes the reveal branch below — the earliest moment
-/// Rust knows the card has actually painted.
+/// path seeded, so it takes the reveal branch below, the earliest moment Rust
+/// knows the card has actually painted.
 ///
-/// Coalesced by shape identity, never by time: a report that repeats the
-/// shape already on screen only refreshes the radius and the reveal, and an
-/// in-flight animation superseded by a new shape is left to AppKit's own
-/// `animator()` to retarget rather than cancelled by hand. Under Flat — and
-/// off macOS, where the effective Material is never Glass — this only updates
-/// the stored shape, which `update_overlay_position_on_main` reads back on
-/// the next reposition, and makes sure the blur is off screen.
+/// Coalescing goes by shape identity rather than by time. A report that
+/// repeats the shape already on screen only refreshes the radius and the
+/// reveal, and an in-flight animation superseded by a new shape is left to
+/// AppKit's own `animator()` to retarget rather than cancelled by hand. Under
+/// Flat, and off macOS where the effective Material is never Glass, this only
+/// updates the stored shape, which `update_overlay_position_on_main` reads
+/// back on the next reposition, and makes sure the blur is off screen.
 ///
-/// The theme is resolved inside the main-thread hop, not before it: the
-/// Material decides both the window size and whether the blur may be lit, and
-/// a switch landing between the two would size the window for one Material
-/// and light the blur for the other. Resolving is cache-only, so it is safe
-/// there.
+/// The theme is resolved inside the main-thread hop rather than before it.
+/// The Material decides both the window size and whether the blur may be lit,
+/// and a switch landing between the two would size the window for one
+/// Material and light the blur for the other. Resolving is cache-only, so it
+/// is safe there.
 pub fn set_card_shape(app_handle: &AppHandle, shape: OverlayCardShape, duration_ms: u32) {
     let previous = set_current_card_shape(shape);
 
     // Whether the window is mapped decides between animating the frame and
-    // snapping it, and `is_visible()` is an AppKit read on macOS — so it is
+    // snapping it, and `is_visible()` is an AppKit read on macOS, so it is
     // taken on the main thread, in the same hop that acts on it, rather than
     // on whichever thread the command handler landed on.
     let handle = app_handle.clone();
@@ -1176,9 +1176,9 @@ mod tests {
         assert!(!is_mouse_within_monitor((-1, 1240), &position, &size));
     }
 
-    /// The race the first `--preview-overlay` after a launch used to lose: the
-    /// show reaches the window before the overlay page is listening, so it has
-    /// to be remembered rather than emitted and forgotten.
+    /// The race the first `--preview-overlay` after a launch used to lose.
+    /// The show reaches the window before the overlay page is listening, so
+    /// it has to be remembered rather than emitted and forgotten.
     #[test]
     fn a_show_the_overlay_page_cannot_hear_yet_is_remembered() {
         assert_eq!(

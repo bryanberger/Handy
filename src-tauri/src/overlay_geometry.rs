@@ -1,15 +1,15 @@
 //! The card's footprint, and the native window built around it.
 //!
-//! Everything the overlay window's *size* and its blur's corner radius are a
+//! Everything the overlay window's size and its blur's corner radius are a
 //! function of lives here: the card's shapes, the transparent slack the window
 //! keeps around them, and the two theme tokens that change how much room the
-//! card needs. Pure — no `AppHandle`, no platform `cfg`, no AppKit — so the
-//! arithmetic that decides whether a card fits its window is read and tested on
-//! its own, rather than through the window creation, monitor queries and
-//! show/hide sequencing in [`crate::overlay`], which is the only caller that
-//! turns these numbers into a window.
+//! card needs. It is pure code, with no `AppHandle`, no platform `cfg` and no
+//! AppKit, so the arithmetic that decides whether a card fits its window is
+//! read and tested on its own, rather than through the window creation, the
+//! monitor queries and the show/hide sequencing in [`crate::overlay`], the only
+//! caller that turns these numbers into a window.
 //!
-//! The card constants mirror the `--ov-*` block in `RecordingOverlay.css`; the
+//! The card constants mirror the `--ov-*` block in `RecordingOverlay.css`. The
 //! `overlay_window_constants_match_overlay_css` test parses that file and fails
 //! if either side drifts.
 
@@ -17,12 +17,12 @@ use crate::overlay_glass::GlassAppearance;
 use crate::overlay_theme::{Material, OverlayTheme, ResolvedOverlayTheme};
 use serde::{Deserialize, Serialize};
 
-/// The card's border at size_scale 1, both sides: `.scard` is content-box and
+/// The card's border at size_scale 1, both sides. `.scard` is content-box and
 /// draws a `border_width` px stroke on each edge that scales with everything
 /// else, so the card's footprint is `(content + card_border(width)) × scale`.
 ///
 /// A function rather than a constant because `border_width` is a token
-/// (0-4 px, inherit 1): it is, with `size_scale`, one of the only two tokens
+/// (0-4 px, inherit 1). It is, with `size_scale`, one of the only two tokens
 /// that change how much room the card needs. At the inherit width this is
 /// 2.0, today's hairline on both edges.
 const fn card_border(border_width: u16) -> f64 {
@@ -38,7 +38,7 @@ const CARD_COMPACT_CONTENT_W: f64 = 216.0;
 /// row.
 const CARD_COMPACT_CONTENT_H: f64 = 40.0;
 /// Resting compact card content (Minimal at rest) at size_scale 1:
-/// `--ov-rest-w` 172. Only [`OverlayCardShape::CompactRest`] uses this — under
+/// `--ov-rest-w` 172. Only [`OverlayCardShape::CompactRest`] uses this. Under
 /// Flat the window still covers [`CARD_COMPACT_CONTENT_W`], the widest card
 /// its own [`Card`] can reach.
 const CARD_COMPACT_REST_CONTENT_W: f64 = 172.0;
@@ -47,7 +47,7 @@ const CARD_COMPACT_REST_CONTENT_W: f64 = 172.0;
 /// state.
 const CARD_LIVE_CONTENT_W: f64 = 392.0;
 /// Live pill content before it opens or collapses, at size_scale 1:
-/// `--ov-pill-w` 184. Only [`OverlayCardShape::LivePill`] uses this — under
+/// `--ov-pill-w` 184. Only [`OverlayCardShape::LivePill`] uses this. Under
 /// Flat the window still covers [`CARD_LIVE_CONTENT_W`], the widest card the
 /// panel can reach.
 const CARD_LIVE_PILL_CONTENT_W: f64 = 184.0;
@@ -60,15 +60,15 @@ const CARD_LIVE_CONTENT_H: f64 = 40.0 + 64.0 + 12.0;
 /// transitions. The overlay webview reads the same custom property and sends
 /// it with every card-shape report, so the native window-frame animation
 /// under Glass would run for exactly as long as the CSS morph does under
-/// Flat — it is opt-in (`HANDY_GLASS_MORPH=1`), because the window leads
-/// WebKit's repaint by a frame or two and the blur shows through.
+/// Flat. That animation is opt-in (`HANDY_GLASS_MORPH=1`), because the window
+/// leads WebKit's repaint by a frame or two and the blur shows through.
 pub(crate) const CARD_MORPH_MS: u32 = 460;
 /// How long the card fades, in milliseconds: `--ov-fade-ms`, the duration of
 /// `.ov-fade`'s opacity transition. Under Glass the native blur has to fade
 /// over the same span, in and out, or it reads as a separate object.
 pub(crate) const CARD_FADE_MS: u32 = 200;
 /// The largest morph duration a card-shape report may ask for, in
-/// milliseconds — roughly four times [`CARD_MORPH_MS`]. Anything beyond it is
+/// milliseconds, roughly four times [`CARD_MORPH_MS`]. Anything beyond it is
 /// a bug or a hostile call rather than a slower animation, and would pin a
 /// native window animation on screen long after the card had settled.
 pub(crate) const MAX_CARD_MORPH_MS: u32 = 2000;
@@ -76,17 +76,17 @@ pub(crate) const MAX_CARD_MORPH_MS: u32 = 2000;
 /// Window slack for the pill, in logical points: 218 + 38 = 256 wide,
 /// 42 + 4 = 46 tall, i.e. exactly the window this overlay has always used.
 const COMPACT_SLACK: (f64, f64) = (38.0, 4.0);
-/// Window slack for the Live panel: 394 + 6 = 400 wide, 118 + 2 = 120 tall —
+/// Window slack for the Live panel: 394 + 6 = 400 wide, 118 + 2 = 120 tall,
 /// again today's window.
 const LIVE_SLACK: (f64, f64) = (6.0, 2.0);
 
 // The four windows this overlay has always used, kept as named scale-1
 // fixtures for the tests below and for `overlay`'s own Windows placement
 // tests. They are `#[cfg(test)]` because no production path reads a fixed size
-// any more: every window is computed from the card and the resolved size
-// scale.
+// any more. This module computes every window from the card and the resolved
+// size scale.
 /// The border on both sides at the inherit `border_width`, for the fixtures
-/// below: today's card, hairline included.
+/// below. Today's card, hairline included.
 #[cfg(test)]
 const CARD_BORDER_INHERIT: f64 = card_border(crate::overlay_theme::BORDER_WIDTH_INHERIT);
 /// Compact window width at size_scale 1.
@@ -109,7 +109,7 @@ pub(crate) const OVERLAY_STREAM_HEIGHT: f64 =
 /// Which card an [`OverlayCardShape`] is a shape of: the pill, or the panel
 /// that opens out of one.
 ///
-/// The only distinction the native geometry makes — every other difference
+/// The only distinction the native geometry makes. Every other difference
 /// between the UI states happens inside the card, at a size the window already
 /// covers. The pill never opens, so under Flat its window covers the widest
 /// pill; the panel does, so its window covers the open panel.
@@ -125,8 +125,8 @@ enum Card {
 impl Card {
     /// The widest footprint this card can reach at size_scale 1, borders
     /// included. What the window covers under Flat, where the CSS morph
-    /// happens inside a window sized for the widest card; under Glass the
-    /// window instead equals the *exact* current [`OverlayCardShape`], never
+    /// happens inside a window sized for the widest card. Under Glass the
+    /// window instead equals the exact current [`OverlayCardShape`], never
     /// a maximum.
     fn widest_footprint(self, border_width: u16) -> (f64, f64) {
         let border = card_border(border_width);
@@ -139,17 +139,17 @@ impl Card {
         }
     }
 
-    /// The transparent margin between the card's footprint and the edge of
+    /// The transparent slack between the card's footprint and the edge of
     /// the native overlay window, in logical points.
     ///
     /// It exists so a card mid-morph is never clipped by the overlay page's
-    /// `overflow: hidden`. Zero under Glass: the window rectangle *is* the
-    /// card, because the native glass view fills the whole window and any
-    /// slack would paint blur outside it. No `#[cfg(target_os = "macos")]` is
-    /// needed here — the effective Material is never Glass off macOS (only a
-    /// `support()` with `available: true` can produce it, and that only exists
-    /// on macOS), so this reduces to today's per-card slack everywhere but a
-    /// Mac with Glass actually available.
+    /// `overflow: hidden`. Zero under Glass, where the window rectangle is the
+    /// card. The native glass view fills the whole window, so any slack would
+    /// paint blur outside it. This needs no `#[cfg(target_os = "macos")]`. The
+    /// effective Material is never Glass off macOS (only a `support()` with
+    /// `available: true` can produce it, and that only exists on macOS), so it
+    /// reduces to today's per-card slack everywhere but a Mac with Glass
+    /// actually available.
     fn slack(self, material: Material) -> (f64, f64) {
         if material == Material::Glass {
             return (0.0, 0.0);
@@ -163,12 +163,12 @@ impl Card {
 
 /// Which of the five card shapes the overlay is currently drawing.
 ///
-/// Under Flat this is bookkeeping only: the window is sized for the widest
-/// card the overlay style can reach, and the CSS morph happens inside it.
-/// Under Glass it is the unit the native window is sized from, because the
-/// window slack is zero and the window rectangle is the card — and because
-/// the Live panel's open/collapsed morph is a pure webview decision (driven
-/// by streamed text and phase) that Rust cannot see any other way.
+/// Under Flat this is bookkeeping only. The window covers the widest card the
+/// overlay style can reach, and the CSS morph happens inside it. Under Glass
+/// it is the unit the native window is sized from, for two reasons: the window
+/// slack is zero, so the window rectangle is the card, and the Live panel's
+/// open/collapsed morph is a pure webview decision (driven by streamed text
+/// and phase) that Rust cannot see any other way.
 ///
 /// One shape per distinct `.scard` class combination in
 /// `RecordingOverlay.tsx`; the footprints mirror the `--ov-*` block in
@@ -180,22 +180,22 @@ impl Card {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum OverlayCardShape {
-    /// `.scard.compact` — the resting Minimal pill.
+    /// The resting Minimal pill, `.scard.compact`.
     CompactRest,
-    /// `.scard.compact.cworking` — the Minimal working pill, at the same
+    /// The Minimal working pill, `.scard.compact.cworking`, at the same
     /// footprint as Live's own collapsed working pill.
     CompactWorking,
-    /// `.scard` — the Live pill before it opens or collapses.
+    /// The Live pill before it opens or collapses, `.scard`.
     LivePill,
-    /// `.scard.working` — the Live panel collapsed to its working pill.
+    /// The Live panel collapsed to its working pill, `.scard.working`.
     LiveWorking,
-    /// `.scard.open` — the Live panel, expanded.
+    /// The Live panel expanded, `.scard.open`.
     LiveOpen,
 }
 
 impl OverlayCardShape {
-    /// Declaration order, mirroring the `#[repr(u8)]` discriminants — the
-    /// table [`Self::from_u8`] indexes into.
+    /// Declaration order, mirroring the `#[repr(u8)]` discriminants. This is
+    /// the table [`Self::from_u8`] indexes into.
     const ALL: [OverlayCardShape; 5] = [
         Self::CompactRest,
         Self::CompactWorking,
@@ -222,8 +222,8 @@ impl OverlayCardShape {
         }
     }
 
-    /// Which card this shape belongs to — what the slack and the Flat-material
-    /// footprint (the widest card it can reach) key on.
+    /// Which card this shape belongs to. The slack and the Flat-material
+    /// footprint (the widest card it can reach) both key on it.
     fn card(self) -> Card {
         match self {
             Self::CompactRest | Self::CompactWorking => Card::Pill,
@@ -231,9 +231,9 @@ impl OverlayCardShape {
         }
     }
 
-    /// This shape's own exact footprint at size_scale 1, border included —
-    /// what the window must equal under Glass, where the window is the card.
-    /// Every number comes from the `--ov-*` block in RecordingOverlay.css.
+    /// This shape's own exact footprint at size_scale 1, border included. The
+    /// window must equal it under Glass, where the window is the card. Every
+    /// number comes from the `--ov-*` block in RecordingOverlay.css.
     fn card_footprint(self, border_width: u16) -> (f64, f64) {
         let border = card_border(border_width);
         let (content_width, content_height) = match self {
@@ -250,7 +250,7 @@ impl OverlayCardShape {
     /// class: the pill and the two compact states are the full radius token,
     /// the Live working pill is 3/4, the open panel is 2/3. Both CSS and the
     /// native `CALayer` radius clamp visually to half the shorter side, so
-    /// they agree by construction without either side rounding first — this
+    /// they agree by construction without either side rounding first. This
     /// value is deliberately left unrounded.
     fn radius_factor(self) -> f64 {
         match self {
@@ -271,10 +271,9 @@ impl OverlayCardShape {
     }
 
     /// How long the glass view fades out for when the overlay hides, matched
-    /// to the way this card actually leaves the screen: the pill fades with
-    /// its container over `--ov-fade-ms`, while the Live card is unmounted
-    /// outright, so its blur has to go at once rather than linger over an
-    /// empty window.
+    /// to the way this card actually leaves the screen. The pill fades with
+    /// its container over `--ov-fade-ms`. The Live card is unmounted outright,
+    /// so its blur has to go at once rather than linger over an empty window.
     pub(crate) fn glass_fade_out_ms(self) -> u32 {
         match self.card() {
             Card::Pill => CARD_FADE_MS,
@@ -285,15 +284,15 @@ impl OverlayCardShape {
 
 /// The three theme tokens the card's rectangle is a function of, clamped once.
 ///
-/// They always travel together — the size scale zooms every length, the border
+/// They always travel together. The size scale zooms every length, the border
 /// width adds two strokes to every footprint, and the radius rounds the corners
-/// the blur has to match — so they are built once from the resolved theme and
-/// asked for a window size or a corner radius, rather than passed one at a time
-/// to free functions that each have to remember which of them were already
-/// clamped.
+/// the blur has to match. So `from_theme` builds all three once from the
+/// resolved theme and callers ask the result for a window size or a corner
+/// radius, rather than passing them one at a time to free functions that each
+/// have to remember which of them were already clamped.
 ///
-/// The clamp lives in the constructor, not the callers: the geometry must never
-/// trust a number that reached it unclamped, and it uses the same bounds as
+/// The constructor clamps, so no caller has to. The geometry must never trust
+/// a number that reached it unclamped, and it uses the same bounds as
 /// [`OverlayTheme::size_scale`] and [`OverlayTheme::border_width`], so the
 /// window and the card can never disagree about how far a token was allowed to
 /// go.
@@ -306,15 +305,15 @@ pub(crate) struct CardMetrics {
 
 impl CardMetrics {
     /// The resolved `radius` token in px at `size_scale` 1 when the theme sets
-    /// none: the CSS token's own default (`--ov-radius: 24px`,
+    /// none. It is the CSS token's own default (`--ov-radius: 24px`,
     /// `RecordingOverlay.css`).
     const DEFAULT_RADIUS_PX: f64 = 24.0;
 
     /// The metrics a resolved theme asks for.
     ///
     /// `size_scale` and `border_width` come through the theme's own accessors,
-    /// which already clamp; `radius` is read from the public field, because
-    /// `OverlayTheme` carries no accessor for it, and clamped here.
+    /// which already clamp. `OverlayTheme` carries no accessor for `radius`,
+    /// so this reads the public field and clamps it here.
     pub(crate) fn from_theme(theme: &OverlayTheme) -> Self {
         Self {
             scale: theme.size_scale(),
@@ -329,12 +328,12 @@ impl CardMetrics {
 
     /// Overlay window size (logical points) for a card shape under a Material.
     ///
-    /// Under Glass the window equals the shape's own exact footprint — the
-    /// window IS the card. Under Flat the window covers the widest card that
-    /// shape's [`Card`] can reach, because the CSS width/height morph happens
-    /// inside it.
+    /// Under Glass the window equals the shape's own exact footprint, because
+    /// there the window is the card. Under Flat the window covers the widest
+    /// card that shape's [`Card`] can reach, because the CSS width/height
+    /// morph happens inside it.
     ///
-    /// The scaled card is rounded up before the slack is added, so the window
+    /// This rounds the scaled card up before adding the slack, so the window
     /// is never a fraction of a point short of the card it hosts and every
     /// result is a whole number of points.
     pub(crate) fn window_size(&self, shape: OverlayCardShape, material: Material) -> (f64, f64) {
@@ -351,7 +350,7 @@ impl CardMetrics {
     }
 
     /// A shape's corner radius in px, mirroring the CSS
-    /// `calc(var(--ov-radius) * var(--ov-scale) * factor)` — unrounded, like
+    /// `calc(var(--ov-radius) * var(--ov-scale) * factor)`. Unrounded, like
     /// the CSS, so CALayer and CSS agree by construction (both clamp visually
     /// to half the shorter side).
     fn corner_radius(&self, shape: OverlayCardShape) -> f64 {
@@ -359,7 +358,7 @@ impl CardMetrics {
     }
 }
 
-/// Everything the native overlay window is configured from *by a theme*.
+/// Everything a theme configures the native overlay window from.
 ///
 /// Its size, the blur's macOS material and the blur's corner radius are
 /// functions of these values and of nothing else, so two theme deliveries that
@@ -368,10 +367,10 @@ impl CardMetrics {
 /// skip the main-thread hop, the AppKit material write and the resize
 /// entirely.
 ///
-/// Its **position** is not a function of this state alone: it also follows the
+/// Its position is not a function of this state alone. It also follows the
 /// `overlay_position` setting and the monitor the card is placed on. Neither
-/// is anything a theme can move, and neither reaches the window through here —
-/// the position and style commands go through the unconditional
+/// is anything a theme can move, and neither reaches the window through here.
+/// The position and style commands go through the unconditional
 /// `update_overlay_position`, and every show repositions anyway. So skipping
 /// a theme delivery can leave the window where the last show or position
 /// update put it, which is exactly where it belongs.
@@ -409,7 +408,8 @@ impl OverlayWindowState {
 ///
 /// Pure, so "only a change to something the window is actually built from"
 /// is a test rather than a reading of the call site. An unknown previous
-/// state always needs the update: the window may have just been created.
+/// state always needs the update, because the window may have just been
+/// created.
 pub(crate) fn native_update_needed(
     previous: Option<&OverlayWindowState>,
     next: &OverlayWindowState,
@@ -433,7 +433,7 @@ mod tests {
     }
 
     /// The window `shape` gets at `scale` under `material`, with the inherit
-    /// border width — the shorthand the dimension tests below are written in.
+    /// border width, the shorthand the dimension tests below are written in.
     fn window(shape: OverlayCardShape, scale: f64, material: Material) -> (f64, f64) {
         window_at(shape, scale, material, BORDER_WIDTH_INHERIT)
     }
@@ -481,11 +481,11 @@ mod tests {
         assert!(!native_update_needed(Some(&state), &state.clone()));
     }
 
-    /// ...and everything the window *is* built from still gets through, one
-    /// field at a time.
+    /// ...and everything the window really is built from still gets through,
+    /// one field at a time.
     ///
-    /// The state is destructured exhaustively — no `..` — and every binding it
-    /// produces is then used to derive the variant that changes that one
+    /// The test destructures the state exhaustively, with no `..`, and every
+    /// binding it produces then derives the variant that changes that one
     /// field, under a local `deny(unused_variables)`. So a field added to
     /// `OverlayWindowState`, to `CardMetrics` or to `GlassAppearance` stops
     /// this test compiling until it is named here, and naming it without using
@@ -494,7 +494,7 @@ mod tests {
     /// What that cannot catch: a value the native window is built from that
     /// never became a field of this state at all. Nothing but reading
     /// `update_overlay_position_on_main` and `overlay_glass` will tell you
-    /// that — the state is a claim about those two, and this test only keeps
+    /// that. The state is a claim about those two, and this test only keeps
     /// the claim internally honest.
     #[test]
     #[deny(unused_variables)]
@@ -556,7 +556,7 @@ mod tests {
                 radius_px: radius_px + 12.0,
                 ..base.metrics
             }),
-            // The four Glass-only tokens: only the liquid engine reads the
+            // The four Glass-only tokens. Only the liquid engine reads the
             // style and the tint, but all of them are live property writes on
             // the installed view, so a change to any has to reach it.
             glass_variant(GlassAppearance {
@@ -596,7 +596,7 @@ mod tests {
         }
     }
 
-    /// A window nothing has configured yet — freshly created, or re-created —
+    /// A window nothing has configured yet, freshly created or re-created,
     /// always needs the update, whatever the theme says.
     #[test]
     fn an_unconfigured_window_always_needs_the_native_update() {
@@ -604,8 +604,8 @@ mod tests {
     }
 
     /// A window state answers both native questions itself, from the shape it
-    /// carries — the whole reason it holds [`CardMetrics`] rather than three
-    /// loose numbers.
+    /// carries. That is the whole reason it holds [`CardMetrics`] rather than
+    /// three loose numbers.
     #[test]
     fn a_window_state_sizes_and_rounds_its_own_card() {
         let state = window_state();
@@ -654,8 +654,8 @@ mod tests {
     }
 
     /// The card scales, the slack does not. Under Flat every shape of a card
-    /// produces the same window, so which exact shape is passed is immaterial
-    /// — chosen for variety.
+    /// produces the same window, so which exact shape is passed is immaterial.
+    /// The shapes below are picked for variety.
     #[test]
     fn overlay_dimensions_scale_with_the_token() {
         assert_eq!(
@@ -722,15 +722,15 @@ mod tests {
         }
     }
 
-    /// Under Glass the window equals the card exactly — zero slack — at
+    /// Under Glass the window equals the card exactly, with zero slack, at
     /// every shape and every 0.05 step of scale from 0.80 to 1.50. The
     /// footprints are spelled out rather than read from `card_footprint()`,
     /// so a constant that drifted cannot agree with itself, and no
     /// expectation here ever adds a slack term.
     #[test]
     fn glass_window_equals_card_at_every_scale() {
-        // The Material specification's own table: content plus the 1px
-        // hairline on each side, at size_scale 1.
+        // Each card's footprint at size_scale 1, as literals: content plus
+        // the 1px hairline on each side.
         const CARDS: [(OverlayCardShape, f64, f64); 5] = [
             (OverlayCardShape::CompactRest, 174.0, 42.0),
             (OverlayCardShape::CompactWorking, 218.0, 42.0),
@@ -778,14 +778,14 @@ mod tests {
         }
     }
 
-    /// `border_width` is the second token that moves the native window, so
-    /// the window has to grow with it: the card is content-box, so each extra
-    /// px of stroke costs two px of footprint before the scale multiplies.
-    /// The expectations are the token table's arithmetic written out, never
+    /// `border_width` is the second token that moves the native window, so the
+    /// window has to grow with it. The card is content-box, so each extra px
+    /// of stroke costs two px of footprint before the scale multiplies. The
+    /// expectations are the token table's arithmetic written out, never
     /// `card_footprint()` called again.
     #[test]
     fn overlay_dimensions_follow_the_border_width() {
-        // Glass: the window IS the card, so the footprint is visible
+        // Under Glass the window is the card, so the footprint is visible
         // directly. LiveOpen's content is 392 x 116.
         for (width, expected) in [
             (0, (392.0, 116.0)),
@@ -818,7 +818,7 @@ mod tests {
         );
 
         // Whatever the width, Glass's window equals its card and Flat's
-        // window covers it — the invariant zero slack rests on.
+        // window covers it, the invariant zero slack rests on.
         for width in 0..=BORDER_WIDTH_MAX {
             for step in 0..=14 {
                 let scale = f64::from(80 + step * 5) / 100.0;
@@ -971,7 +971,7 @@ mod tests {
 
     /// The card constants above and the `--ov-*` block in RecordingOverlay.css
     /// are two copies of the same geometry. This test is what keeps them one
-    /// number: it reads the CSS the overlay actually ships with and fails
+    /// number. It reads the CSS the overlay actually ships with and fails
     /// naming the variable that drifted, instead of shipping a clipped card.
     #[test]
     fn overlay_window_constants_match_overlay_css() {
@@ -995,22 +995,22 @@ mod tests {
         assert_eq!(css_px(OVERLAY_CSS, "--ov-pill-w"), CARD_LIVE_PILL_CONTENT_W);
 
         // The stroke `.scard` draws on each edge. The CSS declares the
-        // inherit width, and this side doubles it — the card is content-box,
+        // inherit width, and this side doubles it. The card is content-box,
         // so the footprint carries one on each edge.
         assert_eq!(
             css_px(OVERLAY_CSS, "--ov-border-w"),
             f64::from(BORDER_WIDTH_INHERIT)
         );
         assert_eq!(card_border(BORDER_WIDTH_INHERIT), CARD_BORDER_INHERIT);
-        // The waveform bar's own width: not part of any footprint, but the
-        // same "the CSS declares the inherit value" rule, so the tab's
+        // The waveform bar's own width. No footprint uses it, but it follows
+        // the same "the CSS declares the inherit value" rule, so the tab's
         // slider and the stylesheet cannot drift.
         assert_eq!(
             css_px(OVERLAY_CSS, "--ov-wave-w"),
             f64::from(crate::overlay_theme::WAVEFORM_WIDTH_INHERIT)
         );
-        // The radius an unset token falls back to, which is what the blur's
-        // own corner radius is computed from.
+        // The radius an unset token falls back to, and the number
+        // `corner_radius` scales into the blur's own radius.
         assert_eq!(
             css_px(OVERLAY_CSS, "--ov-radius"),
             CardMetrics::DEFAULT_RADIUS_PX
@@ -1019,8 +1019,8 @@ mod tests {
         // The card's own timings. The CSS transitions read these two
         // properties, the overlay webview reads --ov-morph-ms at runtime to
         // tell the backend how long to animate the window frame, and the
-        // native reveal and fade-out read the constants below — so all three
-        // have to be one number.
+        // native reveal and fade-out read the two constants pinned just
+        // below, so all three have to be one number.
         assert_eq!(
             css_ms(OVERLAY_CSS, "--ov-morph-ms"),
             f64::from(CARD_MORPH_MS)

@@ -1,31 +1,30 @@
-//! The theme file: `overlay_theme.json`, read-only input from outside Handy.
+//! The theme file `overlay_theme.json`, a read-only input from outside Handy.
 //!
-//! A *theme file* lets an external theming tool drive the overlay without the
-//! settings window. Handy only ever **reads** it — nothing here writes, moves
-//! or rewrites the file — and nothing but typed tokens ever comes out of it:
+//! A theme file lets an external theming tool drive the overlay without the
+//! settings window. Handy only ever reads it. Nothing here writes, moves or
+//! rewrites the file, and nothing but typed tokens ever comes out of it:
 //! canonical `#rrggbb` colours, the closed enums `flat | glass`, the eight
 //! macOS `glass_material` values and the two `glass_style` values, and numbers
 //! rounded and clamped to the token contract's bounds. No CSS, stylesheet,
 //! script, font, path, URL or command is ever read from this document, so a
 //! hostile file can at worst cost the overlay its styling for one session.
 //!
-//! Two tiers of failure, mirroring `salvage_settings` one level up: a
-//! **document-level** problem (unreadable, not UTF-8, malformed JSON, not an
+//! Two tiers of failure, mirroring `salvage_settings` one level up. A
+//! document-level problem (unreadable, not UTF-8, malformed JSON, not an
 //! object) keeps the last good document and marks it [`ThemeFileState::stale`],
-//! while a **key-level** problem costs exactly that one key, which then
-//! inherits. Deleting the file is not a failure: it is how a tool says "stop
-//! overriding", so it clears the cache.
+//! while a key-level problem costs exactly that one key, which then inherits.
+//! Deleting the file is how a tool says "stop overriding", so it clears the
+//! cache instead of counting as a failure.
 //!
-//! The read is cheap — one `open`, whose handle serves both the metadata
-//! check and a bounded sub-KiB read, so a candidate cannot be swapped out
-//! between the two — and happens at launch, on every overlay show (off the
-//! main thread), and whenever the Appearance tab asks. There is no file
-//! watcher.
+//! The read is cheap. One `open`, whose handle serves both the metadata check
+//! and a bounded sub-KiB read, so a candidate cannot be swapped out between
+//! the two. It happens at launch, on every overlay show (off the main
+//! thread), and whenever the Appearance tab asks. There is no file watcher.
 //!
-//! Forward compatibility, as promised to the tools that write this file:
-//! colour values are `"#RRGGBB"` strings today. A future schema version may
-//! also accept `{ "light": "#RRGGBB", "dark": "#RRGGBB" }` for the same keys
-//! — the key names will not change. Writers that emit a single string stay
+//! Forward compatibility, as promised to the tools that write this file.
+//! Colour values are `"#RRGGBB"` strings today. A future schema version may
+//! also accept `{ "light": "#RRGGBB", "dark": "#RRGGBB" }` for the same keys,
+//! and the key names will not change. Writers that emit a single string stay
 //! valid. Readers should tolerate either shape.
 
 use crate::overlay_theme::{
@@ -54,18 +53,18 @@ pub const CURRENT_OVERLAY_THEME_FILE_VERSION: u32 = 1;
 
 /// The environment variable that names a theme file outright.
 ///
-/// It takes a **path**, not a flag, so it is read with `std::env::var_os`
-/// rather than `utils::env_flag_enabled` — and rather than `std::env::var`,
-/// whose `Result` collapses "unset" and "set to something that is not valid
-/// Unicode" to the same `Err` behind a careless `.ok()`. When it is set (to
-/// anything, including a value that cannot become a path), it is the only
-/// candidate tried: an explicit instruction must never quietly resolve to a
-/// different file. See [`EnvOverride`].
+/// It takes a path rather than a flag, so this module reads it with
+/// `std::env::var_os` rather than `utils::env_flag_enabled`. `std::env::var`
+/// is no good either, because its `Result` collapses "unset" and "set to
+/// something that is not valid Unicode" to the same `Err` behind a careless
+/// `.ok()`. When it is set (to anything, including a value that cannot become
+/// a path), it is the only candidate tried, because an explicit instruction
+/// must never quietly resolve to a different file. See [`EnvOverride`].
 pub const THEME_FILE_ENV_VAR: &str = "HANDY_OVERLAY_THEME_FILE";
 
 /// The directory under `$XDG_CONFIG_HOME` that Linux theming tools write to.
-/// Deliberately the bare product name, not the bundle identifier: it is what
-/// Discussion #1802 asked for (`~/.config/handy/`).
+/// Deliberately the bare product name rather than the bundle identifier,
+/// because `~/.config/handy/` is what Discussion #1802 asked for.
 const LINUX_CONFIG_SUBDIR: &str = "handy";
 
 /// Anything larger than this is not a sixteen-key document; refused unread.
@@ -81,16 +80,16 @@ const MAX_DIAGNOSTICS: usize = 5;
 struct TokenSpec {
     key: &'static str,
     /// Parse `value` into `tokens`, pushing a diagnostic for anything it had
-    /// to reject or clamp, and report whether the key ended up **owned** —
-    /// that is, whether the file actually set it. Reached through
-    /// [`TokenSpec::parse`], which is what hands it the key.
+    /// to reject or clamp, and report whether the key ended up owned, that is,
+    /// whether the file actually set it. Reached through [`TokenSpec::parse`],
+    /// which is what hands it the key.
     parser: fn(&str, &Value, &mut OverlayTheme, &mut Vec<ThemeFileDiagnostic>) -> bool,
 }
 
 impl TokenSpec {
     /// Read this row's value out of the document.
     ///
-    /// The key its diagnostics are filed under is the row's own: the caller
+    /// The key its diagnostics are filed under is the row's own. The caller
     /// has no say in it, which is why it is not a parameter.
     fn parse(
         &self,
@@ -109,12 +108,12 @@ const fn token(
     TokenSpec { key, parser }
 }
 
-/// The sixteen tokens, in the token contract's order — which is also the order
+/// The sixteen tokens, in the token contract's order, which is also the order
 /// the Appearance tab lists them in. This is the order
 /// [`ThemeFileState::owned_keys`] and the per-key diagnostics come out in, so
 /// the payload does not depend on how `serde_json` orders an object's keys.
 ///
-/// One table rather than a key list beside a match on it: the key, its parser
+/// One table rather than a key list beside a match on it. The key, its parser
 /// and its bounds are one fact about a token, and splitting them made "a key in
 /// one list and not the other" a thing a debug assertion had to catch at
 /// runtime instead of a thing that cannot be written down.
@@ -215,10 +214,10 @@ static CACHE: RwLock<Option<ThemeFileState>> = RwLock::new(None);
 /// Where Handy looks for the theme file, highest priority first.
 ///
 /// First candidate that resolves to a readable regular file wins, and its
-/// document is the only one used — the locations are never merged. Empty when
-/// [`THEME_FILE_ENV_VAR`] is set to a value that cannot become a path: there
-/// is nothing to look at, and [`read`] reports that directly rather than
-/// through this list.
+/// document is the only one used. The locations are never merged. The list is
+/// empty when [`THEME_FILE_ENV_VAR`] is set to a value that cannot become a
+/// path, since there is nothing to look at; [`read`] reports that case
+/// directly rather than through this list.
 pub fn candidate_paths(app: &AppHandle) -> Vec<PathBuf> {
     match env_override() {
         EnvOverride::Invalid => Vec::new(),
@@ -242,11 +241,11 @@ pub fn candidate_paths(app: &AppHandle) -> Vec<PathBuf> {
 /// cache before any window exists.
 pub fn read(app: &AppHandle) -> ThemeFileState {
     let state = match env_override() {
-        // The variable is set but cannot become a path at all: there is
-        // nothing to search, and — per `THEME_FILE_ENV_VAR`'s contract —
-        // nothing else is tried either. This is a document-level diagnostic
-        // naming the variable, not a per-candidate one, because no candidate
-        // list was ever built.
+        // The variable is set but cannot become a path at all, so there is
+        // nothing to search, and `THEME_FILE_ENV_VAR`'s contract says nothing
+        // else is tried either. This is a document-level diagnostic naming the
+        // variable, not a per-candidate one, because no candidate list was
+        // ever built.
         EnvOverride::Invalid => log_truncate_and_attach_diagnostics(
             ThemeFileState::absent_at(THEME_FILE_ENV_VAR.to_string()),
             vec![diagnostic(
@@ -258,7 +257,7 @@ pub fn read(app: &AppHandle) -> ThemeFileState {
         EnvOverride::Path(path) => {
             let previous = cached_state();
             // The env var's target is always the reported path, present or
-            // not: it is exclusive, so it is also the file the user must
+            // not. It is exclusive, so it is also the file the user must
             // create when it is missing.
             read_candidates(
                 std::slice::from_ref(&path),
@@ -284,7 +283,7 @@ pub fn read(app: &AppHandle) -> ThemeFileState {
 /// The last read, performing one read if the cache has never been populated.
 ///
 /// The cold path only exists before the launch-time [`read`], so in a running
-/// app this is a lock and a clone — which is what lets the resolver run on the
+/// app this is a lock and a clone, which is what lets the resolver run on the
 /// main thread.
 pub fn cached(app: &AppHandle) -> ThemeFileState {
     match cached_state() {
@@ -296,23 +295,24 @@ pub fn cached(app: &AppHandle) -> ThemeFileState {
 /// The candidate list, with the lookups already done.
 ///
 /// Pure, so the priority order and the env var's exclusivity are testable
-/// without an `AppHandle`. `config_dir` is `$XDG_CONFIG_HOME` (Linux only —
-/// [`linux_config_dir`] is what gates the platform); the `handy/` component
-/// and the file name are joined here.
+/// without an `AppHandle`. `config_dir` is `$XDG_CONFIG_HOME`, Linux only,
+/// since [`linux_config_dir`] is what gates the platform. The `handy/`
+/// component and the file name are joined here.
 fn candidates_from(
     env: Option<&Path>,
     app_data_dir: Option<&Path>,
     config_dir: Option<&Path>,
 ) -> Vec<PathBuf> {
-    // Exclusive: an explicit path is the whole list, and a missing target is a
-    // warning rather than a silent fallback to a file the user did not name.
+    // The env var is exclusive. An explicit path is the whole list, and a
+    // missing target is a warning rather than a silent fallback to a file the
+    // user did not name.
     if let Some(path) = env {
         return vec![path.to_path_buf()];
     }
 
     let mut candidates = Vec::with_capacity(2);
-    // Portable installs land here too: `resolve_app_data` already returns
-    // `<exe dir>/Data` when the portable marker is present.
+    // Portable installs land here too, because `resolve_app_data` already
+    // returns `<exe dir>/Data` when the portable marker is present.
     if let Some(dir) = app_data_dir {
         candidates.push(dir.join(THEME_FILE_NAME));
     }
@@ -325,17 +325,17 @@ fn candidates_from(
 /// What [`THEME_FILE_ENV_VAR`] contributes to the candidate search.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum EnvOverride {
-    /// Not set, or set to an empty string: the other candidates are tried
+    /// Not set, or set to an empty string. The other candidates are tried
     /// normally.
     Unset,
     /// Set, to a path.
     Path(PathBuf),
     /// Set to a value that is not valid Unicode. `std::env::var_os` still
-    /// returns it — environment variables are just bytes on every platform
-    /// Handy ships for — but this module only ever builds `Path`s from `str`,
-    /// so there is no path here to try, join or display. Exclusive like
-    /// `Path`: the search stops with a diagnostic rather than silently
-    /// falling back to app data or XDG.
+    /// returns it, since environment variables are just bytes on every
+    /// platform Handy ships for, but this module only ever builds `Path`s
+    /// from `str`, so there is no path here to try, join or display.
+    /// Exclusive like `Path`, so the search stops with a diagnostic rather
+    /// than silently falling back to app data or XDG.
     Invalid,
 }
 
@@ -346,8 +346,8 @@ fn env_override() -> EnvOverride {
 }
 
 /// [`env_override`]'s logic, pure over `std::env::var_os`'s result so the
-/// non-Unicode branch — which cannot be expressed as `Option<&str>` — is
-/// testable without touching a real environment variable.
+/// non-Unicode branch is testable without touching a real environment
+/// variable. That branch cannot be expressed as `Option<&str>`.
 fn env_candidate_os(value: Option<&OsStr>) -> EnvOverride {
     match value {
         None => EnvOverride::Unset,
@@ -363,7 +363,7 @@ fn env_candidate_os(value: Option<&OsStr>) -> EnvOverride {
     }
 }
 
-/// The env var's value as a candidate: unset and empty are the same thing.
+/// The env var's value as a candidate. Unset and empty are the same thing.
 /// Pure, so this is testable without touching the process environment.
 fn env_candidate(value: Option<&str>) -> Option<PathBuf> {
     match value {
@@ -385,9 +385,10 @@ fn app_data_dir(app: &AppHandle) -> Option<PathBuf> {
 
 /// `$XDG_CONFIG_HOME` (or `~/.config`), Linux only.
 ///
-/// Gated because on macOS and Windows `config_dir()` *is* `data_dir()`, so a
-/// second `handy/` folder there would sit confusingly beside the bundle
-/// identifier's directory and mean nothing to any tool on those platforms.
+/// Gated because on macOS and Windows `config_dir()` returns the same path as
+/// `data_dir()`, so a second `handy/` folder there would sit confusingly
+/// beside the bundle identifier's directory and mean nothing to any tool on
+/// those platforms.
 #[cfg(target_os = "linux")]
 fn linux_config_dir(app: &AppHandle) -> Option<PathBuf> {
     use tauri::Manager;
@@ -414,20 +415,20 @@ enum CandidateRead {
     Absent(Option<String>),
     /// The file's text, ready to parse.
     Text(String),
-    /// The file is there but could not be read. The search stops: a file that
-    /// exists is the file in effect, even when reading it failed.
+    /// The file is there but could not be read. The search stops, because a
+    /// file that exists is the file in effect, even when reading it failed.
     Unreadable(String),
 }
 
 /// Read one candidate, refusing anything that is not a small regular file.
 ///
-/// Opens the file exactly once and takes the metadata *and* the bytes from
-/// that one handle, rather than an `fs::metadata` call followed by a separate
-/// `fs::read`: two calls check one file and then read whatever the path
+/// Opens the file exactly once and takes the metadata and the bytes from that
+/// one handle, rather than an `fs::metadata` call followed by a separate
+/// `fs::read`. Two calls check one file and then read whatever the path
 /// resolves to a moment later, so a candidate swapped out from under the
 /// search between the two (a non-atomic replace, or a symlink retargeted)
 /// could dodge the type check or the size cap. A single handle keeps every
-/// check and the read itself pinned to the same file — on a POSIX system, an
+/// check and the read itself pinned to the same file. On a POSIX system, an
 /// open file descriptor keeps referring to the original file even if the path
 /// is unlinked or replaced out from under it. [`Read::take`] at one byte over
 /// [`MAX_THEME_FILE_BYTES`] is a second, independent cap on top of the
@@ -436,8 +437,8 @@ enum CandidateRead {
 /// memory.
 ///
 /// Opening follows symlinks, so the symlink-to-a-real-file that a Nix or
-/// Home-Manager setup needs still works, while a symlink to a directory or a
-/// device is refused by the same check that refuses those directly. A symlink
+/// Home-Manager setup needs still works, while the same check that rejects a
+/// directory or a device directly also rejects a symlink to one. A symlink
 /// whose target does not exist is handled separately, by
 /// [`dangling_symlink_or_absent`].
 fn load_candidate(path: &Path) -> CandidateRead {
@@ -470,10 +471,10 @@ fn load_candidate(path: &Path) -> CandidateRead {
     if let Err(error) = file.take(MAX_THEME_FILE_BYTES + 1).read_to_end(&mut bytes) {
         return CandidateRead::Unreadable(format!("cannot be read ({error})"));
     }
-    // Belt-and-braces against a file that grew after the metadata check
-    // above but before this read finished: `Read::take` stops at one byte
-    // over the limit no matter what `metadata.len()` said, so a swapped-in
-    // larger file can never reach `String::from_utf8` at all.
+    // Belt-and-braces against a file that grew after the metadata check above
+    // but before this read finished. `Read::take` stops at one byte over the
+    // limit no matter what `metadata.len()` said, so a swapped-in larger file
+    // can never reach `String::from_utf8` at all.
     if bytes.len() as u64 > MAX_THEME_FILE_BYTES {
         return CandidateRead::Absent(Some(format!(
             "grew past the {MAX_THEME_FILE_BYTES} byte limit while being read; ignored"
@@ -492,10 +493,10 @@ fn load_candidate(path: &Path) -> CandidateRead {
 /// dangling symlink also produces (opening follows the link, and the target
 /// is not there). `symlink_metadata` does not follow links, so it succeeds
 /// even when the target is missing, which is what lets the two cases be told
-/// apart. A dangling symlink counts as absent, the same as a directory, but —
-/// like a directory — is worth one `warn!` rather than the silent not-found
-/// path: a theming tool's symlink pointing at nothing is a misconfiguration,
-/// not the ordinary "no file here yet".
+/// apart. A dangling symlink counts as absent, the same as a directory, and
+/// like a directory it is worth one `warn!` rather than the silent not-found
+/// path. A theming tool's symlink pointing at nothing is a misconfiguration
+/// rather than the ordinary "no file here yet".
 fn dangling_symlink_or_absent(path: &Path) -> CandidateRead {
     match std::fs::symlink_metadata(path) {
         Ok(metadata) if metadata.file_type().is_symlink() => {
@@ -517,7 +518,7 @@ fn read_candidates(
     previous: Option<&ThemeFileState>,
 ) -> ThemeFileState {
     // Warnings collected while skipping candidates. They survive into whatever
-    // state the search ends in: a directory sitting where a theme file belongs
+    // state the search ends in. A directory sitting where a theme file belongs
     // is worth saying out loud even when a lower-priority file is found.
     let mut skipped = Vec::new();
 
@@ -572,7 +573,7 @@ fn read_candidates(
 
     // Nothing found. Deleting the file is the documented way to stop
     // overriding, so this clears the tokens rather than keeping the last good
-    // document — the one failure mode that is not a failure.
+    // document. It is the one failure mode that is not a failure.
     let path = fallback_path.map(|path| path.display().to_string());
     if env_exclusive {
         skipped.push(diagnostic(
@@ -704,7 +705,7 @@ fn parse_document(text: &str) -> Result<ParsedDocument, ThemeFileDiagnostic> {
     let mut tokens = OverlayTheme::default();
     let mut owned_keys = Vec::new();
 
-    // Fixed contract order, not the document's: `serde_json` sorts an object's
+    // Fixed contract order, not the document's. `serde_json` sorts an object's
     // keys unless the `preserve_order` feature is on, so document order is not
     // a thing this reader could honour even if it wanted to.
     for token in &TOKENS {
@@ -730,13 +731,13 @@ fn parse_document(text: &str) -> Result<ParsedDocument, ThemeFileDiagnostic> {
     })
 }
 
-/// `version`: absent means 1, a newer one is parsed best-effort, and anything
-/// that is not a positive integer is ignored.
+/// Parse `version`. Absent means 1, a newer one is parsed best-effort, and
+/// anything that is not a positive integer is ignored.
 ///
 /// A newer document is not rejected because the safety is in the rest of the
-/// contract, not in the number: unknown keys and unparseable values already
-/// cost only themselves, so a v1 build applies what it understands instead of
-/// blanking the theme.
+/// contract rather than in the number. Unknown keys and unparseable values
+/// already cost only themselves, so a v1 build applies what it understands
+/// instead of blanking the theme.
 fn parse_version(value: Option<&Value>, diagnostics: &mut Vec<ThemeFileDiagnostic>) -> Option<u32> {
     let value = value?;
     if value.is_null() {
@@ -768,7 +769,7 @@ fn parse_version(value: Option<&Value>, diagnostics: &mut Vec<ThemeFileDiagnosti
     }
 }
 
-/// A colour token: a JSON string, parsed by the one lenient colour parser.
+/// A colour token, a JSON string parsed by the one lenient colour parser.
 fn parse_color(
     key: &str,
     value: &Value,
@@ -789,9 +790,9 @@ fn parse_color(
     }
 }
 
-/// Why a colour was refused. The alpha forms get their own sentence: silently
-/// dropping the alpha would misapply the user's intent, and the two alpha
-/// tokens are where that intent belongs.
+/// Why a colour was refused. The alpha forms get their own sentence, because
+/// silently dropping the alpha would misapply the user's intent, and the two
+/// alpha tokens are where that intent belongs.
 fn color_problem(key: &str, raw: &str) -> String {
     let trimmed = raw.trim();
     let digits = trimmed.strip_prefix('#').unwrap_or(trimmed);
@@ -805,7 +806,7 @@ fn color_problem(key: &str, raw: &str) -> String {
     }
 }
 
-/// `material`: the closed enum, matched case-insensitively because this
+/// `material` is the closed enum, matched case-insensitively because this
 /// document is written by hand and by third-party tools.
 fn parse_material(
     key: &str,
@@ -828,10 +829,10 @@ fn parse_material(
     }
 }
 
-/// `glass_material`: the closed enum of macOS materials, matched
+/// `glass_material` is the closed enum of macOS materials, matched
 /// case-insensitively and ignoring `-`/` ` so `"HUD Window"`, `"hud-window"`
-/// and `"hud_window"` all land on the same value — this document is written
-/// by hand and by third-party tools.
+/// and `"hud_window"` all land on the same value. This document is written by
+/// hand and by third-party tools.
 fn parse_glass_material(
     key: &str,
     value: &Value,
@@ -861,9 +862,10 @@ fn parse_glass_material(
         })
 }
 
-/// `glass_style`: the two Liquid Glass styles, matched case-insensitively
-/// and ignoring `-`/` ` like [`parse_glass_material`], so a document written
-/// by hand or by a third-party tool spells them however it likes.
+/// `glass_style` takes one of the two Liquid Glass styles, matched
+/// case-insensitively and ignoring `-`/` ` like [`parse_glass_material`], so a
+/// document written by hand or by a third-party tool spells them however it
+/// likes.
 fn parse_glass_style(
     key: &str,
     value: &Value,
@@ -893,10 +895,9 @@ fn parse_glass_style(
         })
 }
 
-/// A 0–1 style token (`surface_opacity`, `glass_tint`, `border_opacity`,
-/// `size_scale`): a
-/// JSON number, clamped to the contract's bounds with a diagnostic when it
-/// had to move.
+/// A 0 to 1 style token (`surface_opacity`, `glass_tint`, `border_opacity`,
+/// `size_scale`), read as a JSON number and clamped to the contract's bounds
+/// with a diagnostic when it had to move.
 fn parse_ratio(
     key: &str,
     value: &Value,
@@ -918,8 +919,8 @@ fn parse_ratio(
 }
 
 /// A px token (`radius`, `border_width`, `padding`, `waveform_gap`,
-/// `waveform_width`): a JSON number, rounded half away from zero — a float is
-/// accepted, a numeric string is not — then clamped to `min..=max`.
+/// `waveform_width`), read as a JSON number, rounded half away from zero,
+/// then clamped to `min..=max`. A float is accepted, a numeric string is not.
 ///
 /// `min` is 0 for every token but `waveform_width`, whose bars disappear
 /// below 2 px.
@@ -945,8 +946,8 @@ fn parse_px(
 }
 
 /// A JSON string, or a `WrongType` diagnostic. Numbers, booleans, objects and
-/// arrays are all type errors: leniency is confined to how a colour or an enum
-/// is *spelled*, never to what JSON type carries it.
+/// arrays are all type errors. Leniency is confined to how a colour or an
+/// enum is spelled, never to what JSON type carries it.
 fn expect_string<'a>(
     key: &str,
     value: &'a Value,
@@ -962,7 +963,7 @@ fn expect_string<'a>(
 }
 
 /// A finite JSON number, or a `WrongType` diagnostic. `"12"` and `"12px"` are
-/// type errors: numbers are JSON numbers.
+/// type errors, because numbers are JSON numbers.
 fn expect_number(
     key: &str,
     value: &Value,
@@ -1033,14 +1034,14 @@ mod tests {
     /// under the test harness's default multi-threaded runner and leave one
     /// another's value behind. Almost every test in this module instead goes
     /// through the pure `env_candidate` / `env_candidate_os` seams, which
-    /// touch no real environment variable and need no lock at all — reach for
+    /// touch no real environment variable and need no lock at all. Reach for
     /// this only when a test must exercise `env_override` itself.
     static ENV_VAR_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     /// Sets [`THEME_FILE_ENV_VAR`] for the life of the guard and restores its
-    /// prior value on drop — including on panic, since a `Drop` impl still
-    /// runs while a test's assertion failure unwinds — so a failing test can
-    /// never leak a mutated environment variable into whatever test the
+    /// prior value on drop, including on panic, since a `Drop` impl still runs
+    /// while a test's assertion failure unwinds. A failing test therefore
+    /// cannot leak a mutated environment variable into whatever test the
     /// harness runs next in this process. Holds [`ENV_VAR_TEST_LOCK`] for the
     /// same reason.
     struct EnvVarGuard {
@@ -1071,8 +1072,8 @@ mod tests {
         }
     }
 
-    /// The contract's inherit-everything example, byte-identical. Frozen: if
-    /// a schema change breaks it, add tolerance rather than editing the
+    /// The contract's inherit-everything example, byte-identical. Frozen, so
+    /// if a schema change breaks it, add tolerance rather than editing the
     /// fixture.
     const EXAMPLE_INHERIT: &str = r##"{ "version": 1 }"##;
 
@@ -1119,8 +1120,8 @@ mod tests {
   "waveform_width": 4
 }"##;
 
-    /// The contract's theming-tool document: every leniency at once, plus a
-    /// comment key and a key from a schema this build does not have.
+    /// The contract's theming-tool document, with every leniency at once plus
+    /// a comment key and a key from a schema this build does not have.
     const EXAMPLE_THEMING_TOOL: &str = r##"{
   "version": 1,
   "_comment": "generated by omarchy-theme-set; do not edit",
@@ -1158,7 +1159,7 @@ mod tests {
         path
     }
 
-    /// The app data path outranks `~/.config/handy/`: a user who put a file
+    /// The app data path outranks `~/.config/handy/`. A user who put a file
     /// where the settings window prints did it deliberately, and Handy never
     /// writes that location itself, so it cannot shadow a tool's output by
     /// accident.
@@ -1199,8 +1200,8 @@ mod tests {
             vec![named.clone()]
         );
 
-        // The env var names a path verbatim — it is not a directory to join the
-        // file name onto.
+        // The env var names a path verbatim, not a directory to join the file
+        // name onto.
         assert_eq!(
             candidates_from(Some(Path::new("/tmp/my-theme.json")), Some(&app_data), None),
             vec![PathBuf::from("/tmp/my-theme.json")]
@@ -1214,11 +1215,11 @@ mod tests {
             Some(PathBuf::from("/tmp/t.json"))
         );
 
-        // The whole read against a file only the env var knows about: a name
-        // that is not `overlay_theme.json`, in a directory that is neither the
-        // app data nor the XDG one. This is the Nix/Home-Manager case, and it
-        // is the one path that cannot be checked on screen (the dev app cannot
-        // be started with an extra variable through the test harness).
+        // The whole read against a file only the env var knows about, with a
+        // name that is not `overlay_theme.json`, in a directory that is
+        // neither the app data nor the XDG one. This is the Nix/Home-Manager
+        // case, and the one path that cannot be checked on screen (the dev app
+        // cannot be started with an extra variable through the test harness).
         let dir = tempfile::tempdir().expect("a temp dir");
         let elsewhere = write(dir.path(), "my-theme.json", EXAMPLE_CUSTOM);
         let state = read_candidates(
@@ -1232,9 +1233,9 @@ mod tests {
         assert_eq!(state.tokens.accent, hex("#7aa2f7"));
         assert_eq!(state.path, elsewhere.display().to_string());
 
-        // …and the variable is what feeds that candidate — checked through
-        // the real `std::env::var_os` call, guarded so this cannot race or
-        // leak into any other test touching the same variable.
+        // …and the variable is what feeds that candidate, checked through the
+        // real `std::env::var_os` call, guarded so this cannot race or leak
+        // into any other test touching the same variable.
         {
             let _guard = EnvVarGuard::set(elsewhere.as_os_str());
             assert_eq!(env_override(), EnvOverride::Path(elsewhere.clone()));
@@ -1242,7 +1243,7 @@ mod tests {
         assert_eq!(env_override(), EnvOverride::Unset);
 
         // When the named file is not there, the state says so, names the env
-        // var, and contributes nothing — no app data fallback.
+        // var, and contributes nothing, with no app data fallback.
         let missing = dir.path().join("absent.json");
         let state = read_candidates(std::slice::from_ref(&missing), true, Some(&missing), None);
 
@@ -1257,11 +1258,11 @@ mod tests {
     }
 
     /// [`env_candidate_os`] is the seam that tells "unset" apart from "set to
-    /// something that cannot become a path", which `std::env::var`'s
-    /// `Result` cannot: a `VarError::NotUnicode` collapsing to `None` behind
-    /// an `.ok()` is exactly the bug this fixes (it used to fall back to app
-    /// data / XDG instead of stopping the search). Entirely pure — no real
-    /// environment variable is touched, so this needs no lock.
+    /// something that cannot become a path", which `std::env::var`'s `Result`
+    /// cannot. A `VarError::NotUnicode` collapsing to `None` behind an `.ok()`
+    /// is exactly the bug this fixes (it used to fall back to app data / XDG
+    /// instead of stopping the search). Entirely pure, touching no real
+    /// environment variable, so this needs no lock.
     #[test]
     fn env_candidate_os_tells_unset_a_path_and_invalid_unicode_apart() {
         assert_eq!(env_candidate_os(None), EnvOverride::Unset);
@@ -1272,7 +1273,7 @@ mod tests {
         );
 
         // Bytes that are not valid UTF-8 cannot be turned into a `&str`, and
-        // therefore not into a `Path` either: `env_candidate_os` reports this
+        // therefore not into a `Path` either. `env_candidate_os` reports this
         // as `Invalid` rather than quietly treating it as unset.
         #[cfg(unix)]
         {
@@ -1286,10 +1287,10 @@ mod tests {
 
     /// [`env_override`] is a thin wrapper over `std::env::var_os`; this pins
     /// that it actually reaches the real environment, including for a value
-    /// that is not valid Unicode — the one branch [`EnvVarGuard`] exists for,
-    /// since `std::env::set_var` is how a real non-Unicode value gets into the
-    /// process at all. Guarded and serialized so it cannot race or leak into
-    /// any other test touching the same variable.
+    /// that is not valid Unicode. That is the one branch [`EnvVarGuard`]
+    /// exists for, since `std::env::set_var` is how a real non-Unicode value
+    /// gets into the process at all. Guarded and serialized so it cannot race
+    /// or leak into any other test touching the same variable.
     #[test]
     #[cfg(unix)]
     fn env_override_reports_invalid_for_a_real_non_unicode_value() {
@@ -1302,7 +1303,7 @@ mod tests {
     }
 
     /// The inherit-everything document is the correct spelling of "today's
-    /// overlay": it must contribute nothing at all, or the defaults stop
+    /// overlay". It must contribute nothing at all, or the defaults stop
     /// reproducing today's look.
     #[test]
     fn the_inherit_example_contributes_nothing() {
@@ -1437,7 +1438,7 @@ mod tests {
     }
 
     /// Deleting the file is how a tool says "stop overriding", so it is the one
-    /// read failure that does *not* keep the last good document.
+    /// read failure that does not keep the last good document.
     #[test]
     fn deleted_file_clears_the_cache() {
         let dir = tempfile::tempdir().expect("a temp dir");
@@ -1471,9 +1472,9 @@ mod tests {
         );
     }
 
-    /// A number outside the bounds is clamped rather than dropped: the user's
-    /// intent (bigger, rounder) survives, and the overlay cannot be sized to
-    /// cover the screen.
+    /// The reader clamps a number outside the bounds rather than dropping it,
+    /// so the user's intent (bigger, rounder) survives and the overlay cannot
+    /// be sized to cover the screen.
     #[test]
     fn out_of_bounds_numbers_clamp_with_a_diagnostic() {
         let parsed = parse(
@@ -1487,7 +1488,7 @@ mod tests {
         assert_eq!(parsed.tokens.size_scale, Some(1.50));
         assert_eq!(parsed.tokens.radius, Some(32));
         assert_eq!(parsed.tokens.padding, Some(0));
-        // Clamped, not ignored: the tab locks all three.
+        // Clamped rather than ignored, so the tab locks all three.
         assert_eq!(parsed.owned_keys, vec!["size_scale", "radius", "padding"]);
 
         assert_eq!(
@@ -1513,8 +1514,8 @@ mod tests {
 
     /// The Glass tint, with its bounds spelled out from the token table
     /// rather than read from the module's constants. Its floor is zero, where
-    /// `surface_opacity`'s is 0.30 — the one place the two alpha tokens'
-    /// contracts visibly differ, and the reason a document can ask for
+    /// `surface_opacity`'s is 0.30. That is the one place the two alpha
+    /// tokens' contracts visibly differ, and the reason a document can ask for
     /// untinted glass but not for an invisible Flat card.
     #[test]
     fn the_glass_tint_parses_clamps_and_reaches_zero() {
@@ -1522,7 +1523,7 @@ mod tests {
         assert_eq!(parsed.tokens.glass_tint, Some(0.15));
         assert_eq!(parsed.tokens.surface_opacity, Some(1.0));
         assert!(parsed.diagnostics.is_empty());
-        // Contract order: the Glass tint sits beside the Flat opacity it
+        // In contract order the Glass tint sits beside the Flat opacity it
         // replaces, not with the Material tokens.
         assert_eq!(parsed.owned_keys, vec!["surface_opacity", "glass_tint"]);
 
@@ -1598,16 +1599,16 @@ mod tests {
             ]
         );
 
-        // A fully transparent edge is in bounds, not clamped: it is how a
-        // theme asks for no visible border while keeping the width.
+        // A fully transparent edge is in bounds rather than clamped. It is how
+        // a theme asks for no visible border while keeping the width.
         let invisible = parse(r##"{ "border_opacity": 0, "border_width": 0 }"##);
         assert_eq!(invisible.tokens.border_opacity, Some(0.0));
         assert_eq!(invisible.tokens.border_width, Some(0));
         assert!(invisible.diagnostics.is_empty());
     }
 
-    /// `glass_material` is spelled the way a human would write it in a config
-    /// file, so the reader accepts the separators a human reaches for.
+    /// `glass_material` is spelled the way a human would write it by hand, so
+    /// the reader accepts the separators a human reaches for.
     #[test]
     fn glass_material_spelling_is_lenient_but_closed() {
         for spelling in ["hud_window", "HUD_WINDOW", "hud-window", "HUD Window"] {
@@ -1674,7 +1675,7 @@ mod tests {
         let message = messages(&unknown.diagnostics);
         assert!(message.contains("\"regular\""), "{message}");
 
-        // Wrong JSON type, not a wrong spelling: same one-key cost.
+        // A wrong JSON type, not a wrong spelling, costs the same one key.
         let wrong_type = parse(r##"{ "glass_style": 1 }"##);
         assert_eq!(wrong_type.tokens.glass_style, None);
         assert_eq!(
@@ -1770,8 +1771,8 @@ mod tests {
             vec![ThemeFileDiagnosticCode::UnsupportedVersion]
         );
 
-        // Not a positive integer: the field is ignored and the document is read
-        // as version 1.
+        // When `version` is not a positive integer, the reader ignores the
+        // field and reads the document as version 1.
         for bad in [r##""1""##, "0", "-1", "1.5"] {
             let document = format!(r##"{{ "version": {bad}, "accent": "#7aa2f7" }}"##);
             let parsed = parse(&document);
@@ -1787,7 +1788,7 @@ mod tests {
     }
 
     /// A UTF-8 BOM is what PowerShell's `>` and several Windows editors write;
-    /// `serde_json` rejects it, so it is stripped before parsing.
+    /// `serde_json` rejects it, so the reader strips it before parsing.
     #[test]
     fn a_byte_order_mark_is_stripped() {
         let parsed = parse(&format!("\u{feff}{EXAMPLE_CUSTOM}"));
@@ -1827,10 +1828,10 @@ mod tests {
         );
     }
 
-    /// A dangling symlink (its target does not exist) is treated as absent,
-    /// the same as a directory — but not silently, or it would be
-    /// indistinguishable from "nothing has ever been here", and a theming
-    /// tool's symlink pointing at nothing is worth the one `warn!`.
+    /// A dangling symlink (its target does not exist) counts as absent, the
+    /// same as a directory, but it is reported rather than silent. Silence
+    /// would make it indistinguishable from "nothing has ever been here", and
+    /// a theming tool's symlink pointing at nothing is worth the one `warn!`.
     #[test]
     #[cfg(unix)]
     fn a_dangling_symlink_is_skipped_with_a_warning() {
@@ -1862,7 +1863,7 @@ mod tests {
             messages(&state.diagnostics)
         );
 
-        // A symlink is not the only way to reach "nothing here at all": a
+        // A symlink is not the only way to reach "nothing here at all". A
         // path with no symlink and no file either stays silent, as before.
         let nothing = dir.path().join("never-existed");
         let quiet = read_candidates(
@@ -1905,10 +1906,10 @@ mod tests {
     }
 
     /// The absent and stale paths through [`log_truncate_and_attach_diagnostics`]
-    /// also carry a correct `diagnostics_total`, not just the happy path
-    /// above: an env-exclusive miss reports exactly the one diagnostic it
-    /// logs, and a retained last-good document counts the failure that caused
-    /// the retention.
+    /// also carry a correct `diagnostics_total`, which the test above only
+    /// checks on the happy path. An env-exclusive miss reports exactly the one
+    /// diagnostic it logs, and a retained last-good document counts the
+    /// failure that caused the retention.
     #[test]
     fn diagnostics_total_is_correct_off_the_happy_path() {
         let dir = tempfile::tempdir().expect("a temp dir");

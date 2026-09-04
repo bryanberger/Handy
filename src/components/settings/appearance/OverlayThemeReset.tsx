@@ -8,17 +8,17 @@ export interface OverlayThemeResetProps {
   /** Disabled once every overlay-theme token already equals the default
    *  (every token inherits). */
   disabled: boolean;
-  /** True when the theme file owns at least one token — the confirmation
+  /** True when the theme file owns at least one token. The confirmation
    *  wording changes because those values survive the reset. */
   hasThemeFileOwnership: boolean;
   onConfirm: () => void;
 }
 
 /**
- * The whole-theme reset: a small ghost button beneath the preview stage,
+ * The whole-theme reset: a small ghost button in the On-Screen Preview card,
  * confirmed with a dialog before it restores every overlay color, size and
- * spacing token to inherit. Overlay style and position are untouched — this
- * only resets `overlay_theme`.
+ * spacing token to inherit. Overlay style and position are untouched, since
+ * this only resets `overlay_theme`.
  */
 export const OverlayThemeReset: React.FC<OverlayThemeResetProps> = ({
   disabled,

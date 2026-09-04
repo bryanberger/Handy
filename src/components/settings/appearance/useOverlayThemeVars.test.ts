@@ -71,16 +71,16 @@ describe("mergeDraft", () => {
 /**
  * `parseComputedColor` reads `getComputedStyle(probe).color` back to a hex
  * string for the "resolved default" display. Regression coverage for two real
- * bugs found by screenshotting the actual running app (neither is visible
- * from a type-check or a jsdom-free unit test alone): current WebKit
- * serializes an *opaque* color as legacy comma syntax, switches to CSS
+ * bugs found by screenshotting the actual running app; neither is visible
+ * from a type-check or a jsdom-free unit test alone. Current WebKit
+ * serializes an opaque color as legacy comma syntax, switches to CSS
  * Color 4 space syntax the moment alpha is present, and switches again to
- * the `color(srgb ...)` function — with 0-1 *fractional* channels instead of
- * 0-255 integers — for a `color-mix()` evaluated in the srgb color space
- * once alpha is involved. `surface`'s derivation
+ * the `color(srgb ...)` function for a `color-mix()` evaluated in the srgb
+ * color space once alpha is involved. That last form carries 0-1 fractional
+ * channels instead of 0-255 integers. `surface`'s derivation
  * (`color-mix(in srgb, <surface> <alpha>%, transparent)`) always has alpha,
  * so it exercised the one format a comma-only, then a comma-or-space, regex
- * both missed — silently falling back to a hardcoded "#000000" — while
+ * both missed, silently falling back to a hardcoded "#000000", while
  * `accent`/`text` (opaque) worked by accident either way.
  */
 describe("parseComputedColor", () => {
@@ -107,8 +107,9 @@ describe("parseComputedColor", () => {
   test("parses the color(srgb ...) function with 0-1 fractional channels", () => {
     // The exact string observed from a live `getComputedStyle(probe).color`
     // read for the dark theme's --s-surface default (surface_opacity 0.98
-    // color-mixed toward transparent): captured from the running app, not
-    // invented, so a future WebKit format change is caught here first.
+    // color-mixed toward transparent). It was captured from the running app
+    // rather than invented, so a future WebKit format change is caught here
+    // first.
     expect(parseComputedColor("color(srgb 0.172549 0.168627 0.160784)")).toBe(
       "#2c2b29",
     );
@@ -122,9 +123,9 @@ describe("parseComputedColor", () => {
 
   test("returns null for percentage channels rather than mis-reading them", () => {
     // The dangerous case: reading the digits and dropping the "%" turns
-    // white into near-black. Not a format WebKit has been seen to emit for
-    // `.color`, but it is legal CSS, and a wrong color here is invisible —
-    // it just shows as the token's "resolved default".
+    // white into near-black. WebKit has not been seen to emit this for
+    // `.color`, but it is legal CSS, and a wrong color here is invisible.
+    // It just shows as the token's "resolved default".
     expect(parseComputedColor("rgb(100%, 50%, 25%)")).toBeNull();
     expect(parseComputedColor("rgb(100% 50% 25% / 0.5)")).toBeNull();
     expect(parseComputedColor("color(srgb 100% 50% 25%)")).toBeNull();
@@ -138,20 +139,20 @@ describe("parseComputedColor", () => {
 });
 
 /**
- * `sameStringMap` is the guard that keeps the tab's colour readback — the
- * probes here, and the theme vars they are read through — from re-firing (and
- * setting state) on a render where nothing actually changed.
+ * `sameStringMap` is the guard that keeps the tab's colour readback from
+ * re-firing (and setting state) on a render where nothing actually changed.
+ * That readback is the probes here, and the theme vars they are read through.
  *
- * Regression coverage for a real crash: dragging a Size & Spacing slider blanked
- * the Appearance tab with React's "Maximum update depth exceeded". The cause was
- * that both the memo key and the effect payload were compared by object
- * *identity*. React is free to hand back a fresh-but-equal `useState` value (it
- * re-runs a functional updater on a re-render, and twice per render under
- * `StrictMode`), so `draft` — and everything memoized on it — got a new
- * reference every render while holding the very same tokens; the effect then
- * re-ran and set state on every commit, and each commit left another sync update
- * pending until React gave up. Identity is not a proxy for equality here, so
- * these tests are all about two *distinct* objects.
+ * Regression coverage for a real crash. Dragging a Size & Spacing slider
+ * blanked the Appearance tab with React's "Maximum update depth exceeded".
+ * The cause was that both the memo key and the effect payload were compared
+ * by object identity. React is free to hand back a fresh-but-equal `useState`
+ * value (it re-runs a functional updater on a re-render, and twice per render
+ * under `StrictMode`), so `draft`, and everything memoized on it, got a new
+ * reference every render while holding the very same tokens. The effect then
+ * re-ran and set state on every commit, and each commit left another sync
+ * update pending until React gave up. Identity is not a proxy for equality
+ * here, so these tests are all about two distinct objects.
  */
 describe("sameStringMap", () => {
   test("two distinct objects with the same entries are equal", () => {
@@ -190,9 +191,9 @@ describe("sameStringMap", () => {
   });
 
   test("re-resolving the same tokens yields an equal var map", () => {
-    // The invariant the crash violated, at the seam it is enforced on: a draft
-    // object rebuilt with identical tokens must not look like a change to the
-    // preview, however many times React re-derives it.
+    // The invariant the crash violated, at the seam it is enforced on. A
+    // draft object rebuilt with identical tokens must not look like a change
+    // to the preview, however many times React re-derives it.
     const withScale = (size_scale: number): ResolvedOverlayTheme => ({
       theme: { ...INHERIT_ALL, accent: "#b18cfe", size_scale },
       effective_material: "flat",

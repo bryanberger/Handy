@@ -1,6 +1,6 @@
 # Handy
 
-Handy is a local, offline speech-to-text desktop app: a global shortcut records the microphone, a local model transcribes it, and the text is pasted into the active application. This glossary covers the terms in play for the app's appearance and its recording overlay.
+Handy is a local, offline speech-to-text desktop app. A global shortcut records the microphone, a local model transcribes it, and Handy pastes the text into the active application. This glossary covers the terms for the app's appearance and its recording overlay.
 
 ## Language
 
@@ -29,7 +29,7 @@ The small floating window shown on screen while Handy records, transcribes, or p
 _Avoid_: HUD, widget, popup, indicator
 
 **Card**:
-The visible rounded rectangle the overlay draws inside its window — the pill in Minimal, the panel in Live. How much of the window it fills depends on the material: Flat leaves transparent slack around it, Glass makes the window the card exactly.
+The visible rounded rectangle the overlay draws inside its window, the pill in Minimal and the panel in Live. How much of the window it fills depends on the material. Flat leaves transparent slack around it, and Glass makes the window the card exactly.
 _Avoid_: overlay window, box, container, bubble
 
 **Card shape**:
@@ -37,7 +37,7 @@ Which of the five rectangles the card is drawing right now: the resting pill, th
 _Avoid_: card state, overlay state (that is what the card is showing, not what shape it takes), variant, form
 
 **Card metrics**:
-The three tokens a card's rectangle is computed from, clamped and carried together: size scale and border width decide how much room the card needs, size scale and radius how round its corners are. They travel as one because the window and the blur are sized and rounded from the same set.
+The three tokens a card's rectangle is computed from, clamped and carried together. Size scale and border width decide how much room the card needs, and size scale and radius decide how round its corners are. They travel as one because the window and the blur are sized and rounded from the same set.
 _Avoid_: dimensions, sizing options, geometry (which is the computation, not its inputs)
 
 **Overlay style**:
@@ -57,11 +57,11 @@ One named, user-settable value in the overlay theme, such as the accent color or
 _Avoid_: variable, property, knob, option
 
 **Inherit**:
-What an unset token does: the overlay uses Handy's built-in value for it, which follows the app theme. A theme that inherits everything is today's overlay.
+What an unset token does. The overlay uses Handy's built-in value for it, which follows the app theme. A theme that inherits everything is today's overlay.
 _Avoid_: default (as a value), fallback, empty, null
 
 **Derived value**:
-A value the overlay computes from a token rather than reading from the theme — the accent's soft tint and the neutrals for hairlines and secondary text. Never settable.
+A value the overlay computes from a token rather than reading it from the theme. These are the accent's soft tint and the neutrals for hairlines and secondary text. Never settable.
 _Avoid_: computed token, sub-token, implicit color
 
 **Accent**:
@@ -73,7 +73,7 @@ The overlay card's background color. Its translucency is a separate token, surfa
 _Avoid_: background, fill, card color
 
 **Text**:
-The overlay theme's foreground color: the transcript, and the base every derived neutral is mixed from. Set it whenever the surface is set.
+The overlay theme's foreground color. It paints the transcript, and it is the base every derived neutral is mixed from. Set it whenever the surface is set.
 _Avoid_: foreground, fg, font color, transcript color
 
 **Tint strength**:
@@ -85,11 +85,11 @@ How the surface is rendered: Flat (an opaque surface) or Glass (a translucent su
 _Avoid_: effect, blur mode, vibrancy, acrylic, frosted (implementation terms)
 
 **Size scale**:
-The single factor that zooms every length in the card at once — widths, heights, paddings, and type. It is one of the two tokens that change how much room the overlay needs on screen; border width is the other.
+The single factor that zooms every length in the card at once, including widths, heights, paddings, and type. It is one of the two tokens that change how much room the overlay needs on screen; border width is the other.
 _Avoid_: zoom, size, scale factor (bare), DPI, density
 
 **Resolved overlay theme**:
-The overlay theme after the per-token merge of theme file, then settings, then inherit, clamped, together with the material actually rendered, whether Glass is available, and the theme file's state. The single thing both windows read.
+The overlay theme after the per-token merge of theme file, then settings, then inherit, clamped. It also carries the material actually rendered, whether Glass is available, and the theme file's state. The single thing both windows read.
 _Avoid_: merged theme, effective theme, computed theme
 
 **Apply layer**:
@@ -113,5 +113,5 @@ A file on disk that supplies overlay-theme tokens, so external theming tools can
 _Avoid_: config file, user stylesheet, custom CSS
 
 **Preview**:
-The real overlay held on screen with synthetic activity while the user edits the overlay theme, so every change is judged on the actual card. Started and stopped from the Appearance tab.
+The real overlay held on screen with synthetic activity while the user edits the overlay theme, so the user judges every change on the actual card. Started and stopped from the Appearance tab.
 _Avoid_: mock, sample, demo, thumbnail, in-page preview

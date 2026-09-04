@@ -136,7 +136,7 @@ describe("DraftDebouncer", () => {
     // The first commit for "accent" takes a while to resolve (e.g. a slow
     // IPC round trip); a second edit is scheduled and flushed before it
     // finishes. onSettled must fire once per generation, and in an order
-    // that never marks the *newer* edit settled on behalf of the old one.
+    // that never marks the newer edit settled on behalf of the old one.
     let resolveFirst: (() => void) | undefined;
     const settled: string[] = [];
     let callCount = 0;
@@ -292,7 +292,7 @@ describe("FrameCoalescer.flush and .cancel", () => {
     coalescer.push(2); // held for the frame that has not come round yet
     expect(sent).toEqual([1]);
 
-    // What a commit does before it stores: 2 is the value about to be
+    // What a commit does before it stores. 2 is the value about to be
     // persisted, so it must also be the value last painted.
     coalescer.flush();
     expect(sent).toEqual([1, 2]);
@@ -348,7 +348,7 @@ describe("FrameCoalescer.flush and .cancel", () => {
 });
 
 /**
- * Unit tests for `DraftEngine` — the ordering rules between the two clocks of
+ * Unit tests for `DraftEngine`, the ordering rules between the two clocks of
  * live editing, with React, Tauri and the browser all replaced by the injected
  * effects.
  */
@@ -382,7 +382,7 @@ describe("DraftEngine", () => {
         canPaint: options.canPaint ?? (() => true),
       },
       frames.schedule,
-      10_000, // only an explicit flush fires: the drag is still in progress
+      10_000, // only an explicit flush fires; the drag is still in progress
     );
 
     return { engine, frames, log, storedTheme: () => stored };
@@ -391,7 +391,7 @@ describe("DraftEngine", () => {
   test("a draft abandoned by a reset never lands: the overlay ends on the stored theme", () => {
     // The bug this pins: dragging Size Scale and hitting that token's reset
     // while the debounce is still pending. The commit is `null` over a token
-    // that was already inherit, so the backend has nothing to store — and the
+    // that was already inherit, so the backend has nothing to store, and the
     // card was left showing whatever the finger last touched.
     const { engine, frames, log, storedTheme } = harness();
 
@@ -416,7 +416,7 @@ describe("DraftEngine", () => {
     const { engine, log } = harness();
 
     engine.set("padding", 8);
-    // No frame comes round in between, so this one is only held — and it is
+    // No frame comes round in between, so this one is only held, and it is
     // the value about to be committed.
     engine.set("size_scale", 1.35);
     void engine.flush("size_scale");

@@ -46,12 +46,12 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
 }
 
 /**
- * The Appearance tab: the app theme picker and the overlay style/position
- * (both reused unchanged from About/Advanced), the on-screen preview, and the
- * overlay-theme tokens grouped as Color / Material / Size & Spacing, plus the
- * Theme File group. Groups 4 onward are driven by
- * `OVERLAY_TOKEN_FIELDS` rather than hardcoded, so that table is the only
- * place a token's shape is declared.
+ * The Appearance tab. It holds the app theme picker and the overlay
+ * style/position (both reused unchanged from About/Advanced), the on-screen
+ * preview, the overlay-theme tokens grouped as Color / Material / Size &
+ * Spacing, and the Theme File group. Groups 4 onward read
+ * `OVERLAY_TOKEN_FIELDS` rather than hardcoding their rows, so that table is
+ * the only place a token's shape is declared.
  */
 export const AppearanceSettings: React.FC = () => (
   <ErrorBoundary context="Appearance tab">
@@ -63,9 +63,9 @@ const AppearanceSettingsInner: React.FC = () => {
   const { t } = useTranslation();
   const { settings, isUpdating, resetSetting } = useSettings();
   const { resolved, isReloading, reload } = useResolvedOverlayTheme();
-  // Whether the overlay on screen is this tab's to repaint live. Owned by the
-  // preview card below, which is the only thing that knows; without it a drag
-  // would send a draft to the backend every frame for it to refuse.
+  // Whether the overlay on screen is this tab's to repaint live. The preview
+  // card below owns it, since it is the only thing that knows. Without it a
+  // drag would send a draft to the backend every frame for it to refuse.
   const [overlayIsOurs, setOverlayIsOurs] = useState(false);
   const { draft, setDraft, flush, flushAll, reset } =
     useDraftSetting(overlayIsOurs);
@@ -88,7 +88,7 @@ const AppearanceSettingsInner: React.FC = () => {
   const glassSupport = resolved?.glass_support ?? NO_GLASS;
 
   // Stable for the tab's lifetime, so a memoised row's props only change when
-  // its own value does — see `OverlayTokenRow`. `setDraft`, `flush` and
+  // its own value does. See `OverlayTokenRow`. `setDraft`, `flush` and
   // `reset` are already stable (`useDraftSetting`); these only drop the
   // promises the two async ones return, which no caller here awaits.
   const handleFlush = useCallback(
@@ -126,11 +126,11 @@ const AppearanceSettingsInner: React.FC = () => {
     const locked = vars.isLocked(field.key);
 
     switch (field.kind) {
-      // The two enum tokens with a row get their own selectors — Material for
-      // the Glass gating and the unavailable note, the Glass style for its
-      // engine gating — rather than a generic dropdown, but both still live in
-      // the descriptor table so the group is driven the same way as Color and
-      // Size & Spacing.
+      // The two enum tokens with a row get their own selectors rather than a
+      // generic dropdown. Material handles the Glass gating and the
+      // unavailable note, the Glass style its engine gating. Both still live
+      // in the descriptor table, so the group is driven the same way as Color
+      // and Size & Spacing.
       case "material":
         return (
           <MaterialSelector
@@ -217,11 +217,11 @@ const AppearanceSettingsInner: React.FC = () => {
         />
       </SettingsGroup>
 
-      {/* Not a preview: an off-screen measuring device the colour fields read
-          their "resolved default" back off, wired by the hook that reads it.
-          Mounted whenever the tab is, so the refs are attached before the
-          fields below ask for a reading — and it costs nothing while the
-          overlay is off and they are hidden. */}
+      {/* An off-screen measuring device rather than a preview. The colour
+          fields read their "resolved default" back off it, wired by the hook
+          that reads it. Mounted whenever the tab is, so the refs are attached
+          before the fields below ask for a reading. It costs nothing while
+          the overlay is off and they are hidden. */}
       {vars.probes}
 
       {style !== "none" && (

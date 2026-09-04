@@ -18,7 +18,7 @@ const CARD_MORPH_MS_FALLBACK = 460;
  * How long the card's morph between two shapes takes, in milliseconds.
  *
  * Read from `--ov-morph-ms` on the overlay document rather than duplicated
- * here: the same custom property drives `.scard`'s width and border-radius
+ * here. The same custom property drives `.scard`'s width and border-radius
  * transitions, so the native window morph the backend runs under Glass lasts
  * exactly as long as the CSS morph it replaces. The property is declared in
  * ms, so the number in front of the unit is the value.
@@ -37,8 +37,8 @@ export function cardMorphMs(): number {
  * The Live card's two shape flags, from the two facts that decide them.
  *
  * The single derivation `OverlayCard` renders from and `cardShape` reports
- * from, so the card on screen and the window behind it can never disagree:
- * text always wins over the working spinner, so the panel never squishes a
+ * from, so the card on screen and the window behind it can never disagree.
+ * Text always wins over the working spinner, so the panel never squishes a
  * transcript while finalizing, and only a working stream with nothing to
  * preserve collapses to the small pill.
  */
@@ -57,8 +57,8 @@ export function liveCardState(
  * `src-tauri/src/overlay_geometry.rs`; pinned there by
  * `initial_card_shape_matches_card_shape_ts`.
  *
- * An idle stream — nothing captured yet, no work running — is the resting
- * Live pill.
+ * An idle stream, with nothing captured yet and no work running, is the
+ * resting Live pill.
  */
 export function cardShape(
   state: OverlayState,

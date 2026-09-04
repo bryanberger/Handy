@@ -4,11 +4,11 @@
 //! Several Rust constants are a second copy of a value the frontend owns: the
 //! card geometry mirrors `RecordingOverlay.css`, the inherit surface mirrors the
 //! app palette, the token bounds mirror the apply layer's own table. Each of
-//! those pins lives in a test beside the constants it pins — but they all need
-//! the same handful of "find this declaration, take the number" readers, so the
+//! those pins lives in a test beside the constants it pins. They all need the
+//! same handful of "find this declaration, take the number" readers, so the
 //! readers live here rather than being copied into three test modules.
 //!
-//! Test-only: nothing in a shipping build reads a stylesheet.
+//! Test-only. Nothing in a shipping build reads a stylesheet.
 
 /// The overlay's stylesheet: every `--ov-*` length and timing the native
 /// window is sized and animated from.
@@ -18,15 +18,15 @@ pub(crate) const OVERLAY_CSS: &str = include_str!("../../src/overlay/RecordingOv
 pub(crate) const OVERLAY_TSX: &str = include_str!("../../src/overlay/RecordingOverlay.tsx");
 /// The app palette, which the overlay's inherited colours follow.
 pub(crate) const THEME_CSS: &str = include_str!("../../src/styles/theme.css");
-/// The apply layer: the token contract as TypeScript sees it — the bounds
-/// every slider is drawn from and every value is re-validated against.
+/// The apply layer: the token contract as TypeScript sees it. It carries the
+/// bounds every slider is drawn from and every value is re-validated against.
 pub(crate) const APPLY_LAYER_TS: &str = include_str!("../../src/lib/overlayTheme.ts");
 
 /// The number a declaration is written with, in the unit it carries: the
 /// digits immediately before the first `unit` after `<name>:`. The needle
-/// carries the colon, so `var(--ov-work-w)` usages never match — only the
-/// declaration does — and taking the digits from the right sees through a
-/// `calc(` or a `minmax(` the value is wrapped in.
+/// carries the colon, so only the declaration matches and a `var(--ov-work-w)`
+/// usage never does. Taking the digits from the right sees through a `calc(`
+/// or a `minmax(` the value is wrapped in.
 pub(crate) fn css_value(css: &str, name: &str, unit: &str) -> f64 {
     let needle = format!("{name}:");
     let start = css
@@ -105,7 +105,7 @@ pub(crate) fn tsx_const(tsx: &str, declaration: &str) -> f64 {
 /// nested object literal comes back whole.
 ///
 /// Anchored on the `= {` rather than on the first brace after the name,
-/// because a declaration's *type* often carries a block of its own
+/// because a declaration's type often carries a block of its own
 /// (`Record<K, { min: number }>`) and that is not the value.
 pub(crate) fn ts_declaration_block<'a>(ts: &'a str, name: &str) -> &'a str {
     let start = ts

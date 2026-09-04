@@ -25,10 +25,10 @@ const RECORDING_POLL_MS = 1500;
 
 export interface OnScreenPreviewProps {
   style: OverlayStyle;
-  /** The settings-window theme on its own — what "Copy theme as JSON" puts on
-   *  the clipboard, which is deliberately *not* the resolved theme: that one
-   *  has the theme file's own values folded in, and copying those back out
-   *  would hand a tool author a document echoing its own input. */
+  /** The settings-window theme on its own, which is what "Copy theme as
+   *  JSON" puts on the clipboard. Deliberately not the resolved theme, which
+   *  has the theme file's own values folded in; copying those back out would
+   *  hand a tool author a document echoing its own input. */
   settingsTheme: OverlayTheme;
   resetDisabled: boolean;
   hasThemeFileOwnership: boolean;
@@ -37,29 +37,30 @@ export interface OnScreenPreviewProps {
    *  tokens a pending debounce hasn't sent yet. */
   onFlushDrafts: () => Promise<void>;
   /** The last Material or Glass style change the user made in the groups
-   *  below, which may start the preview by itself — see `autoStartFor`. The
+   *  below, which may start the preview by itself. See `autoStartFor`. The
    *  tab reports the change rather than starting anything, so the decision
    *  stays in one place and this card keeps sole ownership of the preview. */
   lastSurfaceChange?: PreviewChangeRequest | null;
-  /** `glass_support.available` from the resolved theme: whether Glass is what
-   *  the overlay would actually draw. A change to Glass on a Mac that cannot
-   *  render it right now has nothing to show, so it starts nothing. */
+  /** `glass_support.available` from the resolved theme, meaning whether
+   *  Glass is what the overlay would actually draw. A change to Glass on a
+   *  Mac that cannot render it right now has nothing to show, so it starts
+   *  nothing. */
   glassAvailable: boolean;
   /** Told whenever the overlay becomes (or stops being) the tab's to repaint
-   *  live — see `overlayAcceptsDrafts`. This card owns the preview, so it is
+   *  live. See `overlayAcceptsDrafts`. This card owns the preview, so it is
    *  the only thing that knows; the token rows above need it to decide
    *  whether dragging one is worth an IPC message per frame. */
   onAcceptsDraftsChange?: (accepts: boolean) => void;
 }
 
 /**
- * The On-Screen Preview card: one Start/Stop button that keeps the *real*
+ * The On-Screen Preview card: one Start/Stop button that keeps the real
  * overlay on screen while the theme is edited, the chips that pin which state
  * it holds, and the whole-theme actions (reset, copy as JSON).
  *
- * Preview mode ends when this card goes away — navigating to another section
- * unmounts it, and the settings window going off screen is handled in Rust,
- * which is the only place that hears about it (closing to the tray hides the
+ * Preview mode ends when this card goes away. Navigating to another section
+ * unmounts it, and Rust handles the settings window going off screen, since
+ * that is the only place that hears about it (closing to the tray hides the
  * window without unmounting anything, so React never learns of it).
  */
 export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
@@ -75,15 +76,15 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
 }) => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<PreviewMode>(IDLE_PREVIEW);
-  // The state machine's input has to be the *current* mode even inside a
+  // The state machine's input has to be the current mode even inside a
   // callback captured a render ago (the poll below, the unmount cleanup), so
   // the ref is the source of truth and `mode` is only what gets rendered.
   const modeRef = useRef<PreviewMode>(IDLE_PREVIEW);
   // Whether this card is still on screen. Every backend call below is awaited,
   // so any of them can come back to a tab the user has already left. Set on
-  // mount rather than at construction: StrictMode mounts, unmounts and mounts
-  // again, and a ref initialised once would stay false for the rest of the
-  // component's life.
+  // mount rather than at construction, because StrictMode mounts, unmounts
+  // and mounts again, and a ref initialised once would stay false for the
+  // rest of the component's life.
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -155,8 +156,9 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
     [send],
   );
 
-  // The overlay style can change under a running preview (the Overlay group is
-  // right above this card): re-pin, or stop outright when it is turned off.
+  // The overlay style can change under a running preview, since the Overlay
+  // group is right above this card. Re-pin, or stop outright when it is
+  // turned off.
   useEffect(() => {
     dispatch({ kind: "restyle", style });
   }, [style, dispatch]);
@@ -183,11 +185,12 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
     };
   }, []);
 
-  // Selecting Glass, or changing the Glass style, shows itself: the overlay
+  // Selecting Glass, or changing the Glass style, shows itself. The overlay
   // comes up cycling so the change is on screen at once. What that is worth
-  // doing about is `answerPreviewRequest`'s call, including the once-per-
-  // request rule; all this effect owns is the ref remembering which request
-  // was answered, and the start it dispatches carries `send`'s mounted guard.
+  // doing about is `answerPreviewRequest`'s call, including the
+  // once-per-request rule; all this effect owns is the ref remembering which
+  // request was answered, and the start it dispatches carries `send`'s
+  // mounted guard.
   const answeredSeqRef = useRef(0);
   useEffect(() => {
     const answer = answerPreviewRequest(
@@ -205,7 +208,7 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
     if (answer.action) dispatch(answer.action);
   }, [lastSurfaceChange, style, isRecording, glassAvailable, dispatch]);
 
-  // A real recording pre-empts the preview: the backend stops driving and
+  // A real recording pre-empts the preview. The backend stops driving and
   // leaves the overlay to the session that took it, so the tab only has to
   // stop claiming it is running.
   useEffect(() => {
@@ -213,17 +216,18 @@ export const OnScreenPreview: React.FC<OnScreenPreviewProps> = ({
   }, [isRecording, dispatch]);
 
   // Whether a draft may go out at all, reported up as one boolean rather than
-  // as the mode: what the rows need to know is the decision, not the state
+  // as the mode. What the rows need to know is the decision, not the state
   // machine behind it.
   const acceptsDrafts = overlayAcceptsDrafts(mode, isRecording);
   useEffect(() => {
     onAcceptsDraftsChange?.(acceptsDrafts);
   }, [acceptsDrafts, onAcceptsDraftsChange]);
 
-  // Leaving the tab stops the preview. Through the reducer like every other
-  // action, so what a departure sends stays in the state machine — but not
-  // through `dispatch`: this runs after the component is gone, so the call
-  // goes out without the state that would follow it.
+  // Leaving the tab stops the preview. It goes through the reducer like every
+  // other action, so what a departure sends stays in the state machine. It
+  // does not go through `dispatch`, because this cleanup runs after the
+  // component is gone, so the call goes out without the state that would
+  // follow it.
   useEffect(
     () => () => {
       const { call } = reducePreview(modeRef.current, { kind: "leave" });

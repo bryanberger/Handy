@@ -879,18 +879,18 @@ pub fn run(cli_args: CliArgs) {
             } else if args.iter().any(|a| a == "--cancel") {
                 crate::utils::cancel_current_operation(app);
             } else if args.iter().any(|a| a == "--preview-overlay") {
-                // Runtime-only, like the flags above: it changes nothing that is
-                // persisted.
+                // Runtime-only, like the flags above. It changes nothing that
+                // is persisted.
                 //
-                // On its own OS thread, never `async_runtime::spawn`: this
-                // callback runs on the runtime worker the single-instance
+                // Runs on its own OS thread, never `async_runtime::spawn`.
+                // This callback runs on the runtime worker the single-instance
                 // plugin has parked in its blocking accept loop, so a task
                 // spawned from here lands in that worker's LIFO slot, which no
-                // other worker may steal. It would then sit there until the
-                // next forwarded launch displaced it — every preview showing
-                // the previous invocation's, and the first one never showing
+                // other worker may steal. It would sit there until the next
+                // forwarded launch displaced it, so every preview would show
+                // the previous invocation's and the first one would never show
                 // at all. The preview driver is a plain thread throughout, so
-                // there is no runtime to enter at all.
+                // there is no runtime to enter.
                 let handle = app.clone();
                 std::thread::spawn(move || {
                     if let Err(error) = overlay_preview::run_cli_preview(handle) {
@@ -1077,7 +1077,7 @@ pub fn run(cli_args: CliArgs) {
                 // An overlay preview belongs to the Appearance tab, and the tab
                 // just went away with the window. Handled here rather than in
                 // the frontend because closing to the tray hides the window
-                // without unmounting anything: the webview keeps running, so
+                // without unmounting anything. The webview keeps running, so
                 // React never learns it is off screen. The driver watches the
                 // window itself as well, for the hides that never reach this
                 // handler; this is the immediate half.
@@ -1104,11 +1104,11 @@ pub fn run(cli_args: CliArgs) {
                 log::info!("Theme changed to: {:?}", theme);
                 // Re-apply the current tray state with the new theme's icon set
                 utils::refresh_tray_icon(window.app_handle());
-                // …and the overlay's native Glass tint, which is composed from
-                // the window's effective appearance at the moment it is
+                // Same for the overlay's native Glass tint, which is composed
+                // from the window's effective appearance at the moment it is
                 // written. This is the System-theme half of the same fix
-                // `change_theme_setting` makes for an explicit Light/Dark pick:
-                // the OS switching under us has to move the glass too.
+                // `change_theme_setting` makes for an explicit Light/Dark pick.
+                // The OS switching under us has to move the glass too.
                 overlay_glass::reapply_appearance(window.app_handle());
             }
             _ => {}

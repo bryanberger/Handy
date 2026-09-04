@@ -1,32 +1,32 @@
 import type { Material, OverlayTheme, ResolvedOverlayTheme } from "@/bindings";
 
 /**
- * The apply layer: the one module that turns a resolved overlay theme into the
- * overlay's CSS custom properties and its material attribute.
+ * The apply layer, the one module that turns a resolved overlay theme into
+ * the overlay's CSS custom properties and its material attribute.
  *
  * Both callers use this module, so they cannot drift:
  *  - the overlay window writes the map onto `document.documentElement`;
  *  - the Appearance tab's preview writes the same map as inline style on its
  *    own wrapper.
  *
- * Hard constraint: this module is loaded by the overlay entry, which is the
+ * Hard constraint. The overlay entry loads this module, and that entry is the
  * memory-sensitive webview (#1279). It must NOT import React, i18next or the
- * settings store — pure functions, constants and localStorage only. The only
- * import is a type-only one, which disappears at build time.
+ * settings store. Pure functions, constants and localStorage only. The one
+ * import it has is type-only, so it disappears at build time.
  *
- * Two rules govern the whole file:
+ * Two rules govern the whole file.
  *
- *  1. **Removal.** A property is written only while its token is set, and
+ *  1. Removal. This module writes a property only while its token is set, and
  *     [`applyOverlayTheme`] removes every property it does not write. Inline
  *     style beats any stylesheet, so a property written once and never removed
  *     would survive a reset to inherit forever.
- *  2. **Re-validation at the boundary.** Rust canonicalises every colour and
+ *  2. Re-validation at the boundary. Rust canonicalises every colour and
  *     clamps every number, but the localStorage mirror below bypasses Rust and
- *     a user can edit it. Every value is therefore re-checked here before it is
- *     interpolated into CSS; anything that fails is treated as unset.
+ *     a user can edit it. So this module re-checks every value before it goes
+ *     into CSS, and treats anything that fails as unset.
  */
 
-/** A token name: simultaneously an `OverlayTheme` field and a theme-file key. */
+/** A token name, both an `OverlayTheme` field and a theme-file key. */
 export type OverlayThemeKey = keyof OverlayTheme;
 
 /** The four tokens whose value is a colour. */
@@ -45,11 +45,11 @@ export type OverlayNumericKey =
   | "waveform_width";
 
 /**
- * The numeric tokens' bounds, straight from the token contract's table.
+ * The numeric tokens' bounds, the same numbers Rust clamps every value to.
  *
  * Two consumers: the re-validation below, which treats anything outside a
- * token's range as unset, and the Appearance tab's sliders. Every px value is
- * expressed at size scale 1; the scale multiplies it in CSS.
+ * token's range as unset, and the Appearance tab's sliders. Every px value
+ * here is at size scale 1; the scale multiplies it in CSS.
  */
 export const OVERLAY_TOKEN_BOUNDS: Record<
   OverlayNumericKey,
@@ -66,7 +66,7 @@ export const OVERLAY_TOKEN_BOUNDS: Record<
   waveform_width: { min: 2, max: 6, step: 1 },
 };
 
-/** The theme that inherits every token — Handy's overlay as it ships. */
+/** The theme that inherits every token, Handy's overlay as it ships. */
 export const INHERIT_ALL: OverlayTheme = {
   accent: null,
   surface: null,
@@ -87,35 +87,35 @@ export const INHERIT_ALL: OverlayTheme = {
 };
 
 /**
- * The card alpha an unset `surface_opacity` resolves to: today's near-opaque
+ * The card alpha an unset `surface_opacity` resolves to. Today's near-opaque
  * card, straight from `RecordingOverlay.css`.
  *
- * Flat's number, and only Flat's. The token is not read under Glass at all —
- * see [`GLASS_TINT_INHERIT`] for why the two are separate tokens rather than
- * one value with a per-Material default.
+ * Flat's number, and only Flat's. Glass never reads the token at all; see
+ * [`GLASS_TINT_INHERIT`] for why the two are separate tokens rather than one
+ * value with a per-Material default.
  */
 export const SURFACE_OPACITY_INHERIT = 0.98;
 
 /**
  * The tint alpha an unset `glass_tint` resolves to, on both engines.
  *
- * 0.45 is measured, not guessed: over a split light/dark striped desktop the
- * card passes about 53 levels of the backdrop through at 0.45 against 27 at
+ * 0.45 is a measured number. Over a split light/dark striped desktop the
+ * card passes about 53 levels of the backdrop through at 0.45, against 27 at
  * the 0.70 this feature first shipped with, which is the difference between
- * "a dark card" and "frosted glass" — while the worst-case contrast of the
- * transcript over the brightest backdrop stays at 6.1:1, comfortably past
- * WCAG AA. Going further to 0.30 buys another 10 levels but drops that worst
- * case to 4.9:1, which a pure-white desktop would push under the line.
+ * "a dark card" and "frosted glass". The worst-case contrast of the
+ * transcript over the brightest backdrop still stays at 6.1:1, comfortably
+ * past WCAG AA. Going further to 0.30 buys another 10 levels but drops that
+ * worst case to 4.9:1, which a pure-white desktop would push under the line.
  *
  * Liquid Glass (macOS 26) was measured against the same desktop and keeps the
- * same 0.45: at 0.30 the worst-case transcript contrast falls to 4.3:1 under a
+ * same 0.45. At 0.30 the worst-case transcript contrast falls to 4.3:1 under a
  * Light app theme, under WCAG AA, while 0.45 holds 5.6-9.6:1 across both Glass
  * styles and both app themes. Rust composes the native `tintColor` from the
  * identical number (`GLASS_TINT_INHERIT` in
  * `src-tauri/src/overlay_theme.rs`).
  *
- * **Why Glass has its own token.** While the two Materials shared
- * `surface_opacity`, they were mutually exclusive in practice: a card set
+ * Why Glass has its own token. While the two Materials shared
+ * `surface_opacity`, they were mutually exclusive in practice. A card set
  * opaque under Flat stayed opaque when the user picked Glass, so Glass looked
  * broken the first time it was chosen and nothing on screen said why. Each
  * Material now carries its own alpha, so switching Material always lands on
@@ -124,29 +124,29 @@ export const SURFACE_OPACITY_INHERIT = 0.98;
 export const GLASS_TINT_INHERIT = 0.45;
 
 /**
- * What an unset `border` mixes from: the foreground, on every Material.
+ * What an unset `border` mixes from. The foreground, on every Material.
  *
- * One value and not a per-Material pair, because the obvious Glass default —
- * a white rim, the way an Apple HUD carries one — was measured and rejected.
- * It only works under a Dark app theme: over a light card (Light theme, where
+ * One value and not a per-Material pair, because the obvious Glass default,
+ * a white rim of the kind an Apple HUD carries, was measured and rejected.
+ * It only works under a Dark app theme. Over a light card (Light theme, where
  * the tint is near-white) a white edge at 30 % moves the pixels by 3 levels,
  * which is no edge at all, against 27 for the foreground mix, and what the
- * *default* has to do is be visible in all four combinations of app theme and
- * backdrop. Only the alpha differs per Material — see
+ * default has to do is be visible in all four combinations of app theme and
+ * backdrop. Only the alpha differs per Material; see
  * [`BORDER_OPACITY_INHERIT`]. A theme that wants the Apple rim can still ask
- * for it — `border: "#ffffff"`, `border_opacity: 0.35` — which is what the
- * token is for.
+ * for it with `border: "#ffffff"` and `border_opacity: 0.35`, which is what
+ * the token is for.
  */
 export const BORDER_INHERIT = "var(--s-text)";
 
 /**
- * The alpha an unset `border_opacity` resolves to, per Material — the second
+ * The alpha an unset `border_opacity` resolves to, per Material. The second
  * half of [`BORDER_INHERIT`]. Flat's 0.12 is today's hairline strength;
  * Glass's is stronger because the edge is the only hard line a translucent
  * card has, and the thinner tint above leaves it more work to do. Measured
  * again on Liquid Glass, where 0.25 lands as a single 2 px transition of
- * +45 levels over the card — one hairline beside the glass's own rim, not a
- * second line.
+ * +45 levels over the card, reading as one hairline beside the glass's own
+ * rim rather than a second line.
  */
 export const BORDER_OPACITY_INHERIT: Record<Material, number> = {
   flat: 0.12,
@@ -169,23 +169,23 @@ const STATIC_NUMERIC_INHERIT: Record<
 };
 
 /**
- * What a numeric token resolves to while it is unset: the number a control
+ * What a numeric token resolves to while it is unset. The number a control
  * shows, and the number the card is actually painted with.
  *
- * The Material is a parameter because one token's inherit depends on it — the
- * card's edge is stronger over glass — and asking for it unconditionally is
- * what keeps every caller from having to know which token that is.
+ * The Material is a parameter because one token's inherit depends on it. The
+ * card's edge is stronger over glass. Asking for the Material unconditionally
+ * is what keeps every caller from having to know which token that is.
  *
  * The numbers live here rather than in the Appearance tab, beside the two
- * alphas above, so "what does an unset token inherit" is answered in one
- * module. They are pinned to the `:root` block in `RecordingOverlay.css` —
- * the stylesheet that actually paints an unset token — by
+ * alphas above, so one module answers "what does an unset token inherit".
  * `overlay_token_inherit_values_match_the_css` in
- * `src-tauri/src/overlay_theme.rs`, so a length changed in one place and not
- * the other fails a test instead of showing the wrong number on a slider.
+ * `src-tauri/src/overlay_theme.rs` pins them to the `:root` block in
+ * `RecordingOverlay.css`, the stylesheet that actually paints an unset token,
+ * so a length changed in one place and not the other fails a test instead of
+ * showing the wrong number on a slider.
  *
- * `border_opacity` is asked for through this function rather than read out of
- * the table, because its inherit differs per Material — see
+ * Callers ask for `border_opacity` through this function rather than reading
+ * it out of the table, because its inherit differs per Material; see
  * [`BORDER_OPACITY_INHERIT`].
  */
 export function inheritedTokenValue(
@@ -203,7 +203,7 @@ export function inheritedTokenValue(
  * Flat's are reverse-engineered from today's hand-picked neutrals, so
  * switching to the derivation lands on today's look in both app themes.
  * Glass's are strengthened because muted and faint are what fail first over a
- * blurred background — whichever engine blurs it. These are the most
+ * blurred background, whichever engine blurs it. These are the most
  * eyeball-tunable numbers in the feature.
  */
 const NEUTRALS: Record<
@@ -223,7 +223,7 @@ const ACCENT_SOFT_PERCENT = 20;
  * These are the app palette's light and dark text colours
  * (`src/styles/theme.css`, `--light-color-text` / `--dark-color-text`). They are
  * the one pair of hex values this module spells out, because picking between
- * them is arithmetic that CSS cannot do: `color-contrast()` is not in the
+ * them is arithmetic that CSS cannot do. `color-contrast()` is not in the
  * WebKit versions Handy targets.
  */
 const INK_DARK = "#0f0f0f";
@@ -233,7 +233,7 @@ const INK_LIGHT = "#fbfbfb";
  * The custom properties that carry a colour.
  *
  * Named apart from the lengths below because a colour is the only kind of
- * property whose *computed* value has to be read back off the page: the
+ * property whose computed value has to be read back off the page. The
  * Appearance tab's probes resolve these to a hex to show what an unset token
  * inherits, and there is no point re-measuring after a change that could only
  * have touched a length.
@@ -305,7 +305,7 @@ function alphaMix(color: string, strength: number): string {
   return `color-mix(in srgb, ${color} ${percent(strength)}%, transparent)`;
 }
 
-/** The 0–1 relative luminance of a `#rrggbb` colour (WCAG 2.x). */
+/** The relative luminance of a `#rrggbb` colour, 0 to 1 (WCAG 2.x). */
 function relativeLuminance(hex: string): number {
   const channel = (offset: number): number => {
     const value = parseInt(hex.slice(offset, offset + 2), 16) / 255;
@@ -325,13 +325,14 @@ function contrastRatio(a: string, b: string): number {
 }
 
 /**
- * The foreground for a surface when the theme sets `surface` but not `text`:
- * whichever of the app palette's two inks has the higher WCAG contrast ratio
+ * The foreground for a surface when the theme sets `surface` but not `text`.
+ * Whichever of the app palette's two inks has the higher WCAG contrast ratio
  * against it.
  *
  * This is the one computed (non-CSS) step in the whole apply layer. It exists
- * so a one-key theme file — `{"surface": "#1a1b26"}`, exactly what an external
- * theming tool writes first — is not black text on a black card.
+ * so that a one-key theme file is not black text on a black card.
+ * `{"surface": "#1a1b26"}` is exactly what an external theming tool writes
+ * first.
  *
  * An unparseable surface yields the dark ink, matching Handy's light default.
  */
@@ -349,9 +350,9 @@ function effectiveMaterialOf(resolved: ResolvedOverlayTheme): Material {
 }
 
 /**
- * Pure: a resolved overlay theme in, the custom properties to write out.
+ * Pure. A resolved overlay theme in, the custom properties to write out.
  *
- * A property appears only when its source token is set — plus the two groups
+ * A property appears only when its source token is set, plus the two groups
  * Glass writes unconditionally, because a 98% surface would hide the blur and
  * the Flat neutrals are too weak to read over it.
  */
@@ -371,21 +372,21 @@ export function resolveOverlayThemeVars(
 
   // The surface colour is shared by both Materials; its alpha is not. Flat
   // reads `surface_opacity`, Glass reads `glass_tint` and ignores the opacity
-  // entirely — which is what lets an opaque Flat card and see-through Glass
-  // live in one theme. With the colour unset its inherited input is
-  // substituted, and because that input is literally today's, a theme that
-  // sets only an alpha keeps a theme-aware card.
+  // entirely, which is what lets an opaque Flat card and see-through Glass
+  // live in one theme. With the colour unset the mix below substitutes its
+  // inherited input, and because that input is literally today's, a theme
+  // that sets only an alpha keeps a theme-aware card.
   const surface = validHex(theme.surface);
   const opacity = validToken(theme, "surface_opacity");
   const tint = validToken(theme, "glass_tint");
   if (glass) {
-    // Written unconditionally under Glass: the CSS default of 98% would hide
-    // the blur. The card paints this on every engine, Liquid Glass included.
-    // Liquid Glass is handed the same colour natively as well, so that it can
-    // lens it — but it is not trusted to be the only tint: measured on
-    // macOS 26, a card that painted nothing and left the tint to `tintColor`
-    // alone came out dark under a Light app theme, with the transcript
-    // unreadable on it.
+    // Written unconditionally under Glass, because the CSS default of 98%
+    // would hide the blur. The card paints this on every engine, Liquid Glass
+    // included. Rust hands Liquid Glass the same colour natively so that it
+    // can lens it, but that native tint is not trusted to be the only one.
+    // Measured on macOS 26, a card that painted nothing and left the tint to
+    // `tintColor` alone came out dark under a Light app theme, with the
+    // transcript unreadable on it.
     vars["--s-surface"] = alphaMix(
       surface ?? "var(--color-background)",
       (tint ?? GLASS_TINT_INHERIT) * 100,
@@ -414,11 +415,11 @@ export function resolveOverlayThemeVars(
     vars["--s-hair"] = alphaMix("var(--s-text)", neutrals.hair);
   }
 
-  // The card's edge. Its own two tokens, but it also follows `text`/`surface`
-  // — an edge derived from a foreground the theme has replaced would be the
-  // one neutral left behind. Under Glass it is written unconditionally, and at
-  // a stronger alpha, because the edge is the only hard line a translucent
-  // card has against whatever it is blurring.
+  // The card's edge. It has its own two tokens, but it also follows
+  // `text`/`surface`, because an edge derived from a foreground the theme has
+  // replaced would be the one neutral left behind. Under Glass this writes it
+  // unconditionally, and at a stronger alpha, because the edge is the only
+  // hard line a translucent card has against whatever it is blurring.
   const border = validHex(theme.border);
   const borderOpacity = validToken(theme, "border_opacity");
   if (
@@ -434,7 +435,7 @@ export function resolveOverlayThemeVars(
     );
   }
 
-  // Raw token values only: the CSS does every multiplication with
+  // Raw token values only. The CSS does every multiplication with
   // `calc(... * var(--ov-scale))`.
   const scale = validToken(theme, "size_scale");
   if (scale !== null) vars["--ov-scale"] = String(scale);
@@ -442,7 +443,7 @@ export function resolveOverlayThemeVars(
   const radius = validToken(theme, "radius");
   if (radius !== null) vars["--ov-radius"] = `${radius}px`;
 
-  // The one length the native window geometry also reads:
+  // The one length the native window geometry also reads.
   // `overlay_geometry.rs` adds two of these to the card's footprint, so the
   // two sides must agree on the number, which is why it is a token and not a
   // derived value.
@@ -469,16 +470,16 @@ export interface OverlayThemeStyleDelta {
 }
 
 /**
- * Pure: the smallest set of style operations that turns `previous` into
+ * Pure. The smallest set of style operations that turns `previous` into
  * `next`.
  *
  * `previous` is what this module last wrote onto the element, or `null` when
- * that is unknown — the first apply, where every property this module may
- * write has to be cleared in case something else left one behind. After that,
- * only what was actually written is worth removing, and only what actually
- * changed is worth writing: the overlay theme is now applied on every frame
- * of a slider drag, and each `setProperty` on the document element
- * invalidates style for the whole card.
+ * that is unknown, which is the first apply, where every property this module
+ * may write has to be cleared in case something else left one behind. After
+ * that, only what was actually written is worth removing, and only what
+ * actually changed is worth writing. The overlay theme is now applied on
+ * every frame of a slider drag, and each `setProperty` on the document
+ * element invalidates style for the whole card.
  */
 export function overlayThemeStyleDelta(
   previous: Record<string, string> | null,
@@ -500,19 +501,19 @@ export function overlayThemeStyleDelta(
 /**
  * What [`applyOverlayTheme`] last wrote onto each element it was given.
  *
- * **The assumption this rests on:** after the first apply, this module is the
+ * The assumption this rests on. After the first apply, this module is the
  * only writer of the `--s-*` and `--ov-*` inline properties on that element.
- * Nobody else may set or remove one — not the overlay component, not the tab,
+ * Nobody else may set or remove one, not the overlay component, not the tab,
  * not a devtools poke that expects to survive. If something else did, the
- * removal rule would go blind: the map would still list a property this module
- * no longer controls, and a token going back to inherit would be "removed"
- * from a value it never wrote.
+ * removal rule would go blind. The map would still list a property this
+ * module no longer controls, and a token going back to inherit would be
+ * "removed" from a value it never wrote.
  *
- * It holds today because the two callers pass elements they own (the overlay's
- * `document.documentElement`, the tab's own probe host) and every write to
- * these properties in this repository goes through here — a `grep` for
- * `--ov-` and `--s-` outside this module and the two stylesheets that declare
- * the inherited values finds nothing.
+ * It holds today because the two callers pass elements they own (the
+ * overlay's `document.documentElement`, the tab's own probe host) and every
+ * write to these properties in this repository goes through here. A `grep`
+ * for `--ov-` and `--s-` outside this module and the two stylesheets that
+ * declare the inherited values finds nothing.
  *
  * A `WeakMap` and not a field on the element so an element that goes away
  * takes its record with it, and so nothing user-visible is stored on the DOM.
@@ -523,15 +524,15 @@ const lastApplied = new WeakMap<HTMLElement, Record<string, string>>();
  * Write a resolved overlay theme onto an element, and remove every property it
  * does not set.
  *
- * The removal is the point: without it a token that goes back to inherit would
- * keep painting, because inline style beats the stylesheet the inherited value
- * lives in. `data-material` is always set; a `null` theme removes every
- * property in [`OVERLAY_THEME_CSS_PROPERTIES`] and leaves
+ * The removal is the point. Without it a token that goes back to inherit
+ * would keep painting, because inline style beats the stylesheet the
+ * inherited value lives in. `data-material` is always set; a `null` theme
+ * removes every property in [`OVERLAY_THEME_CSS_PROPERTIES`] and leaves
  * `data-material="flat"`.
  *
- * Only the differences are actually written — see [`overlayThemeStyleDelta`]
- * — which is invisible from the outside: the element ends up carrying exactly
- * the properties `resolveOverlayThemeVars` produced, either way.
+ * It writes only the differences [`overlayThemeStyleDelta`] finds, which is
+ * invisible from the outside. Either way the element ends up carrying exactly
+ * the properties `resolveOverlayThemeVars` produced.
  */
 export function applyOverlayTheme(
   root: HTMLElement,
@@ -539,9 +540,9 @@ export function applyOverlayTheme(
 ): void {
   const vars = resolved ? resolveOverlayThemeVars(resolved) : {};
   // The first apply onto this element has no record to diff against, and
-  // `undefined` from the map means exactly that. It is passed on as an
-  // explicit `null` — the delta's own name for "assume nothing, clear every
-  // property this module could have written" — so the first apply is a full
+  // `undefined` from the map means exactly that. This passes it on as an
+  // explicit `null`, the delta's own name for "assume nothing, clear every
+  // property this module could have written", so the first apply is a full
   // reset even if a previous page load, a hot reload or a hand-edited
   // inline style left one behind.
   const previous = lastApplied.get(root);
@@ -570,8 +571,8 @@ function isResolvedShape(value: unknown): value is ResolvedOverlayTheme {
 /**
  * The last resolved theme the overlay applied, for synchronous use at boot.
  *
- * Returns `null` — apply nothing, leave today's cascade — when the mirror is
- * missing, unreadable or not shaped like a payload.
+ * Returns `null` when the mirror is missing, unreadable or not shaped like a
+ * payload. A `null` means apply nothing and leave today's cascade.
  */
 export function getStoredOverlayTheme(): ResolvedOverlayTheme | null {
   try {
@@ -587,8 +588,8 @@ export function getStoredOverlayTheme(): ResolvedOverlayTheme | null {
 /**
  * Remember a resolved theme for the next boot.
  *
- * Written only by the overlay window: the settings window has no root to paint,
- * so it never contributes to the mirror.
+ * Only the overlay window calls this. The settings window has no root to
+ * paint, so it never contributes to the mirror.
  */
 export function storeOverlayTheme(resolved: ResolvedOverlayTheme): void {
   try {

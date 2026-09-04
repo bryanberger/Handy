@@ -910,17 +910,17 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 /**
  * Persist the whole overlay theme.
  * 
- * The frontend always sends the complete sixteen-token object: setting one token,
- * clearing one token (reset to inherit) and resetting the whole theme are all
- * this one call with a different object. That keeps the settings store's
- * optimistic write and its rollback — both keyed on a single `AppSettings`
- * field — working unchanged.
+ * The frontend always sends the complete sixteen-token object. Setting one
+ * token, clearing one token (reset to inherit) and resetting the whole theme
+ * are all this one call with a different object. That keeps the settings
+ * store's optimistic write and its rollback working unchanged, since both are
+ * keyed on a single `AppSettings` field.
  * 
  * Values are clamped before they are stored, so nothing out of range ever
- * reaches the store, the native geometry or the frontend. The clamped theme
- * is returned rather than left for the caller to re-read: that is what lets
- * the settings store correct its own optimistic write without a round trip
- * back through `get_app_settings`.
+ * reaches the store, the native geometry or the frontend. This returns the
+ * clamped theme rather than leaving the caller to re-read it, which lets the
+ * settings store correct its own optimistic write without a round trip back
+ * through `get_app_settings`.
  */
 async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<OverlayTheme, string>> {
     try {
@@ -934,21 +934,21 @@ async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<OverlayThe
  * Paint a theme the user is still dragging, without persisting anything.
  * 
  * The Appearance tab commits on a debounce, which is right for the store and
- * far too slow for the eye: nothing reached the overlay until the drag
- * stopped. So the tab also sends the draft here, coalesced to one call per
- * animation frame, and this puts it on the overlay — no settings read, no
+ * far too slow for the eye, so nothing reached the overlay until the drag
+ * stopped. The tab also sends the draft here, coalesced to one call per
+ * animation frame, and this puts it on the overlay with no settings read, no
  * settings write, no `settings-changed`, and no native window work unless a
  * token the window is actually built from moved.
  * 
- * A no-op unless a preview is *running* and nothing is recording — see
+ * A no-op unless a preview is running and nothing is recording, as decided by
  * `overlay_preview::accepts_theme_drafts`. Outside preview mode the overlay
  * belongs to whatever is recording, and a draft has no business repainting
- * it; the same goes for a preview that has been told to stop, and for one a
+ * it. The same goes for a preview that has been told to stop, and for one a
  * real recording has taken, both of which own an overlay that is no longer
  * the tab's to paint.
  * 
  * Every draft that does get through leaves a mark, which
- * [`change_overlay_theme_setting`] clears: that is what guarantees the screen
+ * `change_overlay_theme_setting` clears. That is what guarantees the screen
  * ends on a stored value even when the commit that follows has nothing to
  * store.
  */
@@ -963,11 +963,11 @@ async previewOverlayThemeDraft(theme: OverlayTheme) : Promise<Result<null, strin
 /**
  * The current resolved overlay theme, from the theme-file cache.
  * 
- * A pure pull: it reads the cache the show path has just refreshed, emits
+ * A pure pull. It reads the cache the show path has just refreshed, emits
  * nothing and touches no native window, which is why the overlay can call it
  * inside the settings read it already awaits when it is about to become
- * visible. That is also what keeps a show to exactly one file read: the
- * backend re-reads, the webview only pulls.
+ * visible. That is also what keeps a show to exactly one file read. The
+ * backend re-reads, and the webview only pulls.
  */
 async getResolvedOverlayTheme() : Promise<Result<ResolvedOverlayTheme, string>> {
     try {
@@ -982,12 +982,12 @@ async getResolvedOverlayTheme() : Promise<Result<ResolvedOverlayTheme, string>> 
  * 
  * What the Appearance tab calls on mount and from its Reload button, and the
  * only way a user gets a hand-edited theme file onto the screen without
- * recording — there is no file watcher.
+ * recording, because there is no file watcher.
  * 
- * `async` is load-bearing twice over: Tauri runs a sync command inline on the
- * IPC thread and spawns an `async fn` on the runtime, and the read itself then
- * goes to a blocking thread, so neither the main thread nor an async worker
- * ever waits on the filesystem.
+ * `async` is load-bearing twice over. Tauri runs a sync command inline on the
+ * IPC thread and spawns an `async fn` on the runtime, and the read itself
+ * then goes to a blocking thread, so neither the main thread nor an async
+ * worker ever waits on the filesystem.
  */
 async reloadOverlayThemeFile() : Promise<Result<ResolvedOverlayTheme, string>> {
     try {
@@ -1001,10 +1001,10 @@ async reloadOverlayThemeFile() : Promise<Result<ResolvedOverlayTheme, string>> {
  * Show the real overlay and keep it there, cycling or pinned, until something
  * stops it.
  * 
- * `sample_text` is the Live panel's transcript, passed in already translated so
- * i18n stays entirely on the frontend; `None` falls back to a built-in English
- * sentence. Returns as soon as the overlay is up; the tab keeps editing tokens
- * while it runs and every change repaints the overlay live.
+ * `sample_text` is the Live panel's transcript, passed in already translated
+ * so i18n stays entirely on the frontend. `None` falls back to a built-in
+ * English sentence. Returns as soon as the overlay is up. The tab keeps
+ * editing tokens while it runs, and every change repaints the overlay live.
  */
 async startOverlayPreview(state: PreviewState, sampleText: string | null) : Promise<Result<null, string>> {
     try {
@@ -1017,8 +1017,8 @@ async startOverlayPreview(state: PreviewState, sampleText: string | null) : Prom
 /**
  * Set which state the preview shows, without restarting the driver.
  * 
- * Safe to call while nothing is running: the pin is remembered and travels
- * with the next start.
+ * Safe to call while nothing is running. The pin sticks, and the next start
+ * uses it.
  */
 async setOverlayPreviewState(state: PreviewState) : Promise<void> {
     await TAURI_INVOKE("set_overlay_preview_state", { state });
@@ -1030,17 +1030,18 @@ async stopOverlayPreview() : Promise<void> {
     await TAURI_INVOKE("stop_overlay_preview");
 },
 /**
- * Reported by the overlay webview whenever the card's shape changes.
+ * The overlay webview calls this whenever the card's shape changes.
  * 
- * The payload is a symbolic shape plus a duration, never pixels: the backend
+ * The payload is a symbolic shape plus a duration, never pixels. The backend
  * recomputes the window size itself from its own constants and the resolved
- * size scale. Reports are coalesced by shape identity, not debounced by
- * time, so a repeated report costs nothing and a real change never waits.
+ * size scale. It coalesces reports by shape identity rather than debouncing
+ * them by time, so a repeated report costs nothing and a real change never
+ * waits.
  * 
- * `durationMs` is how long the window is allowed to take to reach the new
- * shape, and must be between 0 (snap) and 2000 milliseconds; anything longer
- * is rejected rather than clamped, because it would leave a native window
- * animation running long after the card had settled.
+ * `durationMs` is how long the window may take to reach the new shape, and
+ * must be between 0 (snap) and 2000 milliseconds. Anything longer is rejected
+ * rather than clamped, because it would leave a native window animation
+ * running long after the card had settled.
  */
 async setOverlayCardShape(shape: OverlayCardShape, durationMs: number) : Promise<Result<null, string>> {
     try {
@@ -1154,9 +1155,9 @@ vad_backend?: VadBackend;
 overlay_style?: OverlayStyle; 
 /**
  * Overlay theme tokens (accent, surface, material, sizes, spacing). Every
- * token is optional and absent means *inherit* — the overlay uses Handy's
- * built-in, theme-aware value — so a settings store written before this
- * field existed reproduces today's overlay exactly.
+ * token is optional, and an absent one means inherit, so the overlay uses
+ * Handy's built-in, theme-aware value for it. A settings store written
+ * before this field existed still reproduces today's overlay exactly.
  */
 overlay_theme?: OverlayTheme }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
@@ -1175,10 +1176,11 @@ export type EngineType =
 /**
  * Which native implementation is drawing the Glass surface.
  * 
- * Not a token: a fact about the running machine, reported alongside
- * `GlassSupport` so the Appearance tab can offer the controls the engine
- * actually honours — the Glass style on Liquid Glass, nothing on the
- * fallback — instead of guessing from a macOS version number in TypeScript.
+ * This is not a token. It reports a fact about the running machine, and it
+ * rides alongside `GlassSupport` so the Appearance tab can offer the controls
+ * the engine actually honours instead of guessing from a macOS version number
+ * in TypeScript. On Liquid Glass that is the Glass style; on the fallback
+ * there is nothing to offer.
  */
 export type GlassEngine = 
 /**
@@ -1192,22 +1194,22 @@ export type GlassEngine =
  */
 "visual_effect" | 
 /**
- * One `NSGlassEffectView` — Liquid Glass, macOS 26 and later. Honours
- * `GlassStyle` and tints itself from the surface.
+ * One `NSGlassEffectView`, which is Liquid Glass on macOS 26 and later.
+ * Honours `GlassStyle` and tints itself from the surface.
  */
 "liquid"
 /**
  * Which macOS material the Glass blur is drawn with.
  * 
  * The blur is one `NSVisualEffectView`, and its `material` is a live setter
- * on that one view — swapping it never re-creates anything — so this token
- * costs a single property assignment. It is read only while the effective
- * Material is Glass; on Flat, and off macOS, it is carried through the merge
- * and ignored.
+ * on that one view, so swapping it re-creates nothing and this token costs a
+ * single property assignment. It is read only while the effective Material
+ * is Glass. On Flat, and off macOS, it is carried through the merge and
+ * ignored.
  * 
  * The eight values are the `NSVisualEffectMaterial` cases that make sense
  * behind a small floating card, ordered from the most see-through to the
- * least; the default is the one that measured the most backdrop transmission
+ * least. The default is the one that measured the most backdrop transmission
  * on macOS 26, in both app themes, at the tint an unset `glass_tint`
  * resolves to.
  */
@@ -1215,10 +1217,10 @@ export type GlassMaterial =
 /**
  * `NSVisualEffectMaterialHUDWindow`: the most see-through of the eight
  * in both app themes, and the default. It is also the one that does not
- * follow the system appearance — a fixed dark recipe — but under the thin
- * default tint that reads as contrast rather than as gloom: over a white
- * backdrop under a Light theme it lands within 3 levels of Popover, and
- * over a dark backdrop it darkens 13 levels further.
+ * follow the system appearance, being a fixed dark recipe, but under the
+ * thin default tint that reads as contrast rather than as gloom. Over a
+ * white backdrop under a Light theme it lands within 3 levels of Popover,
+ * and over a dark backdrop it darkens 13 levels further.
  */
 "hud_window" | 
 /**
@@ -1260,9 +1262,10 @@ export type GlassMaterial =
  * whose two published styles are the whole of the choice: `Regular`, the
  * standard glass that carries its own dimming so content stays legible over
  * anything, and `Clear`, a thinner, more transparent glass that leans on the
- * backdrop. Read only while the **liquid** engine is drawing (macOS 26 and
- * later); on the fallback engine, and off macOS, it is carried through the
- * merge and ignored — `GlassMaterial` is the fallback's equivalent knob.
+ * backdrop. Read only while the liquid engine is drawing (macOS 26 and
+ * later). On the fallback engine, and off macOS, it is carried through the
+ * merge and ignored, since `GlassMaterial` is the fallback's equivalent
+ * token.
  */
 export type GlassStyle = 
 /**
@@ -1298,12 +1301,12 @@ export type GpuDeviceOption = { id: string; name: string; total_vram_mb: number 
 /**
  * A canonical `#rrggbb` colour.
  * 
- * Parsing is lenient — `#RGB` shorthand, a missing `#`, any case, surrounding
- * whitespace — and always yields lowercase `#rrggbb`; 4- and 8-digit forms
- * (which would carry alpha) and CSS colour names are rejected. This is the
- * only string that ever reaches a CSS custom property, and it is re-serialised
- * from this type rather than echoed, so no value from a settings store or a
- * theme file is ever passed through verbatim.
+ * Parsing is lenient and always yields lowercase `#rrggbb`. It accepts
+ * `#RGB` shorthand, a missing `#`, any case, and surrounding whitespace. It
+ * rejects 4- and 8-digit forms, which carry alpha, and CSS colour names. This
+ * is the only string that ever reaches a CSS custom property, and it is
+ * re-serialised from this type rather than echoed, so no value from a
+ * settings store or a theme file is ever passed through verbatim.
  */
 export type HexColor = string
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; post_process_requested: boolean }
@@ -1370,12 +1373,12 @@ export type OrtAcceleratorSetting = "auto" | "cpu" | "cuda" | "directml" | "rocm
 /**
  * Which of the five card shapes the overlay is currently drawing.
  * 
- * Under Flat this is bookkeeping only: the window is sized for the widest
- * card the overlay style can reach, and the CSS morph happens inside it.
- * Under Glass it is the unit the native window is sized from, because the
- * window slack is zero and the window rectangle is the card — and because
- * the Live panel's open/collapsed morph is a pure webview decision (driven
- * by streamed text and phase) that Rust cannot see any other way.
+ * Under Flat this is bookkeeping only. The window covers the widest card the
+ * overlay style can reach, and the CSS morph happens inside it. Under Glass
+ * it is the unit the native window is sized from, for two reasons: the window
+ * slack is zero, so the window rectangle is the card, and the Live panel's
+ * open/collapsed morph is a pure webview decision (driven by streamed text
+ * and phase) that Rust cannot see any other way.
  * 
  * One shape per distinct `.scard` class combination in
  * `RecordingOverlay.tsx`; the footprints mirror the `--ov-*` block in
@@ -1386,24 +1389,24 @@ export type OrtAcceleratorSetting = "auto" | "cpu" | "cuda" | "directml" | "rocm
  */
 export type OverlayCardShape = 
 /**
- * `.scard.compact` — the resting Minimal pill.
+ * The resting Minimal pill, `.scard.compact`.
  */
 "compact_rest" | 
 /**
- * `.scard.compact.cworking` — the Minimal working pill, at the same
+ * The Minimal working pill, `.scard.compact.cworking`, at the same
  * footprint as Live's own collapsed working pill.
  */
 "compact_working" | 
 /**
- * `.scard` — the Live pill before it opens or collapses.
+ * The Live pill before it opens or collapses, `.scard`.
  */
 "live_pill" | 
 /**
- * `.scard.working` — the Live panel collapsed to its working pill.
+ * The Live panel collapsed to its working pill, `.scard.working`.
  */
 "live_working" | 
 /**
- * `.scard.open` — the Live panel, expanded.
+ * The Live panel expanded, `.scard.open`.
  */
 "live_open"
 export type OverlayPosition = "top" | "bottom"
@@ -1415,11 +1418,11 @@ export type OverlayPosition = "top" | "bottom"
  */
 export type OverlayStyle = "none" | "minimal" | "live"
 /**
- * The sixteen overlay-theme tokens. `None` means *inherit*.
+ * The sixteen overlay-theme tokens. `None` means inherit.
  * 
  * Field names are literally the theme-file keys. Every field deserializes
- * leniently: a value of the wrong type or shape degrades to `None` with a
- * `warn!`, so one bad token can never cost the other fifteen — the same
+ * leniently. A value of the wrong type or shape degrades to `None` with a
+ * `warn!`, so one bad token can never cost the other fifteen. That is the
  * principle `salvage_settings` applies one level up. The settings store's
  * leniency is silent salvage (log only); the theme file applies the same rules
  * but reports diagnostics, which is why it runs its own per-key pass instead
@@ -1435,16 +1438,16 @@ accent?: HexColor | null;
  */
 surface?: HexColor | null; 
 /**
- * The card background's alpha **under Flat**, 0.30–1.00.
+ * The card background's alpha under Flat, 0.30 to 1.00.
  * 
  * Read only while the effective Material is Flat. Under Glass the card's
  * alpha is `glass_tint`, so a theme can keep an opaque Flat card and a
- * see-through Glass one at the same time — before the split, choosing
+ * see-through Glass one at the same time. Before the split, choosing
  * Glass with a high opacity painted an opaque card and nothing said why.
  */
 surface_opacity?: number | null; 
 /**
- * How much of the `surface` colour covers the glass, 0.00–1.00.
+ * How much of the `surface` colour covers the glass, 0.00 to 1.00.
  * 
  * Glass's own half of the pair above: the alpha the card paints its
  * surface at while the effective Material is Glass, and the alpha the
@@ -1462,7 +1465,7 @@ text?: HexColor | null;
  */
 border?: HexColor | null; 
 /**
- * The card border's alpha, 0.00–1.00.
+ * The card border's alpha, 0.00 to 1.00.
  */
 border_opacity?: number | null; 
 /**
@@ -1474,9 +1477,9 @@ material?: Material | null;
  * Which macOS material the Glass blur uses. Read only by the
  * `visual_effect` engine, so ignored under Flat and on macOS 26.
  * 
- * **Theme-file only.** It lost its row in the Appearance tab when Liquid
+ * Theme-file only. It lost its row in the Appearance tab when Liquid
  * Glass arrived, so the merge takes it from the file and never from the
- * settings store: a value an older build persisted there would otherwise
+ * settings store. A value an older build persisted there would otherwise
  * drive the fallback engine with no control anywhere that could show or
  * clear it. The field stays on the struct so those stored documents keep
  * deserializing, and so a theme copied out of the tab still round-trips.
@@ -1488,40 +1491,40 @@ glass_material?: GlassMaterial | null;
  */
 glass_style?: GlassStyle | null; 
 /**
- * One factor multiplying every length in the card, 0.80–1.50.
+ * One factor multiplying every length in the card, 0.80 to 1.50.
  */
 size_scale?: number | null; 
 /**
- * The card's corner radius at scale 1, 0–32 px.
+ * The card's corner radius at scale 1, 0 to 32 px.
  */
 radius?: number | null; 
 /**
- * The card's border width at scale 1, 0–4 px. The one token besides
+ * The card's border width at scale 1, 0 to 4 px. The one token besides
  * `size_scale` that changes the card's footprint, so the native window
  * is computed from it too.
  */
 border_width?: number | null; 
 /**
- * The card's inner horizontal padding at scale 1, 0–20 px.
+ * The card's inner horizontal padding at scale 1, 0 to 20 px.
  */
 padding?: number | null; 
 /**
- * Gap between waveform bars at scale 1, 0–5 px.
+ * Gap between waveform bars at scale 1, 0 to 5 px.
  */
 waveform_gap?: number | null; 
 /**
- * Width of each waveform bar at scale 1, 2–6 px.
+ * Width of each waveform bar at scale 1, 2 to 6 px.
  */
 waveform_width?: number | null }
 /**
  * A theme being edited, on its way to the overlay window alone.
  * 
- * The same payload as [`ResolvedOverlayTheme`] under a second name, because
- * the name is the whole distinction: a draft has not been persisted, so the
- * overlay paints it but does not mirror it to localStorage, and the
- * Appearance tab — which listens for the delivered theme to keep its own
- * controls honest — ignores it. Wrapped rather than aliased so the two
- * events stay two types in the generated bindings.
+ * The same payload as `ResolvedOverlayTheme` under a second name, because
+ * the name is the whole distinction. A draft has not been persisted, so the
+ * overlay paints it but does not mirror it to localStorage. The Appearance
+ * tab, which listens for the delivered theme to keep its own controls honest,
+ * ignores it. Wrapped rather than aliased so the two events stay two types in
+ * the generated bindings.
  */
 export type OverlayThemeDraft = { resolved: ResolvedOverlayTheme }
 export type PaginatedHistory = { entries: HistoryEntry[]; has_more: boolean }
@@ -1533,8 +1536,8 @@ export type PostProcessProvider = { id: string; label: string; base_url: string;
  * 
  * These are the overlay's own states under both names it uses for capture:
  * `Recording` is the Minimal pill's, `Listening` is the Live panel's. Asking
- * for the other style's name is not an error — the driver maps it onto the one
- * the current style actually has.
+ * for the other style's name is not an error, because the driver maps it onto
+ * the one the current style actually has.
  */
 export type PreviewState = 
 /**
@@ -1565,8 +1568,8 @@ export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "
 /**
  * The whole answer to "how does the overlay look right now".
  * 
- * Command result **and** event payload, so the overlay's pull on show and the
- * push on change carry the identical type.
+ * It is both the command result and the event payload, so the overlay's pull
+ * on show and the push on change carry the identical type.
  */
 export type ResolvedOverlayTheme = { 
 /**
@@ -1697,14 +1700,14 @@ code: ThemeFileDiagnosticCode;
  */
 key: string | null; 
 /**
- * English, deliberately untranslated: it names JSON keys and values, and
+ * English, deliberately untranslated. It names JSON keys and values, and
  * it is what goes to the log.
  */
 message: string }
 /**
  * What kind of thing the theme file got wrong.
  * 
- * A stable, translatable identity for a diagnostic: the Appearance tab looks
+ * A stable, translatable identity for a diagnostic. The Appearance tab looks
  * up an i18n string by code and passes the diagnostic's `key` as a
  * parameter, so the user reads their own language while `message` keeps the
  * English detail for the log.
@@ -1742,8 +1745,8 @@ export type ThemeFileDiagnosticCode =
 /**
  * What the theme file currently contributes.
  * 
- * Populated by the theme-file reader, which is the only thing that reads the
- * file; everything downstream consumes this state instead of the document.
+ * Only the theme-file reader reads the file, and it fills this in. Everything
+ * downstream consumes this state instead of the document.
  */
 export type ThemeFileState = { 
 /**
@@ -1769,12 +1772,12 @@ tokens: OverlayTheme;
  */
 owned_keys: string[]; 
 /**
- * Everything the reader had to ignore or clamp, in contract order (the
- * token table's order, not the document's own key order — `serde_json`
- * sorts an object's keys unless `preserve_order` is enabled, so document
- * order is not recoverable here). Capped at a handful of entries for the
- * payload; `diagnostics_total` is the count before the cap.
- * Every diagnostic also reaches the log, uncapped.
+ * Everything the reader had to ignore or clamp, in contract order, which
+ * is the token table's order rather than the document's own key order.
+ * `serde_json` sorts an object's keys unless `preserve_order` is enabled,
+ * so document order is not recoverable here. Capped at a handful of
+ * entries for the payload; `diagnostics_total` is the count before the
+ * cap. Every diagnostic also reaches the log, uncapped.
  */
 diagnostics: ThemeFileDiagnostic[]; 
 /**

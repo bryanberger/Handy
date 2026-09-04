@@ -11,10 +11,10 @@ interface ResolvedOverlayThemeState {
   subscribe: () => void;
 }
 
-// Module-level singleton (mirrors settingsStore.ts): the settings window has
-// exactly one Appearance tab at a time, so one store is all that's needed, and
-// the `resolved-overlay-theme` listener below is registered once for the life
-// of the window rather than per mount/unmount of the tab.
+// Module-level singleton, mirroring settingsStore.ts. The settings window has
+// exactly one Appearance tab at a time, so one store is all that's needed,
+// and the `resolved-overlay-theme` listener below is registered once for the
+// life of the window rather than per mount/unmount of the tab.
 const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
   (set, get) => ({
     resolved: null,
@@ -22,8 +22,9 @@ const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
     subscribed: false,
 
     // Re-reads the theme file from disk, resolves and returns the merged
-    // theme (commands.reloadOverlayThemeFile) — the "Appearance tab mount"
-    // and "Reload button" rows of the theme file's reload contract.
+    // theme (commands.reloadOverlayThemeFile). That covers the "Appearance
+    // tab mount" and "Reload button" rows of the theme file's reload
+    // contract.
     load: async () => {
       set({ isReloading: true });
       try {
@@ -56,7 +57,7 @@ const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
 /**
  * The resolved overlay theme for the Appearance tab: the merged tokens
  * (`file ?? settings ?? inherit`), the Material actually rendered, whether
- * Glass is available, and the theme file's state — the same payload the
+ * Glass is available, and the theme file's state. It is the same payload the
  * overlay window itself paints from, so the preview and the on-screen overlay
  * can never disagree.
  */

@@ -26,9 +26,9 @@ import {
 /**
  * Unit tests for the apply layer. Run with `bun test src`.
  *
- * Every expected value is transcribed from the specification — the token
- * contract's derivation rules and worked example, and the Material model's
- * Glass neutrals — never from the implementation.
+ * Every expected value here is written out by hand from the token rules, the
+ * README's worked example and the Glass neutrals, never read back off the
+ * implementation.
  */
 
 /** A resolved payload with the given tokens; everything else inherits. */
@@ -131,7 +131,7 @@ describe("inherit", () => {
     const writtenFirst = root.properties.size;
     root.removed.length = 0;
 
-    // Same accent, new radius: only the radius is written again, and nothing
+    // Same accent, new radius. Only the radius is written again, and nothing
     // is removed.
     applyOverlayTheme(
       root.element,
@@ -177,9 +177,9 @@ describe("inherit", () => {
     expect(inheritedTokenValue("glass_tint", "glass")).toBe(GLASS_TINT_INHERIT);
   });
 
-  // The one token whose inherit is not one number: the card's edge is stronger
-  // over glass, and asking for it per Material is what keeps that rule out of
-  // every caller.
+  // The one token whose inherit is not one number. The card's edge is
+  // stronger over glass, and asking for it per Material is what keeps that
+  // rule out of every caller.
   test("the border alpha inherits per Material", () => {
     expect(inheritedTokenValue("border_opacity", "flat")).toBe(
       BORDER_OPACITY_INHERIT.flat,
@@ -189,7 +189,7 @@ describe("inherit", () => {
     );
   });
 
-  // Every bound has an inherit and every inherit has a bound: a token that
+  // Every bound has an inherit and every inherit has a bound. A token that
   // gained one and not the other would be a slider with no value or a value
   // no slider can show.
   test("every numeric token's inherit is inside its own bounds", () => {
@@ -302,8 +302,8 @@ describe("derivations", () => {
   test("the numeric bounds are the contract's", () => {
     expect(OVERLAY_TOKEN_BOUNDS).toEqual({
       surface_opacity: { min: 0.3, max: 1.0, step: 0.01 },
-      // The Glass tint reaches zero, where the Flat opacity stops at 0.30:
-      // untinted glass is a look, an invisible Flat card is not.
+      // The Glass tint reaches zero, where the Flat opacity stops at 0.30.
+      // Untinted glass is a look; an invisible Flat card is not.
       glass_tint: { min: 0.0, max: 1.0, step: 0.01 },
       border_opacity: { min: 0.0, max: 1.0, step: 0.01 },
       size_scale: { min: 0.8, max: 1.5, step: 0.05 },
@@ -338,7 +338,7 @@ describe("derivations", () => {
   });
 
   test("a zero border width still writes the property", () => {
-    // 0 is a value, not "unset": without the property the stylesheet's own
+    // 0 is a value, not "unset". Without the property the stylesheet's own
     // 1px would come back and the native window would be two points wider
     // than the card.
     expect(
@@ -409,7 +409,7 @@ describe("Glass", () => {
     ).toBe("color-mix(in srgb, #7aa2f7 50%, transparent)");
   });
 
-  /** Liquid Glass (macOS 26) paints the same card as the older blur: the
+  /** Liquid Glass (macOS 26) paints the same card as the older blur. The
    *  engine changes which native view draws behind it and which of the two
    *  engine tokens applies, never what the card writes. Rust hands
    *  `NSGlassEffectView` the same surface as its `tintColor`, composed from
@@ -436,7 +436,7 @@ describe("Glass", () => {
 });
 
 describe("the two alphas", () => {
-  /** The bug the split exists for: a card set opaque under Flat used to
+  /** The bug the split exists for. A card set opaque under Flat used to
    *  follow the user into Glass and paint an opaque pane. */
   test("an opaque Flat card is still glass the moment Glass renders", () => {
     const opaqueFlat: Partial<OverlayTheme> = {
@@ -447,7 +447,7 @@ describe("the two alphas", () => {
     expect(resolveOverlayThemeVars(resolved(opaqueFlat))["--s-surface"]).toBe(
       "color-mix(in srgb, #000000 100%, transparent)",
     );
-    // Same theme, Glass rendering: the opacity is not read, so the tint is
+    // Same theme, Glass rendering. The opacity is not read, so the tint is
     // the Glass default and the blur shows through.
     expect(
       resolveOverlayThemeVars(resolved(opaqueFlat, "glass"))["--s-surface"],
@@ -475,7 +475,7 @@ describe("the two alphas", () => {
   });
 
   test("the Glass tint writes nothing under Flat", () => {
-    // Not even the surface property: under Flat an untouched card is the
+    // Not even the surface property. Under Flat an untouched card is the
     // stylesheet's own 98%, and the tint token has no say in it.
     expect(resolveOverlayThemeVars(resolved({ glass_tint: 0.15 }))).toEqual({});
   });
@@ -513,14 +513,14 @@ describe("the worked example", () => {
 
   // The README's full theme file and the CSS it resolves to. Its
   // `material: "glass"` is read here with the Flat neutrals, so this is the
-  // rendering where Glass was requested and downgraded (the percentages in the
-  // Glass case are covered above) — which is also why `--s-surface` carries
-  // the 92% Flat opacity and not the 45% tint; `glass_material` and
-  // `glass_style` are the two tokens with no CSS at all — each sets a native
-  // view's property — so neither writes anything. The
-  // contract's derivation rules mix the neutrals from `var(--s-text)`, which
-  // resolves to the `--s-text` written beside them, while the explicit
-  // `border` replaces that mix for the edge.
+  // rendering where Glass was requested and downgraded (the percentages in
+  // the Glass case are covered above), which is also why `--s-surface`
+  // carries the 92% Flat opacity rather than the 45% tint. `glass_material`
+  // and `glass_style` are the two tokens with no CSS at all, each setting a
+  // native view's property, so neither writes anything. The derivation rules
+  // mix the neutrals from `var(--s-text)`, which resolves to the `--s-text`
+  // written beside them, while the explicit `border` replaces that mix for
+  // the edge.
   test("resolves to exactly the fourteen properties listed", () => {
     expect(resolveOverlayThemeVars(resolved(FULL_THEME))).toEqual({
       "--s-accent": "#7aa2f7",
@@ -542,7 +542,7 @@ describe("the worked example", () => {
 
   test("every property it writes is registered for removal", () => {
     // With every token set at once the module writes everything it can write,
-    // so the two lists have to match exactly: a property missing from
+    // so the two lists have to match exactly. A property missing from
     // OVERLAY_THEME_CSS_PROPERTIES would keep painting after its token went
     // back to inherit, and one listed but never written would be dead weight.
     const written = Object.keys(

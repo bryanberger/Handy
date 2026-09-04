@@ -195,15 +195,15 @@ const settingUpdaters: {
     commands.changeTranscribeGpuDevice(value as string | null),
   extra_recording_buffer_ms: (value) =>
     commands.changeExtraRecordingBufferSetting(value as number),
-  // One key for all sixteen tokens: the whole object is sent every time, so the
-  // store's optimistic write and rollback work unchanged and a whole-theme
+  // One key carries all sixteen tokens. Every write sends the whole object, so
+  // the store's optimistic write and rollback work unchanged, and a whole-theme
   // reset is `resetSetting("overlay_theme")`.
   //
   // The command answers with the theme it actually stored, which can differ
-  // from what was optimistically written because Rust clamps. Folding that
-  // answer straight back in is what replaces the full `refreshSettings()` the
-  // `settings-changed` listener below used to run for this key: same
-  // correction, without re-reading every setting there is.
+  // from the optimistic write because Rust clamps. Folding that answer straight
+  // back in replaces the full `refreshSettings()` the `settings-changed`
+  // listener below used to run for this key. Same correction, and no re-read of
+  // every other setting.
   overlay_theme: async (value) => {
     const result = await commands.changeOverlayThemeSetting(
       value as OverlayTheme,
@@ -677,9 +677,9 @@ export const useSettingsStore = create<SettingsStore>()(
         // The overlay theme is the one setting whose command hands back what
         // it stored (see `settingUpdaters.overlay_theme`), so re-reading all
         // of `AppSettings` here would only re-derive a value the store
-        // already holds — on a path that can fire several times a second
-        // while the Appearance tab is being dragged. The event is still
-        // emitted, for anything outside this store that listens for it.
+        // already holds. Dragging a slider in the Appearance tab fires this
+        // path several times a second. The event still goes out, for anything
+        // outside this store that listens for it.
         if (event.payload.setting !== "overlay_theme") {
           get().refreshSettings();
         }

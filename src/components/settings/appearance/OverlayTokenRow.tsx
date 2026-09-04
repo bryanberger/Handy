@@ -34,10 +34,10 @@ export interface OverlayTokenRowProps {
  * Memoised, and that is the entire reason it exists as a component rather
  * than a `renderField` closure in the tab. A slider drag re-renders the tab on
  * every input event, and until this split that re-rendered all sixteen rows
- * with it — roughly 1200 row renders across a two-second drag, of which
- * sixteen were the row actually moving. The props here are the value, three
- * booleans/strings and three callbacks the tab holds stable, so every row but
- * the dragged one bails out.
+ * with it. That was roughly 1200 row renders across a two-second drag, of
+ * which sixteen were the row actually moving. The props here are the value,
+ * three booleans/strings and three callbacks the tab holds stable, so every
+ * row but the dragged one bails out.
  */
 const OverlayTokenRowInner: React.FC<OverlayTokenRowProps> = ({
   field,
@@ -74,7 +74,7 @@ const OverlayTokenRowInner: React.FC<OverlayTokenRowProps> = ({
     <div
       onPointerUp={() => onFlush(field.key)}
       // React's synthetic onBlur bubbles (unlike the native `blur` event), so
-      // this fires when the range input inside loses focus — e.g. tabbing away
+      // this fires when the range input inside loses focus, e.g. tabbing away
       // mid-drag, which onPointerUp alone would miss.
       onBlur={() => onFlush(field.key)}
     >

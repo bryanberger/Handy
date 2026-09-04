@@ -28,8 +28,8 @@ describe("lockedTokenCounts", () => {
   test("the total is the rows on screen, not every token there is", () => {
     // Two short of the contract's sixteen, on either Material:
     // `glass_material` drives the pre-macOS-26 fallback engine and has no row
-    // at all, and the two alphas share one slot — Flat's surface opacity or
-    // Glass's tint strength, never both.
+    // at all, and the two alphas share one slot, either Flat's surface
+    // opacity or Glass's tint strength, never both.
     for (const material of ["flat", "glass"] as const) {
       const { total } = lockedTokenCounts([], material);
       expect(total).toBe(14);
@@ -120,9 +120,9 @@ describe("themeAsJsonDocument", () => {
 
   test("serializes exactly like the contract's examples", () => {
     // Two-space indent, `version` first, tokens after it in the contract's
-    // own table order — not whatever order the runtime object happens to
-    // carry. This is the document a theming tool is handed, so its shape is
-    // part of the contract.
+    // own table order, rather than whatever order the runtime object happens
+    // to carry. This is the document a theming tool is handed, so its shape
+    // is part of the contract.
     expect(themeAsJsonDocument(INHERIT_ALL)).toBe('{\n  "version": 1\n}');
 
     const theme: OverlayTheme = {

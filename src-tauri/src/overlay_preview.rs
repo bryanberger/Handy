@@ -1,18 +1,18 @@
-//! Preview mode: keeping the real overlay on screen while its theme is edited.
+//! Preview mode keeps the real overlay on screen while its theme is edited.
 //!
-//! A root module rather than a command file, because preview mode is what the
-//! commands are adapters *for*: the Appearance tab reaches it through the three
-//! `#[tauri::command]`s in `commands/overlay_preview.rs`, and the cancel funnel,
-//! the window-close handler, the exit handler and the `--preview-overlay` flag
-//! reach it directly.
+//! A root module rather than a command file, because the commands are only
+//! adapters onto it. The Appearance tab reaches preview mode through the three
+//! `#[tauri::command]`s in `commands/overlay_preview.rs`, while the cancel
+//! funnel, the window-close handler, the exit handler and the
+//! `--preview-overlay` flag reach it directly.
 //!
-//! The Appearance tab starts a preview and leaves it running: the overlay is
-//! shown in the user's configured style, driven by synthetic microphone levels
-//! (and, in Live, by a synthetic transcript), either cycling through the states
-//! a real session visits or pinned to one of them, until the tab stops it. Every
-//! token edit repaints it live, because the preview drives the *real* overlay —
-//! it is the only way to judge the theme at its true size and the only way to
-//! see the Material actually rendered.
+//! The Appearance tab starts a preview and leaves it running. The overlay
+//! stays up in the user's configured style, driven by synthetic microphone
+//! levels (and, in Live, by a synthetic transcript), either cycling through the
+//! states a real session visits or pinned to one of them, until the tab stops
+//! it. Every token edit repaints it live, because the preview drives the real
+//! overlay. That is the only way to judge the theme at its true size, and the
+//! only way to see the Material actually rendered.
 //!
 //! The `--preview-overlay` CLI flag is the same driver on its own compressed
 //! schedule, with an automatic stop after a few seconds.
@@ -40,9 +40,9 @@ use tauri_specta::Event;
 /// The sample sentence the Live panel shows when the caller supplies none.
 ///
 /// The Appearance tab passes its own, already translated. The CLI flag has no
-/// webview to ask, so it falls back to this: deliberately English, because no
-/// tray translation carries a sample sentence and a preview of the *card* is
-/// judged by its colours, sizes and spacing rather than by what the words say.
+/// webview to ask, so it falls back to this deliberately English one. No tray
+/// translation carries a sample sentence, and a preview of the card is judged
+/// by its colours, sizes and spacing rather than by what the words say.
 const PREVIEW_SAMPLE_TEXT: &str =
     "The quick brown fox jumps over the lazy dog, and Handy writes it down.";
 
@@ -54,11 +54,11 @@ const GUARD_RUNNING: u8 = 1;
 /// frame, hides the overlay and releases the guard.
 const GUARD_STOPPING: u8 = 2;
 
-/// The preview guard: whether a preview owns the overlay, and whether it has
-/// been asked to stop.
+/// The preview guard, holding whether a preview owns the overlay and whether
+/// it has been asked to stop.
 ///
 /// One atomic rather than two flags, because the two questions are not
-/// independent: a stop landing between "a preview is running" and "clear the
+/// independent. A stop landing between "a preview is running" and "clear the
 /// stop flag for the preview I am starting" used to be dropped on the floor,
 /// leaving a preview nothing could stop. As a single state machine
 /// (`idle → running → stopping → idle`) a start, a stop and the driver's own
@@ -69,16 +69,16 @@ const GUARD_STOPPING: u8 = 2;
 static PREVIEW_GUARD: AtomicU8 = AtomicU8::new(GUARD_IDLE);
 
 /// The state the running preview should be showing: `PreviewState::Cycle` to
-/// loop the whole sequence, or one state to hold. Read by the driver every
+/// loop the whole sequence, or one state to hold. The driver re-reads it every
 /// frame, so `set_overlay_preview_state` takes effect without restarting.
 static PREVIEW_TARGET: AtomicU8 = AtomicU8::new(0);
 
 /// One synthetic level frame per this interval, which also sets how quickly the
 /// driver notices a stop, a pin or a real recording.
 ///
-/// 40 ms, not 33: `overlay::emit_levels` drops any frame arriving less than
-/// `EMIT_THROTTLE_MS` (33 ms) after the last one, so a faster cadence would
-/// halve to ~50 ms.
+/// 40 ms rather than 33, because `overlay::emit_levels` drops any frame
+/// arriving less than `EMIT_THROTTLE_MS` (33 ms) after the last one, so a
+/// faster cadence would halve to ~50 ms.
 const FRAME_INTERVAL: Duration = Duration::from_millis(40);
 
 /// The Live panel receives another piece of the sample text this often while
@@ -89,8 +89,8 @@ const STREAM_CHUNK_INTERVAL: Duration = Duration::from_millis(240);
 /// stopping itself.
 const ONE_SHOT_DURATION: Duration = Duration::from_millis(3500);
 
-/// How long a fresh `show-overlay` is given to settle before a working phase is
-/// pushed after it. See [`phase_needs_settle`].
+/// How long the driver lets a fresh `show-overlay` settle before it pushes a
+/// working phase after it. See [`phase_needs_settle`].
 const SHOW_SETTLE: Duration = Duration::from_millis(300);
 
 /// The longest the settle above sleeps in one go. See [`settle`].
@@ -100,10 +100,10 @@ const SETTLE_TICK: Duration = Duration::from_millis(20);
 /// style in the settings store, and whether the settings window is still on
 /// screen.
 ///
-/// Not every frame: one costs a full settings deserialize and the other a hop
-/// to the main thread, and neither is worth doing 25 times a second. 200 ms is
-/// well inside the shortest step of any cycle, so a style switch still looks
-/// immediate.
+/// Not every frame, because one costs a full settings deserialize and the
+/// other a hop to the main thread, and neither is worth doing 25 times a
+/// second. 200 ms is well inside the shortest step of any cycle, so a style
+/// switch still looks immediate.
 const POLL_INTERVAL: Duration = Duration::from_millis(200);
 
 /// How long a start waits for a previous driver to let go before refusing.
@@ -122,8 +122,8 @@ const CLAIM_TICK: Duration = Duration::from_millis(10);
 ///
 /// These are the overlay's own states under both names it uses for capture:
 /// `Recording` is the Minimal pill's, `Listening` is the Live panel's. Asking
-/// for the other style's name is not an error — the driver maps it onto the one
-/// the current style actually has.
+/// for the other style's name is not an error, because the driver maps it onto
+/// the one the current style actually has.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum PreviewState {
@@ -168,7 +168,7 @@ impl PreviewState {
     }
 }
 
-/// The requested state as the current style can actually show it: the two
+/// The requested state as the current style can actually show it. The two
 /// capture states are one state under two names, so a tab that still thinks
 /// the style is Live cannot pin a Minimal overlay to a state it does not have.
 fn normalize(style: OverlayStyle, state: PreviewState) -> PreviewState {
@@ -184,7 +184,7 @@ fn normalize(style: OverlayStyle, state: PreviewState) -> PreviewState {
 /// overlay hidden so the next loop replays its entrance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct CycleStep {
-    /// `None` is the gap: nothing on screen.
+    /// `None` is the gap, with nothing on screen.
     state: Option<PreviewState>,
     duration_ms: u64,
 }
@@ -232,21 +232,21 @@ const ONE_SHOT_MINIMAL_CYCLE: &[CycleStep] = &[
 ];
 
 /// The one-shot's Live sequence: the arming pill, the whole sample sentence
-/// streamed, then the spinner — all before [`ONE_SHOT_DURATION`] hides it.
+/// streamed, then the spinner, all before [`ONE_SHOT_DURATION`] hides it.
 const ONE_SHOT_LIVE_CYCLE: &[CycleStep] = &[
     step(PreviewState::Arming, 120),
     step(PreviewState::Listening, 2160),
     step(PreviewState::Transcribing, 1400),
 ];
 
-/// The schedule one preview run is driven by.
+/// The schedule that drives one preview run.
 ///
 /// Two profiles, because the two callers want different things from the same
 /// driver. The tab's preview loops for as long as the user edits, so its steps
 /// are long enough to study and it ends each round with a gap that replays the
 /// entrance. The one-shot has [`ONE_SHOT_DURATION`] to show an entrance, a full
 /// sentence and the spinner, so its steps are compressed, it has no gap, and
-/// its sequence deliberately outlasts the deadline — wrapping round would
+/// its sequence deliberately outlasts the deadline. Wrapping round would
 /// replay the arming pill for a moment and then hide on it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Timing {
@@ -254,7 +254,7 @@ struct Timing {
     live: &'static [CycleStep],
 }
 
-/// Preview mode: runs until the tab stops it.
+/// Preview mode. Runs until the tab stops it.
 const PERSISTENT_TIMING: Timing = Timing {
     minimal: MINIMAL_CYCLE,
     live: LIVE_CYCLE,
@@ -276,9 +276,9 @@ impl Timing {
 
     /// How many pieces the sample sentence is revealed in: one per
     /// [`STREAM_CHUNK_INTERVAL`] of the listening step, so the whole sentence
-    /// is on screen by the time the panel stops listening — and, for the
-    /// one-shot, before its deadline. Read off the Live sequence whatever the
-    /// style, because Minimal has no transcript to stream.
+    /// is on screen by the time the panel stops listening. For the one-shot
+    /// that also means before its deadline. Read off the Live sequence
+    /// whatever the style, because Minimal has no transcript to stream.
     fn chunk_count(self) -> usize {
         let listening_ms = step_duration_ms(self.live, PreviewState::Listening);
         ((listening_ms / STREAM_CHUNK_INTERVAL.as_millis() as u64) as usize).max(1)
@@ -312,12 +312,12 @@ fn cycle_state_at(sequence: &[CycleStep], elapsed_ms: u64) -> Option<PreviewStat
         }
         remainder -= step.duration_ms;
     }
-    // Unreachable: the remainder is less than the total the loop consumes.
+    // Unreachable. The remainder is less than the total the loop consumes.
     None
 }
 
-/// The overlay state a preview state is painted as — the `show-overlay`
-/// payload the overlay window switches on.
+/// The overlay state a preview state is painted as, which is the
+/// `show-overlay` payload the overlay window switches on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum OverlayShow {
     Recording,
@@ -341,7 +341,7 @@ enum TextFlow {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Presentation {
     show: OverlayShow,
-    /// Emit `recording-ready`: microphone samples are flowing, so the card
+    /// Emit `recording-ready`. Microphone samples are flowing, so the card
     /// leaves the muted arming pill.
     ready: bool,
     /// Drive the waveform.
@@ -411,22 +411,22 @@ fn presentation(style: OverlayStyle, state: PreviewState) -> Presentation {
 
 /// Whether a phase has to wait for the show that precedes it.
 ///
-/// The overlay page handles `show-overlay` asynchronously — it reads the
-/// settings and the resolved theme before applying the state — and *then*
-/// resets the Live panel to the listening phase. A working phase emitted in the
-/// same breath as the show would be overwritten by that reset, leaving the
-/// spinner state showing a live waveform. A real session never hits this (it
-/// records for seconds before it finalizes); a preview pinned straight to
-/// `Transcribing` does, so it waits the show out. Nothing else has to: the
-/// listening phase is what the reset lands on anyway.
+/// The overlay page handles `show-overlay` asynchronously, reading the
+/// settings and the resolved theme before it applies the state, and only then
+/// resetting the Live panel to the listening phase. That reset would overwrite
+/// a working phase emitted in the same breath as the show, leaving the spinner
+/// state showing a live waveform. A real session never hits this (it records
+/// for seconds before it finalizes); a preview pinned straight to
+/// `Transcribing` does, so it waits the show out. Nothing else has to, because
+/// the listening phase is where the reset lands anyway.
 fn phase_needs_settle(show_emitted: bool, phase: StreamPhase) -> bool {
     show_emitted && phase == StreamPhase::Working
 }
 
 /// Whether moving from `current` to `next` needs a fresh `show-overlay`.
 ///
-/// Re-showing is not free — it resets the card's capture readiness, clears the
-/// Live transcript and replays the entrance — so it happens only when the
+/// Re-showing costs something. It resets the card's capture readiness, clears
+/// the Live transcript and replays the entrance. So it happens only when the
 /// window state really changes, or when the arming pill has to be replayed
 /// (which is the one thing only a show can do).
 fn needs_show(style: OverlayStyle, current: Option<PreviewState>, next: PreviewState) -> bool {
@@ -444,7 +444,7 @@ fn needs_show(style: OverlayStyle, current: Option<PreviewState>, next: PreviewS
 enum StyleChange {
     /// The style the run started on is still the one in the settings.
     Keep,
-    /// A different card: show it from the top of its own sequence.
+    /// A different card, shown from the top of its own sequence.
     Replay,
     /// The overlay was turned off, so there is nothing left to preview.
     Stop,
@@ -452,11 +452,11 @@ enum StyleChange {
 
 /// The style-change decision, as a pure function of the two styles.
 ///
-/// The driver follows the settings store rather than the tab: the Overlay group
-/// sits directly above the preview card, and switching Minimal/Live there while
-/// a preview runs has to change what is on screen. The tab sends nothing when
-/// the pinned chip exists under both styles, so this is the only thing that
-/// notices.
+/// The driver follows the settings store rather than the tab. The Overlay
+/// group sits directly above the preview card, and switching Minimal/Live
+/// there while a preview runs has to change what is on screen. The tab sends
+/// nothing when the pinned chip exists under both styles, so this is the only
+/// thing that notices.
 fn style_change(running: OverlayStyle, latest: OverlayStyle) -> StyleChange {
     if latest == OverlayStyle::None {
         StyleChange::Stop
@@ -478,14 +478,14 @@ enum PreviewOwner {
 
 /// Whether a run has outlived the window it was started from.
 ///
-/// The tab's preview exists next to the controls that drive it: once the
-/// settings window is off screen — closed to the tray, hidden, minimised —
-/// nothing can stop it from the UI and there is nobody judging the card, so the
-/// driver lets go. Watched here rather than only in the window's close handler
-/// because closing to the tray is one of several ways the window goes away and
-/// the webview keeps running through all of them, so React never learns of any
-/// of them. The one-shot has no window of its own and must keep running with
-/// the settings window closed, which is its usual case.
+/// The tab's preview exists next to the controls that drive it. Once the
+/// settings window is off screen, whether closed to the tray, hidden or
+/// minimised, nothing can stop it from the UI and there is nobody judging the
+/// card, so the driver lets go. Watched here rather than only in the window's
+/// close handler because closing to the tray is one of several ways the window
+/// goes away and the webview keeps running through all of them, so React never
+/// learns of any of them. The one-shot has no window of its own and must keep
+/// running with the settings window closed, which is its usual case.
 fn owner_left(owner: PreviewOwner, window_on_screen: bool) -> bool {
     owner == PreviewOwner::SettingsTab && !window_on_screen
 }
@@ -503,8 +503,8 @@ enum PreviewRefusal {
 }
 
 impl PreviewRefusal {
-    /// The message returned to the caller. English: it reaches the CLI and the
-    /// log; the tab disables its button rather than rendering this.
+    /// The message returned to the caller. English, because it reaches the CLI
+    /// and the log; the tab disables its button rather than rendering this.
     fn message(self) -> &'static str {
         match self {
             PreviewRefusal::Recording => "Cannot preview the overlay while recording",
@@ -514,10 +514,10 @@ impl PreviewRefusal {
     }
 }
 
-/// The guard, as a pure decision: may a preview start right now?
+/// The guard, as a pure decision. May a preview start right now?
 ///
-/// Recording outranks everything — refusing for the right reason matters more
-/// than reporting the first problem found.
+/// Recording outranks everything, because refusing for the right reason
+/// matters more than reporting the first problem found.
 fn preview_refusal(
     is_recording: bool,
     style: OverlayStyle,
@@ -536,8 +536,8 @@ fn preview_refusal(
 
 /// Whether a preview owns the overlay right now.
 ///
-/// A preview on its way out still owns it: the overlay is on screen until its
-/// driver takes it down.
+/// A preview on its way out still owns it, because the overlay stays on screen
+/// until its driver takes it down.
 fn is_previewing() -> bool {
     PREVIEW_GUARD.load(Ordering::SeqCst) != GUARD_IDLE
 }
@@ -547,12 +547,13 @@ fn stop_requested() -> bool {
     PREVIEW_GUARD.load(Ordering::SeqCst) == GUARD_STOPPING
 }
 
-/// Whether a preview is driving the overlay *and* has not been told to let go.
+/// Whether a preview is driving the overlay and has not yet been told to let
+/// go.
 ///
 /// Deliberately stricter than [`is_previewing`], which answers "who owns the
 /// overlay" and so counts a preview on its way out. This one answers "may the
 /// Appearance tab still paint it", and a preview that is going away may not
-/// be: its driver is about to hide the window.
+/// be, because its driver is about to hide the window.
 fn preview_running() -> bool {
     PREVIEW_GUARD.load(Ordering::SeqCst) == GUARD_RUNNING
 }
@@ -560,12 +561,12 @@ fn preview_running() -> bool {
 /// May a theme draft repaint the overlay, given the two facts it depends on?
 ///
 /// Pure, because this is the whole safety rule of the live-editing path and it
-/// has to be readable as one line rather than reconstructed from a call site:
-/// a draft is an *unsaved* value the tab is showing the user, so it may only
+/// has to be readable as one line rather than reconstructed from a call site.
+/// A draft is an unsaved value the tab is showing the user, so it may only
 /// ever reach an overlay the tab actually owns. A stopping preview no longer
-/// counts (the card is about to come off screen), and a real recording outranks
-/// everything — it can take the overlay from a preview at any moment, and the
-/// card it puts up belongs to the session, not to a slider.
+/// counts (the card is about to come off screen). A real recording outranks
+/// everything, since it can take the overlay from a preview at any moment, and
+/// the card it puts up belongs to the session rather than to a slider.
 fn draft_allowed(preview_running: bool, is_recording: bool) -> bool {
     preview_running && !is_recording
 }
@@ -595,12 +596,12 @@ pub(crate) fn stop_preview() {
 /// recording for real.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CancelDisposition {
-    /// No preview involved: cancel the operation exactly as before.
+    /// No preview involved, so cancel the operation exactly as before.
     CancelOperation,
-    /// A preview owns the overlay and nothing real is running, so the cancel is
-    /// the preview's alone — recording, model and coordinator stay untouched.
+    /// A preview owns the overlay and nothing real is running, so the cancel
+    /// is the preview's alone. Recording, model and coordinator stay untouched.
     EndPreviewOnly,
-    /// A preview is on screen *and* a real recording is running, which the
+    /// A preview is on screen while a real recording is running, which the
     /// preview never starts but can be overtaken by. Both must end, and the
     /// real cancel is the one that must not be swallowed.
     EndPreviewAndCancel,
@@ -618,7 +619,7 @@ fn cancel_disposition(preview_active: bool, is_recording: bool) -> CancelDisposi
 /// What is left of a cancel once the preview has taken its share.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CancelRemainder {
-    /// There is still a real operation to cancel — either nothing was
+    /// There is still a real operation to cancel. Either nothing was
     /// previewing, or a real recording had already taken the overlay from the
     /// preview that was.
     CancelOperation,
@@ -629,12 +630,12 @@ pub(crate) enum CancelRemainder {
 
 /// Give the running preview, if any, first refusal on a cancel.
 ///
-/// The one call the cancel funnel makes: it asks the guard, ends the preview
+/// The one call the cancel funnel makes. It asks the guard, ends the preview
 /// when the cancel is the preview's, and answers whether the caller still has
 /// something of its own to cancel. Written as one function rather than as a
-/// guard read, a decision and a stop the caller recombines, because the rule
-/// that matters — **a real recording's cancel is never swallowed** — is then
-/// stated once, here, instead of being reconstructed at the call site.
+/// guard read, a decision and a stop the caller recombines, so the rule that
+/// matters is stated once here rather than reconstructed at the call site:
+/// a real recording's cancel is never swallowed.
 pub(crate) fn take_cancel(is_recording: bool) -> CancelRemainder {
     match cancel_disposition(is_previewing(), is_recording) {
         CancelDisposition::CancelOperation => CancelRemainder::CancelOperation,
@@ -652,7 +653,7 @@ pub(crate) fn take_cancel(is_recording: bool) -> CancelRemainder {
 /// Holds the preview guard for as long as the driver runs.
 ///
 /// Releasing on `Drop` rather than at the end of the driver is what keeps the
-/// guard from latching: the driver thread can panic and the next preview still
+/// guard from latching. The driver thread can panic and the next preview still
 /// starts.
 struct PreviewGuard;
 
@@ -671,8 +672,8 @@ fn recording_now(app: &AppHandle) -> bool {
 
 /// Whether the settings window is on screen right now.
 ///
-/// Unknown counts as on screen: a query that fails (the event loop is going
-/// away) must not be the thing that takes a preview down.
+/// Unknown counts as on screen, because a query that fails (the event loop is
+/// going away) must not be the thing that takes a preview down.
 fn settings_window_on_screen(app: &AppHandle) -> bool {
     app.get_webview_window("main")
         .map(|window| window.is_visible().unwrap_or(true))
@@ -681,9 +682,9 @@ fn settings_window_on_screen(app: &AppHandle) -> bool {
 
 /// Take the preview guard, or report why not.
 ///
-/// Waits out a previous driver that is still letting go — see [`CLAIM_WAIT`];
-/// every other refusal is returned at once, because none of them resolves by
-/// waiting.
+/// Waits out a previous driver that is still letting go, for up to
+/// [`CLAIM_WAIT`]. Every other refusal comes back at once, because none of
+/// them resolves by waiting.
 fn claim_preview(app: &AppHandle, style: OverlayStyle) -> Result<PreviewGuard, PreviewRefusal> {
     let deadline = Instant::now() + CLAIM_WAIT;
     loop {
@@ -691,9 +692,9 @@ fn claim_preview(app: &AppHandle, style: OverlayStyle) -> Result<PreviewGuard, P
             None => {
                 // The check above can race a second call; the swap is what
                 // actually makes the guard exclusive, and it is the same swap
-                // that clears any stop left over from the run before — the
-                // guard is a single state, so a stop can never land between the
-                // two and be forgotten.
+                // that clears any stop left over from the run before. The
+                // guard is a single state, so a stop can never land between
+                // the two and be forgotten.
                 if PREVIEW_GUARD
                     .compare_exchange(
                         GUARD_IDLE,
@@ -723,11 +724,11 @@ fn settle_slice(remaining: Duration) -> Duration {
 
 /// Wait [`SHOW_SETTLE`] out, and report whether the run may carry on.
 ///
-/// Never one blind sleep: a stop landing inside it would be held up for its
-/// whole length, and a recording starting inside it would be handed the working
-/// phase the settle exists to deliver — over an overlay that belongs to a real
-/// session by then. Sleeping a tick before each check also bounds how fast the
-/// driver's loop can spin when it gives up here.
+/// Never one blind sleep. A stop landing inside it would be held up for its
+/// whole length, and a recording starting inside it would be handed the
+/// working phase the settle exists to deliver, over an overlay that belongs to
+/// a real session by then. Sleeping a tick before each check also bounds how
+/// fast the driver's loop can spin when it gives up here.
 fn settle(app: &AppHandle) -> bool {
     let deadline = Instant::now() + SHOW_SETTLE;
     loop {
@@ -744,7 +745,7 @@ fn settle(app: &AppHandle) -> bool {
 
 /// 16 synthetic microphone buckets for one frame, each in `0.0..=1.0`.
 ///
-/// A travelling wave under a fixed per-bar envelope: it reads as speech rather
+/// A travelling wave under a fixed per-bar envelope. It reads as speech rather
 /// than as a test pattern, and every bar moves, so the accent is easy to judge.
 fn synthetic_levels(frame: u32) -> Vec<f32> {
     (0..16)
@@ -782,14 +783,14 @@ enum FrameDecision {
     Continue,
     /// End the preview and hide the overlay it owns.
     Stop,
-    /// A real recording took the overlay: end the preview and leave the overlay
-    /// alone, because hiding it would take down a session the user started.
+    /// A real recording took the overlay, so end the preview and leave the
+    /// overlay alone. Hiding it would take down a session the user started.
     Preempted,
 }
 
 /// The frame decision, as a pure function of the three facts it depends on.
 ///
-/// A real recording outranks a stop: even a stop the user asked for must not
+/// A real recording outranks a stop. Even a stop the user asked for must not
 /// hide an overlay that no longer belongs to the preview.
 fn frame_decision(
     is_recording: bool,
@@ -818,23 +819,23 @@ enum PreviewOutcome {
 struct PreviewRun {
     /// Where the driver starts: `Cycle`, or the state to hold.
     initial: PreviewState,
-    /// Which schedule the run is driven by.
+    /// Which schedule drives the run.
     timing: Timing,
-    /// Stop by itself after this long — the one-shot flag's whole behaviour.
-    /// `None` runs until something stops it.
+    /// Stop by itself after this long, which is the one-shot flag's whole
+    /// behaviour. `None` runs until something stops it.
     auto_stop: Option<Duration>,
     /// Whose window the run ends with, if any.
     owner: PreviewOwner,
     sample_text: String,
-    /// Notified once the run has ended, so an awaiting caller learns when the
-    /// overlay is gone.
+    /// The driver sends on this once the run has ended, so an awaiting caller
+    /// learns when the overlay is gone.
     done: Option<Sender<Result<(), String>>>,
 }
 
 /// Start a preview on its own OS thread and return as soon as it owns the
 /// overlay.
 ///
-/// A plain `std::thread`, never the async runtime: this is reached from the
+/// A plain `std::thread`, never the async runtime. This is reached from the
 /// single-instance callback, which runs on a runtime worker parked in a
 /// blocking accept loop, and a task spawned from there lands in that worker's
 /// LIFO slot where no other worker may steal it (see `lib.rs`). The driver also
@@ -925,8 +926,8 @@ fn drive_preview(
             }
         }
 
-        // Re-read every frame: `set_overlay_preview_state` switches the running
-        // preview without restarting it.
+        // Re-read every frame, because `set_overlay_preview_state` switches
+        // the running preview without restarting it.
         let target = PreviewState::from_u8(PREVIEW_TARGET.load(Ordering::SeqCst));
         let wanted = match target {
             PreviewState::Cycle => {
@@ -937,7 +938,7 @@ fn drive_preview(
 
         match wanted {
             None => {
-                // The cycle's gap: nothing on screen, so the next loop replays
+                // The cycle's gap. Nothing on screen, so the next loop replays
                 // the overlay's entrance exactly as a fresh session does.
                 if shown.is_some() {
                     overlay::hide_recording_overlay(app);
@@ -986,8 +987,8 @@ fn drive_preview(
 /// Push one state to the overlay: the window state (only when it really
 /// changes), capture readiness, and the Live panel's phase.
 ///
-/// Returns `false` when the settle before a working phase was cut short because
-/// the run has to end — the caller's own frame decision then ends it.
+/// Returns `false` when the settle before a working phase was cut short
+/// because the run has to end. The caller's own frame decision then ends it.
 fn apply_state(
     app: &AppHandle,
     style: OverlayStyle,
@@ -1005,9 +1006,9 @@ fn apply_state(
         }
     }
     if present.ready {
-        // Exactly what the first real microphone chunk does: leave the arming
-        // pill. Queued on the main thread behind any show above, so it can
-        // never be undone by one.
+        // The first real microphone chunk does exactly this, leaving the
+        // arming pill. Queued on the main thread behind any show above, so no
+        // show can undo it.
         overlay::emit_recording_ready(app);
     }
     if let Some((phase, kind)) = present.phase {
@@ -1057,13 +1058,13 @@ fn emit_text(
 /// Show the real overlay and keep it there, cycling or pinned, until something
 /// stops it.
 ///
-/// `sample_text` is the Live panel's transcript, passed in already translated so
-/// i18n stays entirely on the frontend; `None` falls back to the built-in
-/// English sentence. Returns as soon as the overlay is up; the tab keeps editing
-/// tokens while it runs and every change repaints the overlay live.
+/// `sample_text` is the Live panel's transcript, passed in already translated
+/// so i18n stays entirely on the frontend. `None` falls back to the built-in
+/// English sentence. Returns as soon as the overlay is up. The tab keeps
+/// editing tokens while it runs, and every change repaints the overlay live.
 ///
-/// Blocking: the claim inside waits briefly for a previous driver to let go, so
-/// the command adapter runs this off the main thread.
+/// Blocking, because the claim inside waits briefly for a previous driver to
+/// let go, so the command adapter runs this off the main thread.
 pub(crate) fn start(
     app: &AppHandle,
     state: PreviewState,
@@ -1084,9 +1085,9 @@ pub(crate) fn start(
 
 /// Set which state the running preview shows, without restarting the driver.
 ///
-/// Always writes the target, whether or not a preview is running: the tab can
+/// Always writes the target, whether or not a preview is running. The tab can
 /// race a preview the backend already ended (a real recording took the
-/// overlay), and remembering the pin costs nothing — the next start reads it
+/// overlay), and remembering the pin costs nothing. The next start reads it
 /// anyway, and no driver reads it while none is running.
 pub(crate) fn pin_state(state: PreviewState) {
     PREVIEW_TARGET.store(state.as_u8(), Ordering::SeqCst);
@@ -1172,15 +1173,16 @@ mod tests {
         );
     }
 
-    /// A draft only ever repaints an overlay the tab still owns: not one a
-    /// recording has taken, and not one whose preview is on its way out (the
-    /// `false` column, which `preview_running` supplies for a stopping guard).
+    /// A draft only ever repaints an overlay the tab still owns. It repaints
+    /// neither one a recording has taken nor one whose preview is on its way
+    /// out (the `false` column, which `preview_running` supplies for a
+    /// stopping guard).
     #[test]
     fn a_draft_may_only_repaint_a_running_preview_nothing_is_recording_over() {
         assert!(draft_allowed(true, false));
-        // Pre-empted: the recording owns the overlay from this moment on.
+        // Pre-empted, so the recording owns the overlay from this moment on.
         assert!(!draft_allowed(true, true));
-        // Idle or stopping: there is nothing of the tab's on screen to paint.
+        // Idle or stopping, so nothing of the tab's is on screen to paint.
         assert!(!draft_allowed(false, false));
         assert!(!draft_allowed(false, true));
     }
@@ -1199,15 +1201,16 @@ mod tests {
             // A running preview is the one state the Appearance tab may paint.
             assert!(preview_running());
             stop_preview();
-            // ...and a stopping one is not: the driver is about to hide the
-            // window, so a draft sent now would paint a card on its way out.
+            // ...and a stopping one is not, because the driver is about to
+            // hide the window, so a draft sent now would paint a card on its
+            // way out.
             assert!(!preview_running());
             assert!(
                 is_previewing(),
                 "a stopping preview still owns the overlay, it just cannot be drafted onto"
             );
-            // A stop is recorded by the same atomic that says a preview is
-            // running, so it cannot be cleared by a start that is claiming.
+            // The same atomic that says a preview is running also records the
+            // stop, so a start that is claiming cannot clear it.
             assert!(stop_requested());
             assert!(
                 is_previewing(),
@@ -1351,7 +1354,7 @@ mod tests {
         );
         assert!(last_chunk_at < deadline_ms);
 
-        // Which is exactly what the persistent cycle cannot do: on its own
+        // Which is exactly what the persistent cycle cannot do. On its own
         // schedule the panel is still listening when the deadline arrives.
         assert_eq!(
             cycle_state_at(
@@ -1369,7 +1372,7 @@ mod tests {
             StyleChange::Keep
         );
         // The group above the preview card switched styles under a running
-        // preview: the other card is a different window state, so it has to be
+        // preview. The other card is a different window state, so it has to be
         // replayed rather than adjusted.
         assert_eq!(
             style_change(OverlayStyle::Live, OverlayStyle::Minimal),
@@ -1494,14 +1497,14 @@ mod tests {
             None,
             PreviewState::Listening
         ));
-        // Arming is replayed by a show and by nothing else.
+        // Only a show replays arming.
         assert!(needs_show(
             OverlayStyle::Live,
             Some(PreviewState::Listening),
             PreviewState::Arming
         ));
-        // Live's phases share one window, so a phase change must not re-show:
-        // that would clear the transcript and replay the entrance.
+        // Live's phases share one window, so a phase change must not re-show.
+        // That would clear the transcript and replay the entrance.
         assert!(!needs_show(
             OverlayStyle::Live,
             Some(PreviewState::Listening),
@@ -1539,7 +1542,7 @@ mod tests {
 
     #[test]
     fn a_real_recording_ends_the_preview_without_taking_the_overlay_down() {
-        // Pre-emption outranks a stop: the overlay belongs to the recording
+        // Pre-emption outranks a stop. The overlay belongs to the recording
         // now, so even a stop the user asked for must not hide it.
         assert_eq!(frame_decision(true, false, false), FrameDecision::Preempted);
         assert_eq!(frame_decision(true, true, true), FrameDecision::Preempted);
@@ -1558,8 +1561,8 @@ mod tests {
         // Transcribing painted a listening card, because the overlay page's
         // own show handler resets the phase once its async reads finish.
         assert!(phase_needs_settle(true, StreamPhase::Working));
-        // Nothing else waits: the listening phase is where that reset lands
-        // anyway, and a phase change without a show has nothing to race.
+        // Nothing else waits, because the listening phase is where that reset
+        // lands anyway, and a phase change without a show has nothing to race.
         assert!(!phase_needs_settle(true, StreamPhase::Listening));
         assert!(!phase_needs_settle(false, StreamPhase::Working));
         assert!(!phase_needs_settle(false, StreamPhase::Listening));

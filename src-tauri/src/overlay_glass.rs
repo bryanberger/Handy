@@ -1,16 +1,16 @@
-//! Glass material: a native macOS blur behind the recording overlay.
+//! The native macOS blur the Glass material draws behind the overlay.
 //!
 //! One view (the "glass view") is installed once, below the webview, and
 //! toggled with `setHidden`/`alphaValue` for the life of the app. Installing
 //! it more than once, or through Tauri's own `set_effects`, stacks views that
-//! nothing but a Rust-owned toggle can remove, so every function here treats
+//! nothing but a Rust-owned toggle can remove. So every function here treats
 //! installation as a one-time event and everything after it as a property
 //! change on the same view.
 //!
-//! **Two engines, chosen once from a class lookup.** macOS 26 ships
-//! `NSGlassEffectView` — Liquid Glass — which is what [`install`] uses when
-//! the class exists; anything older gets the `NSVisualEffectView` this
-//! feature shipped with. [`engine_for`] is the whole decision, and
+//! Two engines, chosen once from a class lookup. macOS 26 ships
+//! `NSGlassEffectView`, Liquid Glass, which is what [`install`] uses when the
+//! class exists; anything older gets the `NSVisualEffectView` this feature
+//! shipped with. [`engine_for`] is the whole decision, and
 //! [`GlassSupport::engine`] reports the answer so the Appearance tab offers
 //! the token that engine actually honours: `glass_style` on Liquid Glass,
 //! `glass_material` on the fallback. Both are live setters on the one
@@ -20,26 +20,26 @@
 //! `surface`/`glass_tint` by `overlay_theme::liquid_tint` (which only
 //! exists on macOS, so this is not an intra-doc link), so
 //! that the glass can lens it rather than have it painted flat on top. The
-//! card keeps painting its own surface as well: measured on macOS 26, a card
+//! card keeps painting its own surface as well. Measured on macOS 26, a card
 //! that left the tint to `tintColor` alone came out dark under a Light app
 //! theme, with the transcript on it unreadable.
 //!
-//! Off macOS — and whenever installation fails — every function is a no-op
-//! and [`support`] reports Glass as unavailable, so the rest of the app
-//! always degrades to Flat rather than reasoning about a half-installed
-//! state (`available` folds `INSTALLED` in for exactly this reason).
+//! Off macOS, and whenever installation fails, every function is a no-op and
+//! [`support`] reports Glass as unavailable. The rest of the app then
+//! degrades to Flat rather than reasoning about a half-installed state
+//! (`available` folds `INSTALLED` in for exactly this reason).
 //!
 //! Every function that touches AppKit hops to the main thread itself via
 //! `AppHandle::run_on_main_thread` (a no-op hop when already on it), so
 //! callers in `overlay.rs` never need to.
 //!
-//! Whether the view is on screen at all is not decided by its callers but by
-//! [`glass_action`], the one rule this module enforces: the blur exists only
-//! while the effective Material is Glass. Every entry point that could change
-//! its visibility takes that Material as an argument and routes through that
-//! function, so a caller cannot forget the check — it can only pass a stale
-//! answer, which is why each call site in `overlay.rs` resolves the Material
-//! on the thread that is about to act rather than earlier.
+//! [`glass_action`] decides whether the view is on screen at all. It is the
+//! one rule this module enforces: the blur exists only while the effective
+//! Material is Glass. Every entry point that could change its visibility
+//! takes that Material as an argument and routes through that function, so a
+//! caller cannot forget the check. It can only pass a stale answer, which is
+//! why each call site in `overlay.rs` resolves the Material on the thread
+//! that is about to act rather than earlier.
 
 use crate::overlay_theme::{
     GlassEngine, GlassMaterial, GlassStyle, GlassSupport, Material, OverlayTheme,
@@ -50,10 +50,10 @@ use tauri::AppHandle;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GlassRequest {
     /// Bring the view in line with the theme a show or a reposition is about
-    /// to render in. Never reveals: the blur may only come up once the card
+    /// to render in. Never reveals. The blur may only come up once the card
     /// has painted into the window.
     ApplyMaterial,
-    /// Put the blur on screen — the card has painted, or the window has just
+    /// Put the blur on screen. The card has painted, or the window has just
     /// been resized under it.
     Reveal,
 }
@@ -74,7 +74,7 @@ pub enum GlassAction {
 /// tints itself with.
 ///
 /// Carried whole rather than per engine so a call site cannot pick the wrong
-/// half — which engine reads which field is this module's business, not
+/// half. Which engine reads which field is this module's business, not
 /// `overlay.rs`'s.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GlassAppearance {
@@ -84,8 +84,8 @@ pub struct GlassAppearance {
     pub glass_style: GlassStyle,
     /// The `surface` token, or `None` to inherit the app background.
     pub surface: Option<crate::overlay_theme::HexColor>,
-    /// The `glass_tint` token, or `None` to inherit. Glass's own tint
-    /// strength: `surface_opacity` is Flat's control and is not read here.
+    /// The `glass_tint` token, or `None` to inherit. It is Glass's own tint
+    /// strength. `surface_opacity` is Flat's control and is not read here.
     pub glass_tint: Option<f64>,
 }
 
@@ -106,8 +106,8 @@ impl GlassAppearance {
 /// `NSVisualEffectView` blur everywhere else.
 ///
 /// Pure, with the class lookup as its only input, so the version gate is a
-/// table rather than a runtime accident — and so a machine that has the class
-/// but failed to install still reports `None` rather than a Liquid Glass the
+/// table rather than a runtime accident. A machine that has the class but
+/// failed to install therefore reports `None` rather than a Liquid Glass the
 /// user cannot see. Both callers pass the same lookup: [`install`] to decide
 /// what to create, [`support`] to report what was created.
 pub fn engine_for(installed: bool, liquid_class_available: bool) -> GlassEngine {
@@ -119,18 +119,18 @@ pub fn engine_for(installed: bool, liquid_class_available: bool) -> GlassEngine 
 }
 
 /// The one rule for whether the native blur may be on screen: only while the
-/// **effective** Material is Glass.
+/// effective Material is Glass.
 ///
-/// It is a single rule because the blur is not a decoration on the card, it is
-/// the window: `overlay_dimensions` sizes the window to the card exactly under
-/// Glass and gives it slack again under Flat, so a blur left visible after a
-/// switch to Flat shows as a lighter translucent capsule at window size with
-/// the Flat card sitting inside it. Every path that could put the view on
-/// screen — a first card-shape report, the delayed fallback reveal, a
-/// reposition of an already-mapped window — hands its Material to
-/// [`show_glass`] or [`morph_frame`], and both come back through here, so
-/// there is no reveal that skips the check. Under Flat a *reveal* request is
-/// therefore not ignored but inverted: it hides.
+/// It is a single rule because under Glass the blur is the window.
+/// `overlay_geometry`'s `CardMetrics::window_size` sizes the window to the
+/// card exactly under Glass and gives it slack again under Flat, so a blur
+/// left visible after a switch to Flat shows as a lighter translucent capsule
+/// at window size with the Flat card sitting inside it. Every path that could
+/// put the view on screen hands its Material to [`show_glass`] or
+/// [`morph_frame`]: a first card-shape report, the delayed fallback reveal, a
+/// reposition of an already-mapped window. Both come back through here, so no
+/// reveal skips the check. Under Flat a reveal request therefore hides rather
+/// than doing nothing.
 pub fn glass_action(material: Material, request: GlassRequest) -> GlassAction {
     match (material, request) {
         (Material::Flat, _) => GlassAction::HideNow,
@@ -139,7 +139,9 @@ pub fn glass_action(material: Material, request: GlassRequest) -> GlassAction {
     }
 }
 
-/// Install the single `NSVisualEffectView` behind the webview, hidden.
+/// Install the single glass view behind the webview, hidden. The class is
+/// whichever engine [`engine_for`] picks: `NSGlassEffectView` from macOS 26,
+/// `NSVisualEffectView` below it.
 ///
 /// Called from both `create_recording_overlay` paths, right after the window
 /// exists and before its first `hide()`; off macOS it does nothing, so the
@@ -179,18 +181,18 @@ pub fn support(_app: &AppHandle) -> GlassSupport {
 /// line with the theme a show is about to render in.
 ///
 /// Under Flat it hides the view outright and at once, cancelling any fade
-/// still running — unconditionally, in case a previous Glass session left it
-/// visible; a stale translucent margin around a Flat card (which has slack
-/// again) would otherwise show through. Under Glass it writes the appearance
-/// onto the one installed view — the material on the fallback engine, the
-/// style and the tint on the liquid one — and changes nothing else: the view
-/// stays exactly as visible as it was, so a first show cannot reveal it
-/// before the card paints. [`show_glass`] and [`morph_frame`] are the only
-/// functions that reveal it, once the window is sized and positioned for the
-/// card.
+/// still running. It hides unconditionally, in case a previous Glass session
+/// left it visible; a stale translucent margin around a Flat card (which has
+/// slack again) would otherwise show through. Under Glass it writes the
+/// appearance onto the one installed view, the material on the fallback
+/// engine and the style and the tint on the liquid one, and changes nothing
+/// else. The view stays exactly as visible as it was, so a first show cannot
+/// reveal it before the card paints. [`show_glass`] and [`morph_frame`] are
+/// the only functions that reveal it, once the window is sized and positioned
+/// for the card.
 ///
 /// Every property here is a live setter, so switching engines' tokens is a
-/// property write on the existing view — the view is never re-created, which
+/// property write on the existing view. The view is never re-created, which
 /// is the whole reason a second one can never appear.
 #[cfg(target_os = "macos")]
 pub fn apply_material(app: &AppHandle, material: Material, appearance: GlassAppearance) {
@@ -202,17 +204,16 @@ pub fn apply_material(app: &AppHandle, material: Material, appearance: GlassAppe
 pub fn apply_material(_app: &AppHandle, _material: Material, _appearance: GlassAppearance) {}
 
 /// Re-write the installed view's appearance from the theme as it resolves
-/// **now**, because the app appearance changed under it.
+/// now, because the app appearance changed under it.
 ///
 /// The liquid engine's tint is composed from the overlay window's effective
 /// appearance (`overlay_theme::liquid_tint`) at the moment it is written, and
-/// nothing re-reads that appearance afterwards. A theme switch
-/// while the card is on screen — which is the Appearance tab's preview, and
-/// the only way to see it — therefore repaints the webview from the
-/// `theme-changed` event while the glass keeps the tint it was handed under
-/// the old appearance. This is the other half: both app-theme paths, the
-/// setting and the system's own `ThemeChanged`, call it so the two halves of
-/// the surface move together.
+/// nothing re-reads that appearance afterwards. So a theme switch while the
+/// card is on screen (the Appearance tab's preview, and the only way to see
+/// it) repaints the webview from the `theme-changed` event while the glass
+/// keeps the tint it was handed under the old appearance. This function is
+/// the other half. Both app-theme paths, the setting and the system's own
+/// `ThemeChanged`, call it so the two halves of the surface move together.
 ///
 /// Resolves cache-only, so it is safe on the main thread, and the AppKit work
 /// happens on the main thread regardless (see [`apply_material`]).
@@ -235,11 +236,11 @@ pub fn reapply_appearance(_app: &AppHandle) {}
 /// alpha 0 -> 1 over the card's own fade duration (`--ov-fade-ms`) if it was
 /// not already fully visible.
 ///
-/// `material` is the Material in effect **now**, not when the reveal was
-/// decided on, and it is what actually happens: under Flat this hides the view
-/// instead of revealing it (see [`glass_action`]). Callers whose reveal can
-/// land late — the delayed fallback reveal, a card-shape report crossing to
-/// the main thread — therefore resolve it as late as they can.
+/// `material` is the Material in effect now, not when the reveal was decided
+/// on, and it decides what happens. Under Flat this hides the view instead of
+/// revealing it (see [`glass_action`]). Two callers can land late, the
+/// delayed fallback reveal and a card-shape report crossing to the main
+/// thread, so both resolve `material` as late as they can.
 ///
 /// Idempotent: calling it again while already visible only updates the radius.
 /// A no-op when Glass is not installed.
@@ -255,9 +256,9 @@ pub fn show_glass(_app: &AppHandle, _material: Material, _radius: f64) {}
 /// Move the panel frame to `size`, keeping the anchored screen edge and the
 /// horizontal centre fixed, set the radius, and reveal the glass view.
 ///
-/// `size` is a Glass window — the card exactly, with no slack — so this only
+/// `size` is a Glass window, the card exactly, with no slack, so this only
 /// moves the frame while `material` is still Glass. Under Flat it neither
-/// resizes nor reveals: the window belongs to `update_overlay_position` then,
+/// resizes nor reveals. The window belongs to `update_overlay_position` then,
 /// and the view goes off screen (see [`glass_action`]).
 ///
 /// Snaps by default; `duration_ms` only animates when `HANDY_GLASS_MORPH=1`
@@ -288,10 +289,10 @@ pub fn morph_frame(
 /// card, or hide it at once when `duration_ms` is 0 (the Live card is
 /// unmounted rather than faded, so its blur must go with it).
 ///
-/// Only the alpha changes: the view is deliberately left unhidden, because a
-/// deferred `setHidden` would need the same generation guard the delayed
-/// window unmap carries, and buys nothing — a hidden window paints nothing,
-/// and the next reveal fades the alpha back up from 0 anyway.
+/// Only the alpha changes. This deliberately leaves the view unhidden,
+/// because a deferred `setHidden` would need the same generation guard the
+/// delayed window unmap carries and would buy nothing. A hidden window paints
+/// nothing, and the next reveal fades the alpha back up from 0 anyway.
 #[cfg(target_os = "macos")]
 pub fn fade_out(app: &AppHandle, duration_ms: u32) {
     native::fade_out(app, duration_ms);
@@ -335,8 +336,8 @@ mod native {
     static GLASS_VIEW: Mutex<Option<usize>> = Mutex::new(None);
 
     /// Set once [`install`] has actually added the view to the window.
-    /// Folded into [`GlassSupport::available`]: a failed install makes Glass
-    /// render Flat everywhere at once, with no half-installed state to
+    /// Folded into [`GlassSupport::available`], so a failed install makes
+    /// Glass render Flat everywhere at once, with no half-installed state to
     /// reason about.
     static INSTALLED: AtomicBool = AtomicBool::new(false);
 
@@ -357,20 +358,20 @@ mod native {
 
             let bounds = content.bounds();
             // The engine is decided here, once, from the class lookup, and
-            // reported unchanged by `support` — the two agree because they
+            // reported unchanged by `support`. The two agree because they
             // ask `engine_for` the same question.
             let engine = engine_for(true, liquid_class_available());
             let glass_view: Retained<NSView> = match engine {
                 GlassEngine::Liquid => {
                     let view = NSGlassEffectView::initWithFrame(mtm.alloc(), bounds);
-                    // Starting values only: every show and every reposition
+                    // A starting value only. Every show and every reposition
                     // writes the resolved `glass_style` and tint onto this
                     // same view through `apply_material`.
                     view.setStyle(native_style(GlassStyle::default()));
                     Retained::into_super(view)
                 }
-                // `engine_for(true, ..)` never answers `None` — a view is
-                // being installed right here — and the fallback blur is the
+                // `engine_for(true, ..)` never answers `None`, since a view
+                // is being installed right here, and the fallback blur is the
                 // safe reading of it either way. Spelled out rather than
                 // `_ =>` so a third engine has to be answered here.
                 GlassEngine::VisualEffect | GlassEngine::None => {
@@ -378,7 +379,7 @@ mod native {
                     // Likewise a starting value; `glass_material` follows.
                     view.setMaterial(native_material(GlassMaterial::default()));
                     view.setBlendingMode(NSVisualEffectBlendingMode::BehindWindow);
-                    // Mandatory: this panel can never become key
+                    // Mandatory. This panel can never become key
                     // (`can_become_key_window: false`, overlay.rs), so the
                     // default FollowsWindowActiveState would render the
                     // inactive, flat look forever (window-vibrancy#88, #93).
@@ -404,8 +405,8 @@ mod native {
                 NSWindowOrderingMode::Below,
                 None,
             );
-            // Hidden from creation: nothing but a reveal, which only ever runs
-            // once the window is sized and positioned for the card, may show it.
+            // Hidden from creation. Only a reveal may show it, and a reveal
+            // runs only once the window is sized and positioned for the card.
             glass_view.setHidden(true);
 
             let ptr = Retained::into_raw(glass_view) as usize;
@@ -436,10 +437,10 @@ mod native {
         engine_for(INSTALLED.load(Ordering::SeqCst), liquid_class_available())
     }
 
-    /// Whether this macOS has `NSGlassEffectView` — the runtime gate for
+    /// Whether this macOS has `NSGlassEffectView`, the runtime gate for
     /// Liquid Glass, which arrived in macOS 26. A class lookup rather than a
-    /// version comparison: the class is the thing the code needs, and asking
-    /// for it directly cannot go stale the way a version table does.
+    /// version comparison, because the class is the thing the code needs and
+    /// asking for it directly cannot go stale the way a version table does.
     /// `objc_getClass` walks a hash table, so this is cheap enough to answer
     /// on every `support()` call rather than caching a second static.
     fn liquid_class_available() -> bool {
@@ -455,10 +456,10 @@ mod native {
                 // Off screen unconditionally, in case a previous Glass session
                 // left the view visible behind a card that now has slack.
                 GlassAction::HideNow => hide_now(view.as_view()),
-                // Live property writes on the installed view; visibility is
-                // deliberately untouched, so the blur cannot appear before
-                // the card has painted. `ApplyMaterial` never asks for a
-                // reveal, so `RevealNow` cannot reach this arm.
+                // Live property writes on the installed view; this arm
+                // deliberately leaves visibility alone, so the blur cannot
+                // appear before the card has painted. `ApplyMaterial` never
+                // asks for a reveal, so `RevealNow` cannot reach this arm.
                 _ => apply_appearance(window, &view, &appearance),
             }
         });
@@ -466,8 +467,8 @@ mod native {
 
     /// Write the engine's own appearance onto the installed view: the macOS
     /// material on the fallback, the Liquid Glass style and the surface tint
-    /// on the liquid engine. The other engine's token is not read at all —
-    /// the tokens are independent, so a theme carries both and each machine
+    /// on the liquid engine. The other engine's token is not read at all.
+    /// The tokens are independent, so a theme carries both and each machine
     /// honours the one it can.
     fn apply_appearance(window: &NSWindow, view: &GlassView, appearance: &GlassAppearance) {
         match view {
@@ -477,11 +478,11 @@ mod native {
             GlassView::Liquid(liquid) => {
                 liquid.setStyle(native_style(appearance.glass_style));
                 // The window's effective appearance, not the settings' theme
-                // enum: `apply_window_theme` sets `NSApp.appearance` app-wide
+                // enum. `apply_window_theme` sets `NSApp.appearance` app-wide
                 // and this panel follows it, so the window already knows the
                 // answer for System, Light and Dark alike. It is read here
                 // and nowhere else, though, so the composed tint is only as
-                // fresh as the last write: the app-theme paths call
+                // fresh as the last write. The app-theme paths call
                 // `reapply_appearance` to recompose it when the appearance
                 // itself changes under a card already on screen.
                 let tint = liquid_tint(
@@ -544,10 +545,10 @@ mod native {
                 return;
             };
             match glass_action(material, GlassRequest::Reveal) {
-                // A reveal that finds Flat in effect is a reveal that was
-                // decided under Glass and landed late. It must not be merely
-                // ignored: whatever hid the view may itself have run before
-                // this one was queued, so the safe answer is to hide again.
+                // A reveal that finds Flat in effect was decided under Glass
+                // and landed late. Ignoring it is not enough. Whatever hid
+                // the view may itself have run before this one was queued, so
+                // the safe answer is to hide again.
                 GlassAction::HideNow => hide_now(view.as_view()),
                 _ => reveal(&view, radius),
             }
@@ -563,9 +564,9 @@ mod native {
     ) {
         let overlay_position = crate::settings::get_settings(app).overlay_position;
         on_window(app, move |window, _mtm| {
-            // A Glass-sized frame must not be applied to a window the Material
-            // has already handed back to Flat, so the whole morph — frame and
-            // reveal alike — is dropped and the view goes off screen instead.
+            // A Glass-sized frame must not land on a window the Material has
+            // already handed back to Flat, so this drops the whole morph,
+            // frame and reveal alike, and takes the view off screen instead.
             if glass_action(material, GlassRequest::Reveal) == GlassAction::HideNow {
                 if let Some(view) = glass_view() {
                     hide_now(view.as_view());
@@ -582,8 +583,8 @@ mod native {
             // Horizontal centre fixed; the anchored screen edge (bottom for a
             // bottom overlay, top for a top one) fixed. Same relative rule as
             // `calculate_overlay_position`, which is provably equivalent at
-            // every size, so no Tauri-to-AppKit coordinate conversion is
-            // attempted here.
+            // every size, so this attempts no Tauri-to-AppKit coordinate
+            // conversion.
             let origin = NSPoint::new(
                 old.origin.x + (old.size.width - width) / 2.0,
                 match overlay_position {
@@ -604,7 +605,7 @@ mod native {
                 )));
                 // A second `animator().setFrame_display:` on the same window
                 // while one is already running retargets from the current
-                // frame — an in-flight morph superseded by a newer shape is
+                // frame. An in-flight morph superseded by a newer shape is
                 // deliberately left to AppKit rather than cancelled by hand.
                 window.animator().setFrame_display(new_frame, true);
                 NSAnimationContext::endGrouping();
@@ -645,13 +646,13 @@ mod native {
         view.setHidden(true);
     }
 
-    /// Set the glass view's corner radius and make sure it ends up fully
-    /// visible: fading in from clear when it starts fully hidden, and also
-    /// finishing an interrupted fade-out (alpha heading toward 0 but the view
-    /// never hidden) — which is what a new session started inside a previous
-    /// one's fade recovers through. A steady-state call (already visible,
-    /// alpha already 1) only updates the radius, which is what makes both
-    /// public callers idempotent.
+    /// Set the glass view's corner radius and leave the view fully visible.
+    /// It fades in from clear when the view starts fully hidden, and it also
+    /// finishes an interrupted fade-out (alpha heading toward 0 but the view
+    /// never hidden), which is how a new session started inside a previous
+    /// one's fade recovers. A steady-state call (already visible, alpha
+    /// already 1) only updates the radius, which is what makes both public
+    /// callers idempotent.
     fn reveal(view: &GlassView, radius: f64) {
         match view {
             // Liquid Glass rounds the glass itself, edge highlight included;
@@ -688,14 +689,14 @@ mod native {
     ///
     /// It snaps by default. The native window and its blur reach the new
     /// shape a frame or two before WebKit repaints the card into it, which
-    /// shows as a bare blurred rim along the growing edge — measured at up to
+    /// shows as a bare blurred rim along the growing edge, measured at up to
     /// 17 pt for about 200 ms of the 460 ms Live open. Snapping has no rim in
     /// any frame.
     ///
     /// `HANDY_GLASS_MORPH=1` opts the animation back in, so the two can be
-    /// compared on real hardware. macOS "Reduce motion" snaps either way: a
-    /// native *window* animation did not exist before Glass, so a user who
-    /// has asked for less motion should not get one from it.
+    /// compared on real hardware. macOS "Reduce motion" snaps either way. A
+    /// native window animation did not exist before Glass, so a user who has
+    /// asked for less motion should not get one from it.
     fn morph_duration_ms(requested_ms: u32, morph_opted_in: bool, reduce_motion: bool) -> u32 {
         if morph_opted_in && !reduce_motion {
             requested_ms
@@ -719,9 +720,9 @@ mod native {
 
     /// The installed glass view, as whichever class the engine chose.
     ///
-    /// Every operation that is the same on both — hide, fade, alpha — takes
-    /// the `NSView` this derefs to; only the corner radius and the
-    /// appearance differ, and those match on the variant.
+    /// Hide, fade and alpha are the same on both, so they take the `NSView`
+    /// this derefs to. Only the corner radius and the appearance differ, and
+    /// those match on the variant.
     enum GlassView {
         VisualEffect(Retained<NSVisualEffectView>),
         Liquid(Retained<NSGlassEffectView>),
@@ -770,11 +771,11 @@ mod native {
     /// class exists on this machine.
     ///
     /// Names rather than types, because the typed binding's
-    /// `ClassType::class()` resolves the class eagerly and **panics** when it
-    /// is absent — which `NSGlassEffectView` is on every macOS before 26. It
-    /// was called from the install log line below, whose argument is
-    /// evaluated whatever the log level filters out, so it took the app down
-    /// at startup there.
+    /// `ClassType::class()` resolves the class eagerly and panics when the
+    /// class is absent, as `NSGlassEffectView` is on every macOS before 26.
+    /// It was called from the install log line, whose argument is evaluated
+    /// whatever the log level filters out, so it took the app down at startup
+    /// there.
     ///
     /// Pure, with the same single input [`engine_for`] takes, so the
     /// "no Liquid Glass on this machine" answer is testable on a macOS 26
@@ -787,9 +788,9 @@ mod native {
         }
     }
 
-    /// Count of glass views — of either class — in `window`'s content view.
+    /// Count of glass views, of either class, in `window`'s content view.
     /// Used only for the install log line above and for on-screen
-    /// verification — never a behavioural signal, since installation is
+    /// verification, never as a behavioural signal, since installation is
     /// structurally one-shot (the only `addSubview_positioned_relativeTo`
     /// call in this module is gated on `INSTALLED`).
     fn count_glass_views(window: &NSWindow) -> usize {
@@ -797,7 +798,7 @@ mod native {
             return 0;
         };
         // Looked up by name, and only for the classes this macOS actually
-        // has: a class that is absent is simply not counted, never asked for.
+        // has. An absent class is simply not counted, never asked for.
         let classes: Vec<&AnyClass> = glass_view_class_names(liquid_class_available())
             .iter()
             .filter_map(|name| AnyClass::get(name))
@@ -816,9 +817,9 @@ mod native {
 
     /// Run `f` on the main thread with the overlay panel's `NSWindow`, if the
     /// window exists yet. Every AppKit call in this module goes through this
-    /// — the panel can never become key, so nothing here may run off the
-    /// main thread — and `run_on_main_thread` runs the closure inline when
-    /// already on it, so this never deadlocks.
+    /// one function, because the panel can never become key and so nothing
+    /// here may run off the main thread. `run_on_main_thread` runs the
+    /// closure inline when already on it, so this never deadlocks.
     fn on_window<F>(app: &AppHandle, f: F)
     where
         F: FnOnce(&NSWindow, MainThreadMarker) + Send + 'static,
@@ -855,14 +856,14 @@ mod native {
         use crate::overlay_geometry::CARD_MORPH_MS;
         use objc2_app_kit::{NSGlassEffectViewStyle, NSVisualEffectMaterial};
 
-        /// The startup crash this seam exists for: `NSGlassEffectView` does
+        /// The startup crash this seam exists for. `NSGlassEffectView` does
         /// not exist before macOS 26, and the typed binding's `class()`
-        /// panics rather than returning `None` — inside an argument to the
+        /// panics rather than returning `None`, inside an argument to the
         /// install log line, which is evaluated whatever the log level is.
         /// So on a machine without Liquid Glass the count must never name
         /// that class at all.
         ///
-        /// Only this half can be exercised here: this test machine runs
+        /// Only this half can be exercised here. This test machine runs
         /// macOS 26, so `liquid_class_available()` is true and the absent
         /// branch is reachable only through the seam.
         #[test]
@@ -874,8 +875,8 @@ mod native {
             );
         }
 
-        /// …and every name it does hand out for *this* machine resolves, so
-        /// the count is a real count rather than a silent zero.
+        /// Every name it does hand out for this machine resolves, so the
+        /// count is a real count rather than a silent zero.
         #[test]
         fn every_counted_class_resolves_on_this_machine() {
             let names = glass_view_class_names(liquid_class_available());
@@ -886,8 +887,8 @@ mod native {
         }
 
         /// Every token value maps to a distinct AppKit material, and the
-        /// default is the one the comparison sheet chose — a swapped pair
-        /// here would be invisible in every other test.
+        /// default maps to `HUDWindow`. A swapped pair here would be
+        /// invisible in every other test.
         #[test]
         fn every_glass_material_maps_to_its_appkit_counterpart() {
             assert_eq!(
@@ -914,7 +915,7 @@ mod native {
 
         /// The two Liquid Glass styles, and which one an unset token means.
         /// The AppKit enum is two adjacent raw values, so a swapped pair here
-        /// would be invisible everywhere else — the Clear card would simply
+        /// would be invisible everywhere else. The Clear card would simply
         /// look like the Regular one.
         #[test]
         fn every_glass_style_maps_to_its_appkit_counterpart() {
@@ -936,9 +937,9 @@ mod native {
             assert_eq!(mapped.len(), GlassStyle::ALL.len());
         }
 
-        /// The default the visual sign-off settled on: the window and its blur
-        /// reach the new shape in the same frame the card does, with no bare
-        /// frosted rim along the growing edge.
+        /// Snapping is the default, so the window and its blur reach the new
+        /// shape in the same frame the card does, with no bare blurred rim
+        /// along the growing edge.
         #[test]
         fn the_frame_snaps_unless_the_animation_is_opted_into() {
             assert_eq!(morph_duration_ms(CARD_MORPH_MS, false, false), 0);
@@ -968,8 +969,8 @@ mod tests {
 
     /// The version gate, stated as a table: Liquid Glass wherever
     /// `NSGlassEffectView` exists, the old blur everywhere else, and nothing
-    /// at all until a view is actually installed — which is what off macOS
-    /// and a failed install both look like from here.
+    /// at all until a view is actually installed. Off macOS and a failed
+    /// install both look like that last case from here.
     #[test]
     fn the_engine_follows_the_class_lookup_once_a_view_is_installed() {
         assert_eq!(engine_for(true, true), GlassEngine::Liquid);
@@ -977,19 +978,19 @@ mod tests {
     }
 
     /// A machine that has the class but never installed a view must not
-    /// advertise Liquid Glass: the tab would offer a Glass style that changes
-    /// nothing, and `available` is already false for the same reason.
+    /// advertise Liquid Glass, because the tab would offer a Glass style that
+    /// changes nothing. `available` is already false for the same reason.
     #[test]
     fn nothing_is_reported_before_a_view_is_installed() {
         assert_eq!(engine_for(false, true), GlassEngine::None);
         assert_eq!(engine_for(false, false), GlassEngine::None);
     }
 
-    /// The bug this table was written for: a Glass session's reveal landing
+    /// The bug this table was written for. A Glass session's reveal landing
     /// after the user switched to Flat put the blur back on screen at window
-    /// size, and the window had its Flat slack again — a lighter translucent
-    /// capsule around the card. So under Flat a reveal does not merely do
-    /// nothing, it hides.
+    /// size, and the window had its Flat slack again, showing a lighter
+    /// translucent capsule around the card. So under Flat a reveal hides
+    /// rather than doing nothing.
     #[test]
     fn flat_takes_the_glass_view_off_screen_whatever_was_asked_for() {
         assert_eq!(
@@ -1002,7 +1003,7 @@ mod tests {
         );
     }
 
-    /// Under Glass, only an explicit reveal reveals: applying the Material on
+    /// Under Glass, only an explicit reveal reveals. Applying the Material on
     /// a show must leave the view as hidden as it was, or the blur appears
     /// before the card has painted into it.
     #[test]
@@ -1017,7 +1018,7 @@ mod tests {
         );
     }
 
-    /// Nothing but Glass ever leaves the view on screen — stated once over the
+    /// Nothing but Glass ever leaves the view on screen. Stated once over the
     /// whole input space, so a Material added later has to answer this too.
     #[test]
     fn the_view_is_on_screen_only_under_glass() {

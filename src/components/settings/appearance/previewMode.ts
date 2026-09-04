@@ -1,18 +1,18 @@
 /**
  * Preview mode's decisions, as pure functions.
  *
- * Preview mode keeps the *real* overlay on screen while the overlay theme is
- * edited: the tab asks the backend to start a driver, pins it to a state or
- * lets it cycle, and stops it again. Everything the tab decides — whether the
- * button may be pressed, which chips exist, and which backend call an action
- * turns into — lives here so it can be tested without a webview.
+ * Preview mode keeps the real overlay on screen while the overlay theme is
+ * edited. The tab asks the backend to start a driver, pins it to a state or
+ * lets it cycle, and stops it again. Everything the tab decides lives here so
+ * it can be tested without a webview: whether the button may be pressed,
+ * which chips exist, and which backend call an action turns into.
  */
 
 import type { Material, OverlayStyle, PreviewState } from "@/bindings";
 
 /** The two overlay styles that have something to preview; `none` has nothing
- *  to show. Derived from the binding rather than respelled, so the tab and the
- *  chip table narrow the same setting and cannot drift from it. */
+ *  to show. Taken from the binding instead of respelled here, so the tab and
+ *  the chip table narrow the same setting and cannot drift from it. */
 export type PreviewableStyle = Exclude<OverlayStyle, "none">;
 
 /** The chips shown for a style: `cycle` first, then only the states that
@@ -33,8 +33,8 @@ export type PreviewBlocker = "recording" | "overlayOff";
 
 /**
  * Whether preview mode can be started at all. Mirrors the backend's own
- * refusal order (`preview_refusal` in `src-tauri/src/overlay_preview.rs`):
- * recording outranks everything, because refusing for the right reason
+ * refusal order (`preview_refusal` in `src-tauri/src/overlay_preview.rs`).
+ * Recording outranks everything, because refusing for the right reason
  * matters more than reporting the first problem found.
  */
 export function previewBlocker(
@@ -64,10 +64,10 @@ export const IDLE_PREVIEW: PreviewMode = { running: false, state: "cycle" };
  * The same rule the backend enforces (`draft_allowed` in
  * `src-tauri/src/overlay_preview.rs`), asked here as well so a drag does not
  * send an IPC message per animation frame for a command that will refuse it.
- * The tab is not the authority — the backend is, and it re-checks — but it is
- * the one paying for the call.
+ * The backend is the authority and re-checks every draft; the tab is only the
+ * one paying for the call.
  *
- * `isRecording` is in the rule rather than assumed away: the tab learns about
+ * `isRecording` is in the rule rather than assumed away. The tab learns about
  * a pre-emption from its own poll, so there is a window in which it still
  * believes its preview is running while a real session already owns the card.
  */
@@ -88,7 +88,7 @@ export type PreviewAction =
   /** The overlay style changed under a running preview; its chip may no
    *  longer exist. */
   | { kind: "restyle"; style: OverlayStyle }
-  /** A real recording took the overlay — the backend has already ended the
+  /** A real recording took the overlay. The backend has already ended the
    *  preview, so the tab only has to catch up. */
   | { kind: "preempted" }
   /** The tab is going away (navigating to another section, or the window
@@ -105,10 +105,10 @@ export interface PreviewTransition {
 }
 
 /**
- * The tab's state machine. The one rule worth stating: every call the tab
- * makes is derived from the transition rather than from the click handler, so
- * "stop when you leave" and "stop when the button says Stop" cannot drift
- * apart, and a click that changes nothing sends nothing.
+ * The tab's state machine. Every call the tab makes comes from the transition
+ * rather than from the click handler, so "stop when you leave" and "stop when
+ * the button says Stop" cannot drift apart, and a click that changes nothing
+ * sends nothing.
  */
 export function reducePreview(
   mode: PreviewMode,
@@ -120,9 +120,9 @@ export function reducePreview(
       return { mode: { ...mode, running: true }, call: "start" };
 
     case "autoStart":
-      // Always the loop, never a remembered chip: what a Material or Glass
-      // style change has to show is the card in every state, and the user did
-      // not ask for a preview at all — they changed a token.
+      // The loop, whatever chip was remembered. A Material or Glass style
+      // change has to show the card in every state, and the user did not ask
+      // for a preview at all; they changed a token.
       if (mode.running) return { mode, call: "none" };
       return { mode: { running: true, state: "cycle" }, call: "start" };
 
@@ -140,8 +140,8 @@ export function reducePreview(
 
     case "restyle": {
       if (action.style === "none") {
-        // The overlay was turned off under a running preview: the backend
-        // still holds it, so it has to be told to let go.
+        // The user turned the overlay off under a running preview. The
+        // backend still holds it, so it has to be told to let go.
         return { mode: IDLE_PREVIEW, call: mode.running ? "stop" : "none" };
       }
       const chips = previewChipsFor(action.style);
@@ -154,7 +154,7 @@ export function reducePreview(
     }
 
     case "preempted":
-      // Nothing to send: the backend stopped itself and deliberately left the
+      // Nothing to send. The backend stopped itself and deliberately left the
       // overlay to the recording that took it.
       return { mode: { ...mode, running: false }, call: "none" };
 
@@ -169,16 +169,16 @@ export function reducePreview(
 /**
  * A change the user just made that is worth seeing on the real overlay.
  *
- * Deliberately only the two that change what the *surface* is made of.
- * Everything else — a colour, a length — is a change to a card the user can
- * already see if a preview is running, and starting one for each of them
- * would put an overlay on screen every time a slider moves.
+ * Deliberately only the two that change what the surface is made of. A colour
+ * or a length is a change to a card the user can already see if a preview is
+ * running, and starting one for each of those would put an overlay on screen
+ * every time a slider moves.
  */
 export type PreviewChange =
   | { kind: "material"; to: Material }
   | { kind: "glassStyle" };
 
-/** One such change as the tab reports it, tagged with a sequence number: two
+/** One such change as the tab reports it, tagged with a sequence number. Two
  *  identical changes in a row are still two requests, and an answered request
  *  can be told from one still waiting. See [`answerPreviewRequest`]. */
 export interface PreviewChangeRequest {
@@ -199,24 +199,24 @@ export interface PreviewAutoStartState {
 
 /**
  * Whether a token change should put the overlay on screen by itself, as the
- * action to dispatch — or `null` for "leave the screen alone".
+ * action to dispatch, or `null` for "leave the screen alone".
  *
- * Picking Glass with no preview running used to change nothing visible: the
+ * Picking Glass with no preview running used to change nothing visible. The
  * user chose a Material, the card behind the settings window changed, and
  * they had to find the Start button to see it. Selecting Glass, or changing
  * the Glass style, therefore starts the preview itself; the Stop button is
  * right there, and it is the only way out, so nothing can be left on screen
  * without the user being told how to take it off.
  *
- * Choosing *Flat* does not: Flat is what the overlay already looks like
- * everywhere else, so there is nothing new to show. Neither does Glass on a
- * machine that cannot draw it right now — supported but unavailable, which is
- * what macOS Reduce Transparency leaves — because the overlay would come up
- * Flat, answering "show me glass" with the card the user already has.
+ * Choosing Flat starts nothing. Flat is what the overlay already looks like
+ * everywhere else, so there is nothing new to show. Glass starts nothing
+ * either on a machine that cannot draw it right now, the supported but
+ * unavailable case macOS Reduce Transparency leaves. The overlay would come
+ * up Flat, answering "show me glass" with the card the user already has.
  *
- * The refusals are [`previewBlocker`]'s, not a second copy of them: a preview
- * that may not be started by hand may not be started on the user's behalf
- * either.
+ * The refusals are [`previewBlocker`]'s rather than a second copy of them. A
+ * preview that may not be started by hand may not be started on the user's
+ * behalf either.
  */
 export function autoStartFor(
   change: PreviewChange,
@@ -231,7 +231,7 @@ export function autoStartFor(
 }
 
 /** The answer to one [`PreviewChangeRequest`]: the sequence number that has
- *  now been dealt with, and what to dispatch for it — `null` for "leave the
+ *  now been dealt with, and what to dispatch for it. `null` means "leave the
  *  screen alone", which is still an answer. */
 export interface PreviewRequestAnswer {
   seq: number;
@@ -244,13 +244,13 @@ export interface PreviewRequestAnswer {
  * The tab reports what the user did and this says what the preview does about
  * it, so the "once per request" rule is testable rather than a shape an effect
  * happens to have. `answeredSeq` is the last sequence number that got an
- * answer: a request carrying it is already dealt with, which is what keeps a
- * later `style`, `isRecording` or Glass-availability change from re-running an
- * answered request, and keeps an asynchronous first resolved payload from
- * faking a change the user never made. `null` means there is nothing to answer
- * and the caller leaves its mark where it is.
+ * answer, so a request carrying it is already dealt with. That is what keeps
+ * a later `style`, `isRecording` or Glass-availability change from re-running
+ * an answered request, and what keeps an asynchronous first resolved payload
+ * from faking a change the user never made. `null` means there is nothing to
+ * answer and the caller leaves its mark where it is.
  *
- * A request answered with no action still counts as answered — the user's pick
+ * A request answered with no action still counts as answered. The user's pick
  * was considered and the screen was deliberately left alone.
  */
 export function answerPreviewRequest(

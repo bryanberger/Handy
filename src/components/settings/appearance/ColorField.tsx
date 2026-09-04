@@ -8,8 +8,8 @@ const HEX_PATTERN = /^#[0-9a-f]{6}$/i;
 
 /** Shown in place of a hex while the resolved default has not been measured
  *  (the first frame, or a computed color this parser does not understand).
- *  Deliberately not `#000000`: a real-looking value there reads as "the
- *  default is black", which is a lie. */
+ *  Deliberately not `#000000`, because a real-looking value there reads as
+ *  "the default is black", which is a lie. */
 const UNRESOLVED_PLACEHOLDER = "—";
 
 /** What the OS picker opens on when there is no value to open on. Neutral
@@ -17,9 +17,9 @@ const UNRESOLVED_PLACEHOLDER = "—";
  *  transparent, so this is never painted. */
 const UNRESOLVED_PICKER_VALUE = "#808080";
 
-/** Accepts `#rrggbb`, `rrggbb` (missing `#`), and any case; anything else —
- *  including the 3/4/8-digit forms `<input type="color">` cannot express —
- *  fails to parse, because the token contract's colors are `#RRGGBB` only,
+/** Accepts `#rrggbb`, `rrggbb` (missing `#`), and any case. Anything else
+ *  fails to parse, including the 3/4/8-digit forms `<input type="color">`
+ *  cannot express, because the token contract's colors are `#RRGGBB` only,
  *  with no alpha.
  *
  *  Exported for the unit tests; nothing outside this file imports it. */
@@ -32,16 +32,17 @@ export function normalizeHexInput(raw: string): string | null {
 export interface ColorFieldProps {
   label: string;
   description: string;
-  /** The effective value (draft, or the persisted token) — `null` means
-   *  inherit, and `resolvedDefault` is shown instead. */
+  /** The effective value (draft, or the persisted token). `null` means
+   *  inherit, and the field shows `resolvedDefault` instead. */
   value: string | null;
   /** The theme-aware value an unset token currently resolves to. `null` while
    *  it has not been measured yet. */
   resolvedDefault: string | null;
   /** A new value was picked or typed; schedules/updates the draft. */
   onChange: (hex: string) => void;
-  /** Flush the draft immediately: focus leaving the swatch, or Enter/blur on
-   *  the hex field, both mean the edit is settled and needs no more waiting. */
+  /** Flush the draft immediately. Focus leaving the swatch, or Enter or blur
+   *  on the hex field, both mean the edit is settled and needs no more
+   *  waiting. */
   onCommitNow: () => void;
   onReset: () => void;
   locked?: boolean;
@@ -51,10 +52,11 @@ export interface ColorFieldProps {
 }
 
 /**
- * Swatch + hex field + reset, for one color token. The swatch is a plain
- * `<div>` painted with the current color, with a transparent, absolutely
- * positioned `<input type="color">` on top — the native control's own chrome
- * is unthemeable, so this is how its OS picker gets a themed trigger.
+ * One color token's row: a swatch, a hex field and a reset. The swatch is a
+ * plain `<div>` painted with the current color, with a transparent,
+ * absolutely positioned `<input type="color">` on top. The native control's
+ * own chrome is unthemeable, so that is how its OS picker gets a themed
+ * trigger.
  */
 export const ColorField: React.FC<ColorFieldProps> = ({
   label,
@@ -78,7 +80,7 @@ export const ColorField: React.FC<ColorFieldProps> = ({
 
   // Follow external changes (a swatch pick, a reset, a theme-file lock
   // landing) while the field isn't being edited. A focused field keeps
-  // whatever the user is mid-typing — "#f" is not rejected on every
+  // whatever the user is mid-typing, so "#f" is not rejected on every
   // keystroke, only when it fails to parse on commit.
   useEffect(() => {
     if (!focusedRef.current) setText(displayText);
@@ -90,7 +92,7 @@ export const ColorField: React.FC<ColorFieldProps> = ({
       onChange(parsed);
       onCommitNow();
     } else {
-      // The revert is the feedback for an unparseable value — no toast.
+      // The revert is the feedback for an unparseable value. No toast.
       setText(displayText);
     }
   };
@@ -114,15 +116,14 @@ export const ColorField: React.FC<ColorFieldProps> = ({
           <input
             type="color"
             aria-label={t("settings.appearance.color.swatchLabel")}
-            // Draft only — never a commit. macOS's color panel is
-            // continuous, and WebKit turns *every* update it sends into a
-            // form-control change event (measured: eight panel updates in
-            // 255 ms produced eight events), which React surfaces as
-            // `onChange`. Committing here therefore issued one
-            // `change_overlay_theme_setting` per frame of a drag. The commit
-            // belongs to the 120 ms trailing debounce this draft feeds, which
-            // collapses a whole drag into one write; `onBlur` flushes it early
-            // when focus leaves.
+            // A draft, never a commit. macOS's color panel is continuous,
+            // and WebKit turns every update it sends into a form-control
+            // change event (measured: eight panel updates in 255 ms produced
+            // eight events), which React surfaces as `onChange`. Committing
+            // here therefore issued one `change_overlay_theme_setting` per
+            // frame of a drag. The commit belongs to the 120 ms trailing
+            // debounce this draft feeds, which collapses a whole drag into
+            // one write; `onBlur` flushes it early when focus leaves.
             value={
               displayHex && HEX_PATTERN.test(displayHex)
                 ? displayHex

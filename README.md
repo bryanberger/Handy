@@ -59,16 +59,16 @@ Control Handy from [Raycast](https://www.raycast.com) — start/stop recording, 
 
 ## Overlay Theme File
 
-The recording overlay can be styled from the Appearance tab, or from a file on disk so external theming tools (Omarchy and the like) can drive it without opening Handy's settings window. Handy only ever **reads** this file — it never creates, rewrites or deletes it.
+The recording overlay can be styled from the Appearance tab, or from a file on disk so external theming tools (Omarchy and the like) can drive it without opening Handy's settings window. Handy only ever **reads** this file. It never creates, rewrites or deletes it.
 
-**Where Handy looks.** The file is always named `overlay_theme.json`. The first candidate that resolves to a readable file wins, and that document is the only one used — the locations are never merged:
+**Where Handy looks.** The file is always named `overlay_theme.json`. The first candidate that resolves to a readable file wins, and that document is the only one used. The locations are never merged.
 
 | Priority | Location                                                                             |
 | -------- | ------------------------------------------------------------------------------------ |
 | 1        | The exact path in `HANDY_OVERLAY_THEME_FILE`, when it is set. Nothing else is tried. |
 | 2        | `Data/` beside the executable, for a portable install.                               |
 | 3        | Handy's app data directory (the path the About tab prints).                          |
-| 4        | `$XDG_CONFIG_HOME/handy/`, default `~/.config/handy/` — **Linux only**.              |
+| 4        | `$XDG_CONFIG_HOME/handy/`, default `~/.config/handy/`. **Linux only**.               |
 
 The app data directory is `~/Library/Application Support/com.pais.handy/` on macOS, `%APPDATA%\com.pais.handy\` on Windows, and `$XDG_DATA_HOME/com.pais.handy/` (default `~/.local/share/com.pais.handy/`) on Linux.
 
@@ -81,24 +81,24 @@ The Appearance tab shows the path actually in effect, with a button that opens i
 | `version`         | integer    | `1` (absent means 1)                                                                                                            |
 | `accent`          | string     | `"#RRGGBB"`                                                                                                                     |
 | `surface`         | string     | `"#RRGGBB"`                                                                                                                     |
-| `surface_opacity` | number     | 0.30 – 1.00                                                                                                                     |
-| `glass_tint`      | number     | 0.00 – 1.00                                                                                                                     |
+| `surface_opacity` | number     | 0.30 to 1.00                                                                                                                    |
+| `glass_tint`      | number     | 0.00 to 1.00                                                                                                                    |
 | `text`            | string     | `"#RRGGBB"`                                                                                                                     |
 | `border`          | string     | `"#RRGGBB"`                                                                                                                     |
-| `border_opacity`  | number     | 0.00 – 1.00                                                                                                                     |
+| `border_opacity`  | number     | 0.00 to 1.00                                                                                                                    |
 | `material`        | string     | `"flat"` or `"glass"`                                                                                                           |
 | `glass_material`  | string     | `"hud_window"`, `"popover"`, `"menu"`, `"sidebar"`, `"under_window_background"`, `"sheet"`, `"tooltip"`, `"content_background"` |
 | `glass_style`     | string     | `"regular"` or `"clear"`                                                                                                        |
-| `size_scale`      | number     | 0.80 – 1.50                                                                                                                     |
-| `radius`          | integer px | 0 – 32                                                                                                                          |
-| `border_width`    | integer px | 0 – 4                                                                                                                           |
-| `padding`         | integer px | 0 – 20                                                                                                                          |
-| `waveform_gap`    | integer px | 0 – 5                                                                                                                           |
-| `waveform_width`  | integer px | 2 – 6                                                                                                                           |
+| `size_scale`      | number     | 0.80 to 1.50                                                                                                                    |
+| `radius`          | integer px | 0 to 32                                                                                                                         |
+| `border_width`    | integer px | 0 to 4                                                                                                                          |
+| `padding`         | integer px | 0 to 20                                                                                                                         |
+| `waveform_gap`    | integer px | 0 to 5                                                                                                                          |
+| `waveform_width`  | integer px | 2 to 6                                                                                                                          |
 
-`surface_opacity` and `glass_tint` are the card's two alphas, one per material: `surface_opacity` is how opaque the Flat card is, `glass_tint` is how much of the same `surface` colour covers the glass, and each is ignored under the other material — so one theme can hold an opaque Flat card and see-through Glass, and picking Glass shows glass straight away. The Appearance tab shows whichever of the two applies to the material in effect. `glass_style` picks which Liquid Glass the Glass surface is drawn with on macOS 26 and later, and is the one the Appearance tab shows; `glass_material` picks which `NSVisualEffectMaterial` blur it uses on older macOS. `glass_material` is **theme-file only** — it drives the fallback engine, it has no row in the Appearance tab, and Handy reads it from this file and nowhere else. Each is read by one engine and ignored by the other, so a file can carry both; both do nothing while `material` is `"flat"` or off macOS. `border`, `border_opacity` and `border_width` are the card's edge — `border_width` is, with `size_scale`, one of the only two tokens that change how much room the overlay needs on screen.
+`surface_opacity` and `glass_tint` are the card's two alphas, one per material. `surface_opacity` is how opaque the Flat card is, and `glass_tint` is how much of the same `surface` colour covers the glass. Each is ignored under the other material, so one theme can hold an opaque Flat card and see-through Glass, and picking Glass shows glass straight away. The Appearance tab shows whichever of the two applies to the material in effect. `glass_style` picks which Liquid Glass the Glass surface is drawn with on macOS 26 and later, and is the one the Appearance tab shows; `glass_material` picks which `NSVisualEffectMaterial` blur it uses on older macOS. `glass_material` is **theme-file only**. It drives the fallback engine, it has no row in the Appearance tab, and Handy reads it from this file and nowhere else. Each is read by one engine and ignored by the other, so a file can carry both; both do nothing while `material` is `"flat"` or off macOS. `border`, `border_opacity` and `border_width` are the card's edge. With `size_scale`, `border_width` is one of the only two tokens that change how much room the overlay needs on screen.
 
-**Inherit.** Every token is optional, and an absent key means exactly what an explicit `null` means: inherit Handy's own theme-aware value for it. The merge is per key — `file, else settings window, else built-in` — so a file that sets only `surface` leaves the other fifteen tokens under the Appearance tab's control. Tokens the file does set are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are therefore valid documents that change nothing at all, and deleting the file is the way to stop overriding.
+**Inherit.** Every token is optional, and an absent key does exactly what an explicit `null` does. Both inherit Handy's own theme-aware value for that token. The merge is per key, `file, else settings window, else built-in`, so a file that sets only `surface` leaves the other fifteen tokens under the Appearance tab's control. Tokens the file does set are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are therefore valid documents that change nothing at all, and deleting the file is the way to stop overriding.
 
 **A full theme:**
 
@@ -124,7 +124,7 @@ The Appearance tab shows the path actually in effect, with a button that opens i
 }
 ```
 
-**What a theming tool might emit.** Color parsing is lenient — `#RGB` shorthand, a missing `#`, any case, surrounding whitespace, a UTF-8 BOM — and so are the three enums' spelling. `material` ignores case and surrounding whitespace; `glass_material` and `glass_style` also drop everything that is not a letter or a digit, so `"HUD Window"`, `"hud-window"` and `"hud_window"` all read as `"hud_window"`, and `"Clear"` and `"clear "` both read as `"clear"`. Everything else must be a correctly typed JSON value. Unknown keys are ignored, so `"_comment"` is the supported way to annotate a document:
+**What a theming tool might emit.** Color parsing is lenient. It accepts `#RGB` shorthand, a missing `#`, any case, surrounding whitespace, and a UTF-8 BOM. The three enums' spelling is lenient too. `material` ignores case and surrounding whitespace; `glass_material` and `glass_style` also drop everything that is not a letter or a digit, so `"HUD Window"`, `"hud-window"` and `"hud_window"` all read as `"hud_window"`, and `"Clear"` and `"clear "` both read as `"clear"`. Everything else must be a correctly typed JSON value. Unknown keys are ignored, so `"_comment"` is the supported way to annotate a document:
 
 ```json
 {
@@ -141,11 +141,11 @@ The Appearance tab shows the path actually in effect, with a button that opens i
 
 That resolves to accent `#8aadf4`, surface `#24273a`, text `#ccaadd`, surface opacity 1.0 and material Flat; `app_theme` is ignored with a warning, and the eleven unmentioned tokens inherit.
 
-**When it is re-read.** At launch, every time the overlay is shown, when the Appearance tab is opened, and from the tab's Reload button. There is no file watcher, so a theme switch takes effect on the next dictation rather than instantly — no restart needed.
+**When it is re-read.** At launch, every time the overlay is shown, when the Appearance tab is opened, and from the tab's Reload button. There is no file watcher, so a theme switch takes effect on the next dictation rather than instantly. No restart is needed.
 
-**When something is wrong.** A malformed or unreadable document keeps the last one that parsed, so a file caught half-written never blanks the overlay. A single bad key costs only that key, which inherits; a number outside its range is clamped. Everything is logged, and the Appearance tab lists the problems.
+**When something is wrong.** A malformed or unreadable document keeps the last one that parsed, so a file caught half-written never blanks the overlay. A single bad key costs only that key, which inherits, and Handy clamps a number outside its range. Everything is logged, and the Appearance tab lists the problems.
 
-**Forward compatibility.** Color values are `"#RRGGBB"` strings today. A future schema version may also accept `{ "light": "#RRGGBB", "dark": "#RRGGBB" }` for the same keys — the key names will not change. Writers that emit a single string stay valid. Readers should tolerate either shape.
+**Forward compatibility.** Color values are `"#RRGGBB"` strings today. A future schema version may also accept `{ "light": "#RRGGBB", "dark": "#RRGGBB" }` for the same keys. The key names will not change. Writers that emit a single string stay valid. Readers should tolerate either shape.
 
 ## Architecture
 

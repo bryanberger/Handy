@@ -53,7 +53,7 @@ describe("the token descriptors", () => {
 });
 
 describe("overlayTokenFieldsFor", () => {
-  /** The whole point of the split: one control for the card's alpha, and it
+  /** The whole point of the split. One control for the card's alpha, and it
    *  is the one that paints the Material on screen. */
   test("Flat shows the surface opacity and Glass the tint, never both", () => {
     const flat = keysOf(overlayTokenFieldsFor("color", "flat"));
@@ -78,7 +78,7 @@ describe("overlayTokenFieldsFor", () => {
       const glass = keysOf(overlayTokenFieldsFor(group, "glass"));
       const shared = flat.filter((key) => glass.includes(key));
       expect(shared).toEqual(flat.filter((key) => key !== "surface_opacity"));
-      // …and the Material group in particular is untouched by the rule.
+      // The Material group in particular is untouched by the rule.
       if (group === "material") expect(flat).toEqual(glass);
     }
   });

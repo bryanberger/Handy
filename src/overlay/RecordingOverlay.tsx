@@ -27,9 +27,9 @@ const paintOverlayTheme = (resolved: ResolvedOverlayTheme): boolean => {
 };
 
 // Paint a persisted theme and remember it for the next boot. Both the pull on
-// show and the push on change do exactly this. A *draft* deliberately does
-// not: it has not been persisted, so mirroring it would let a theme the user
-// never settled on paint the first frame after a restart.
+// show and the push on change do exactly this. A draft deliberately does not.
+// It has not been persisted, so mirroring it would let a theme the user never
+// settled on paint the first frame after a restart.
 const paintAndStoreOverlayTheme = (resolved: ResolvedOverlayTheme): boolean => {
   const glass = paintOverlayTheme(resolved);
   storeOverlayTheme(resolved);
@@ -80,9 +80,9 @@ const RecordingOverlay: React.FC = () => {
 
         await syncLanguageFromSettings();
         // The Live panel flows downward from a top overlay and upward from a
-        // bottom one; read the placement so the layout can flip to match. The
-        // overlay theme is pulled alongside it, so the card is painted from the
-        // same resolved theme the backend holds — one round trip for both.
+        // bottom one; read the placement so the layout can flip to match.
+        // This pulls the overlay theme alongside it, one round trip for both,
+        // so the card paints from the same resolved theme the backend holds.
         try {
           const [settings, resolved] = await Promise.all([
             commands.getAppSettings(),
@@ -94,9 +94,9 @@ const RecordingOverlay: React.FC = () => {
             );
           }
           if (resolved.status === "ok") {
-            // Imperative, not an effect: the custom properties and
-            // `data-material` must be on the root before the first painted
-            // frame, which an effect would leave to React's batching.
+            // Painted here rather than in an effect. The custom properties
+            // and `data-material` must be on the root before the first
+            // painted frame, which an effect would leave to React's batching.
             setGlassActive(paintAndStoreOverlayTheme(resolved.data));
           }
         } catch {
@@ -144,9 +144,9 @@ const RecordingOverlay: React.FC = () => {
         setGlassActive(paintAndStoreOverlayTheme(event.payload)),
       );
 
-      // The same repaint for a theme still being edited. It arrives per
-      // animation frame while a slider is dragged, so it does the least it
-      // can: paint, and nothing else.
+      // The same repaint for a theme still being edited. A draft arrives per
+      // animation frame while a slider is dragged, so this handler paints and
+      // does nothing else.
       const unlistenDraft = await events.overlayThemeDraft.listen((event) =>
         setGlassActive(paintOverlayTheme(event.payload.resolved)),
       );
@@ -159,7 +159,7 @@ const RecordingOverlay: React.FC = () => {
 
       // Tauri delivers an event only to webviews already listening for it, so
       // every show emitted before this point was dropped. Saying so lets the
-      // backend re-run one it missed — without this the first preview after a
+      // backend re-run one it missed. Without this the first preview after a
       // launch maps an empty overlay window.
       void emit("overlay-webview-ready");
 
@@ -189,7 +189,7 @@ const RecordingOverlay: React.FC = () => {
 
   if (!isVisible) return null;
 
-  // The presentational markup — the `.ov-stage` / `.scard` tree — lives in
+  // The presentational markup, the `.ov-stage` / `.scard` tree, lives in
   // OverlayCard so the Appearance tab's preview renders identically to a real
   // dictation. This component owns only the Tauri listeners, the elapsed
   // timer and the overlay position above.

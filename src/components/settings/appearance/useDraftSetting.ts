@@ -10,24 +10,23 @@ export const DRAFT_DEBOUNCE_MS = 120;
  * Coalesces a burst of values to at most one delivery per animation frame,
  * leading edge first.
  *
- * The rule, which is the whole reason this is a class and not three lines
- * inside the hook: the *first* push after a quiet moment goes out
- * immediately, so the very first pixel of a drag is already on screen; every
- * push inside the frame that follows is held, and only the last of them is
- * delivered when that frame comes round. A frame in which nothing more
- * arrived delivers nothing and goes quiet again, so a settled control costs
- * nothing.
+ * The rule is why this is a class and not three lines inside the hook. The
+ * first push after a quiet moment goes out immediately, so the very first
+ * pixel of a drag is already on screen; every push inside the frame that
+ * follows is held, and only the last of them is delivered when that frame
+ * comes round. A frame in which nothing more arrived delivers nothing and
+ * goes quiet again, so a settled control costs nothing.
  *
  * `schedule` is injected so the rule can be tested without a browser; it
  * defaults to `requestAnimationFrame`, which is what makes the delivery rate
  * follow the display rather than the input device.
  *
- * A held value is a value the caller has not seen delivered yet, so the two
- * ways of ending a burst are both explicit: [`flush`] sends it now (what a
- * commit does — the last frame of a drag must not be the one that gets
- * dropped), and [`cancel`] throws it away (what a reset and unmount do — the
- * value has been abandoned, and delivering it a frame later would repaint over
- * whatever replaced it).
+ * A held value is one the caller has not seen delivered yet, so the two ways
+ * of ending a burst are both explicit. [`flush`] sends it now, which is what
+ * a commit does, because the last frame of a drag must not be the one that
+ * gets dropped. [`cancel`] throws it away, which is what a reset and unmount
+ * do, because the value has been abandoned and delivering it a frame later
+ * would repaint over whatever replaced it.
  */
 export class FrameCoalescer<Value> {
   private pending: { value: Value } | null = null;
@@ -57,7 +56,7 @@ export class FrameCoalescer<Value> {
 
   /** Deliver the held value now, if there is one.
    *
-   *  What a commit calls first: the debounce can fire between a push and its
+   *  A commit calls this first. The debounce can fire between a push and its
    *  frame, and the value it is about to commit is exactly the one being held,
    *  so without this the last frame of a drag is the one that never arrives.
    *  The queued frame is left armed, so the one-per-frame rate is unchanged. */
@@ -69,7 +68,7 @@ export class FrameCoalescer<Value> {
 
   /** Drop the held value; the next push is a leading edge again.
    *
-   *  What a reset and unmount call: the held value has been abandoned, and
+   *  A reset and an unmount call this. The held value has been abandoned, and
    *  delivering it a frame later would repaint over whatever replaced it. */
   cancel(): void {
     this.pending = null;
@@ -88,15 +87,15 @@ export class FrameCoalescer<Value> {
 
 /**
  * A small, framework-agnostic debounced-commit engine, factored out of the
- * `useDraftSetting` hook so its one rule — "only the latest value scheduled
- * inside a debounce window is ever committed, exactly once" — is directly
- * testable without React or a fake-timer library.
+ * `useDraftSetting` hook so its one rule is directly testable without React
+ * or a fake-timer library. That rule is "only the latest value scheduled
+ * inside a debounce window is ever committed, exactly once".
  *
  * `schedule(key, value)` resets that key's timer, so a burst of calls inside
  * one debounce window collapses to a single commit of the last value. A
  * `flush` (explicit, or the timer firing) commits immediately and resolves
- * once `onSettled` has run for that commit — but only calls `onSettled` if no
- * *newer* `schedule` has landed for the key in the meantime, tracked with a
+ * once `onSettled` has run for that commit. It only calls `onSettled` if no
+ * newer `schedule` has landed for the key in the meantime, tracked with a
  * per-key generation counter so a slow, late-resolving commit can never
  * clear a newer edit's draft.
  */
@@ -161,11 +160,11 @@ export class DraftDebouncer<Key extends string, Value> {
 /**
  * Commit one overlay-theme token. `value: null` resets that token to inherit.
  *
- * Reads the store's current `overlay_theme` at call time — not from a
- * captured closure — so two edits in flight compose instead of one
- * clobbering the other; then sends the whole sixteen-token object through the
- * one `change_overlay_theme_setting` command, which is what keeps the
- * store's optimistic write and rollback (keyed on the single `overlay_theme`
+ * Reads the store's current `overlay_theme` at call time rather than from a
+ * captured closure, so two edits in flight compose instead of one clobbering
+ * the other. It then sends the whole sixteen-token object through the one
+ * `change_overlay_theme_setting` command, which is what keeps the store's
+ * optimistic write and rollback (keyed on the single `overlay_theme`
  * `AppSettings` field) working unchanged.
  */
 export async function setOverlayThemeToken<K extends keyof OverlayTheme>(
@@ -177,8 +176,8 @@ export async function setOverlayThemeToken<K extends keyof OverlayTheme>(
   await store.updateSetting("overlay_theme", { ...current, [key]: value });
 }
 
-/** The persisted theme with every still-uncommitted draft laid over it —
- *  what the overlay would look like if the user stopped dragging now. */
+/** The persisted theme with every still-uncommitted draft laid over it. This
+ *  is what the overlay would look like if the user stopped dragging now. */
 function themeWithDrafts(stored: OverlayTheme, draft: Draft): OverlayTheme {
   return { ...INHERIT_ALL, ...stored, ...draft };
 }
@@ -195,10 +194,10 @@ export interface DraftEffects {
     key: K,
     value: OverlayTheme[K],
   ) => void | Promise<void>;
-  /** The persisted tokens, read at call time rather than captured: two edits
+  /** The persisted tokens, read at call time rather than captured. Two edits
    *  in flight must compose instead of one clobbering the other. */
   storedTheme: () => OverlayTheme;
-  /** The draft map changed — the tab re-renders from this. */
+  /** The draft map changed; the tab re-renders from this. */
   onDraftChange: (draft: Draft) => void;
   /** Whether the overlay is the tab's to paint at all: a preview running,
    *  nothing recording. Asked per push, because a recording can take the
@@ -209,24 +208,24 @@ export interface DraftEffects {
 /**
  * The two clocks of live editing, and the rules that keep them in step.
  *
- * A token edit has two destinations at two rates — the overlay at frame rate,
- * the store on a 120 ms debounce — and every bug this class exists to prevent
- * is an ordering bug between them. The rules, in one place so they are
- * testable as rules rather than as React wiring:
+ * A token edit has two destinations at two rates, the overlay at frame rate
+ * and the store on a 120 ms debounce, and every bug this class exists to
+ * prevent is an ordering bug between them. The rules live in one place so
+ * they are testable as rules rather than as React wiring:
  *
- *  1. **The last frame is never dropped.** A commit flushes the coalescer
+ *  1. The last frame is never dropped. A commit flushes the coalescer
  *     first, so the value being persisted is also the last one painted.
- *  2. **An abandoned draft never lands.** A reset cancels the queued frame
+ *  2. An abandoned draft never lands. A reset cancels the queued frame
  *     before it can repaint over what replaces it, and paints the corrected
  *     theme itself so the screen does not wait on the round trip.
- *  3. **The screen ends on a stored value.** The reset commits `null`
+ *  3. The screen ends on a stored value. The reset commits `null`
  *     afterwards; when that commit finds nothing to store, Rust still
  *     re-delivers, because the draft left a mark there (`OVERLAY_DRAFTED` in
- *     `commands/overlay_theme.rs`). Both halves are needed: this one is
- *     instant, that one is authoritative.
- *  4. **Nothing is painted onto an overlay the tab does not own.** `canPaint`
- *     gates every push, so no IPC goes out per frame for a preview that is not
- *     running — the backend refuses it anyway (`draft_allowed`).
+ *     `commands/overlay_theme.rs`). Both halves are needed, because this one
+ *     is instant and that one is authoritative.
+ *  4. Nothing is painted onto an overlay the tab does not own. `canPaint`
+ *     gates every push, so no IPC goes out per frame for a preview that is
+ *     not running; the backend refuses it anyway (`draft_allowed`).
  */
 export class DraftEngine {
   private draft: Draft = {};
@@ -315,19 +314,19 @@ export class DraftEngine {
 
 export interface UseDraftSettingResult {
   /** Values being edited but not yet committed. Read as `draft[key] ??
-   *  settings.overlay_theme[key]` — never as a substitute for the persisted
+   *  settings.overlay_theme[key]`, never as a substitute for the persisted
    *  value on its own. */
   draft: Draft;
-  /** Update the draft immediately — the tab's own controls read it, and the
-   *  on-screen overlay is sent it once per animation frame — and commit to
-   *  the store on a 120 ms trailing debounce. */
+  /** Update the draft immediately, then commit to the store on a 120 ms
+   *  trailing debounce. The tab's own controls read the draft, and the
+   *  on-screen overlay gets it once per animation frame. */
   setDraft: <K extends OverlayThemeKey>(key: K, value: OverlayTheme[K]) => void;
   /** Commit a still-pending draft immediately. Wire to `onPointerUp` /
    *  `onFocusOut` on the control so the debounce never outlives the drag or
-   *  keystroke that produced it — without this, "Show on screen" could fire
+   *  keystroke that produced it. Without this, "Show on screen" could fire
    *  before the last few milliseconds of a slider drag ever reached Rust. */
   flush: (key: OverlayThemeKey) => Promise<void>;
-  /** Commit every still-pending draft immediately and wait for all of them —
+  /** Commit every still-pending draft immediately and wait for all of them.
    *  "Show on screen" awaits this before invoking the command, so the
    *  on-screen overlay never renders stale tokens. */
   flushAll: () => Promise<void>;
@@ -344,12 +343,12 @@ export interface UseDraftSettingResult {
  * inside the OS picker. Those two rates want two different treatments, and
  * [`DraftEngine`] runs both:
  *
- *  - the **store** is written on a 120 ms trailing debounce
- *    (`DraftDebouncer`), because persisting per pixel would be a settings
- *    read, write and broadcast per frame;
- *  - the **overlay on screen** is sent the draft at frame rate
+ *  - it writes the store on a 120 ms trailing debounce (`DraftDebouncer`),
+ *    because persisting per pixel would be a settings read, write and
+ *    broadcast per frame;
+ *  - it sends the draft to the overlay on screen at frame rate
  *    (`FrameCoalescer` -> `preview_overlay_theme_draft`), because a trailing
- *    debounce never fires during an unbroken drag at all — the card only
+ *    debounce never fires during an unbroken drag at all, and the card only
  *    caught up once the user stopped moving.
  *
  * All this hook adds is React: state for the draft map, and one stable engine
@@ -357,13 +356,13 @@ export interface UseDraftSettingResult {
  *
  * @param overlayIsOurs whether a preview the tab started is on screen right
  * now (`overlayAcceptsDrafts` in `previewMode.ts`). While it is false nothing
- * is painted and no IPC goes out: there is no overlay of the tab's to paint,
+ * is painted and no IPC goes out. There is no overlay of the tab's to paint,
  * and the backend would refuse the draft anyway.
  */
 export function useDraftSetting(overlayIsOurs: boolean): UseDraftSettingResult {
   const [draft, setDraftState] = useState<Draft>({});
 
-  // Read at push time rather than captured: the preview can be stopped, or
+  // Read at push time rather than captured. The preview can be stopped, or
   // pre-empted by a recording, in the middle of a drag.
   const overlayIsOursRef = useRef(overlayIsOurs);
   overlayIsOursRef.current = overlayIsOurs;
@@ -401,10 +400,10 @@ export function useDraftSetting(overlayIsOurs: boolean): UseDraftSettingResult {
     [engine],
   );
 
-  // Switching away from the tab mid-drag should not silently drop the edit:
-  // flush whatever is still pending rather than losing it with the timer.
-  // Intentionally runs once: `engine` is a stable ref for the hook's lifetime,
-  // so this only needs to fire on unmount.
+  // Switching away from the tab mid-drag should not silently drop the edit,
+  // so flush whatever is still pending rather than losing it with the timer.
+  // This intentionally runs once, since `engine` is a stable ref for the
+  // hook's lifetime, so it only needs to fire on unmount.
   useEffect(() => {
     return () => {
       void engine.dispose();

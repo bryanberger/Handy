@@ -50,7 +50,7 @@ describe("glassStyleControlState", () => {
     );
   });
 
-  /** The same rule the Material row follows: a preference has to survive
+  /** The same rule the Material row follows. A preference has to survive
    *  Reduce Transparency being turned on and off again. */
   test("stays enabled on a Mac where Glass cannot render right now", () => {
     expect(
@@ -81,8 +81,8 @@ describe("glassStyleForKey", () => {
     }
   });
 
-  /** Anything else is the browser's: Tab has to leave the group, and typing
-   *  must not be swallowed by a control that has nothing to do with it. */
+  /** Anything else belongs to the browser. Tab has to leave the group, and a
+   *  control that has nothing to do with typing must not swallow it. */
   test("every other key is left alone", () => {
     for (const key of ["Tab", "Escape", "a", "Home", "PageDown"]) {
       expect(glassStyleForKey(key, "regular")).toBeNull();
@@ -121,12 +121,12 @@ describe("the Glass style descriptor", () => {
     );
   });
 
-  /** `glass_material` is a theme-file key only now: the eight-option dropdown
-   *  with its subtitles left the tab when Liquid Glass arrived. */
+  /** `glass_material` is a theme-file key only now. Its eight-option dropdown
+   *  with the subtitles left the tab when Liquid Glass arrived. */
   test("the Glass material has no row of its own", () => {
-    // Widened to `string[]` deliberately: the descriptor's key union no
+    // Widened to `string[]` deliberately. The descriptor's key union no
     // longer contains `glass_material` at all, which is the stronger half of
-    // this guarantee — this only keeps it true if the union ever widens.
+    // this guarantee; this only keeps it true if the union ever widens.
     const keys: string[] = OVERLAY_TOKEN_FIELDS.map(
       (candidate) => candidate.key,
     );

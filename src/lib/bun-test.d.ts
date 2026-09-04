@@ -17,7 +17,6 @@ declare module "bun:test" {
     toBeGreaterThanOrEqual(expected: number): void;
     toBeLessThan(expected: number): void;
     toBeLessThanOrEqual(expected: number): void;
-    toBeCloseTo(expected: number, numDigits?: number): void;
     toThrow(expected?: unknown): void;
     readonly not: Matchers;
   }

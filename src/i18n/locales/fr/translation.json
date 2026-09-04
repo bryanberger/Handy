@@ -291,7 +291,6 @@
         "button": "Réinitialiser le thème de l'overlay",
         "title": "Réinitialiser le thème de l'overlay ?",
         "description": "Cela rétablit toutes les couleurs, tailles et espacements de l'overlay aux valeurs par défaut de Handy. Le style et la position de l'overlay ne changent pas.",
-        "descriptionWithThemeFile": "Cela rétablit aux valeurs par défaut de Handy toutes les couleurs, tailles et espacements de l'overlay qui ne sont pas définis par le fichier de thème. Le style et la position de l'overlay ne changent pas, et les valeurs définies par le fichier de thème restent actives.",
         "confirm": "Réinitialiser",
         "cancel": "Annuler"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "Fichier de thème",
         "description": "Un fichier JSON facultatif qui remplace les valeurs du thème de l'overlay, afin que des outils de personnalisation externes puissent piloter l'overlay.",
-        "notFound": "Aucun fichier de thème. Créez-en un à cet emplacement pour remplacer les valeurs du thème de l'overlay.",
-        "active": "Actif — ce fichier définit {{count}} valeurs sur {{total}}.",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "Recharger",
         "copy": "Copier le thème en JSON",
         "copied": "Copié",
-        "lockedDescription": "Défini par le fichier de thème. Modifiez overlay_theme.json ou supprimez cette clé pour la changer ici.",
         "problemsTitle": "Problèmes dans le fichier de thème :",
         "moreDiagnostics": "…et {{count}} de plus.",
         "newerVersion": "Ce fichier de thème a été écrit par une version plus récente de Handy. Les valeurs que cette version ne comprend pas ont été ignorées.",

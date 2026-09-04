@@ -291,7 +291,6 @@
         "button": "ओभरले थिम रिसेट गर्नुहोस्",
         "title": "ओभरले थिम रिसेट गर्ने?",
         "description": "यसले ओभरलेका सबै रङ, आकार र खाली ठाउँलाई Handy को डिफल्टमा फर्काउँछ। तपाईंको ओभरले शैली र स्थान परिवर्तन हुँदैन।",
-        "descriptionWithThemeFile": "यसले थिम फाइलले नसेट गरेका ओभरलेका सबै रङ, आकार र खाली ठाउँलाई Handy को डिफल्टमा फर्काउँछ। तपाईंको ओभरले शैली र स्थान परिवर्तन हुँदैन, र थिम फाइलले सेट गरेका मानहरू लागू भइरहन्छन्।",
         "confirm": "रिसेट गर्नुहोस्",
         "cancel": "रद्द गर्नुहोस्"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "थिम फाइल",
         "description": "ओभरले थिमका मानहरू परिवर्तन गर्ने वैकल्पिक JSON फाइल, जसले बाहिरी थिम उपकरणहरूलाई ओभरले चलाउन दिन्छ।",
-        "notFound": "थिम फाइल छैन। ओभरले थिमका मान परिवर्तन गर्न यही बाटोमा एउटा बनाउनुहोस्।",
-        "active": "सक्रिय — यो फाइलले {{total}} मध्ये {{count}} मान सेट गर्छ।",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "पुनः लोड गर्नुहोस्",
         "copy": "थिमलाई JSON रूपमा कपी गर्नुहोस्",
         "copied": "कपी गरियो",
-        "lockedDescription": "थिम फाइलले सेट गरेको हो। यहाँ बदल्न overlay_theme.json सम्पादन गर्नुहोस् वा यो कुञ्जी हटाउनुहोस्।",
         "problemsTitle": "थिम फाइलमा समस्याहरू:",
         "moreDiagnostics": "…र {{count}} थप।",
         "newerVersion": "यो थिम फाइल Handy को नयाँ संस्करणले लेखेको हो। यो संस्करणले नबुझ्ने मानहरू बेवास्ता गरियो।",

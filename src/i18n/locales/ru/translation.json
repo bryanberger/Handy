@@ -291,7 +291,6 @@
         "button": "Сбросить тему наложения",
         "title": "Сбросить тему наложения?",
         "description": "Все цвета, размеры и отступы наложения вернутся к значениям Handy по умолчанию. Стиль и позиция наложения не изменятся.",
-        "descriptionWithThemeFile": "Все цвета, размеры и отступы наложения, которые не заданы файлом темы, вернутся к значениям Handy по умолчанию. Стиль и позиция наложения не изменятся, а значения из файла темы продолжат действовать.",
         "confirm": "Сбросить",
         "cancel": "Отмена"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "Файл темы",
         "description": "Необязательный файл JSON, который переопределяет значения темы наложения, чтобы внешние инструменты оформления могли управлять наложением.",
-        "notFound": "Файла темы нет. Создайте его по этому пути, чтобы переопределить значения темы наложения.",
-        "active": "Активен — этот файл задаёт {{count}} из {{total}} значений.",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "Перезагрузить",
         "copy": "Скопировать тему как JSON",
         "copied": "Скопировано",
-        "lockedDescription": "Задано файлом темы. Измените overlay_theme.json или удалите этот ключ, чтобы менять значение здесь.",
         "problemsTitle": "Проблемы в файле темы:",
         "moreDiagnostics": "…и ещё {{count}}.",
         "newerVersion": "Этот файл темы создан более новой версией Handy. Значения, которые эта версия не понимает, были проигнорированы.",

@@ -291,7 +291,6 @@
         "button": "אפס את ערכת הנושא של שכבת-העל",
         "title": "לאפס את ערכת הנושא של שכבת-העל?",
         "description": "פעולה זו מחזירה את כל הצבעים, הגדלים והריווח של שכבת-העל לברירות המחדל של Handy. סגנון שכבת-העל והמיקום שלה לא משתנים.",
-        "descriptionWithThemeFile": "פעולה זו מחזירה לברירות המחדל של Handy את כל הצבעים, הגדלים והריווח של שכבת-העל שאינם נקבעים בקובץ ערכת הנושא. סגנון שכבת-העל והמיקום שלה לא משתנים, וערכים שנקבעו בקובץ ערכת הנושא ממשיכים לחול.",
         "confirm": "אפס",
         "cancel": "ביטול"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "קובץ ערכת נושא",
         "description": "קובץ JSON אופציונלי שדורס ערכים של ערכת הנושא של שכבת-העל, כדי שכלי עיצוב חיצוניים יוכלו לשלוט בה.",
-        "notFound": "אין קובץ ערכת נושא. צור אחד בנתיב הזה כדי לדרוס ערכים של ערכת הנושא של שכבת-העל.",
-        "active": "פעיל — הקובץ הזה קובע {{count}} מתוך {{total}} ערכים.",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "טען מחדש",
         "copy": "העתק את ערכת הנושא כ-JSON",
         "copied": "הועתק",
-        "lockedDescription": "נקבע על ידי קובץ ערכת הנושא. ערוך את overlay_theme.json או הסר את המפתח הזה כדי לשנות אותו כאן.",
         "problemsTitle": "בעיות בקובץ ערכת הנושא:",
         "moreDiagnostics": "…ועוד {{count}}.",
         "newerVersion": "קובץ ערכת הנושא הזה נכתב בגרסה חדשה יותר של Handy. ערכים שהגרסה הזו אינה מבינה לא נלקחו בחשבון.",

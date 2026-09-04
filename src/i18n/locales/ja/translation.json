@@ -291,7 +291,6 @@
         "button": "オーバーレイのテーマをリセット",
         "title": "オーバーレイのテーマをリセットしますか？",
         "description": "オーバーレイのすべての色、サイズ、余白を Handy の既定値に戻します。オーバーレイのスタイルと位置は変更されません。",
-        "descriptionWithThemeFile": "テーマファイルで設定されていないオーバーレイのすべての色、サイズ、余白を Handy の既定値に戻します。オーバーレイのスタイルと位置は変更されず、テーマファイルで設定された値もそのまま有効です。",
         "confirm": "リセット",
         "cancel": "キャンセル"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "テーマファイル",
         "description": "外部のテーマ作成ツールからオーバーレイを制御できるように、オーバーレイのテーマ値を上書きする任意の JSON ファイルです。",
-        "notFound": "テーマファイルはありません。このパスに作成すると、オーバーレイのテーマ値を上書きできます。",
-        "active": "有効：このファイルは {{total}} 個中 {{count}} 個の値を設定しています。",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "再読み込み",
         "copy": "テーマを JSON としてコピー",
         "copied": "コピーしました",
-        "lockedDescription": "テーマファイルで設定されています。ここで変更するには overlay_theme.json を編集するか、このキーを削除してください。",
         "problemsTitle": "テーマファイルの問題:",
         "moreDiagnostics": "…他 {{count}} 件。",
         "newerVersion": "このテーマファイルは新しいバージョンの Handy で書かれています。このバージョンが解釈できない値は無視されました。",

@@ -291,7 +291,6 @@
         "button": "Overlay-Design zurücksetzen",
         "title": "Overlay-Design zurücksetzen?",
         "description": "Das setzt alle Farben, Größen und Abstände des Overlays auf die Standardwerte von Handy zurück. Overlay-Stil und -Position bleiben unverändert.",
-        "descriptionWithThemeFile": "Das setzt alle Farben, Größen und Abstände des Overlays, die nicht von der Designdatei gesetzt werden, auf die Standardwerte von Handy zurück. Overlay-Stil und -Position bleiben unverändert, und Werte aus der Designdatei bleiben wirksam.",
         "confirm": "Zurücksetzen",
         "cancel": "Abbrechen"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "Designdatei",
         "description": "Eine optionale JSON-Datei, die Werte des Overlay-Designs überschreibt, damit externe Theming-Tools das Overlay steuern können.",
-        "notFound": "Keine Designdatei. Lege unter diesem Pfad eine an, um Werte des Overlay-Designs zu überschreiben.",
-        "active": "Aktiv — diese Datei setzt {{count}} von {{total}} Werten.",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "Neu laden",
         "copy": "Design als JSON kopieren",
         "copied": "Kopiert",
-        "lockedDescription": "Von der Designdatei gesetzt. Bearbeite overlay_theme.json oder entferne diesen Schlüssel, um ihn hier zu ändern.",
         "problemsTitle": "Probleme in der Designdatei:",
         "moreDiagnostics": "…und {{count}} weitere.",
         "newerVersion": "Diese Designdatei wurde von einer neueren Version von Handy geschrieben. Werte, die diese Version nicht kennt, wurden ignoriert.",

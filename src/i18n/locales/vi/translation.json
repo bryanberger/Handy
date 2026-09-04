@@ -291,7 +291,6 @@
         "button": "Đặt lại giao diện lớp phủ",
         "title": "Đặt lại giao diện lớp phủ?",
         "description": "Thao tác này khôi phục mọi màu sắc, kích thước và khoảng cách của lớp phủ về mặc định của Handy. Kiểu và vị trí lớp phủ của bạn không thay đổi.",
-        "descriptionWithThemeFile": "Thao tác này khôi phục về mặc định của Handy mọi màu sắc, kích thước và khoảng cách của lớp phủ không do tệp giao diện đặt. Kiểu và vị trí lớp phủ của bạn không thay đổi, và các giá trị do tệp giao diện đặt vẫn có hiệu lực.",
         "confirm": "Đặt lại",
         "cancel": "Hủy"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "Tệp giao diện",
         "description": "Một tệp JSON tùy chọn ghi đè các giá trị giao diện lớp phủ, để các công cụ tạo giao diện bên ngoài có thể điều khiển lớp phủ.",
-        "notFound": "Không có tệp giao diện. Hãy tạo một tệp tại đường dẫn này để ghi đè các giá trị giao diện lớp phủ.",
-        "active": "Đang hoạt động — tệp này đặt {{count}} trong {{total}} giá trị.",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "Tải lại",
         "copy": "Sao chép giao diện dạng JSON",
         "copied": "Đã sao chép",
-        "lockedDescription": "Được đặt bởi tệp giao diện. Hãy sửa overlay_theme.json hoặc xóa khóa này để thay đổi tại đây.",
         "problemsTitle": "Sự cố trong tệp giao diện:",
         "moreDiagnostics": "…và {{count}} mục nữa.",
         "newerVersion": "Tệp giao diện này được ghi bởi một phiên bản Handy mới hơn. Các giá trị mà phiên bản này không hiểu đã bị bỏ qua.",

@@ -291,7 +291,6 @@
         "button": "Obnovit motiv překryvu",
         "title": "Obnovit motiv překryvu?",
         "description": "Vrátí všechny barvy, velikosti a rozestupy překryvu na výchozí hodnoty Handy. Styl ani pozice překryvu se nezmění.",
-        "descriptionWithThemeFile": "Vrátí na výchozí hodnoty Handy všechny barvy, velikosti a rozestupy překryvu, které nenastavuje soubor motivu. Styl ani pozice překryvu se nezmění a hodnoty ze souboru motivu zůstávají v platnosti.",
         "confirm": "Obnovit",
         "cancel": "Zrušit"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "Soubor motivu",
         "description": "Volitelný soubor JSON, který přepisuje hodnoty motivu překryvu, takže překryv mohou řídit externí nástroje pro motivy.",
-        "notFound": "Žádný soubor motivu. Vytvořte ho na této cestě, chcete-li přepsat hodnoty motivu překryvu.",
-        "active": "Aktivní — tento soubor nastavuje {{count}} z {{total}} hodnot.",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "Načíst znovu",
         "copy": "Kopírovat motiv jako JSON",
         "copied": "Zkopírováno",
-        "lockedDescription": "Nastaveno souborem motivu. Upravte overlay_theme.json nebo tento klíč odeberte, chcete-li hodnotu měnit zde.",
         "problemsTitle": "Problémy v souboru motivu:",
         "moreDiagnostics": "…a {{count}} dalších.",
         "newerVersion": "Tento soubor motivu zapsala novější verze Handy. Hodnoty, kterým tato verze nerozumí, byly ignorovány.",

@@ -291,7 +291,6 @@
         "button": "ओवरले थीम रीसेट करें",
         "title": "ओवरले थीम रीसेट करें?",
         "description": "इससे ओवरले के सभी रंग, आकार और स्पेसिंग Handy के डिफ़ॉल्ट पर लौट आते हैं। आपका ओवरले स्टाइल और जगह नहीं बदलती।",
-        "descriptionWithThemeFile": "इससे ओवरले के वे सभी रंग, आकार और स्पेसिंग Handy के डिफ़ॉल्ट पर लौट आते हैं जो थीम फ़ाइल से सेट नहीं हैं। आपका ओवरले स्टाइल और जगह नहीं बदलती, और थीम फ़ाइल से सेट किए गए मान लागू रहते हैं।",
         "confirm": "रीसेट करें",
         "cancel": "रद्द करें"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "थीम फ़ाइल",
         "description": "एक वैकल्पिक JSON फ़ाइल जो ओवरले थीम के मान बदल देती है, ताकि बाहरी थीम टूल ओवरले को चला सकें।",
-        "notFound": "कोई थीम फ़ाइल नहीं है। ओवरले थीम के मान बदलने के लिए इस पथ पर एक बनाएँ।",
-        "active": "सक्रिय — यह फ़ाइल {{total}} में से {{count}} मान सेट करती है।",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "फिर से लोड करें",
         "copy": "थीम को JSON के रूप में कॉपी करें",
         "copied": "कॉपी हो गया",
-        "lockedDescription": "थीम फ़ाइल से सेट है। यहाँ बदलने के लिए overlay_theme.json में बदलाव करें या इस कुंजी को हटाएँ।",
         "problemsTitle": "थीम फ़ाइल में समस्याएँ:",
         "moreDiagnostics": "…और {{count}} अन्य।",
         "newerVersion": "यह थीम फ़ाइल Handy के किसी नए वर्शन ने लिखी है। जिन मानों को यह वर्शन नहीं समझता, उन्हें छोड़ दिया गया।",

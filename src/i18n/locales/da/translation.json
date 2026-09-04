@@ -291,7 +291,6 @@
         "button": "Nulstil overlaytemaet",
         "title": "Nulstil overlaytemaet?",
         "description": "Dette sætter alle overlayets farver, størrelser og afstande tilbage til Handys standardværdier. Din overlaystil og -placering ændres ikke.",
-        "descriptionWithThemeFile": "Dette sætter alle overlayets farver, størrelser og afstande, der ikke er angivet af temafilen, tilbage til Handys standardværdier. Din overlaystil og -placering ændres ikke, og værdier fra temafilen gælder fortsat.",
         "confirm": "Nulstil",
         "cancel": "Annuller"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "Temafil",
         "description": "En valgfri JSON-fil, der tilsidesætter værdier i overlaytemaet, så eksterne temaværktøjer kan styre overlayet.",
-        "notFound": "Ingen temafil. Opret en på denne sti for at tilsidesætte værdier i overlaytemaet.",
-        "active": "Aktiv — denne fil angiver {{count}} af {{total}} værdier.",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "Genindlæs",
         "copy": "Kopiér temaet som JSON",
         "copied": "Kopieret",
-        "lockedDescription": "Angivet af temafilen. Rediger overlay_theme.json, eller fjern denne nøgle for at ændre den her.",
         "problemsTitle": "Problemer i temafilen:",
         "moreDiagnostics": "…og {{count}} mere.",
         "newerVersion": "Denne temafil er skrevet af en nyere version af Handy. Værdier, som denne version ikke forstår, blev ignoreret.",

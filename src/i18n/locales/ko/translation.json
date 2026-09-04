@@ -291,7 +291,6 @@
         "button": "오버레이 테마 재설정",
         "title": "오버레이 테마를 재설정할까요?",
         "description": "오버레이의 모든 색상, 크기, 간격을 Handy 기본값으로 되돌립니다. 오버레이 스타일과 위치는 변경되지 않습니다.",
-        "descriptionWithThemeFile": "테마 파일에서 설정하지 않은 오버레이의 모든 색상, 크기, 간격을 Handy 기본값으로 되돌립니다. 오버레이 스타일과 위치는 변경되지 않으며, 테마 파일에서 설정한 값은 그대로 적용됩니다.",
         "confirm": "재설정",
         "cancel": "취소"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "테마 파일",
         "description": "외부 테마 도구가 오버레이를 제어할 수 있도록 오버레이 테마 값을 덮어쓰는 선택적 JSON 파일입니다.",
-        "notFound": "테마 파일이 없습니다. 오버레이 테마 값을 덮어쓰려면 이 경로에 파일을 만드세요.",
-        "active": "활성 — 이 파일이 {{total}}개 값 중 {{count}}개를 설정합니다.",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "다시 불러오기",
         "copy": "테마를 JSON으로 복사",
         "copied": "복사됨",
-        "lockedDescription": "테마 파일에서 설정되었습니다. 여기서 변경하려면 overlay_theme.json을 편집하거나 이 키를 제거하세요.",
         "problemsTitle": "테마 파일의 문제:",
         "moreDiagnostics": "…외 {{count}}개.",
         "newerVersion": "이 테마 파일은 더 새로운 버전의 Handy에서 작성되었습니다. 이 버전이 이해하지 못하는 값은 무시되었습니다.",

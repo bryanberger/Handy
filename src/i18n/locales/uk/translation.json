@@ -291,7 +291,6 @@
         "button": "Скинути тему накладки",
         "title": "Скинути тему накладки?",
         "description": "Усі кольори, розміри та відступи накладки повернуться до типових значень Handy. Стиль і позиція накладки не зміняться.",
-        "descriptionWithThemeFile": "Усі кольори, розміри та відступи накладки, які не задані файлом теми, повернуться до типових значень Handy. Стиль і позиція накладки не зміняться, а значення з файлу теми продовжать діяти.",
         "confirm": "Скинути",
         "cancel": "Скасувати"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "Файл теми",
         "description": "Необов'язковий файл JSON, який перевизначає значення теми накладки, щоб зовнішні інструменти оформлення могли керувати накладкою.",
-        "notFound": "Файлу теми немає. Створіть його за цим шляхом, щоб перевизначити значення теми накладки.",
-        "active": "Активний — цей файл задає {{count}} з {{total}} значень.",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "Перезавантажити",
         "copy": "Скопіювати тему як JSON",
         "copied": "Скопійовано",
-        "lockedDescription": "Задано файлом теми. Змініть overlay_theme.json або вилучіть цей ключ, щоб редагувати значення тут.",
         "problemsTitle": "Проблеми у файлі теми:",
         "moreDiagnostics": "…і ще {{count}}.",
         "newerVersion": "Цей файл теми створено новішою версією Handy. Значення, яких ця версія не розуміє, було проігноровано.",

@@ -291,7 +291,6 @@
         "button": "Нулиране на темата на наслагването",
         "title": "Нулиране на темата на наслагването?",
         "description": "Това връща всички цветове, размери и отстояния на наслагването към стойностите по подразбиране на Handy. Стилът и позицията на наслагването не се променят.",
-        "descriptionWithThemeFile": "Това връща към стойностите по подразбиране на Handy всички цветове, размери и отстояния на наслагването, които не са зададени от файла с тема. Стилът и позицията на наслагването не се променят, а стойностите от файла с тема остават в сила.",
         "confirm": "Нулиране",
         "cancel": "Отказ"
       },
@@ -410,12 +409,18 @@
       "themeFile": {
         "title": "Файл с тема",
         "description": "Незадължителен JSON файл, който заменя стойностите на темата на наслагването, за да могат външни инструменти за теми да го управляват.",
-        "notFound": "Няма файл с тема. Създайте такъв на този път, за да замените стойностите на темата на наслагването.",
-        "active": "Активен — този файл задава {{count}} от {{total}} стойности.",
+        "notFound": "No theme file yet. Handy creates one here the first time you change something above.",
+        "owned": "This file is the theme; Handy writes it. It sets {{count}} of {{total}} values.",
+        "managed": {
+          "symlink": "Managed: this file is a symlink to {{target}}. Handy reads it and never writes it.",
+          "readOnly": "Managed: this file is read-only, so Handy reads it and never writes it.",
+          "notCreatable": "Managed: HANDY_OVERLAY_THEME_FILE names {{target}}, and Handy does not create files there. Create it yourself, or unset the variable.",
+          "unknown": "Managed: Handy cannot write this file, so it only reads it."
+        },
+        "lockedDescription": "The theme file is managed by something other than Handy, so these values are read-only.",
         "reload": "Презареждане",
         "copy": "Копиране на темата като JSON",
         "copied": "Копирано",
-        "lockedDescription": "Зададено от файла с тема. Редактирайте overlay_theme.json или премахнете този ключ, за да го променяте оттук.",
         "problemsTitle": "Проблеми във файла с тема:",
         "moreDiagnostics": "…и още {{count}}.",
         "newerVersion": "Този файл с тема е записан от по-нова версия на Handy. Стойностите, които тази версия не разбира, бяха пренебрегнати.",

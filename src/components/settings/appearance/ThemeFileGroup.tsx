@@ -3,7 +3,10 @@ import { useTranslation } from "react-i18next";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { PathDisplay } from "@/components/ui/PathDisplay";
+import {
+  PATH_ACTION_BUTTON_CLASS,
+  PathDisplay,
+} from "@/components/ui/PathDisplay";
 import { SettingContainer } from "@/components/ui/SettingContainer";
 import { INHERIT_ALL, type OverlayThemeKey } from "@/lib/overlayTheme";
 import {
@@ -176,6 +179,7 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
           <Button
             variant="secondary"
             size="sm"
+            className={PATH_ACTION_BUTTON_CLASS}
             onClick={onReload}
             disabled={isReloading}
           >

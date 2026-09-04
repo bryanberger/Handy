@@ -33,7 +33,7 @@ export type PreviewBlocker = "recording" | "overlayOff";
 
 /**
  * Whether preview mode can be started at all. Mirrors the backend's own
- * refusal order (`preview_refusal` in `commands/overlay_preview.rs`):
+ * refusal order (`preview_refusal` in `src-tauri/src/overlay_preview.rs`):
  * recording outranks everything, because refusing for the right reason
  * matters more than reporting the first problem found.
  */
@@ -62,10 +62,10 @@ export const IDLE_PREVIEW: PreviewMode = { running: false, state: "cycle" };
  * draft.
  *
  * The same rule the backend enforces (`draft_allowed` in
- * `commands/overlay_preview.rs`), asked here as well so a drag does not send
- * an IPC message per animation frame for a command that will refuse it. The
- * tab is not the authority — the backend is, and it re-checks — but it is the
- * one paying for the call.
+ * `src-tauri/src/overlay_preview.rs`), asked here as well so a drag does not
+ * send an IPC message per animation frame for a command that will refuse it.
+ * The tab is not the authority — the backend is, and it re-checks — but it is
+ * the one paying for the call.
  *
  * `isRecording` is in the rule rather than assumed away: the tab learns about
  * a pre-emption from its own poll, so there is a window in which it still

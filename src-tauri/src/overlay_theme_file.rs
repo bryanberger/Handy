@@ -76,27 +76,131 @@ const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 /// unbounded in a hostile document.
 const MAX_DIAGNOSTICS: usize = 5;
 
-/// The sixteen token keys, in the token contract's order — which is also the
-/// order the Appearance tab lists them in. This is the order
+/// One token as this reader sees it: the key it is written under, and how a
+/// value for it becomes a field of [`OverlayTheme`].
+struct TokenSpec {
+    key: &'static str,
+    /// Parse `value` into `tokens`, pushing a diagnostic for anything it had
+    /// to reject or clamp, and report whether the key ended up **owned** —
+    /// that is, whether the file actually set it. Reached through
+    /// [`TokenSpec::parse`], which is what hands it the key.
+    parser: fn(&str, &Value, &mut OverlayTheme, &mut Vec<ThemeFileDiagnostic>) -> bool,
+}
+
+impl TokenSpec {
+    /// Read this row's value out of the document.
+    ///
+    /// The key its diagnostics are filed under is the row's own: the caller
+    /// has no say in it, which is why it is not a parameter.
+    fn parse(
+        &self,
+        value: &Value,
+        tokens: &mut OverlayTheme,
+        diagnostics: &mut Vec<ThemeFileDiagnostic>,
+    ) -> bool {
+        (self.parser)(self.key, value, tokens, diagnostics)
+    }
+}
+
+const fn token(
+    key: &'static str,
+    parser: fn(&str, &Value, &mut OverlayTheme, &mut Vec<ThemeFileDiagnostic>) -> bool,
+) -> TokenSpec {
+    TokenSpec { key, parser }
+}
+
+/// The sixteen tokens, in the token contract's order — which is also the order
+/// the Appearance tab lists them in. This is the order
 /// [`ThemeFileState::owned_keys`] and the per-key diagnostics come out in, so
 /// the payload does not depend on how `serde_json` orders an object's keys.
-const TOKEN_KEYS: [&str; 16] = [
-    "accent",
-    "surface",
-    "surface_opacity",
-    "glass_tint",
-    "text",
-    "border",
-    "border_opacity",
-    "material",
-    "glass_material",
-    "glass_style",
-    "size_scale",
-    "radius",
-    "border_width",
-    "padding",
-    "waveform_gap",
-    "waveform_width",
+///
+/// One table rather than a key list beside a match on it: the key, its parser
+/// and its bounds are one fact about a token, and splitting them made "a key in
+/// one list and not the other" a thing a debug assertion had to catch at
+/// runtime instead of a thing that cannot be written down.
+const TOKENS: [TokenSpec; 16] = [
+    token("accent", |key, value, tokens, diagnostics| {
+        tokens.accent = parse_color(key, value, diagnostics);
+        tokens.accent.is_some()
+    }),
+    token("surface", |key, value, tokens, diagnostics| {
+        tokens.surface = parse_color(key, value, diagnostics);
+        tokens.surface.is_some()
+    }),
+    token("surface_opacity", |key, value, tokens, diagnostics| {
+        tokens.surface_opacity = parse_ratio(
+            key,
+            value,
+            SURFACE_OPACITY_MIN,
+            SURFACE_OPACITY_MAX,
+            diagnostics,
+        );
+        tokens.surface_opacity.is_some()
+    }),
+    token("glass_tint", |key, value, tokens, diagnostics| {
+        tokens.glass_tint = parse_ratio(key, value, GLASS_TINT_MIN, GLASS_TINT_MAX, diagnostics);
+        tokens.glass_tint.is_some()
+    }),
+    token("text", |key, value, tokens, diagnostics| {
+        tokens.text = parse_color(key, value, diagnostics);
+        tokens.text.is_some()
+    }),
+    token("border", |key, value, tokens, diagnostics| {
+        tokens.border = parse_color(key, value, diagnostics);
+        tokens.border.is_some()
+    }),
+    token("border_opacity", |key, value, tokens, diagnostics| {
+        tokens.border_opacity = parse_ratio(
+            key,
+            value,
+            BORDER_OPACITY_MIN,
+            BORDER_OPACITY_MAX,
+            diagnostics,
+        );
+        tokens.border_opacity.is_some()
+    }),
+    token("material", |key, value, tokens, diagnostics| {
+        tokens.material = parse_material(key, value, diagnostics);
+        tokens.material.is_some()
+    }),
+    token("glass_material", |key, value, tokens, diagnostics| {
+        tokens.glass_material = parse_glass_material(key, value, diagnostics);
+        tokens.glass_material.is_some()
+    }),
+    token("glass_style", |key, value, tokens, diagnostics| {
+        tokens.glass_style = parse_glass_style(key, value, diagnostics);
+        tokens.glass_style.is_some()
+    }),
+    token("size_scale", |key, value, tokens, diagnostics| {
+        tokens.size_scale = parse_ratio(key, value, SIZE_SCALE_MIN, SIZE_SCALE_MAX, diagnostics);
+        tokens.size_scale.is_some()
+    }),
+    token("radius", |key, value, tokens, diagnostics| {
+        tokens.radius = parse_px(key, value, 0, RADIUS_MAX, diagnostics);
+        tokens.radius.is_some()
+    }),
+    token("border_width", |key, value, tokens, diagnostics| {
+        tokens.border_width = parse_px(key, value, 0, BORDER_WIDTH_MAX, diagnostics);
+        tokens.border_width.is_some()
+    }),
+    token("padding", |key, value, tokens, diagnostics| {
+        tokens.padding = parse_px(key, value, 0, PADDING_MAX, diagnostics);
+        tokens.padding.is_some()
+    }),
+    token("waveform_gap", |key, value, tokens, diagnostics| {
+        tokens.waveform_gap = parse_px(key, value, 0, WAVEFORM_GAP_MAX, diagnostics);
+        tokens.waveform_gap.is_some()
+    }),
+    token("waveform_width", |key, value, tokens, diagnostics| {
+        tokens.waveform_width = parse_px(
+            key,
+            value,
+            WAVEFORM_WIDTH_MIN,
+            WAVEFORM_WIDTH_MAX,
+            diagnostics,
+        );
+        tokens.waveform_width.is_some()
+    }),
 ];
 
 /// The one top-level key that is not a token.
@@ -586,7 +690,7 @@ fn parse_document(text: &str) -> Result<ParsedDocument, ThemeFileDiagnostic> {
     let unknown: Vec<&str> = object
         .keys()
         .map(String::as_str)
-        .filter(|key| *key != VERSION_KEY && !TOKEN_KEYS.contains(key))
+        .filter(|key| *key != VERSION_KEY && !TOKENS.iter().any(|token| token.key == *key))
         .collect();
     if !unknown.is_empty() {
         let names = unknown.join(", ");
@@ -603,8 +707,8 @@ fn parse_document(text: &str) -> Result<ParsedDocument, ThemeFileDiagnostic> {
     // Fixed contract order, not the document's: `serde_json` sorts an object's
     // keys unless the `preserve_order` feature is on, so document order is not
     // a thing this reader could honour even if it wanted to.
-    for key in TOKEN_KEYS {
-        let Some(value) = object.get(key) else {
+    for token in &TOKENS {
+        let Some(value) = object.get(token.key) else {
             continue;
         };
         // Explicit null is the spelling of inherit, not a value to complain
@@ -613,101 +717,8 @@ fn parse_document(text: &str) -> Result<ParsedDocument, ThemeFileDiagnostic> {
             continue;
         }
 
-        let owned = match key {
-            "accent" => {
-                tokens.accent = parse_color(key, value, &mut diagnostics);
-                tokens.accent.is_some()
-            }
-            "surface" => {
-                tokens.surface = parse_color(key, value, &mut diagnostics);
-                tokens.surface.is_some()
-            }
-            "text" => {
-                tokens.text = parse_color(key, value, &mut diagnostics);
-                tokens.text.is_some()
-            }
-            "border" => {
-                tokens.border = parse_color(key, value, &mut diagnostics);
-                tokens.border.is_some()
-            }
-            "surface_opacity" => {
-                tokens.surface_opacity = parse_ratio(
-                    key,
-                    value,
-                    SURFACE_OPACITY_MIN,
-                    SURFACE_OPACITY_MAX,
-                    &mut diagnostics,
-                );
-                tokens.surface_opacity.is_some()
-            }
-            "glass_tint" => {
-                tokens.glass_tint =
-                    parse_ratio(key, value, GLASS_TINT_MIN, GLASS_TINT_MAX, &mut diagnostics);
-                tokens.glass_tint.is_some()
-            }
-            "border_opacity" => {
-                tokens.border_opacity = parse_ratio(
-                    key,
-                    value,
-                    BORDER_OPACITY_MIN,
-                    BORDER_OPACITY_MAX,
-                    &mut diagnostics,
-                );
-                tokens.border_opacity.is_some()
-            }
-            "size_scale" => {
-                tokens.size_scale =
-                    parse_ratio(key, value, SIZE_SCALE_MIN, SIZE_SCALE_MAX, &mut diagnostics);
-                tokens.size_scale.is_some()
-            }
-            "material" => {
-                tokens.material = parse_material(key, value, &mut diagnostics);
-                tokens.material.is_some()
-            }
-            "glass_material" => {
-                tokens.glass_material = parse_glass_material(key, value, &mut diagnostics);
-                tokens.glass_material.is_some()
-            }
-            "glass_style" => {
-                tokens.glass_style = parse_glass_style(key, value, &mut diagnostics);
-                tokens.glass_style.is_some()
-            }
-            "radius" => {
-                tokens.radius = parse_px(key, value, 0, RADIUS_MAX, &mut diagnostics);
-                tokens.radius.is_some()
-            }
-            "border_width" => {
-                tokens.border_width = parse_px(key, value, 0, BORDER_WIDTH_MAX, &mut diagnostics);
-                tokens.border_width.is_some()
-            }
-            "padding" => {
-                tokens.padding = parse_px(key, value, 0, PADDING_MAX, &mut diagnostics);
-                tokens.padding.is_some()
-            }
-            "waveform_gap" => {
-                tokens.waveform_gap = parse_px(key, value, 0, WAVEFORM_GAP_MAX, &mut diagnostics);
-                tokens.waveform_gap.is_some()
-            }
-            "waveform_width" => {
-                tokens.waveform_width = parse_px(
-                    key,
-                    value,
-                    WAVEFORM_WIDTH_MIN,
-                    WAVEFORM_WIDTH_MAX,
-                    &mut diagnostics,
-                );
-                tokens.waveform_width.is_some()
-            }
-            // TOKEN_KEYS is the list this match is written against; a key added
-            // to one and not the other must not silently inherit.
-            other => {
-                debug_assert!(false, "unhandled theme file token '{other}'");
-                false
-            }
-        };
-
-        if owned {
-            owned_keys.push(key.to_string());
+        if token.parse(value, &mut tokens, &mut diagnostics) {
+            owned_keys.push(token.key.to_string());
         }
     }
 
@@ -1336,7 +1347,10 @@ mod tests {
             }
         );
         // Every key is owned, so the tab locks all sixteen.
-        assert_eq!(parsed.owned_keys, TOKEN_KEYS.to_vec());
+        assert_eq!(
+            parsed.owned_keys,
+            TOKENS.iter().map(|token| token.key).collect::<Vec<_>>()
+        );
         assert!(parsed.diagnostics.is_empty());
     }
 

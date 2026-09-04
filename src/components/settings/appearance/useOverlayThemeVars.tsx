@@ -1,4 +1,10 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { CSSProperties } from "react";
 import type { Material, OverlayTheme, ResolvedOverlayTheme } from "@/bindings";
 import {
@@ -8,6 +14,7 @@ import {
   type OverlayColorKey,
   type OverlayThemeKey,
 } from "@/lib/overlayTheme";
+import { OverlayThemeProbes } from "./OverlayThemeProbes";
 
 /** A theme file state to show before the first `resolved` payload arrives. */
 export const EMPTY_FILE_STATE: ResolvedOverlayTheme["file"] = {
@@ -134,17 +141,13 @@ function useStableMap<T extends Record<string, string | null>>(next: T): T {
 }
 
 export interface UseOverlayThemeVarsResult {
-  /** The *colour* half of `resolveOverlayThemeVars(theme ∪ draft)`, ready to
-   *  spread as inline style on the probe host. Only the colours, because the
-   *  probes read colours back: a length written there would re-style the host
-   *  on every frame of a Size Scale drag to measure four values that cannot
-   *  have moved. */
-  probeVars: CSSProperties;
+  /** The measuring device this hook reads its `resolvedDefaults` off, already
+   *  wired: render it anywhere inside the tab and nothing else is needed.
+   *  Hiding it here rather than handing the caller its three props is the
+   *  point — mounting it wrong is what would silently leave every resolved
+   *  default `null` forever. */
+  probes: React.ReactElement;
   effectiveMaterial: Material;
-  /** Attach one to a 0×0 `aria-hidden` span per color token inside the probe
-   *  host, `style={{ color: "var(--s-accent)" }}` etc. — the only reliable
-   *  way to resolve a `color-mix()` custom property down to a hex. */
-  colorProbeRefs: Record<OverlayColorKey, React.RefObject<HTMLSpanElement>>;
   /** The probed, theme-aware default for each color token — what a ColorField
    *  shows (muted, italic) while that token is unset. `null` until the first
    *  measurement. */
@@ -211,6 +214,9 @@ export function useOverlayThemeVars(
       );
     }, [mergedTheme]),
   );
+  // Only the colours reach the probe host: it exists to read colours back, and
+  // a length written there would re-style it on every frame of a Size Scale
+  // drag to re-measure four values that cannot have moved.
   const probeVars = colorVars as unknown as CSSProperties;
 
   const accentRef = useRef<HTMLSpanElement>(null);
@@ -289,9 +295,14 @@ export function useOverlayThemeVars(
   );
 
   return {
-    probeVars,
+    probes: (
+      <OverlayThemeProbes
+        probeVars={probeVars}
+        effectiveMaterial={mergedTheme.effective_material}
+        probeRefs={colorProbeRefs}
+      />
+    ),
     effectiveMaterial: mergedTheme.effective_material,
-    colorProbeRefs,
     resolvedDefaults,
     isLocked,
     effectiveValue,

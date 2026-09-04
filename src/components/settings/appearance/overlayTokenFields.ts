@@ -63,11 +63,12 @@ const MATERIAL = "settings.appearance.material";
 const GLASS_STYLE = "settings.appearance.glassStyle";
 
 /** Token order matches the contract's table, which is also the order the
- *  theme file's `TOKEN_KEYS` lists them in: accent, surface, surface_opacity,
- *  glass_tint, text, border, border_opacity, material, glass_material,
- *  glass_style, size_scale, radius, border_width, padding, waveform_gap,
- *  waveform_width. `glass_material` is the one token with no row: it drives
- *  the pre-macOS-26 fallback engine only, and is set from the theme file. */
+ *  theme file's `TOKENS` table lists them in: accent, surface,
+ *  surface_opacity, glass_tint, text, border, border_opacity, material,
+ *  glass_material, glass_style, size_scale, radius, border_width, padding,
+ *  waveform_gap, waveform_width. `glass_material` is the one token with no
+ *  row: it drives the pre-macOS-26 fallback engine only, and is set from the
+ *  theme file. */
 export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
   {
     key: "accent",

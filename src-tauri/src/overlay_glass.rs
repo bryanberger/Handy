@@ -322,7 +322,7 @@ mod native {
     use tauri::{AppHandle, Manager};
 
     use super::{engine_for, glass_action, GlassAction, GlassAppearance, GlassRequest};
-    use crate::overlay::CARD_FADE_MS;
+    use crate::overlay_geometry::CARD_FADE_MS;
     use crate::overlay_theme::{
         liquid_tint, GlassEngine, GlassMaterial, GlassStyle, GlassSupport, Material, TintColor,
     };
@@ -852,7 +852,7 @@ mod native {
             glass_view_class_names, liquid_class_available, morph_duration_ms, native_material,
             native_style, AnyClass, GlassMaterial, GlassStyle,
         };
-        use crate::overlay::CARD_MORPH_MS;
+        use crate::overlay_geometry::CARD_MORPH_MS;
         use objc2_app_kit::{NSGlassEffectViewStyle, NSVisualEffectMaterial};
 
         /// The startup crash this seam exists for: `NSGlassEffectView` does

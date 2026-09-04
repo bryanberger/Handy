@@ -132,11 +132,11 @@ pub fn change_overlay_theme_setting(
 /// token the window is actually built from moved.
 ///
 /// A no-op unless a preview is *running* and nothing is recording — see
-/// `overlay_preview::draft_allowed`. Outside preview mode the overlay belongs
-/// to whatever is recording, and a draft has no business repainting it; the
-/// same goes for a preview that has been told to stop, and for one a real
-/// recording has taken, both of which own an overlay that is no longer the
-/// tab's to paint.
+/// `overlay_preview::accepts_theme_drafts`. Outside preview mode the overlay
+/// belongs to whatever is recording, and a draft has no business repainting
+/// it; the same goes for a preview that has been told to stop, and for one a
+/// real recording has taken, both of which own an overlay that is no longer
+/// the tab's to paint.
 ///
 /// Every draft that does get through leaves a mark, which
 /// [`change_overlay_theme_setting`] clears: that is what guarantees the screen
@@ -145,7 +145,7 @@ pub fn change_overlay_theme_setting(
 #[tauri::command]
 #[specta::specta]
 pub fn preview_overlay_theme_draft(app: AppHandle, theme: OverlayTheme) -> Result<(), String> {
-    if !crate::commands::overlay_preview::accepts_theme_drafts(&app) {
+    if !crate::overlay_preview::accepts_theme_drafts(&app) {
         return Ok(());
     }
 

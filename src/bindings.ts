@@ -940,10 +940,17 @@ async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<OverlayThe
  * settings write, no `settings-changed`, and no native window work unless a
  * token the window is actually built from moved.
  * 
- * A no-op unless a preview is on screen: outside preview mode the overlay
+ * A no-op unless a preview is *running* and nothing is recording — see
+ * `overlay_preview::accepts_theme_drafts`. Outside preview mode the overlay
  * belongs to whatever is recording, and a draft has no business repainting
- * it. That also means a preview pre-empted by a real recording stops
- * receiving drafts the moment it loses the overlay.
+ * it; the same goes for a preview that has been told to stop, and for one a
+ * real recording has taken, both of which own an overlay that is no longer
+ * the tab's to paint.
+ * 
+ * Every draft that does get through leaves a mark, which
+ * [`change_overlay_theme_setting`] clears: that is what guarantees the screen
+ * ends on a stored value even when the commit that follows has nothing to
+ * store.
  */
 async previewOverlayThemeDraft(theme: OverlayTheme) : Promise<Result<null, string>> {
     try {
@@ -995,12 +1002,9 @@ async reloadOverlayThemeFile() : Promise<Result<ResolvedOverlayTheme, string>> {
  * stops it.
  * 
  * `sample_text` is the Live panel's transcript, passed in already translated so
- * i18n stays entirely on the frontend; `None` falls back to the built-in
- * English sentence. Returns as soon as the overlay is up; the tab keeps editing
- * tokens while it runs and every change repaints the overlay live.
- * 
- * Async so the claim below — which waits briefly for a previous driver to let
- * go — never runs on the main thread.
+ * i18n stays entirely on the frontend; `None` falls back to a built-in English
+ * sentence. Returns as soon as the overlay is up; the tab keeps editing tokens
+ * while it runs and every change repaints the overlay live.
  */
 async startOverlayPreview(state: PreviewState, sampleText: string | null) : Promise<Result<null, string>> {
     try {
@@ -1013,10 +1017,8 @@ async startOverlayPreview(state: PreviewState, sampleText: string | null) : Prom
 /**
  * Set which state the preview shows, without restarting the driver.
  * 
- * Always writes the target, whether or not a preview is running: the tab can
- * race a preview the backend already ended (a real recording took the
- * overlay), and remembering the pin costs nothing — the next start reads it
- * anyway, and no driver reads it while none is running.
+ * Safe to call while nothing is running: the pin is remembered and travels
+ * with the next start.
  */
 async setOverlayPreviewState(state: PreviewState) : Promise<void> {
     await TAURI_INVOKE("set_overlay_preview_state", { state });
@@ -1375,7 +1377,7 @@ export type OrtAcceleratorSetting = "auto" | "cpu" | "cuda" | "directml" | "rocm
  * the Live panel's open/collapsed morph is a pure webview decision (driven
  * by streamed text and phase) that Rust cannot see any other way.
  * 
- * One variant per distinct `.scard` class combination in
+ * One shape per distinct `.scard` class combination in
  * `RecordingOverlay.tsx`; the footprints mirror the `--ov-*` block in
  * `RecordingOverlay.css` and are pinned to it by
  * `overlay_window_constants_match_overlay_css`. Must agree with

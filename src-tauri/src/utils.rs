@@ -1,6 +1,6 @@
-use crate::commands::overlay_preview;
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::transcription::TranscriptionManager;
+use crate::overlay_preview::{self, CancelRemainder};
 use crate::shortcut;
 use crate::TranscriptionCoordinator;
 use log::info;
@@ -98,19 +98,9 @@ pub fn cancel_current_operation(app: &AppHandle) {
     // full cancel below, because swallowing that one would strand a session.
     let audio_manager = app.state::<Arc<AudioRecordingManager>>();
     let recording_was_active = audio_manager.is_recording();
-    match overlay_preview::cancel_disposition(
-        overlay_preview::is_previewing(),
-        recording_was_active,
-    ) {
-        overlay_preview::CancelDisposition::CancelOperation => {}
-        overlay_preview::CancelDisposition::EndPreviewOnly => {
-            overlay_preview::stop_preview();
-            info!("Cancellation handled by the overlay preview; nothing else was running");
-            return;
-        }
-        overlay_preview::CancelDisposition::EndPreviewAndCancel => {
-            overlay_preview::stop_preview();
-        }
+    if overlay_preview::take_cancel(recording_was_active) == CancelRemainder::Handled {
+        info!("Cancellation handled by the overlay preview; nothing else was running");
+        return;
     }
 
     // Unregister the cancel shortcut asynchronously

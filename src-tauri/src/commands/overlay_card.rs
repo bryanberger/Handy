@@ -8,7 +8,8 @@
 //! is a deliberate no-op: `overlay::set_card_shape` records the shape and
 //! returns as soon as it sees the effective Material is not Glass.
 
-use crate::overlay::{self, OverlayCardShape, MAX_CARD_MORPH_MS};
+use crate::overlay;
+use crate::overlay_geometry::{OverlayCardShape, CARD_MORPH_MS, MAX_CARD_MORPH_MS};
 use tauri::AppHandle;
 
 /// Reported by the overlay webview whenever the card's shape changes.
@@ -46,7 +47,7 @@ fn checked_duration_ms(duration_ms: u32) -> Result<u32, String> {
         return Err(format!(
             "card shape duration {duration_ms}ms is out of range (0..={MAX_CARD_MORPH_MS}ms, \
              the card's own morph being {}ms)",
-            overlay::CARD_MORPH_MS
+            CARD_MORPH_MS
         ));
     }
     Ok(duration_ms)
@@ -59,10 +60,7 @@ mod tests {
     #[test]
     fn card_shape_duration_accepts_the_card_morph_and_a_snap() {
         assert_eq!(checked_duration_ms(0), Ok(0));
-        assert_eq!(
-            checked_duration_ms(overlay::CARD_MORPH_MS),
-            Ok(overlay::CARD_MORPH_MS)
-        );
+        assert_eq!(checked_duration_ms(CARD_MORPH_MS), Ok(CARD_MORPH_MS));
         assert_eq!(
             checked_duration_ms(MAX_CARD_MORPH_MS),
             Ok(MAX_CARD_MORPH_MS)

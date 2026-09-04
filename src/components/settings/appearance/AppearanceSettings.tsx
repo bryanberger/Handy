@@ -5,11 +5,8 @@ import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import { useResolvedOverlayTheme } from "@/hooks/useResolvedOverlayTheme";
 import { useSettings } from "@/hooks/useSettings";
 import {
-  BORDER_OPACITY_INHERIT,
-  GLASS_TINT_INHERIT,
+  inheritedTokenValue,
   INHERIT_ALL,
-  SURFACE_OPACITY_INHERIT,
-  type OverlayNumericKey,
   type OverlayThemeKey,
 } from "@/lib/overlayTheme";
 import type {
@@ -29,32 +26,10 @@ import {
   type OverlayTokenField,
 } from "./overlayTokenFields";
 import type { PreviewChange, PreviewChangeRequest } from "./previewMode";
-import { OverlayThemeProbes } from "./OverlayThemeProbes";
 import { OverlayTokenRow } from "./OverlayTokenRow";
 import { ThemeFileGroup } from "./ThemeFileGroup";
 import { setOverlayThemeToken, useDraftSetting } from "./useDraftSetting";
 import { EMPTY_FILE_STATE, useOverlayThemeVars } from "./useOverlayThemeVars";
-
-/** Token contract defaults that do not vary with the app theme; mirrors
- *  `RecordingOverlay.css`'s `:root` block, which is the actual source of
- *  truth these must be kept in step with by hand. The three alphas are
- *  excluded — theirs live in the apply layer, beside the composition that
- *  reads them, so they can never drift from what is actually painted. */
-const STATIC_NUMERIC_DEFAULTS: Partial<Record<OverlayNumericKey, number>> = {
-  size_scale: 1,
-  radius: 24,
-  border_width: 1,
-  padding: 10,
-  waveform_gap: 3,
-  waveform_width: 4,
-};
-
-function numericDefault(key: OverlayNumericKey, material: Material): number {
-  if (key === "surface_opacity") return SURFACE_OPACITY_INHERIT;
-  if (key === "glass_tint") return GLASS_TINT_INHERIT;
-  if (key === "border_opacity") return BORDER_OPACITY_INHERIT[material];
-  return STATIC_NUMERIC_DEFAULTS[key] ?? 0;
-}
 
 /** What the tab assumes before the first resolved payload arrives: no Glass,
  *  and so no engine. */
@@ -205,7 +180,7 @@ const AppearanceSettingsInner: React.FC = () => {
             field={field}
             value={
               vars.effectiveValue(field.key) ??
-              numericDefault(field.key, vars.effectiveMaterial)
+              inheritedTokenValue(field.key, vars.effectiveMaterial)
             }
             locked={locked}
             lockedDescription={lockedDescription}
@@ -243,14 +218,11 @@ const AppearanceSettingsInner: React.FC = () => {
       </SettingsGroup>
 
       {/* Not a preview: an off-screen measuring device the colour fields read
-          their "resolved default" back off. Mounted whenever the tab is, so
-          the refs are attached before the fields below ask for a reading —
-          and it costs nothing while the overlay is off and they are hidden. */}
-      <OverlayThemeProbes
-        probeVars={vars.probeVars}
-        effectiveMaterial={vars.effectiveMaterial}
-        probeRefs={vars.colorProbeRefs}
-      />
+          their "resolved default" back off, wired by the hook that reads it.
+          Mounted whenever the tab is, so the refs are attached before the
+          fields below ask for a reading — and it costs nothing while the
+          overlay is off and they are hidden. */}
+      {vars.probes}
 
       {style !== "none" && (
         <>

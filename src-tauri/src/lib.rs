@@ -8,13 +8,19 @@ mod catalog;
 pub mod cli;
 mod clipboard;
 mod commands;
+/// The frontend files whose numbers this crate keeps a second copy of, and the
+/// parsers the pins read them with.
+#[cfg(test)]
+mod frontend_source;
 mod helpers;
 mod input;
 mod llm_client;
 mod managers;
 mod memory;
 mod overlay;
+mod overlay_geometry;
 mod overlay_glass;
+mod overlay_preview;
 mod overlay_theme;
 mod overlay_theme_file;
 mod paste_tx;
@@ -887,7 +893,7 @@ pub fn run(cli_args: CliArgs) {
                 // there is no runtime to enter at all.
                 let handle = app.clone();
                 std::thread::spawn(move || {
-                    if let Err(error) = commands::overlay_preview::run_cli_preview(handle) {
+                    if let Err(error) = overlay_preview::run_cli_preview(handle) {
                         log::warn!("--preview-overlay: {error}");
                     }
                 });
@@ -1075,7 +1081,7 @@ pub fn run(cli_args: CliArgs) {
                 // React never learns it is off screen. The driver watches the
                 // window itself as well, for the hides that never reach this
                 // handler; this is the immediate half.
-                commands::overlay_preview::stop_preview();
+                overlay_preview::stop_preview();
 
                 #[cfg(target_os = "macos")]
                 {
@@ -1137,7 +1143,7 @@ pub fn run(cli_args: CliArgs) {
         tauri::RunEvent::Exit => {
             // Let the preview driver's thread fall out of its loop rather than
             // leaving it emitting into a webview that is going away.
-            commands::overlay_preview::stop_preview();
+            overlay_preview::stop_preview();
             if let Some(tm) = app.try_state::<Arc<TranscriptionManager>>() {
                 let _ = tm.unload_model();
             }

@@ -77,12 +77,15 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `cli.rs` - CLI argument definitions (clap derive)
 - `shortcut.rs` - Global keyboard shortcut handling
 - `settings.rs` - Application settings management
-- `overlay.rs` - Recording overlay window (platform-specific), including its native geometry
+- `overlay.rs` - Recording overlay window (platform-specific): window creation, monitors, positioning, show and hide, the Glass reveal and mic levels
+- `overlay_geometry.rs` - The card's geometry, pure and platform-free: the card shapes, the card metrics (size scale, border width, radius), the window size and corner radius they produce, and the overlay window state the native window is configured from
 - `overlay_theme.rs` - Overlay theme tokens, the file/settings/inherit resolver, and delivery
 - `overlay_theme_file.rs` - Reads `overlay_theme.json` (see the README's Overlay Theme File section)
 - `overlay_glass.rs` - The macOS Glass material: one native view installed under the webview — `NSGlassEffectView` (Liquid Glass) on macOS 26 and later, `NSVisualEffectView` before it — plus the native frame morph. Which engine drew is reported as `glass_support.engine`; `glass_style` and `glass_material` are its two live setters, one per engine
+- `overlay_preview.rs` - Preview mode: drives the real overlay from synthetic audio, cycling or pinned to one state, until the Appearance tab stops it (also backs `--preview-overlay`, which stops itself); it also owns the cancel funnel every cancel path goes through
+- `frontend_source.rs` - Test-only readers for the overlay's stylesheet and its TypeScript, so Rust tests can pin their constants to the values the frontend actually paints
 - `commands/overlay_theme.rs` - Persist, read and reload the overlay theme
-- `commands/overlay_preview.rs` - Preview mode: drives the real overlay from synthetic audio, cycling or pinned to one state, until the Appearance tab stops it (also backs `--preview-overlay`, which stops itself)
+- `commands/overlay_preview.rs` - Three thin adapters onto `overlay_preview.rs`: start, set state, stop
 - `commands/overlay_card.rs` - Receives the overlay page's card-shape reports
 - `signal_handle.rs` - `send_transcription_input()` reusable function
 - `utils.rs` - Platform detection helpers

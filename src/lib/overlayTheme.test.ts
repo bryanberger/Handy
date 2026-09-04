@@ -12,6 +12,7 @@ import {
   BORDER_OPACITY_INHERIT,
   getStoredOverlayTheme,
   GLASS_TINT_INHERIT,
+  inheritedTokenValue,
   INHERIT_ALL,
   OVERLAY_THEME_CSS_PROPERTIES,
   OVERLAY_THEME_STORAGE_KEY,
@@ -144,6 +145,64 @@ describe("inherit", () => {
     applyOverlayTheme(root.element, resolved({ accent: "#7aa2f7" }));
     expect(root.removed).toEqual(["--ov-radius"]);
     expect(root.properties.get("--s-accent")).toBe("#7aa2f7");
+  });
+
+  // The Appearance tab shows these numbers on a control while its token is
+  // unset, so they have to be what the overlay is actually painted with. The
+  // literals are transcribed from the `:root` block of RecordingOverlay.css,
+  // and a Rust test (`overlay_token_inherit_values_match_the_css`) reads both
+  // files and fails if either moves.
+  test("every numeric token has the value the stylesheet inherits", () => {
+    const lengths: Record<string, number> = {
+      size_scale: 1,
+      radius: 24,
+      border_width: 1,
+      padding: 10,
+      waveform_gap: 3,
+      waveform_width: 4,
+    };
+    for (const [key, expected] of Object.entries(lengths)) {
+      expect(
+        inheritedTokenValue(key as keyof typeof OVERLAY_TOKEN_BOUNDS, "flat"),
+      ).toBe(expected);
+      // A length is one number on both Materials.
+      expect(
+        inheritedTokenValue(key as keyof typeof OVERLAY_TOKEN_BOUNDS, "glass"),
+      ).toBe(expected);
+    }
+
+    expect(inheritedTokenValue("surface_opacity", "flat")).toBe(
+      SURFACE_OPACITY_INHERIT,
+    );
+    expect(inheritedTokenValue("glass_tint", "glass")).toBe(GLASS_TINT_INHERIT);
+  });
+
+  // The one token whose inherit is not one number: the card's edge is stronger
+  // over glass, and asking for it per Material is what keeps that rule out of
+  // every caller.
+  test("the border alpha inherits per Material", () => {
+    expect(inheritedTokenValue("border_opacity", "flat")).toBe(
+      BORDER_OPACITY_INHERIT.flat,
+    );
+    expect(inheritedTokenValue("border_opacity", "glass")).toBe(
+      BORDER_OPACITY_INHERIT.glass,
+    );
+  });
+
+  // Every bound has an inherit and every inherit has a bound: a token that
+  // gained one and not the other would be a slider with no value or a value
+  // no slider can show.
+  test("every numeric token's inherit is inside its own bounds", () => {
+    for (const key of Object.keys(
+      OVERLAY_TOKEN_BOUNDS,
+    ) as (keyof typeof OVERLAY_TOKEN_BOUNDS)[]) {
+      const { min, max } = OVERLAY_TOKEN_BOUNDS[key];
+      for (const material of ["flat", "glass"] as const) {
+        const value = inheritedTokenValue(key, material);
+        expect(value).toBeGreaterThanOrEqual(min);
+        expect(value).toBeLessThanOrEqual(max);
+      }
+    }
   });
 });
 

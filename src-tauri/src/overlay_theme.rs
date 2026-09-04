@@ -924,6 +924,10 @@ fn deliver_native(app: &AppHandle, resolved: &ResolvedOverlayTheme) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::frontend_source::{
+        css_color, css_number, css_px, ts_declaration_block, ts_entry_block, ts_number_field,
+        tsx_const, APPLY_LAYER_TS, OVERLAY_CSS, THEME_CSS,
+    };
     use serde_json::json;
 
     fn hex(raw: &str) -> Option<HexColor> {
@@ -1497,6 +1501,130 @@ mod tests {
         assert_eq!(
             effective_material(Material::Flat, available),
             Material::Flat
+        );
+    }
+
+    /// The liquid engine tints the glass itself, in Rust, so the colour an
+    /// unset `surface` inherits has to be the same one the apply layer's
+    /// `var(--color-background)` resolves to in the webview. The palette is
+    /// the source of truth; these two constants are the copy that must follow
+    /// it.
+    #[test]
+    fn inherit_surface_matches_the_app_palette() {
+        assert_eq!(
+            css_color(THEME_CSS, "--light-color-background"),
+            INHERIT_SURFACE_LIGHT
+        );
+        assert_eq!(
+            css_color(THEME_CSS, "--dark-color-background"),
+            INHERIT_SURFACE_DARK
+        );
+    }
+
+    /// The token contract's bounds are written twice — here, where Rust clamps
+    /// the store, the theme file and the native geometry, and in
+    /// `OVERLAY_TOKEN_BOUNDS` (`src/lib/overlayTheme.ts`), where TypeScript
+    /// re-validates the localStorage mirror and draws every slider. Nothing
+    /// can generate one from the other (specta exports types, not constants),
+    /// so this reads the TypeScript and fails naming the token that drifted.
+    ///
+    /// Without it, a bound widened on one side alone is a slider that produces
+    /// values the backend silently clamps — invisible until someone drags to
+    /// the end.
+    #[test]
+    fn token_bounds_match_the_apply_layers_table() {
+        let bounds = ts_declaration_block(APPLY_LAYER_TS, "OVERLAY_TOKEN_BOUNDS");
+        let min = |token: &str| ts_number_field(ts_entry_block(bounds, token), "min");
+        let max = |token: &str| ts_number_field(ts_entry_block(bounds, token), "max");
+
+        assert_eq!(min("surface_opacity"), SURFACE_OPACITY_MIN);
+        assert_eq!(max("surface_opacity"), SURFACE_OPACITY_MAX);
+        assert_eq!(min("glass_tint"), GLASS_TINT_MIN);
+        assert_eq!(max("glass_tint"), GLASS_TINT_MAX);
+        assert_eq!(min("border_opacity"), BORDER_OPACITY_MIN);
+        assert_eq!(max("border_opacity"), BORDER_OPACITY_MAX);
+        assert_eq!(min("size_scale"), SIZE_SCALE_MIN);
+        assert_eq!(max("size_scale"), SIZE_SCALE_MAX);
+        assert_eq!(min("radius"), 0.0);
+        assert_eq!(max("radius"), f64::from(RADIUS_MAX));
+        assert_eq!(min("border_width"), 0.0);
+        assert_eq!(max("border_width"), f64::from(BORDER_WIDTH_MAX));
+        assert_eq!(min("padding"), 0.0);
+        assert_eq!(max("padding"), f64::from(PADDING_MAX));
+        assert_eq!(min("waveform_gap"), 0.0);
+        assert_eq!(max("waveform_gap"), f64::from(WAVEFORM_GAP_MAX));
+        assert_eq!(min("waveform_width"), f64::from(WAVEFORM_WIDTH_MIN));
+        assert_eq!(max("waveform_width"), f64::from(WAVEFORM_WIDTH_MAX));
+
+        // ...and neither table has a token the other lacks: the nine asserted
+        // above are every numeric token there is, on both sides.
+        assert_eq!(
+            bounds.matches("step:").count(),
+            9,
+            "a numeric token gained or lost a bound in the apply layer"
+        );
+    }
+
+    /// What an unset numeric token inherits is declared in two places: the
+    /// `:root` block of `RecordingOverlay.css`, which actually paints it, and
+    /// `STATIC_NUMERIC_INHERIT` in the apply layer, which is what the
+    /// Appearance tab's sliders show while the token is unset. A slider
+    /// showing 24 for a card drawn at 20 is a silent lie, so the stylesheet is
+    /// the source and this is the pin.
+    ///
+    /// The two alphas are absent from the CSS by design — `surface_opacity`
+    /// is folded into `--s-surface`'s own `color-mix` and `glass_tint` is
+    /// measured rather than declared — so they are pinned to the apply layer's
+    /// own exported constants instead, which is where the composition reads
+    /// them.
+    #[test]
+    fn overlay_token_inherit_values_match_the_css() {
+        let inherit = ts_declaration_block(APPLY_LAYER_TS, "STATIC_NUMERIC_INHERIT");
+        for (token, property) in [
+            ("radius", "--ov-radius"),
+            ("border_width", "--ov-border-w"),
+            ("padding", "--ov-pad-x"),
+            ("waveform_gap", "--ov-wave-gap"),
+            ("waveform_width", "--ov-wave-w"),
+        ] {
+            assert_eq!(
+                ts_number_field(inherit, token),
+                css_px(OVERLAY_CSS, property),
+                "{token} and {property} have drifted"
+            );
+        }
+        assert_eq!(
+            ts_number_field(inherit, "size_scale"),
+            css_number(OVERLAY_CSS, "--ov-scale")
+        );
+
+        // The two the stylesheet cannot declare read the apply layer's own
+        // exported constants rather than repeating a number, so the pin is
+        // that they still do — and, for the tint, that Rust's copy of the same
+        // measured number agrees.
+        for entry in [
+            "surface_opacity: SURFACE_OPACITY_INHERIT",
+            "glass_tint: GLASS_TINT_INHERIT",
+        ] {
+            assert!(
+                inherit.contains(entry),
+                "the apply layer no longer inherits `{entry}`"
+            );
+        }
+        assert_eq!(
+            tsx_const(APPLY_LAYER_TS, "export const GLASS_TINT_INHERIT = "),
+            GLASS_TINT_INHERIT
+        );
+
+        // The two Rust also owns, because the native geometry is built from
+        // them.
+        assert_eq!(
+            ts_number_field(inherit, "border_width"),
+            f64::from(BORDER_WIDTH_INHERIT)
+        );
+        assert_eq!(
+            ts_number_field(inherit, "waveform_width"),
+            f64::from(WAVEFORM_WIDTH_INHERIT)
         );
     }
 }

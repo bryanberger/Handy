@@ -53,8 +53,8 @@ export function liveCardState(
  * Which of the five card shapes the overlay is currently drawing, from the
  * same primitive state `OverlayCard` renders from.
  *
- * Must agree with `initial_card_shape` / `OverlayCardShape` in
- * `src-tauri/src/overlay.rs`; pinned there by
+ * Must agree with `OverlayCardShape` and `OverlayCardShape::initial_for` in
+ * `src-tauri/src/overlay_geometry.rs`; pinned there by
  * `initial_card_shape_matches_card_shape_ts`.
  *
  * An idle stream — nothing captured yet, no work running — is the resting

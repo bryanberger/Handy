@@ -32,8 +32,16 @@ _Avoid_: HUD, widget, popup, indicator
 The visible rounded rectangle the overlay draws inside its window — the pill in Minimal, the panel in Live. How much of the window it fills depends on the material: Flat leaves transparent slack around it, Glass makes the window the card exactly.
 _Avoid_: overlay window, box, container, bubble
 
+**Card shape**:
+Which of the five rectangles the card is drawing right now: the resting pill, the working pill, the Live pill, the Live panel collapsed to a pill, or the Live panel open. Only the webview knows it, so it reports it; under Flat it is bookkeeping, under Glass it is what the window is sized to.
+_Avoid_: card state, overlay state (that is what the card is showing, not what shape it takes), variant, form
+
+**Card metrics**:
+The three tokens a card's rectangle is computed from, clamped and carried together: size scale and border width decide how much room the card needs, size scale and radius how round its corners are. They travel as one because the window and the blur are sized and rounded from the same set.
+_Avoid_: dimensions, sizing options, geometry (which is the computation, not its inputs)
+
 **Overlay style**:
-Which overlay form is shown: None (hidden), Minimal (a compact pill), or Live (a pill that opens into a panel showing the transcript as it arrives).
+Which overlay is shown: None (hidden), Minimal (a compact pill), or Live (a pill that opens into a panel showing the transcript as it arrives).
 _Avoid_: overlay mode, overlay type, overlay form
 
 **Overlay position**:

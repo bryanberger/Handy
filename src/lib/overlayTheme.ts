@@ -153,6 +153,50 @@ export const BORDER_OPACITY_INHERIT: Record<Material, number> = {
   glass: 0.25,
 };
 
+/** Each numeric token's single-number inherit, from `RecordingOverlay.css`. */
+const STATIC_NUMERIC_INHERIT: Record<
+  Exclude<OverlayNumericKey, "border_opacity">,
+  number
+> = {
+  surface_opacity: SURFACE_OPACITY_INHERIT, // --s-surface's own 98%
+  glass_tint: GLASS_TINT_INHERIT, // measured, not a CSS default
+  size_scale: 1, // --ov-scale
+  radius: 24, // --ov-radius
+  border_width: 1, // --ov-border-w
+  padding: 10, // --ov-pad-x
+  waveform_gap: 3, // --ov-wave-gap
+  waveform_width: 4, // --ov-wave-w
+};
+
+/**
+ * What a numeric token resolves to while it is unset: the number a control
+ * shows, and the number the card is actually painted with.
+ *
+ * The Material is a parameter because one token's inherit depends on it — the
+ * card's edge is stronger over glass — and asking for it unconditionally is
+ * what keeps every caller from having to know which token that is.
+ *
+ * The numbers live here rather than in the Appearance tab, beside the two
+ * alphas above, so "what does an unset token inherit" is answered in one
+ * module. They are pinned to the `:root` block in `RecordingOverlay.css` —
+ * the stylesheet that actually paints an unset token — by
+ * `overlay_token_inherit_values_match_the_css` in
+ * `src-tauri/src/overlay_theme.rs`, so a length changed in one place and not
+ * the other fails a test instead of showing the wrong number on a slider.
+ *
+ * `border_opacity` is asked for through this function rather than read out of
+ * the table, because its inherit differs per Material — see
+ * [`BORDER_OPACITY_INHERIT`].
+ */
+export function inheritedTokenValue(
+  key: OverlayNumericKey,
+  material: Material,
+): number {
+  return key === "border_opacity"
+    ? BORDER_OPACITY_INHERIT[material]
+    : STATIC_NUMERIC_INHERIT[key];
+}
+
 /**
  * The neutral group as a percentage of the foreground, per Material.
  *
@@ -398,9 +442,10 @@ export function resolveOverlayThemeVars(
   const radius = validToken(theme, "radius");
   if (radius !== null) vars["--ov-radius"] = `${radius}px`;
 
-  // The one length the native window geometry also reads: `overlay.rs` adds
-  // two of these to the card's footprint, so the two sides must agree on the
-  // number, which is why it is a token and not a derived value.
+  // The one length the native window geometry also reads:
+  // `overlay_geometry.rs` adds two of these to the card's footprint, so the
+  // two sides must agree on the number, which is why it is a token and not a
+  // derived value.
   const borderWidth = validToken(theme, "border_width");
   if (borderWidth !== null) vars["--ov-border-w"] = `${borderWidth}px`;
 

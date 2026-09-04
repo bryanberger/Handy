@@ -63,16 +63,18 @@ The recording overlay can be styled from the Appearance tab, or from a file on d
 
 **Where Handy looks.** The file is always named `overlay_theme.json`. The first candidate that resolves to a readable file wins, and that document is the only one used. The locations are never merged.
 
-| Priority | Location                                                                             |
-| -------- | ------------------------------------------------------------------------------------ |
-| 1        | The exact path in `HANDY_OVERLAY_THEME_FILE`, when it is set. Nothing else is tried. |
-| 2        | `Data/` beside the executable, for a portable install.                               |
-| 3        | Handy's app data directory (the path the About tab prints).                          |
-| 4        | `$XDG_CONFIG_HOME/handy/`, default `~/.config/handy/`. **Linux only**.               |
+| Priority | Location                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------- |
+| 1        | The exact path in `HANDY_OVERLAY_THEME_FILE`, when it is set. Nothing else is tried.            |
+| 2        | `Data/` beside the executable, for a portable install.                                          |
+| 3        | `~/.config/handy/`, on every platform — or `$XDG_CONFIG_HOME/handy/` when that variable is set. |
+| 4        | Handy's app data directory (the path the About tab prints).                                     |
+
+`~/.config/handy/overlay_theme.json` is where to put a new file, on macOS and Windows as much as on Linux; on Windows that is `%USERPROFILE%\.config\handy\overlay_theme.json`. Priority 4 is only a fallback: a file sitting in the app data directory, where earlier builds pointed, still loads exactly as before. Handy neither moves nor migrates it.
 
 The app data directory is `~/Library/Application Support/com.pais.handy/` on macOS, `%APPDATA%\com.pais.handy\` on Windows, and `$XDG_DATA_HOME/com.pais.handy/` (default `~/.local/share/com.pais.handy/`) on Linux.
 
-The Appearance tab shows the path actually in effect, with a button that opens its folder.
+The Appearance tab shows the path actually in effect, or `~/.config/handy/overlay_theme.json` when there is no file anywhere, with a button that opens its folder — creating `~/.config/handy/` first if it does not exist yet. Under `HANDY_OVERLAY_THEME_FILE` nothing is created: the button opens the nearest folder along that path that already exists.
 
 **What the file may contain.** A JSON object with an optional `version` plus any of the sixteen overlay-theme tokens:
 

@@ -998,6 +998,36 @@ async reloadOverlayThemeFile() : Promise<Result<ResolvedOverlayTheme, string>> {
 }
 },
 /**
+ * Open the folder the theme file belongs in, creating it when it is Handy's
+ * own and missing.
+ * 
+ * What the Appearance tab's Open button calls when no theme file exists. The
+ * path it is showing then is usually `~/.config/handy/overlay_theme.json`, a
+ * location most users have never had a reason to create, so revealing it has
+ * to be able to make it first. There is nothing to reveal in the frontend's
+ * sense either: `revealItemInDir` needs an item, and this is the case where
+ * there is none.
+ * 
+ * Only a directory is ever created, never `overlay_theme.json`, and only
+ * under `~/.config/handy/`. A path named by `HANDY_OVERLAY_THEME_FILE` is
+ * opened at its nearest existing folder instead, because Handy was told to
+ * read that path, not to build a tree at it.
+ * [`crate::overlay_theme_file::reveal_target`] is where that decision lives.
+ * 
+ * `async` and then `spawn_blocking`, like [`reload_overlay_theme_file`]: a
+ * `mkdir`, the probe that precedes it and the hand-off to the file manager
+ * are all filesystem work, and this module keeps that off both the IPC thread
+ * and the async workers.
+ */
+async revealOverlayThemeLocation() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reveal_overlay_theme_location") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Show the real overlay and keep it there, cycling or pinned, until something
  * stops it.
  * 

@@ -132,14 +132,12 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
   // `reveal_item_in_dir` but not `open_path`, so revealing is all the
   // frontend can do on its own. When the file exists, reveal it (Finder /
   // Explorer opens its folder with the file selected). When it does not,
-  // there is nothing to reveal, so fall back to the Rust command that opens
-  // the app data directory, the same `open_app_data_dir` `AppDataDirectory`
-  // uses, and the directory the file is meant to be created in.
-  //
-  // Caveat: with `HANDY_OVERLAY_THEME_FILE` pointing somewhere else and no
-  // file there yet, that fallback opens the app data directory rather than
-  // the env-named one. An explicit override with a missing target is a
-  // warning case already, and no command reports that directory.
+  // there is no item to reveal and, more to the point, usually no folder
+  // either: the path shown is `~/.config/handy/`, which most users have never
+  // had a reason to create. So that case goes to Rust, which creates that one
+  // folder and opens it. Under `HANDY_OVERLAY_THEME_FILE` it creates nothing
+  // and opens the nearest folder that already exists, since that path is the
+  // user's, not Handy's.
   const handleOpen = async () => {
     if (!file.path) return;
     try {
@@ -147,9 +145,12 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
         await revealItemInDir(file.path);
         return;
       }
-      const result = await commands.openAppDataDir();
+      const result = await commands.revealOverlayThemeLocation();
       if (result.status === "error") {
-        console.error("Failed to open the app data directory:", result.error);
+        console.error(
+          "Failed to open the theme file's directory:",
+          result.error,
+        );
       }
     } catch (error) {
       console.error("Failed to show the theme file's directory:", error);

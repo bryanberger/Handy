@@ -2,7 +2,10 @@
 //!
 //! A theme file lets an external theming tool drive the overlay without the
 //! settings window. Handy only ever reads it. Nothing here writes, moves or
-//! rewrites the file, and nothing but typed tokens ever comes out of it:
+//! rewrites the file; the one thing this module creates is the folder the
+//! Appearance tab's Open button offers, `~/.config/handy/`, which is Handy's
+//! own documented location and never a path [`THEME_FILE_ENV_VAR`] named. And
+//! nothing but typed tokens ever comes out of the document:
 //! canonical `#rrggbb` colours, the closed enums `flat | glass`, the eight
 //! macOS `glass_material` values and the two `glass_style` values, and numbers
 //! rounded and clamped to the token contract's bounds. No CSS, stylesheet,
@@ -62,10 +65,19 @@ pub const CURRENT_OVERLAY_THEME_FILE_VERSION: u32 = 1;
 /// must never quietly resolve to a different file. See [`EnvOverride`].
 pub const THEME_FILE_ENV_VAR: &str = "HANDY_OVERLAY_THEME_FILE";
 
-/// The directory under `$XDG_CONFIG_HOME` that Linux theming tools write to.
+/// The directory under the user's config home that theming tools write to.
 /// Deliberately the bare product name rather than the bundle identifier,
 /// because `~/.config/handy/` is what Discussion #1802 asked for.
-const LINUX_CONFIG_SUBDIR: &str = "handy";
+const CONFIG_SUBDIR: &str = "handy";
+
+/// The environment variable that moves the config home off `~/.config`.
+///
+/// Read on every platform rather than Linux only. The name is XDG's, but a
+/// dotfile manager that sets it on macOS or Windows is exactly the setup
+/// `~/.config/handy/` exists to serve, and honouring it there costs one
+/// lookup. Per the XDG spec, empty means unset, and a relative value is
+/// invalid and ignored.
+const CONFIG_HOME_ENV_VAR: &str = "XDG_CONFIG_HOME";
 
 /// Anything larger than this is not a sixteen-key document; refused unread.
 const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
@@ -221,16 +233,124 @@ static CACHE: RwLock<Option<ThemeFileState>> = RwLock::new(None);
 pub fn candidate_paths(app: &AppHandle) -> Vec<PathBuf> {
     match env_override() {
         EnvOverride::Invalid => Vec::new(),
-        EnvOverride::Unset => candidates_from(
-            None,
-            app_data_dir(app).as_deref(),
-            linux_config_dir(app).as_deref(),
-        ),
-        // `candidates_from` already returns the singleton list for `Some`;
+        EnvOverride::Unset => candidates_from(Locations {
+            env: None,
+            portable_data: portable_data_dir().as_deref(),
+            config_home: config_home(app).as_deref(),
+            app_data: platform_app_data_dir(app).as_deref(),
+        }),
+        // `candidates_from` already returns the singleton list for `env`;
         // routed through it so "the env var is exclusive" has one
         // implementation.
-        EnvOverride::Path(path) => candidates_from(Some(&path), None, None),
+        EnvOverride::Path(path) => candidates_from(Locations {
+            env: Some(&path),
+            ..Locations::default()
+        }),
     }
+}
+
+/// What the Appearance tab's Open button should do with a theme file that is
+/// not there yet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RevealTarget {
+    /// Create this directory, parents and all, if it is missing, then open
+    /// it. Only ever Handy's own documented location, `~/.config/handy/`.
+    Create(PathBuf),
+    /// Open this directory exactly as it is, because it already exists.
+    /// Nothing is created on this branch.
+    Open(PathBuf),
+}
+
+/// Where the Open button should land, from the real environment.
+///
+/// The impure half of the decision: the two lookups, then
+/// [`location_to_reveal`], which is the rule itself.
+pub fn reveal_target(app: &AppHandle) -> Result<RevealTarget, String> {
+    let named = match env_override() {
+        EnvOverride::Invalid => {
+            return Err(format!(
+                "{THEME_FILE_ENV_VAR} is set to a value that is not valid UTF-8, so it names no folder to open"
+            ))
+        }
+        EnvOverride::Path(path) => Some(path),
+        EnvOverride::Unset => None,
+    };
+
+    location_to_reveal(named.as_deref(), config_theme_file(app).as_deref(), |dir| {
+        dir.is_dir()
+    })
+}
+
+/// The Open button's rule, pure over the two paths it turns on and a "is this
+/// a directory" predicate, so every branch is testable without an
+/// `AppHandle` or a temp tree.
+///
+/// Handy creates a directory only under its own documented location, the
+/// `~/.config/handy/` the tab printed and told the user to create. A path from
+/// [`THEME_FILE_ENV_VAR`] belongs to whoever set the variable — a Nix store
+/// path, a volume that is not mounted, a typo — and building a tree there
+/// would be Handy writing into somewhere it was only ever told to read from.
+/// So an env-named path opens the nearest folder that already exists, and when
+/// not even the root of it does, the error says which variable is at fault
+/// rather than silently opening somewhere else.
+fn location_to_reveal(
+    named: Option<&Path>,
+    config_file: Option<&Path>,
+    is_directory: impl Fn(&Path) -> bool,
+) -> Result<RevealTarget, String> {
+    let Some(named) = named else {
+        return config_file
+            .and_then(containing_directory)
+            .map(RevealTarget::Create)
+            .ok_or_else(|| {
+                "No home directory, so there is no ~/.config/handy/ to create or open".to_string()
+            });
+    };
+
+    containing_directory(named)
+        .and_then(|directory| nearest_existing(&directory, is_directory))
+        .map(RevealTarget::Open)
+        .ok_or_else(|| {
+            format!(
+                "{THEME_FILE_ENV_VAR} names {}, and no folder along that path exists. Handy does not create folders under {THEME_FILE_ENV_VAR}: make it yourself, or unset the variable to use ~/.config/handy/",
+                named.display()
+            )
+        })
+}
+
+/// The closest directory at or above `directory` that already exists.
+///
+/// Reads only: it walks the ancestors and asks, and creates nothing. `None`
+/// when nothing along the path is a directory, which includes a relative path
+/// whose ancestors run out at `""`.
+fn nearest_existing(directory: &Path, is_directory: impl Fn(&Path) -> bool) -> Option<PathBuf> {
+    directory
+        .ancestors()
+        .filter(|ancestor| !ancestor.as_os_str().is_empty())
+        .find(|ancestor| is_directory(ancestor))
+        .map(Path::to_path_buf)
+}
+
+/// Create `dir` and any missing parent, so a path Handy has only ever printed
+/// becomes a folder the user can drop a file into.
+///
+/// The one place in this module that writes to the filesystem, and it writes a
+/// directory, never the theme file itself: Handy still never creates, rewrites
+/// or deletes `overlay_theme.json`. Reached only for [`RevealTarget::Create`],
+/// so the directory is always Handy's own `~/.config/handy/`. An existing
+/// directory is success.
+pub fn ensure_location(dir: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(dir)
+        .map_err(|error| format!("Cannot create {}: {error}", dir.display()))
+}
+
+/// The directory holding `path`, when it names one. A bare file name has a
+/// parent of `""`, which is not a directory anyone can open, so it is `None`
+/// rather than the process's working directory.
+fn containing_directory(path: &Path) -> Option<PathBuf> {
+    path.parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .map(Path::to_path_buf)
 }
 
 /// Read the theme file, update the cache, and return what it contributes.
@@ -268,11 +388,13 @@ pub fn read(app: &AppHandle) -> ThemeFileState {
         }
         EnvOverride::Unset => {
             let candidates = candidate_paths(app);
-            // What to report when nothing is found: the app data path, i.e.
-            // where to create one.
-            let fallback = app_data_dir(app).map(|dir| dir.join(THEME_FILE_NAME));
             let previous = cached_state();
-            read_candidates(&candidates, false, fallback.as_deref(), previous.as_ref())
+            read_candidates(
+                &candidates,
+                false,
+                absent_path(app).as_deref(),
+                previous.as_ref(),
+            )
         }
     };
 
@@ -292,32 +414,54 @@ pub fn cached(app: &AppHandle) -> ThemeFileState {
     }
 }
 
-/// The candidate list, with the lookups already done.
+/// The directories a candidate list is built from, with the lookups already
+/// done. Every field is a directory rather than a file path, except `env`,
+/// which names a file outright.
 ///
-/// Pure, so the priority order and the env var's exclusivity are testable
-/// without an `AppHandle`. `config_dir` is `$XDG_CONFIG_HOME`, Linux only,
-/// since [`linux_config_dir`] is what gates the platform. The `handy/`
-/// component and the file name are joined here.
-fn candidates_from(
-    env: Option<&Path>,
-    app_data_dir: Option<&Path>,
-    config_dir: Option<&Path>,
-) -> Vec<PathBuf> {
+/// A struct rather than four positional `Option<&Path>` arguments, because
+/// four same-typed parameters make swapping two of them a silent priority
+/// change that still compiles.
+#[derive(Default)]
+struct Locations<'a> {
+    /// [`THEME_FILE_ENV_VAR`]'s target, a file. Exclusive.
+    env: Option<&'a Path>,
+    /// `<exe dir>/Data`, present only for a portable install.
+    portable_data: Option<&'a Path>,
+    /// `$XDG_CONFIG_HOME`, or `~/.config`. The `handy/` component is joined
+    /// here.
+    config_home: Option<&'a Path>,
+    /// The OS app data directory, `<data dir>/com.pais.handy`.
+    app_data: Option<&'a Path>,
+}
+
+/// The candidate list, in priority order.
+///
+/// Pure, so the order and the env var's exclusivity are testable without an
+/// `AppHandle`. The `handy/` component and the file name are joined here, so
+/// the callers only have to find directories.
+fn candidates_from(locations: Locations) -> Vec<PathBuf> {
     // The env var is exclusive. An explicit path is the whole list, and a
     // missing target is a warning rather than a silent fallback to a file the
     // user did not name.
-    if let Some(path) = env {
+    if let Some(path) = locations.env {
         return vec![path.to_path_buf()];
     }
 
-    let mut candidates = Vec::with_capacity(2);
-    // Portable installs land here too, because `resolve_app_data` already
-    // returns `<exe dir>/Data` when the portable marker is present.
-    if let Some(dir) = app_data_dir {
+    let mut candidates = Vec::with_capacity(3);
+    // A portable install's promise is that everything it needs sits beside the
+    // executable, so its own `Data/` outranks anything in the user's home.
+    if let Some(dir) = locations.portable_data {
         candidates.push(dir.join(THEME_FILE_NAME));
     }
-    if let Some(dir) = config_dir {
-        candidates.push(dir.join(LINUX_CONFIG_SUBDIR).join(THEME_FILE_NAME));
+    // The one location documented on every platform, and the one the tab
+    // prints when no file exists.
+    if let Some(dir) = locations.config_home {
+        candidates.push(dir.join(CONFIG_SUBDIR).join(THEME_FILE_NAME));
+    }
+    // Kept last so a file written where older builds told users to put it
+    // still drives the overlay. Nothing is migrated or moved.
+    if let Some(dir) = locations.app_data {
+        candidates.push(dir.join(THEME_FILE_NAME));
     }
     candidates
 }
@@ -372,9 +516,21 @@ fn env_candidate(value: Option<&str>) -> Option<PathBuf> {
     }
 }
 
-/// The app data directory, portable-aware.
-fn app_data_dir(app: &AppHandle) -> Option<PathBuf> {
-    match crate::portable::app_data_dir(app) {
+/// `<exe dir>/Data`, and only for a portable install.
+///
+/// Deliberately not [`crate::portable::app_data_dir`], which stands in for the
+/// OS directory when the marker is present. Here the two are separate
+/// candidates at different priorities, so a portable install reads its own
+/// `Data/` first and the OS app data directory last.
+fn portable_data_dir() -> Option<PathBuf> {
+    crate::portable::data_dir().cloned()
+}
+
+/// The OS app data directory, `<data dir>/com.pais.handy`, portable or not.
+fn platform_app_data_dir(app: &AppHandle) -> Option<PathBuf> {
+    use tauri::Manager;
+
+    match app.path().app_data_dir() {
         Ok(dir) => Some(dir),
         Err(error) => {
             warn!("Cannot locate the app data directory for the theme file: {error}");
@@ -383,29 +539,87 @@ fn app_data_dir(app: &AppHandle) -> Option<PathBuf> {
     }
 }
 
-/// `$XDG_CONFIG_HOME` (or `~/.config`), Linux only.
+/// The user's config home: `$XDG_CONFIG_HOME`, else `~/.config`.
 ///
-/// Gated because on macOS and Windows `config_dir()` returns the same path as
-/// `data_dir()`, so a second `handy/` folder there would sit confusingly
-/// beside the bundle identifier's directory and mean nothing to any tool on
-/// those platforms.
-#[cfg(target_os = "linux")]
-fn linux_config_dir(app: &AppHandle) -> Option<PathBuf> {
+/// Not Tauri's `config_dir()`, which is only `~/.config` on Linux and returns
+/// `~/Library/Application Support` and `%APPDATA%` on macOS and Windows. The
+/// point of this candidate is that one documented path, `~/.config/handy/`,
+/// works everywhere, so the home directory is what it is built from:
+/// `%USERPROFILE%\.config\handy\` on Windows.
+fn config_home(app: &AppHandle) -> Option<PathBuf> {
     use tauri::Manager;
 
-    match app.path().config_dir() {
+    let home = match app.path().home_dir() {
         Ok(dir) => Some(dir),
         Err(error) => {
-            debug!("No XDG config directory for the theme file: {error}");
+            debug!("No home directory for the theme file: {error}");
             None
         }
+    };
+    config_home_from(
+        std::env::var_os(CONFIG_HOME_ENV_VAR).as_deref(),
+        home.as_deref(),
+    )
+}
+
+/// [`config_home`]'s rule, pure over its two inputs so both branches are
+/// testable with an injected home and an injected environment value.
+///
+/// XDG's own rules for the variable: empty means unset, and a relative value
+/// is invalid and ignored. Ignoring a relative one matters here because
+/// joining it would resolve against Handy's working directory, which is
+/// wherever the launcher happened to start the app.
+fn config_home_from(xdg: Option<&OsStr>, home: Option<&Path>) -> Option<PathBuf> {
+    let configured = xdg
+        .map(Path::new)
+        .filter(|dir| !dir.as_os_str().is_empty() && dir.is_absolute());
+
+    match configured {
+        Some(dir) => Some(dir.to_path_buf()),
+        None => home.map(|dir| dir.join(".config")),
     }
 }
 
-/// No XDG candidate off Linux. See the Linux implementation for why.
-#[cfg(not(target_os = "linux"))]
-fn linux_config_dir(_app: &AppHandle) -> Option<PathBuf> {
-    None
+/// `~/.config/handy/overlay_theme.json`: the candidate the Appearance tab
+/// prints when no file exists anywhere, and the directory Open creates.
+fn config_theme_file(app: &AppHandle) -> Option<PathBuf> {
+    config_home(app).map(|dir| dir.join(CONFIG_SUBDIR).join(THEME_FILE_NAME))
+}
+
+/// The path to report when no candidate holds a file, from the real lookups.
+///
+/// A missing home directory is only a `debug!` in [`config_home`], because
+/// `$XDG_CONFIG_HOME` can still answer without one. Coming out of both with
+/// nothing is worth a warning: the location Handy documents, the one the
+/// README and the Appearance tab name, does not exist for this process, so
+/// the tab has to name the app data directory instead.
+fn absent_path(app: &AppHandle) -> Option<PathBuf> {
+    let config_file = config_theme_file(app);
+    if config_file.is_none() {
+        warn!(
+            "No home directory and no absolute {CONFIG_HOME_ENV_VAR}, so ~/.config/{CONFIG_SUBDIR}/ \
+             is unavailable; the app data directory is where the theme file is reported instead"
+        );
+    }
+
+    absent_path_from(
+        config_file.as_deref(),
+        platform_app_data_dir(app).as_deref(),
+    )
+}
+
+/// [`absent_path`]'s rule, pure over the two locations it chooses between.
+///
+/// Ordinarily the documented `~/.config/handy/overlay_theme.json`, so the tab
+/// tells the user where to create a file, rather than the app data directory,
+/// which stays readable but is now only the fallback for files already there.
+/// Without a home directory there is no such path, and the app data candidate
+/// stands in: it is still somewhere real, and a tab showing an empty path
+/// tells the user nothing at all.
+fn absent_path_from(config_file: Option<&Path>, app_data: Option<&Path>) -> Option<PathBuf> {
+    config_file
+        .map(Path::to_path_buf)
+        .or_else(|| app_data.map(|dir| dir.join(THEME_FILE_NAME)))
 }
 
 /// What one candidate path yielded.
@@ -1159,51 +1373,383 @@ mod tests {
         path
     }
 
-    /// The app data path outranks `~/.config/handy/`. A user who put a file
-    /// where the settings window prints did it deliberately, and Handy never
-    /// writes that location itself, so it cannot shadow a tool's output by
-    /// accident.
+    /// `~/.config/handy/` is the location Handy documents, so it outranks the
+    /// app data directory, which stays on the list only so a file written
+    /// where older builds pointed still drives the overlay. A portable
+    /// install's own `Data/` outranks both: everything it needs sits beside
+    /// the executable.
     #[test]
     fn candidate_paths_are_in_priority_order() {
-        let app_data = PathBuf::from("/data/com.pais.handy");
+        let portable = PathBuf::from("/opt/handy/Data");
         let config = PathBuf::from("/home/user/.config");
-
-        let candidates = candidates_from(None, Some(&app_data), Some(&config));
+        let app_data = PathBuf::from("/data/com.pais.handy");
 
         assert_eq!(
-            candidates,
+            candidates_from(Locations {
+                env: None,
+                portable_data: Some(&portable),
+                config_home: Some(&config),
+                app_data: Some(&app_data),
+            }),
             vec![
-                PathBuf::from("/data/com.pais.handy/overlay_theme.json"),
+                PathBuf::from("/opt/handy/Data/overlay_theme.json"),
                 PathBuf::from("/home/user/.config/handy/overlay_theme.json"),
+                PathBuf::from("/data/com.pais.handy/overlay_theme.json"),
             ]
         );
 
-        // The XDG candidate is Linux-only; `linux_config_dir` is the gate, so
-        // everywhere else the list is the app data path alone.
+        // The ordinary install: no portable marker, so two candidates, with
+        // `~/.config/handy/` first.
         assert_eq!(
-            candidates_from(None, Some(&app_data), None),
-            vec![PathBuf::from("/data/com.pais.handy/overlay_theme.json")]
+            candidates_from(Locations {
+                config_home: Some(&config),
+                app_data: Some(&app_data),
+                ..Locations::default()
+            }),
+            vec![
+                PathBuf::from("/home/user/.config/handy/overlay_theme.json"),
+                PathBuf::from("/data/com.pais.handy/overlay_theme.json"),
+            ]
         );
         // Nothing to look at is an empty list, not a panic.
-        assert!(candidates_from(None, None, None).is_empty());
+        assert!(candidates_from(Locations::default()).is_empty());
+    }
+
+    /// The same order on every platform, differing only in what the two home
+    /// lookups return. `~/.config/handy/` is not Linux-only any more, and it
+    /// is never Tauri's `config_dir()`, which is the app data directory again
+    /// on macOS and Windows.
+    #[test]
+    fn the_config_location_is_the_same_shape_on_every_platform() {
+        let cases = [
+            (
+                "macOS",
+                "/Users/user",
+                "/Users/user/Library/Application Support/com.pais.handy",
+            ),
+            (
+                "Windows",
+                r"C:\Users\user",
+                r"C:\Users\user\AppData\Roaming\com.pais.handy",
+            ),
+            (
+                "Linux",
+                "/home/user",
+                "/home/user/.local/share/com.pais.handy",
+            ),
+        ];
+
+        for (platform, home, app_data) in cases {
+            let config = config_home_from(None, Some(Path::new(home)))
+                .unwrap_or_else(|| panic!("{platform} has a home directory"));
+            let candidates = candidates_from(Locations {
+                config_home: Some(&config),
+                app_data: Some(Path::new(app_data)),
+                ..Locations::default()
+            });
+
+            // Joined rather than written out, because the separator is the
+            // separator of whatever host runs the test: a literal
+            // `C:\Users\user\.config\...` passes on Windows and fails on
+            // macOS, and the components are what this test is about anyway.
+            let expected_config_file = Path::new(home)
+                .join(".config")
+                .join("handy")
+                .join("overlay_theme.json");
+
+            assert_eq!(
+                candidates,
+                vec![
+                    expected_config_file,
+                    Path::new(app_data).join(THEME_FILE_NAME)
+                ],
+                "{platform}"
+            );
+        }
+    }
+
+    /// `$XDG_CONFIG_HOME` moves the config location, on every platform.
+    /// XDG's own rules for the variable: empty is unset, and a relative value
+    /// is invalid and ignored rather than resolved against whatever directory
+    /// the launcher started Handy in.
+    #[test]
+    fn the_config_home_follows_xdg_config_home_when_it_is_usable() {
+        let home = Path::new("/Users/user");
+
+        assert_eq!(
+            config_home_from(Some(OsStr::new("/Users/user/dotfiles/config")), Some(home)),
+            Some(PathBuf::from("/Users/user/dotfiles/config"))
+        );
+        assert_eq!(
+            config_home_from(None, Some(home)),
+            Some(PathBuf::from("/Users/user/.config"))
+        );
+        assert_eq!(
+            config_home_from(Some(OsStr::new("")), Some(home)),
+            Some(PathBuf::from("/Users/user/.config")),
+            "empty is unset"
+        );
+        assert_eq!(
+            config_home_from(Some(OsStr::new("relative/config")), Some(home)),
+            Some(PathBuf::from("/Users/user/.config")),
+            "a relative XDG_CONFIG_HOME is invalid and ignored"
+        );
+        // A set variable still answers when there is no home directory at all;
+        // without one there is nothing to fall back to.
+        assert_eq!(
+            config_home_from(Some(OsStr::new("/etc/xdg")), None),
+            Some(PathBuf::from("/etc/xdg"))
+        );
+        assert_eq!(config_home_from(None, None), None);
+    }
+
+    /// First found wins, and the app data file is only reached when
+    /// `~/.config/handy/` has none. Two real files, one in each location.
+    #[test]
+    fn the_config_file_beats_the_app_data_file_and_the_app_data_file_still_loads() {
+        let root = tempfile::tempdir().expect("a temp dir");
+        let config_home = root.path().join(".config");
+        let handy_config = config_home.join(CONFIG_SUBDIR);
+        let app_data = root.path().join("com.pais.handy");
+        std::fs::create_dir_all(&handy_config).expect("the temp dir is writable");
+        std::fs::create_dir_all(&app_data).expect("the temp dir is writable");
+
+        let config_file = write(
+            &handy_config,
+            THEME_FILE_NAME,
+            r##"{"version":1,"accent":"#7aa2f7"}"##,
+        );
+        let app_data_file = write(
+            &app_data,
+            THEME_FILE_NAME,
+            r##"{"version":1,"accent":"#f7768e"}"##,
+        );
+
+        let candidates = candidates_from(Locations {
+            config_home: Some(&config_home),
+            app_data: Some(&app_data),
+            ..Locations::default()
+        });
+        assert_eq!(candidates, vec![config_file.clone(), app_data_file.clone()]);
+
+        let state = read_candidates(&candidates, false, Some(&config_file), None);
+        assert!(state.present);
+        assert_eq!(state.path, config_file.display().to_string());
+        assert_eq!(state.tokens.accent, hex("#7aa2f7"));
+
+        // Delete the winner and the fallback loads, unchanged and unmoved.
+        std::fs::remove_file(&config_file).expect("the temp dir is writable");
+        let state = read_candidates(&candidates, false, Some(&config_file), Some(&state));
+        assert!(state.present);
+        assert_eq!(state.path, app_data_file.display().to_string());
+        assert_eq!(state.tokens.accent, hex("#f7768e"));
+    }
+
+    /// With no file anywhere, the reported path is the one the tab tells the
+    /// user to create: `~/.config/handy/overlay_theme.json`, never the app
+    /// data directory it used to name.
+    #[test]
+    fn the_absent_path_is_the_config_location() {
+        let root = tempfile::tempdir().expect("a temp dir");
+        let config_home = root.path().join(".config");
+        let app_data = root.path().join("com.pais.handy");
+        let config_file = config_home.join(CONFIG_SUBDIR).join(THEME_FILE_NAME);
+
+        let state = read_candidates(
+            &candidates_from(Locations {
+                config_home: Some(&config_home),
+                app_data: Some(&app_data),
+                ..Locations::default()
+            }),
+            false,
+            Some(&config_file),
+            None,
+        );
+
+        assert!(!state.present);
+        assert_eq!(state.tokens, OverlayTheme::default());
+        assert_eq!(state.path, config_file.display().to_string());
+        // Nothing was found, but nothing was wrong either.
+        assert!(state.diagnostics.is_empty());
+        assert_eq!(state.diagnostics_total, 0);
+    }
+
+    /// Without a home directory there is no `~/.config/handy/` to name, and
+    /// the tab has to say something: the app data candidate, which is still a
+    /// real location, rather than an empty path that tells the user nothing.
+    #[test]
+    fn without_a_config_location_the_app_data_candidate_is_reported() {
+        let app_data = Path::new("/data/com.pais.handy");
+        let app_data_file = app_data.join(THEME_FILE_NAME);
+
+        // The pure seam with no home: one candidate, the fallback one.
+        let candidates = candidates_from(Locations {
+            config_home: None,
+            app_data: Some(app_data),
+            ..Locations::default()
+        });
+        assert_eq!(candidates, vec![app_data_file.clone()]);
+
+        // And that candidate is what an absent theme file is reported at.
+        assert_eq!(
+            absent_path_from(None, Some(app_data)),
+            Some(app_data_file.clone())
+        );
+        // With a home, the documented location wins, as it does everywhere
+        // else in this module.
+        let config_file = Path::new("/home/user/.config/handy/overlay_theme.json");
+        assert_eq!(
+            absent_path_from(Some(config_file), Some(app_data)),
+            Some(config_file.to_path_buf())
+        );
+        // Neither location resolvable is an empty path, not a panic.
+        assert_eq!(absent_path_from(None, None), None);
+
+        // End to end: nothing found anywhere still names a path.
+        let state = read_candidates(
+            &candidates,
+            false,
+            absent_path_from(None, Some(app_data)).as_deref(),
+            None,
+        );
+        assert!(!state.present);
+        assert_eq!(state.path, app_data_file.display().to_string());
+    }
+
+    /// Where the Open button lands, and, the point of the branch, where it is
+    /// not allowed to create anything. Pure: an injected env path, an
+    /// injected config path and an injected notion of which directories
+    /// exist.
+    #[test]
+    fn revealing_creates_only_under_the_config_location() {
+        let existing = ["/Volumes", "/Volumes/backup"];
+        let is_directory = |dir: &Path| existing.iter().any(|known| Path::new(known) == dir);
+        let config_file = Path::new("/Users/user/.config/handy/overlay_theme.json");
+
+        // No override: the documented folder, created if it is missing. The
+        // one branch that may create anything, and it does not consult the
+        // filesystem at all, since the whole point is a folder that is not
+        // there yet.
+        assert_eq!(
+            location_to_reveal(None, Some(config_file), is_directory),
+            Ok(RevealTarget::Create(PathBuf::from(
+                "/Users/user/.config/handy"
+            )))
+        );
+
+        // An env-named folder that exists opens as it is.
+        assert_eq!(
+            location_to_reveal(
+                Some(Path::new("/Volumes/backup/overlay_theme.json")),
+                Some(config_file),
+                is_directory
+            ),
+            Ok(RevealTarget::Open(PathBuf::from("/Volumes/backup")))
+        );
+        // One that does not opens the nearest folder that does, so a user
+        // whose external drive holds no `themes/` yet still lands next to it,
+        // and Handy has still written nothing under a path it was only told
+        // to read.
+        assert_eq!(
+            location_to_reveal(
+                Some(Path::new("/Volumes/backup/themes/overlay_theme.json")),
+                Some(config_file),
+                is_directory
+            ),
+            Ok(RevealTarget::Open(PathBuf::from("/Volumes/backup")))
+        );
+
+        // Nothing along the path exists: an error naming the variable, never
+        // the config folder as a consolation prize, which would open
+        // somewhere the user did not ask about.
+        let error = location_to_reveal(
+            Some(Path::new("/nowhere/at/all/overlay_theme.json")),
+            Some(config_file),
+            is_directory,
+        )
+        .expect_err("an unmounted volume has no folder to open");
+        assert!(error.contains(THEME_FILE_ENV_VAR), "{error}");
+        assert!(
+            error.contains("/nowhere/at/all/overlay_theme.json"),
+            "{error}"
+        );
+
+        // A bare file name has no folder at all, and must not resolve against
+        // the process's working directory.
+        let error = location_to_reveal(
+            Some(Path::new(THEME_FILE_NAME)),
+            Some(config_file),
+            is_directory,
+        )
+        .expect_err("a bare file name names no folder");
+        assert!(error.contains(THEME_FILE_ENV_VAR), "{error}");
+
+        // No home directory and no override: nothing to open, said plainly.
+        assert!(location_to_reveal(None, None, is_directory).is_err());
+    }
+
+    /// Open on an absent theme file creates the folder it belongs in, so a
+    /// path the tab has only ever printed becomes somewhere to drop a file.
+    /// Creating an existing directory is success, and the theme file itself is
+    /// never written.
+    #[test]
+    fn revealing_an_absent_location_creates_the_directory() {
+        let root = tempfile::tempdir().expect("a temp dir");
+        let handy_config = root.path().join(".config").join(CONFIG_SUBDIR);
+
+        // The directory the Open button is handed, derived the same way the
+        // command derives it: the folder of the reported path.
+        assert_eq!(
+            containing_directory(&handy_config.join(THEME_FILE_NAME)),
+            Some(handy_config.clone())
+        );
+
+        assert!(!handy_config.exists());
+        ensure_location(&handy_config).expect("the temp dir is writable");
+        assert!(handy_config.is_dir(), "the missing parent is created too");
+        assert!(
+            !handy_config.join(THEME_FILE_NAME).exists(),
+            "Handy never writes the theme file itself"
+        );
+
+        // Idempotent: the ordinary case is a directory that is already there.
+        ensure_location(&handy_config).expect("an existing directory is success");
+        assert!(handy_config.is_dir());
+
+        // A bare file name has no directory to open, and must not resolve
+        // against the process's working directory.
+        assert_eq!(containing_directory(Path::new(THEME_FILE_NAME)), None);
+        // A file that cannot become a directory is an error, not a panic.
+        let occupied = write(root.path(), "occupied", "not a directory");
+        assert!(ensure_location(&occupied).is_err());
     }
 
     /// An explicit instruction must not quietly resolve to a different file.
     #[test]
     fn env_var_is_exclusive_and_does_not_fall_back() {
+        let portable = PathBuf::from("/opt/handy/Data");
         let app_data = PathBuf::from("/data/com.pais.handy");
         let config = PathBuf::from("/home/user/.config");
         let named = PathBuf::from("/nix/store/theme/overlay_theme.json");
 
         assert_eq!(
-            candidates_from(Some(&named), Some(&app_data), Some(&config)),
+            candidates_from(Locations {
+                env: Some(&named),
+                portable_data: Some(&portable),
+                config_home: Some(&config),
+                app_data: Some(&app_data),
+            }),
             vec![named.clone()]
         );
 
         // The env var names a path verbatim, not a directory to join the file
         // name onto.
         assert_eq!(
-            candidates_from(Some(Path::new("/tmp/my-theme.json")), Some(&app_data), None),
+            candidates_from(Locations {
+                env: Some(Path::new("/tmp/my-theme.json")),
+                app_data: Some(&app_data),
+                ..Locations::default()
+            }),
             vec![PathBuf::from("/tmp/my-theme.json")]
         );
 

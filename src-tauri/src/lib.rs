@@ -779,6 +779,7 @@ pub fn run(cli_args: CliArgs) {
             commands::overlay_theme::preview_overlay_theme_draft,
             commands::overlay_theme::get_resolved_overlay_theme,
             commands::overlay_theme::reload_overlay_theme_file,
+            commands::overlay_theme::reveal_overlay_theme_location,
             commands::overlay_preview::start_overlay_preview,
             commands::overlay_preview::set_overlay_preview_state,
             commands::overlay_preview::stop_overlay_preview,

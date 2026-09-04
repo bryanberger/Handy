@@ -12,9 +12,11 @@
 //! its theme on the show path without paying for IO.
 
 use crate::overlay_theme::{self, OverlayTheme, ResolvedOverlayTheme};
+use crate::overlay_theme_file::{self, RevealTarget};
 use crate::settings::{get_settings, write_settings};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter};
+use tauri_plugin_opener::OpenerExt;
 
 /// Whether the overlay is currently painted with a value nobody has stored.
 ///
@@ -192,6 +194,46 @@ pub async fn reload_overlay_theme_file(app: AppHandle) -> Result<ResolvedOverlay
     })
     .await
     .map_err(|error| format!("Failed to read the overlay theme file: {error}"))
+}
+
+/// Open the folder the theme file belongs in, creating it when it is Handy's
+/// own and missing.
+///
+/// What the Appearance tab's Open button calls when no theme file exists. The
+/// path it is showing then is usually `~/.config/handy/overlay_theme.json`, a
+/// location most users have never had a reason to create, so revealing it has
+/// to be able to make it first. There is nothing to reveal in the frontend's
+/// sense either: `revealItemInDir` needs an item, and this is the case where
+/// there is none.
+///
+/// Only a directory is ever created, never `overlay_theme.json`, and only
+/// under `~/.config/handy/`. A path named by `HANDY_OVERLAY_THEME_FILE` is
+/// opened at its nearest existing folder instead, because Handy was told to
+/// read that path, not to build a tree at it.
+/// [`crate::overlay_theme_file::reveal_target`] is where that decision lives.
+///
+/// `async` and then `spawn_blocking`, like [`reload_overlay_theme_file`]: a
+/// `mkdir`, the probe that precedes it and the hand-off to the file manager
+/// are all filesystem work, and this module keeps that off both the IPC thread
+/// and the async workers.
+#[tauri::command]
+#[specta::specta]
+pub async fn reveal_overlay_theme_location(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let directory = match overlay_theme_file::reveal_target(&app)? {
+            RevealTarget::Create(directory) => {
+                overlay_theme_file::ensure_location(&directory)?;
+                directory
+            }
+            RevealTarget::Open(directory) => directory,
+        };
+
+        app.opener()
+            .open_path(directory.to_string_lossy().into_owned(), None::<String>)
+            .map_err(|error| format!("Failed to open {}: {error}", directory.display()))
+    })
+    .await
+    .map_err(|error| format!("Failed to open the theme file's folder: {error}"))?
 }
 
 #[cfg(test)]

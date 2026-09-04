@@ -429,6 +429,7 @@ export const OVERLAY_THEME_LENGTH_PROPERTIES: readonly string[] = [
   "--ov-wave-w",
   "--ov-side-min",
   "--ov-row-gaps",
+  "--ov-wave-pad-l",
   "--ov-shadow-strength",
   "--ov-shadow-y",
   "--ov-shadow-slack",
@@ -658,9 +659,12 @@ export function resolveOverlayThemeVars(
   // is then the dot column, one gap and the waveform lane. Written only for
   // values that are not the stylesheet's, keeping the 22 and the 2 out of this
   // file: the CSS declares both, and this says "there is no button any more".
+  // The lane then also gains a left padding equal to its right one: the exact
+  // row would otherwise put the lane flush against the dot and its pulse ring.
   if (theme.show_cancel === false) {
     vars["--ov-side-min"] = "0px";
     vars["--ov-row-gaps"] = "1";
+    vars["--ov-wave-pad-l"] = "var(--ov-wave-pad-r)";
   }
 
   // The shadow, Flat's only. Under Glass it is macOS's own, drawn outside a

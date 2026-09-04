@@ -727,6 +727,7 @@ describe("the worked example", () => {
       // element gaps with the button, the right column being gone.
       "--ov-side-min": "0px",
       "--ov-row-gaps": "1",
+      "--ov-wave-pad-l": "var(--ov-wave-pad-r)",
       // The Flat shadow at the example's own strength and offset, its slack
       // ceil((20 + 6) * 1.1) = 29.
       "--ov-shadow-strength": "0.35",
@@ -881,6 +882,7 @@ describe("the row's own tokens", () => {
     expect(resolveOverlayThemeVars(resolved({ show_cancel: false }))).toEqual({
       "--ov-side-min": "0px",
       "--ov-row-gaps": "1",
+      "--ov-wave-pad-l": "var(--ov-wave-pad-r)",
     });
     // Shown, whether by inherit or an explicit true, is the stylesheet's own
     // 22px and two gaps, so nothing is written and no CSS is duplicated here.

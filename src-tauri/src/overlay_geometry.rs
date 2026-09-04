@@ -559,10 +559,18 @@ impl CardMetrics {
     }
 
     /// The centre column at size_scale 1: the waveform's nine bars and eight
-    /// gaps (`--ov-wave-slot-w`) plus `.swave`'s right padding.
+    /// gaps (`--ov-wave-slot-w`) plus `.swave`'s right padding, and the same
+    /// padding on its left once the cancel button is gone (`--ov-wave-pad-l`):
+    /// the exact row would otherwise put the lane flush against the dot.
     fn wave_column_width(&self) -> f64 {
+        let left_pad = if self.show_cancel {
+            0.0
+        } else {
+            CARD_WAVE_PAD_R
+        };
         CARD_WAVE_BARS * f64::from(self.waveform_width)
             + (CARD_WAVE_BARS - 1.0) * f64::from(self.waveform_gap)
+            + left_pad
             + CARD_WAVE_PAD_R
     }
 
@@ -1936,7 +1944,7 @@ mod tests {
         for shape in [OverlayCardShape::CompactRest, OverlayCardShape::LivePill] {
             assert_eq!(
                 no_cancel.window_size(shape, Material::Glass, glass_shadow, 0.0),
-                (102.0, 42.0),
+                (110.0, 42.0),
                 "{shape:?}"
             );
         }
@@ -1995,8 +2003,8 @@ mod tests {
         for (waveform, cancel, scale, compact, live) in [
             (true, true, 1.0, (174.0, 42.0), (186.0, 42.0)),
             (true, true, SIZE_SCALE_MIN, (140.0, 34.0), (149.0, 34.0)),
-            (true, false, 1.0, (102.0, 42.0), (102.0, 42.0)),
-            (true, false, SIZE_SCALE_MIN, (82.0, 34.0), (82.0, 34.0)),
+            (true, false, 1.0, (110.0, 42.0), (110.0, 42.0)),
+            (true, false, SIZE_SCALE_MIN, (88.0, 34.0), (88.0, 34.0)),
             (false, true, 1.0, (66.0, 42.0), (66.0, 42.0)),
             (false, true, SIZE_SCALE_MIN, (53.0, 34.0), (53.0, 34.0)),
             (false, false, 1.0, (42.0, 42.0), (42.0, 42.0)),
@@ -2047,7 +2055,8 @@ mod tests {
             show_cancel: Some(false),
             ..OverlayTheme::default()
         });
-        assert_eq!(no_cancel.row_width(), 100.0);
+        // 108: the lane carries its 8 px left padding here, inside the column.
+        assert_eq!(no_cancel.row_width(), 108.0);
         assert_eq!(
             no_cancel.row_width()
                 - 2.0 * f64::from(PADDING_INHERIT)
@@ -2070,7 +2079,7 @@ mod tests {
                 inherit_shadow(Material::Glass),
                 0.0
             ),
-            (142.0, 42.0)
+            (150.0, 42.0)
         );
     }
 
@@ -2342,6 +2351,9 @@ mod tests {
             "0"
         );
         assert_eq!(css_px(OVERLAY_CSS, "--ov-wave-pad-r"), CARD_WAVE_PAD_R);
+        // The lane's left padding is the stylesheet's 0 until the apply layer
+        // hands it the right padding with the cancel button gone.
+        assert_eq!(css_px(OVERLAY_CSS, "--ov-wave-pad-l"), 0.0);
         assert_eq!(tsx_const(OVERLAY_TSX, "const WAVE_BARS = "), CARD_WAVE_BARS);
         assert_eq!(
             css_px(OVERLAY_CSS, "--ov-elem-gap"),
@@ -2382,7 +2394,7 @@ mod tests {
             ),
             (
                 "--ov-row-w",
-                "calc( 2 * var(--ov-pad) + var(--ov-row-gaps) * var(--ov-elem-gap) +                  max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min) +                  var(--ov-wave-slot-w) + var(--ov-wave-pad-r) )",
+                "calc( 2 * var(--ov-pad) + var(--ov-row-gaps) * var(--ov-elem-gap) +                  max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min) +                  var(--ov-wave-pad-l) + var(--ov-wave-slot-w) + var(--ov-wave-pad-r) )",
             ),
         ] {
             assert_eq!(

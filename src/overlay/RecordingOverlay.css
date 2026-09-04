@@ -118,6 +118,11 @@
                            plus --ov-dot-inset, written as a number because overlay_geometry.rs
                            reads these declarations as numbers. */
   --ov-wave-pad-r: 8px; /* .swave's right padding, the last part of the centre column */
+  --ov-wave-pad-l: 0px; /* .swave's left padding. Nothing while the cancel button is on the
+                           row, where the tuned width keeps the lane off the dot; the apply
+                           layer sets it to --ov-wave-pad-r with that button gone, when the
+                           row is exact and the lane would otherwise sit flush against the
+                           dot and its pulse ring. */
   --ov-wave-slot-w: calc(
     9 * var(--ov-wave-w) + 8 * var(--ov-wave-gap)
   ); /* the waveform lane: nine bars and eight gaps, 60px at the inherit
@@ -140,7 +145,7 @@
   --ov-row-w: calc(
     2 * var(--ov-pad) + var(--ov-row-gaps) * var(--ov-elem-gap) +
       max(var(--ov-side-min), var(--ov-dot-col-w)) + var(--ov-side-min) +
-      var(--ov-wave-slot-w) + var(--ov-wave-pad-r)
+      var(--ov-wave-pad-l) + var(--ov-wave-slot-w) + var(--ov-wave-pad-r)
   );
 }
 @media (prefers-color-scheme: dark) {
@@ -581,6 +586,7 @@
      is a known width whatever draws in it. At the inherit values the children
      measure exactly this, so nothing moves. */
   width: calc(var(--ov-wave-slot-w) * var(--ov-scale));
+  padding-left: calc(var(--ov-wave-pad-l) * var(--ov-scale));
   padding-right: calc(var(--ov-wave-pad-r) * var(--ov-scale));
   height: calc(18px * var(--ov-scale));
   flex: none;

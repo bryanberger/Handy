@@ -1,25 +1,22 @@
 //! Writing `overlay_theme.json`, the file that is the overlay theme.
 //!
 //! Every committed change from the Appearance tab lands here, so the file and
-//! the settings window agree by construction rather than by a precedence rule.
-//! Three promises make that safe to do to a file a user also hand-edits:
+//! the settings window agree by construction, not by a precedence rule. Three
+//! promises make that safe on a file a user also hand-edits:
 //!
-//!  1. **Atomic.** A temp file beside the target, then a rename. A reader
-//!     never sees a half-written document, and a crash mid-write leaves the
-//!     previous one intact.
-//!  2. **Read back through the same parser.** The rendered text is parsed by
-//!     [`crate::overlay_theme_file`] before the rename, and the rename happens
-//!     only if the tokens that come back are the tokens that went in. Handy
-//!     never installs a document it could not load.
-//!  3. **Owned only.** [`crate::overlay_theme_file::ownership_at`] decides.
-//!     A symlink or a read-only file is somebody else's document; Handy reads
+//!  1. **Atomic.** A temp file beside the target, then a rename. No reader
+//!     sees half a document; a crash mid-write leaves the previous one intact.
+//!  2. **Read back through the same parser.** [`crate::overlay_theme_file`]
+//!     parses the rendered text, and the rename happens only if the tokens
+//!     come back unchanged. Handy never installs what it cannot load.
+//!  3. **Owned only.** [`crate::overlay_theme_file::ownership_at`] decides. A
+//!     symlink or a read-only file is somebody else's document; Handy reads
 //!     it and leaves it alone.
 //!
-//! The document keeps the shape the README documents: `version` first, then
-//! only the tokens that are set, in the contract's order, then any key Handy
-//! did not recognise, two-space indented with a trailing newline. Inherit is
-//! an absent key, never an explicit `null`, so a per-token reset shortens the
-//! file rather than filling it with nulls.
+//! The document keeps the README's shape: `version` first, the set tokens in
+//! the contract's order, then any key Handy did not recognise, two-space
+//! indented with a trailing newline. Inherit is an absent key, not `null`, so
+//! a per-token reset shortens the file rather than filling it with nulls.
 
 use crate::overlay_theme::OverlayTheme;
 use crate::overlay_theme_file::{
@@ -36,23 +33,21 @@ use tauri::AppHandle;
 
 /// One writer at a time.
 ///
-/// Two commits overlap easily: a debounced drag settles while a reset is
-/// already in flight, and each is a read-modify-write of the same document.
-/// Serialised, the later one reads what the earlier one wrote instead of the
-/// document both started from.
+/// Two commits overlap easily: a debounced drag settles while a reset is in
+/// flight, and each is a read-modify-write of the same document. Serialised,
+/// the later reads what the earlier wrote, not the document both started from.
 static WRITE_LOCK: Mutex<()> = Mutex::new(());
 
-/// Makes each temp file's name its own, so an unlucky pair of writes cannot
-/// meet in one file. The lock above already keeps them apart in time; this
-/// keeps them apart on disk, and a temp file abandoned by a crash cannot be
-/// reused half-written.
+/// Gives each temp file its own name, so an unlucky pair of writes cannot meet
+/// in one file. The lock above keeps them apart in time; this keeps them apart
+/// on disk, and a temp file a crash abandoned cannot be reused half-written.
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 /// Persist the overlay theme, and report where it went.
 ///
 /// Filesystem work, so off the main thread. The caller re-reads the file
 /// afterwards rather than trusting this: the file is the source of truth, and
-/// reading back is also what makes the watcher's own event a no-op.
+/// the re-read is also what makes the watcher's own event a no-op.
 pub fn save(app: &AppHandle, theme: &OverlayTheme) -> Result<PathBuf, String> {
     let path = overlay_theme_file::effective_target(app).ok_or_else(|| {
         format!(
@@ -66,8 +61,8 @@ pub fn save(app: &AppHandle, theme: &OverlayTheme) -> Result<PathBuf, String> {
     Ok(path)
 }
 
-/// [`save`] over a path already chosen, so the ownership guard does not depend
-/// on how the path was found, and a temp directory is enough to test it.
+/// [`save`] over a path already chosen, so the ownership guard is independent
+/// of how the path was found, and a temp directory is enough to test it.
 fn save_to(path: &Path, theme: &OverlayTheme) -> Result<(), String> {
     let _writing = writing();
 
@@ -80,9 +75,9 @@ fn save_to(path: &Path, theme: &OverlayTheme) -> Result<(), String> {
         ));
     }
 
-    // Best effort: an unreadable or malformed document simply contributes no
-    // keys to preserve. Overwriting a broken file with the values on screen is
-    // the user's explicit act, which is what a committed change is.
+    // Best effort: an unreadable or malformed document contributes no keys to
+    // preserve. Overwriting a broken file with the values on screen is the
+    // user's explicit act, which is what a committed change is.
     let existing = std::fs::read_to_string(path).ok();
     let normalized = theme.normalized();
     let text = document_text(&normalized, existing.as_deref())?;
@@ -92,8 +87,7 @@ fn save_to(path: &Path, theme: &OverlayTheme) -> Result<(), String> {
 /// The write path itself, for the watcher's tests.
 ///
 /// They need a real commit, temp file, `sync_all` and rename, landing in a
-/// watched folder, and a unit test has no `AppHandle` to route one through
-/// [`save`].
+/// watched folder, and a unit test has no `AppHandle` for [`save`].
 #[cfg(test)]
 pub fn save_for_test(path: &Path, theme: &OverlayTheme) -> Result<(), String> {
     save_to(path, theme)
@@ -102,8 +96,8 @@ pub fn save_for_test(path: &Path, theme: &OverlayTheme) -> Result<(), String> {
 /// Hold [`WRITE_LOCK`] for the rest of the caller's scope.
 ///
 /// A poisoned lock is taken anyway: the guarded work is a read and a rename,
-/// so a panicking writer leaves the document either as it was or replaced,
-/// never half a file for the next writer to inherit.
+/// so a panicking writer leaves the document as it was or replaced, never
+/// half a file for the next writer to inherit.
 fn writing() -> std::sync::MutexGuard<'static, ()> {
     WRITE_LOCK
         .lock()
@@ -114,7 +108,7 @@ fn writing() -> std::sync::MutexGuard<'static, ()> {
 /// then every key Handy does not know.
 ///
 /// Pure over the previous document's text, so the preservation rules are
-/// testable without a filesystem. `existing` is whatever is on disk now;
+/// testable without a filesystem. `existing` is whatever is on disk now, and
 /// anything that is not a JSON object contributes nothing and is replaced.
 fn document_text(theme: &OverlayTheme, existing: Option<&str>) -> Result<String, String> {
     let previous = existing.and_then(object_of);
@@ -122,7 +116,7 @@ fn document_text(theme: &OverlayTheme, existing: Option<&str>) -> Result<String,
     let mut rows: Vec<(String, Value)> = vec![(VERSION_KEY.to_string(), version_row(&previous))];
 
     // Serialized through `OverlayTheme` itself, so the spelling written is the
-    // spelling the reader's parsers expect: canonical `#rrggbb`, `"glass"`,
+    // one the reader's parsers expect: canonical `#rrggbb`, `"glass"`,
     // `"hud_window"`. Nothing here formats a token by hand.
     let serialized = serde_json::to_value(theme)
         .map_err(|error| format!("Cannot serialize the overlay theme: {error}"))?;
@@ -131,8 +125,8 @@ fn document_text(theme: &OverlayTheme, existing: Option<&str>) -> Result<String,
         .ok_or_else(|| "The overlay theme did not serialize to an object".to_string())?;
 
     for key in overlay_theme_file::token_keys() {
-        // Inherit is an absent key. A `null` would read the same way, but it
-        // would also grow the file by a line every time a token is reset.
+        // Inherit is an absent key. A `null` reads the same way, but grows
+        // the file by a line every time a token is reset.
         match serialized.get(key) {
             Some(value) if !value.is_null() => rows.push((key.to_string(), value.clone())),
             _ => {}
@@ -154,10 +148,10 @@ fn document_text(theme: &OverlayTheme, existing: Option<&str>) -> Result<String,
     Ok(render(&rows))
 }
 
-/// The `version` to write: whatever the document already declared, when that
-/// is a usable version, else this build's.
+/// The `version` to write: whatever the document declared, when that is a
+/// usable version, else this build's.
 ///
-/// A document a newer Handy wrote keeps its own number. Dropping it to 1 would
+/// A document a newer Handy wrote keeps its number. Dropping it to 1 would
 /// tell the next reader that keys it does not recognise are typos.
 fn version_row(previous: &Option<Map<String, Value>>) -> Value {
     previous
@@ -180,9 +174,9 @@ fn object_of(text: &str) -> Option<Map<String, Value>> {
 /// Rows as JSON text: two-space indent, one key per line, trailing newline.
 ///
 /// Rendered rather than handed to `serde_json::to_string_pretty`, because
-/// `serde_json::Map` is a `BTreeMap` here and would sort the keys
-/// alphabetically. The contract's order is what the README's table and the
-/// tab's "Copy theme as JSON" both use, so the file follows it too.
+/// `serde_json::Map` is a `BTreeMap` here and sorts keys alphabetically. The
+/// README's table and the tab's "Copy theme as JSON" both use the contract's
+/// order, so the file follows it too.
 fn render(rows: &[(String, Value)]) -> String {
     let mut document = String::from("{\n");
     for (index, (key, value)) in rows.iter().enumerate() {
@@ -205,15 +199,14 @@ fn render(rows: &[(String, Value)]) -> String {
 ///
 /// The temp file is in the target's own directory, so the rename stays within
 /// one filesystem and is atomic. It is hidden and named per process and per
-/// write, so neither two Handys nor two commits can collide, and a stray one
-/// is never mistaken for the theme (the reader only ever opens
-/// `overlay_theme.json`).
+/// write, so neither two Handys nor two commits collide, and a stray one is
+/// never mistaken for the theme (the reader only opens `overlay_theme.json`).
 fn install(path: &Path, text: &str, expected: &OverlayTheme) -> Result<(), String> {
     let directory = overlay_theme_file::containing_directory(path)
         .ok_or_else(|| format!("{} names no folder to write into", path.display()))?;
 
     // The one directory Handy creates, and only under a path it owns: the
-    // ownership check above has already refused anything else.
+    // ownership check above already refused anything else.
     std::fs::create_dir_all(&directory)
         .map_err(|error| format!("Cannot create {}: {error}", directory.display()))?;
 
@@ -231,10 +224,9 @@ fn install(path: &Path, text: &str, expected: &OverlayTheme) -> Result<(), Strin
 
 /// Write the temp file and flush it all the way to the disk.
 ///
-/// `sync_all` before the rename is what makes the rename atomic in a crash as
-/// well as to a reader: without it the directory entry can reach the disk
-/// while the bytes it points at have not, and the theme file comes back empty
-/// after a power cut.
+/// `sync_all` before the rename makes it atomic in a crash as well as to a
+/// reader: without it the directory entry can reach the disk before the bytes
+/// it points at, and the theme file comes back empty after a power cut.
 fn write_temp(temp: &Path, text: &str) -> Result<(), String> {
     let mut file = std::fs::File::create(temp)
         .map_err(|error| format!("Cannot write {}: {error}", temp.display()))?;
@@ -247,9 +239,9 @@ fn write_temp(temp: &Path, text: &str) -> Result<(), String> {
 /// Read the temp file back through the reader's own parser and check the
 /// tokens survived the round trip.
 ///
-/// Not a formality. It is the difference between "Handy wrote a file" and
-/// "Handy wrote a file Handy can read", and it runs before the rename, so a
-/// document that fails it never becomes the theme.
+/// Not a formality: the difference between "Handy wrote a file" and "Handy
+/// wrote a file Handy can read". Before the rename, so a document that fails
+/// it never becomes the theme.
 fn verify(temp: &Path, expected: &OverlayTheme) -> Result<(), String> {
     let written = std::fs::read_to_string(temp)
         .map_err(|error| format!("Cannot read back {}: {error}", temp.display()))?;
@@ -264,7 +256,7 @@ fn verify(temp: &Path, expected: &OverlayTheme) -> Result<(), String> {
 }
 
 /// Where the temp file goes: hidden, beside the target, named per process and
-/// per write, so nothing else in that folder can be mistaken for it.
+/// per write, so nothing else in that folder is mistaken for it.
 fn temp_path(path: &Path) -> PathBuf {
     let name = path
         .file_name()
@@ -280,16 +272,16 @@ fn temp_path(path: &Path) -> PathBuf {
 enum Migration {
     /// It has already run. Nothing looks at the stored theme again.
     AlreadyDone,
-    /// `HANDY_OVERLAY_THEME_FILE` is naming the file. Writing Handy's own
+    /// `HANDY_OVERLAY_THEME_FILE` names the file. Writing Handy's own
     /// location would create a document nothing reads, so this waits for the
-    /// variable to go away rather than marking itself done.
+    /// variable to go rather than marking itself done.
     Deferred,
     /// Something is already at one of Handy's locations. It wins, and the
     /// store is retired unread, so deleting that file later means the built-in
-    /// look rather than a theme from before the file existed.
+    /// look, not a theme from before the file existed.
     FileWins,
-    /// The store holds nothing but inherits. There is no theme to move, and
-    /// the store is retired.
+    /// The store holds nothing but inherits: no theme to move, so the store
+    /// is retired.
     NothingToMove,
     /// Write the stored theme to `~/.config/handy/overlay_theme.json`.
     Write,
@@ -318,18 +310,18 @@ fn migration_step(
 
 /// Move the store's overlay theme into the theme file, once.
 ///
-/// Runs at setup, after the settings load and the first theme-file read, and
+/// Runs at setup, after the settings load and the first theme-file read and
 /// before any window shows the overlay, so the first frame is already drawn
 /// from the file. Returns the path it wrote, when it wrote one.
 ///
 /// Every outcome but [`Migration::Deferred`] retires the stored theme, so this
-/// is a one-time pass however it ends and a later deletion of the theme file
+/// is a one-time pass however it ends, and deleting the theme file later
 /// cannot resurrect a theme from before the file was the theme.
 pub fn migrate_once(app: &AppHandle) -> Option<PathBuf> {
     let mut settings = get_settings(app);
     // "Is a file there", not "did a file parse". A document Handy could not
-    // read is still somebody's, and a migration that replaced it would drop
-    // the keys and the typo the user is halfway through fixing.
+    // read is still somebody's, and replacing it would drop the keys and the
+    // typo the user is halfway through fixing.
     let step = migration_step(
         settings.overlay_theme_migrated,
         overlay_theme_file::env_override_in_effect(),
@@ -370,7 +362,7 @@ pub fn migrate_once(app: &AppHandle) -> Option<PathBuf> {
                         Some(path)
                     }
                     Err(problem) => {
-                        // Left unmarked on purpose, so the next launch tries
+                        // Left unmarked on purpose: the next launch tries
                         // again rather than losing the theme silently.
                         warn!("Could not migrate the stored overlay theme: {problem}");
                         return None;
@@ -394,11 +386,10 @@ pub fn migrate_once(app: &AppHandle) -> Option<PathBuf> {
 
 /// Write the stored theme to `path`, but only onto nothing at all.
 ///
-/// The migration is the one write with no user behind it, so it is the one
-/// that must never replace a document: not a file that will not parse, not a
-/// symlink a theming tool owns, not a read-only file. Both halves matter. The
-/// first refuses anything that is there, the second refuses a path that is
-/// not Handy's even when it is empty.
+/// The migration is the one write with no user behind it, so it must never
+/// replace a document: not a file that will not parse, not a symlink a theming
+/// tool owns, not a read-only file. Both halves matter: the first refuses
+/// anything that is there, the second a path not Handy's even when empty.
 fn create_from_store(path: &Path, theme: &OverlayTheme) -> Result<(), String> {
     let _writing = writing();
 
@@ -442,10 +433,9 @@ mod tests {
         }
     }
 
-    /// The shape the README documents and a hand editor meets: `version`
-    /// first, the set tokens in the contract's order after it, two spaces, one
-    /// trailing newline. Written out in full rather than re-derived, because
-    /// this text is the contract.
+    /// The README's shape, as a hand editor meets it: `version` first, the set
+    /// tokens in the contract's order, two spaces, one trailing newline.
+    /// Written out in full rather than re-derived: this text is the contract.
     #[test]
     fn a_document_is_version_first_then_the_set_tokens_in_contract_order() {
         assert_eq!(
@@ -464,7 +454,7 @@ mod tests {
     }
 
     /// Inherit is an absent key, never an explicit null, so resetting every
-    /// token leaves the version row alone rather than twenty-two nulls.
+    /// token leaves the version row alone, not twenty-two nulls.
     #[test]
     fn an_all_inherit_theme_writes_only_the_version() {
         assert_eq!(
@@ -512,9 +502,8 @@ mod tests {
             .starts_with("{\n  \"version\": 1,\n"));
     }
 
-    /// Every document Handy writes has to be one Handy reads: the tokens that
-    /// come back out are the tokens that went in, for every kind of value in
-    /// the contract.
+    /// Every document Handy writes has to be one Handy reads: the tokens come
+    /// back out as they went in, for every kind of value in the contract.
     #[test]
     fn a_written_document_reads_back_as_the_theme_it_was_given() {
         let theme = OverlayTheme {
@@ -596,7 +585,7 @@ mod tests {
         let path = directory.path().join("overlay_theme.json");
         std::fs::write(&path, "{\n  \"version\": 1\n}\n").expect("a starting document");
 
-        // A theme the rendered text cannot possibly read back as.
+        // A theme the rendered text cannot read back as.
         let mismatch = install(&path, "{\n  \"version\": 1\n}\n", &a_theme());
         assert!(mismatch.is_err(), "{mismatch:?}");
 
@@ -613,9 +602,8 @@ mod tests {
         );
     }
 
-    /// The write guard, which is the whole difference between "Handy owns this
-    /// file" and "Handy reads somebody else's". Refused, and the document is
-    /// left byte for byte as it was.
+    /// The write guard: "Handy owns this file" versus "Handy reads somebody
+    /// else's". Refused, and the document is left byte for byte as it was.
     #[test]
     fn a_commit_refuses_a_theme_file_handy_does_not_own() {
         let directory = tempfile::tempdir().expect("a temp dir");
@@ -653,7 +641,7 @@ mod tests {
 
     /// A document that will not parse keeps applying its last good values, and
     /// the tab says so. Changing anything then is the user's explicit act, and
-    /// it has to leave a file that reads.
+    /// has to leave a file that reads.
     #[test]
     fn a_commit_repairs_a_document_that_would_not_parse() {
         let directory = tempfile::tempdir().expect("a temp dir");
@@ -671,8 +659,8 @@ mod tests {
     }
 
     /// The migration is the one write with nobody behind it, so it may only
-    /// ever create. A file that parses, a file that does not and a link a
-    /// theming tool owns are all somebody's, and all three survive it.
+    /// create. A file that parses, a file that does not and a link a theming
+    /// tool owns are all somebody's, and all three survive it.
     #[test]
     fn the_migration_never_touches_an_existing_file_parseable_or_not() {
         // `create_from_store` asks whether an absent path is Handy's, which
@@ -719,8 +707,8 @@ mod tests {
         );
     }
 
-    /// The migration's whole rule. It runs once, never over a file that is
-    /// already there, and never for a store that only inherits.
+    /// The migration's whole rule: once, never over a file already there,
+    /// never for a store that only inherits.
     #[test]
     fn the_migration_runs_once_and_only_with_something_to_move() {
         assert_eq!(
@@ -729,8 +717,8 @@ mod tests {
             "a stored theme and no file anywhere is the case this exists for"
         );
 
-        // Once it has run, nothing looks at the store again, whatever happened
-        // to the file since.
+        // Once it has run, nothing looks at the store again, whatever became
+        // of the file since.
         for file_present in [false, true] {
             for store_has_tokens in [false, true] {
                 assert_eq!(
@@ -751,7 +739,7 @@ mod tests {
             Migration::NothingToMove
         );
 
-        // The env var outranks all of it. Writing ~/.config/handy/ while it
+        // The env var outranks all of it: writing ~/.config/handy/ while it
         // points elsewhere would create a document nothing reads.
         for file_present in [false, true] {
             assert_eq!(

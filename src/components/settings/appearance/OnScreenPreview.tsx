@@ -25,9 +25,8 @@ const RECORDING_POLL_MS = 1500;
 
 export interface OnScreenPreviewProps {
   style: OverlayStyle;
-  /** The overlay theme as persisted, which is what "Copy theme as JSON"
-   *  copies: the same document the theme file holds, for pasting into a
-   *  dotfile or a theming tool. */
+  /** The overlay theme as persisted, what "Copy theme as JSON" copies: the
+   *  theme file's own document, to paste into a dotfile or theming tool. */
   settingsTheme: OverlayTheme;
   resetDisabled: boolean;
   onResetConfirm: () => void;

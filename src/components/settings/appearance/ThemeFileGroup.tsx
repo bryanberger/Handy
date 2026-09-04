@@ -123,10 +123,9 @@ export interface ThemeFileStatus {
 /**
  * Which of the group's three states the theme file is in.
  *
- * Managed first, because it is the one that changes what the tab can do: a
- * symlinked or read-only document belongs to whoever made it, Handy reads it
- * and every token row is locked. Otherwise the file is Handy's, and the only
- * question left is whether it exists yet.
+ * Managed first: it alone changes what the tab can do. A symlinked or
+ * read-only file is somebody else's, Handy reads it and locks every token
+ * row. Otherwise it is Handy's; the only question is whether it exists yet.
  *
  * Pure, so the three states are a unit test rather than a screenshot.
  */
@@ -166,10 +165,10 @@ export interface ThemeFileGroupProps {
 }
 
 /**
- * The Theme File group: where `overlay_theme.json` is, a button that opens it,
- * one line saying which of its three states it is in, and a capped list of
- * what the reader ignored or clamped. The Reload button appears only where the
- * watcher could not start, since everywhere else a hand edit is already live.
+ * The Theme File group: where `overlay_theme.json` is, a button to open it,
+ * which of its three states it is in, and a capped list of what the reader
+ * ignored or clamped. Reload shows only where the watcher could not start;
+ * elsewhere a hand edit is already live.
  */
 export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
   file,

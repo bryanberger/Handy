@@ -24,8 +24,7 @@ export const EMPTY_FILE_STATE: ResolvedOverlayTheme["file"] = {
   tokens: INHERIT_ALL,
   owned_keys: [],
   // Assumed writable, so the rows are live from the first frame. A managed
-  // file locks them the moment the real payload lands, and Rust refuses a
-  // write to one whatever the tab believed.
+  // file locks them when the payload lands, and Rust refuses the write anyway.
   ownership: { writable: true, reason: null, target: null },
   diagnostics: [],
   diagnostics_total: 0,
@@ -35,11 +34,10 @@ export const EMPTY_FILE_STATE: ResolvedOverlayTheme["file"] = {
 /**
  * Merge a draft over a resolved theme, per key.
  *
- * A managed theme file does not change this. It locks every token row, so
- * ordinarily there is no draft to merge, but the on-screen preview still works
- * from drafts while the file is somebody else's: the base is always the file's
- * own tokens, and a draft only ever paints over them. Dropping drafts here
- * would freeze the preview instead of the file.
+ * A managed file changes nothing here. It locks every token row, so usually
+ * there is no draft, but the preview still runs on drafts while the file is
+ * somebody else's: the base is always the file's tokens, a draft only paints
+ * over them. Dropping them here would freeze the preview, not the file.
  *
  * Exported for the unit tests; nothing outside this file imports it.
  */
@@ -152,9 +150,8 @@ export interface UseOverlayThemeVarsResult {
   /** Whether every token row is read-only, because the theme file is managed
    *  by something other than Handy. */
   locked: boolean;
-  /** The value a control shows: the draft while one is in flight, else the
-   *  theme file's own value. A locked tab has no drafts of its own, its rows
-   *  being disabled, so it shows the file's value throughout. */
+  /** The value a control shows: the draft in flight, else the theme file's
+   *  value. A locked tab's rows are disabled, so all show the file's value. */
   effectiveValue: <K extends OverlayThemeKey>(
     key: K,
   ) => NonNullable<OverlayTheme[K]> | null;
@@ -274,10 +271,9 @@ export function useOverlayThemeVars(
     // for the component's lifetime and need no listing.
   }, [colorVars, mergedTheme.effective_material, remeasureSignal]);
 
-  // Every row locks together or none does. The theme file is the theme, so
-  // "the file sets this token" is no longer a reason to lock a control: the
-  // control is how the token got there. What locks the tab is a file Handy
-  // reads and does not write, and that is all of it at once.
+  // Every row locks together or none does. The file is the theme, so "the file
+  // sets this token" no longer locks a control: the control put it there. What
+  // locks the tab is a file Handy reads and does not write, all at once.
   const locked = resolved ? !resolved.file.ownership.writable : false;
 
   const effectiveValue = useCallback(

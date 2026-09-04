@@ -518,18 +518,18 @@ pub struct AppSettings {
     /// The overlay theme as builds before the theme file became the theme
     /// stored it.
     ///
-    /// Kept for compatibility, and read exactly once: the one-time migration
-    /// in `overlay_theme_write::migrate_once` copies it into
-    /// `~/.config/handy/overlay_theme.json`. Nothing writes it and nothing
-    /// resolves from it after that; `overlay_theme.json` is the overlay theme.
+    /// Kept for compatibility, read once by
+    /// `overlay_theme_write::migrate_once` into
+    /// `~/.config/handy/overlay_theme.json`, then never written or resolved
+    /// from again; `overlay_theme.json` is the overlay theme.
     #[serde(default)]
     pub overlay_theme: OverlayTheme,
     /// Whether the one-time migration of `overlay_theme` into the theme file
     /// has run.
     ///
-    /// It makes "once" literal. Without it, deleting the theme file would
-    /// resurrect a theme the store still holds, and deleting the file has to
-    /// mean the overlay goes back to its built-in look.
+    /// It makes "once" literal: without it, deleting the theme file would
+    /// resurrect the theme the store still holds, and deleting it has to mean
+    /// the built-in look.
     #[serde(default)]
     pub overlay_theme_migrated: bool,
 }
@@ -989,8 +989,8 @@ pub fn get_default_settings() -> AppSettings {
         vad_backend: VadBackend::default(),
         overlay_style: default_overlay_style(),
         overlay_theme: OverlayTheme::default(),
-        // A fresh install has nothing to migrate, and its first committed
-        // change writes the theme file directly.
+        // Nothing to migrate on a fresh install; its first committed change
+        // writes the theme file directly.
         overlay_theme_migrated: false,
     }
 }
@@ -1240,12 +1240,12 @@ pub fn write_settings(app: &AppHandle, settings: AppSettings) {
 /// `AppSettings`.
 ///
 /// The overlay theme resolves per animation frame while a token is dragged, and
-/// now derives the shadow's anchored-side slack, which depends on the overlay
-/// position. `get_settings` deserializes all sixty-odd fields, runs the
-/// migration pass and can write the store back, so this reads the one value it
-/// needs instead. Skipping the migration pass is safe: the one migration that
-/// ever touched `overlay_position` (the retired `"none"`) ran at startup before
-/// any window existed, and its own alias still covers a store that skipped it.
+/// derives its shadow's anchored-side slack from the overlay position.
+/// `get_settings` deserializes all sixty-odd fields, runs the migration pass
+/// and can write the store back, so this reads the one value it needs.
+/// Skipping migrations is safe: the one that ever touched `overlay_position`
+/// (the retired `"none"`) ran at startup before any window existed, and its
+/// alias still covers a store that skipped it.
 pub fn get_overlay_position(app: &AppHandle) -> OverlayPosition {
     let store = app
         .store(crate::portable::store_path(SETTINGS_STORE_PATH))
@@ -1335,10 +1335,9 @@ mod tests {
         assert_eq!(salvaged.hold_threshold_ms, 500);
     }
 
-    /// `get_overlay_position` is a shortcut around `get_settings`: the resolved
-    /// overlay theme derives its shadow's anchored-side slack from the overlay
-    /// position, so a shortcut that disagreed with the full read would size the
-    /// window for one edge and place it at the other.
+    /// `get_overlay_position` is a shortcut around `get_settings`. If they
+    /// disagreed, the window would be sized for one edge and placed at the
+    /// other.
     #[test]
     fn the_overlay_position_shortcut_answers_what_the_full_read_would() {
         fn the_long_way(stored: &serde_json::Value) -> OverlayPosition {

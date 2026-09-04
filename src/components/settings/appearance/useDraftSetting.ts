@@ -158,9 +158,8 @@ export class DraftDebouncer<Key extends string, Value> {
  * which takes the key out of the theme file.
  *
  * Reads the persisted theme at call time, not a captured closure, so two edits
- * in flight compose instead of clobbering each other. It sends all twenty-two
- * tokens through one `change_overlay_theme_setting` command, which writes the
- * theme file and answers with the document it read back.
+ * in flight compose. One `change_overlay_theme_setting` sends all twenty-two
+ * tokens, writes the theme file and answers with the document it read back.
  */
 export async function setOverlayThemeToken<K extends keyof OverlayTheme>(
   key: K,
@@ -201,8 +200,8 @@ export interface DraftEffects {
  * The two clocks of live editing, and the rules that keep them in step.
  *
  * A token edit goes two places at two rates, the overlay at frame rate and the
- * theme file on a 120 ms debounce, so every bug this class prevents is an
- * ordering bug between them. The rules live in one place, testable as rules rather than
+ * theme file on a 120 ms debounce, so every bug it prevents is an ordering bug
+ * between them. The rules live in one place, testable as rules rather than
  * as React wiring:
  *
  *  1. The last frame is never dropped. A commit flushes the coalescer first,

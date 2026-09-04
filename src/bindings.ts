@@ -910,17 +910,15 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 /**
  * Write the whole overlay theme to the theme file.
  * 
- * The theme file is the overlay theme, so this is where a committed change
- * from the Appearance tab lands. The frontend always sends the complete
+ * The theme file is the overlay theme, so a committed change from the
+ * Appearance tab lands here. The frontend always sends the complete
  * twenty-two-token object: setting one token, clearing one (reset to inherit)
- * and resetting the whole theme are all this one call with a different
- * object.
+ * and resetting the whole theme are all one call with a different object.
  * 
- * Values are clamped before they are written, so nothing out of range reaches
- * the file, the native geometry or the frontend. The file is then read back
- * and resolved, and that resolved theme is both the answer and what goes out
- * to the two windows. Reading back is not ceremony: it makes the answer the
- * document on disk rather than the intent, and it is what lets the watcher
+ * Values are clamped before the write, so nothing out of range reaches the
+ * file, the native geometry or the frontend. The file is then read back and
+ * resolved, and that theme is both the answer and what the two windows get:
+ * the document on disk, not the intent. That is also what lets the watcher
  * recognise Handy's own write and stay quiet.
  * 
  * A managed theme file (a symlink, or one Handy cannot write) is refused
@@ -943,10 +941,9 @@ async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<ResolvedOv
  * Paint a theme the user is still dragging, without persisting anything.
  * 
  * The Appearance tab commits on a debounce, right for the file and far too
- * slow for the eye. It also sends the draft here, coalesced to one call per
- * animation frame, and this puts it on the overlay with nothing written, no
- * broadcast to the settings window, and no native window work unless a token
- * the window is built from moved.
+ * slow for the eye. It also sends drafts here, coalesced to one per animation
+ * frame, and this paints the overlay: nothing written, no broadcast to the
+ * settings window, no native window work unless a window-shaping token moved.
  * 
  * A no-op unless a preview is running and nothing is recording, as decided by
  * `overlay_preview::accepts_theme_drafts`. Anywhere else the overlay belongs
@@ -955,10 +952,9 @@ async changeOverlayThemeSetting(theme: OverlayTheme) : Promise<Result<ResolvedOv
  * 
  * Every draft that gets through leaves a mark, which
  * `change_overlay_theme_setting` clears (plain text, not an intra-doc link:
- * this doc comment is copied verbatim into `src/bindings.ts`). That
- * guarantees the screen ends on the file's own theme even when the commit
- * that follows has nothing to write, and it is why a draft is never recorded
- * as a delivery.
+ * this doc comment is copied verbatim into `src/bindings.ts`). The screen
+ * therefore ends on the file's own theme even when the commit that follows
+ * has nothing to write, and a draft is never recorded as a delivery.
  */
 async previewOverlayThemeDraft(theme: OverlayTheme) : Promise<Result<null, string>> {
     try {
@@ -987,11 +983,10 @@ async getResolvedOverlayTheme() : Promise<Result<ResolvedOverlayTheme, string>> 
 /**
  * Re-read the theme file, resolve, deliver, and return the result.
  * 
- * What the Appearance tab calls on mount, and what its Reload button calls on
- * the machines where the watcher could not start. With the watcher running a
- * hand edit arrives on its own, so the button is not shown; this stays the
- * backstop, and the mount read stays because a tab opened after a change made
- * while it was closed must not show a stale theme.
+ * What the Appearance tab calls on mount, and its Reload button where the
+ * watcher could not start. With a watcher, hand edits arrive on their own and
+ * the button is hidden; this stays the backstop. The mount read stays because
+ * a tab opened after a change it missed must not show a stale theme.
  * 
  * `async` is load-bearing twice over. Tauri runs a sync command inline on the
  * IPC thread and spawns an `async fn` on the runtime, and the read then goes
@@ -1188,19 +1183,19 @@ overlay_style?: OverlayStyle;
  * The overlay theme as builds before the theme file became the theme
  * stored it.
  * 
- * Kept for compatibility, and read exactly once: the one-time migration
- * in `overlay_theme_write::migrate_once` copies it into
- * `~/.config/handy/overlay_theme.json`. Nothing writes it and nothing
- * resolves from it after that; `overlay_theme.json` is the overlay theme.
+ * Kept for compatibility, read once by
+ * `overlay_theme_write::migrate_once` into
+ * `~/.config/handy/overlay_theme.json`, then never written or resolved
+ * from again; `overlay_theme.json` is the overlay theme.
  */
 overlay_theme?: OverlayTheme; 
 /**
  * Whether the one-time migration of `overlay_theme` into the theme file
  * has run.
  * 
- * It makes "once" literal. Without it, deleting the theme file would
- * resurrect a theme the store still holds, and deleting the file has to
- * mean the overlay goes back to its built-in look.
+ * It makes "once" literal: without it, deleting the theme file would
+ * resurrect the theme the store still holds, and deleting it has to mean
+ * the built-in look.
  */
 overlay_theme_migrated?: boolean }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
@@ -1919,8 +1914,7 @@ version: number | null;
 tokens: OverlayTheme; 
 /**
  * The keys the document actually sets, in contract order. What the tab's
- * "sets N of M values" line counts; the rest of the document's tokens
- * inherit.
+ * "sets N of M values" line counts; its other tokens inherit.
  */
 owned_keys: string[]; 
 /**

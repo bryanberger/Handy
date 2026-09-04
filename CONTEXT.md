@@ -53,7 +53,7 @@ The tokens that decide how the overlay looks: accent, surface, text, border, mat
 _Avoid_: overlay skin, overlay colors, overlay CSS, customization
 
 **Token**:
-One named, user-settable value in the overlay theme, such as the accent color or the corner radius. Every token is optional, and setting one from the settings window and setting one in the theme file are the same act: the tab writes the file.
+One named, user-settable value in the overlay theme, such as the accent color or the corner radius. Every token is optional, and setting one in the settings window or in the theme file is the same act: the tab writes the file.
 _Avoid_: variable, property, knob, option
 
 **Inherit**:

@@ -1,10 +1,9 @@
 //! Reading the theme file `overlay_theme.json`, which is the overlay theme.
 //!
-//! Handy writes it from the Appearance tab, a theming tool or a text editor
-//! writes it from outside, and a watcher makes either one live. This module is
-//! the read half; [`crate::overlay_theme_write`] is the write half and
-//! [`crate::overlay_theme_file::ownership_at`] is the line between them: a
-//! symlink or a read-only file is somebody else's document, read and never
+//! Handy writes it from the Appearance tab, a theming tool or an editor writes
+//! it from outside, and a watcher makes either live. This is the read half,
+//! [`crate::overlay_theme_write`] the write half, [`ownership_at`] the line
+//! between: a symlink or a read-only file is somebody else's, read and never
 //! touched. The one folder Handy creates is `~/.config/handy/`, never a path
 //! [`THEME_FILE_ENV_VAR`] named. Only typed tokens come out:
 //! canonical `#rrggbb` colours, `flat | glass`, the eight macOS
@@ -24,9 +23,8 @@
 //! One `open` serves both the metadata check and a bounded sub-KiB read, so a
 //! candidate cannot be swapped between them. Runs at launch, on every overlay
 //! show (off the main thread), on every debounced batch the watcher reports,
-//! after every write, and when the Appearance tab asks. Every one of those is
-//! a full re-read, so a watcher event Handy misses self-heals at the next
-//! dictation.
+//! after every write, and when the Appearance tab asks. All full re-reads, so
+//! a watcher event Handy misses self-heals at the next dictation.
 //!
 //! Forward compatibility, promised to the tools that write this file. Colour
 //! values are `"#RRGGBB"` strings today; a future version may also accept
@@ -391,10 +389,9 @@ pub fn env_override_in_effect() -> bool {
 /// Whether Handy owns a theme file that exists, and why not when it does not.
 ///
 /// The guard behind every write. A symlink is how a dotfile manager or an
-/// Omarchy-style tool says "this document is mine": Handy follows it to read
-/// and never writes through it, because writing would either replace the link
-/// or edit the tool's own source. A file whose permissions refuse a write is
-/// the same answer for a different reason.
+/// Omarchy-style tool says "this document is mine": Handy reads through it and
+/// never writes, since that would replace the link or edit the tool's source.
+/// Permissions refusing a write are the same answer for another reason.
 ///
 /// The permission bit is a fast, conservative check, not the last word. On
 /// Unix it only reports "no write bit at all", so a file owned by someone else
@@ -425,11 +422,10 @@ pub fn ownership_at(path: &Path) -> ThemeFileOwnership {
 
 /// Whether Handy would create a file at a path where there is none.
 ///
-/// It creates its own locations, which is how the first committed change makes
-/// `~/.config/handy/overlay_theme.json`, and never a path
-/// [`THEME_FILE_ENV_VAR`] named: that one was given to be read, and Handy does
-/// not build a tree at it. The same rule the read path's "nothing found"
-/// branch applies.
+/// Handy creates its own locations: the first committed change makes
+/// `~/.config/handy/overlay_theme.json`. Never a path [`THEME_FILE_ENV_VAR`]
+/// named, though: that one was given to be read, and Handy builds no tree at
+/// it. The same rule the read path's "nothing found" branch applies.
 fn absent_ownership(path: &Path) -> ThemeFileOwnership {
     if env_override_in_effect() {
         ThemeFileOwnership::managed(
@@ -539,8 +535,7 @@ pub fn containing_directory(path: &Path) -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
-/// Read the theme file, update the cache, and return the overlay theme it
-/// holds.
+/// Read the theme file, update the cache, return the overlay theme it holds.
 ///
 /// Never panics, never writes, never falls back from the file
 /// [`THEME_FILE_ENV_VAR`] named. Filesystem IO, so off the main thread bar the
@@ -1580,8 +1575,7 @@ mod tests {
         assert_eq!(linked.reason, Some(ManagedReason::Symlink));
         assert_eq!(linked.target, Some(real.display().to_string()));
 
-        // And it is still read: the tokens come through, only the writing
-        // stops.
+        // And it is still read: the tokens come through, only writing stops.
         let state = read_candidates(std::slice::from_ref(&link), false, Some(&link), None);
         assert!(state.present);
         assert_eq!(state.ownership, linked);

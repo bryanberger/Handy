@@ -82,7 +82,7 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `overlay_theme.rs` - Overlay theme tokens, the resolver (the file's tokens, clamped, unset ones inheriting), delivery and the "already delivered" gate the watcher leans on
 - `overlay_theme_file.rs` - Reads `overlay_theme.json` and decides whether Handy owns it (see the README's Overlay Theme File section)
 - `overlay_theme_write.rs` - Writes `overlay_theme.json`: atomic, verified by reading it back through the same parser, plus the one-time migration of the store's old `overlay_theme`
-- `overlay_theme_watch.rs` - Watches the theme file's folder so a hand edit or a tool's write is live; `watching: false` in the resolved theme is what puts the tab's Reload button back
+- `overlay_theme_watch.rs` - Watches the theme file's folder so a hand edit or a tool's write is live; `watching: false` in the resolved theme puts the tab's Reload button back
 - `overlay_glass.rs` - The macOS Glass material. One native view under the webview, `NSGlassEffectView` (Liquid Glass) on macOS 26 and later and `NSVisualEffectView` before it, plus the native frame morph. `glass_support.engine` reports which engine drew; `glass_style` and `glass_material` are its live setters, one per engine
 - `overlay_preview.rs` - Preview mode. Drives the real overlay from synthetic audio, cycling or pinned to one state, until the Appearance tab stops it. It also backs `--preview-overlay`, which stops itself, and owns the cancel funnel every cancel path goes through
 - `frontend_source.rs` - Test-only readers for the overlay's stylesheet and TypeScript, so Rust tests pin their constants to the values the frontend paints
@@ -104,7 +104,7 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
   - `update-checker/` - App update notifications
   - `shared/`, `ui/`, `icons/`, `footer/` - Shared components
 - `hooks/useSettings.ts` - Settings state management hook
-- `hooks/useResolvedOverlayTheme.ts` - Subscribes the settings window to the resolved overlay theme, and is where the Appearance tab's committed changes go (they write the theme file, not the settings store)
+- `hooks/useResolvedOverlayTheme.ts` - Subscribes the settings window to the resolved overlay theme, and where the Appearance tab's committed changes go (they write the theme file, not the settings store)
 - `stores/settingsStore.ts` - Zustand store for settings
 - `bindings.ts` - Auto-generated Tauri type bindings (via tauri-specta)
 - `overlay/` - Recording overlay window entry point

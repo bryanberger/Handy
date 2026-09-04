@@ -80,9 +80,8 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
  * group. Groups 4 on read `OVERLAY_TOKEN_FIELDS`, not hardcoded rows, so that
  * table alone declares a token's shape.
  *
- * Every token row writes `overlay_theme.json`, so the tab is an editor for
- * that file rather than a second place a theme could live. The rows go
- * read-only together when the file is one Handy reads and does not write.
+ * Every token row writes `overlay_theme.json`, the one place a theme lives.
+ * Rows go read-only together when Handy reads that file and does not write it.
  */
 export const AppearanceSettings: React.FC = () => (
   <ErrorBoundary context="Appearance tab">

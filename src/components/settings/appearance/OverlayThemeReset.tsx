@@ -14,9 +14,8 @@ export interface OverlayThemeResetProps {
 /**
  * The whole-theme reset. A small ghost button in the On-Screen Preview card
  * that, after a confirming dialog, restores every overlay color, size and
- * spacing token to inherit, which leaves the theme file holding its version
- * row and nothing else. Overlay style and position survive, being settings
- * rather than overlay-theme tokens.
+ * spacing token to inherit, leaving the theme file only its version row.
+ * Overlay style and position survive, being settings, not theme tokens.
  */
 export const OverlayThemeReset: React.FC<OverlayThemeResetProps> = ({
   disabled,

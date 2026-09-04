@@ -9,10 +9,9 @@ import {
 } from "./useOverlayThemeVars";
 
 /**
- * Unit tests for `mergeDraft`, the rule a token row is painted by:
- * `draft[key] ?? resolved.theme[key]`. The theme file is the theme, so a draft
- * is the value on its way into that file, and the on-screen preview shows it
- * before it gets there, managed file or not.
+ * Unit tests for `mergeDraft`, the rule a token row is painted by: `draft[key]
+ * ?? resolved.theme[key]`. The file is the theme, so a draft is a value on its
+ * way into it, shown by the preview before it arrives, managed file or not.
  */
 
 describe("mergeDraft", () => {

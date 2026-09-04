@@ -194,10 +194,9 @@ const settingUpdaters: {
     commands.changeTranscribeGpuDevice(value as string | null),
   extra_recording_buffer_ms: (value) =>
     commands.changeExtraRecordingBufferSetting(value as number),
-  // No `overlay_theme` entry. The overlay theme lives in `overlay_theme.json`
-  // now, not in this store, so it is written through
-  // `useResolvedOverlayTheme`'s own commit and never through `updateSetting`.
-  // `AppSettings` keeps the field for the one-time migration and nothing else.
+  // No `overlay_theme` entry: the overlay theme lives in `overlay_theme.json`
+  // now, committed through `useResolvedOverlayTheme`, never `updateSetting`.
+  // `AppSettings` keeps the field only for the one-time migration.
 };
 
 export const useSettingsStore = create<SettingsStore>()(

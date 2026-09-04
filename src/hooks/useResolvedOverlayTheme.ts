@@ -24,10 +24,9 @@ const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
     isCommitting: false,
     subscribed: false,
 
-    // Re-reads the theme file from disk, resolves and returns the theme
-    // (commands.reloadOverlayThemeFile). The tab calls it on mount, and its
-    // Reload button calls it on the machines where the watcher could not
-    // start.
+    // Re-reads the theme file from disk, resolves and returns it
+    // (commands.reloadOverlayThemeFile). The tab calls it on mount; its Reload
+    // button calls it where the watcher could not start.
     load: async () => {
       set({ isReloading: true });
       try {
@@ -45,9 +44,8 @@ const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
     },
 
     // Writes the theme file, which is the overlay theme. Rust answers with the
-    // document it read back, so this store holds what is on disk rather than
-    // what was asked for, and a value Rust clamped corrects itself here
-    // without a second round trip.
+    // document it read back, so this store holds what is on disk, not what was
+    // asked for, and a clamped value corrects itself, no second round trip.
     commit: async (theme) => {
       set({ isCommitting: true });
       try {
@@ -68,8 +66,8 @@ const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
     },
 
     // Keeps `resolved` current between commits. A commit from this tab, a hand
-    // edit the file watcher saw, a change noticed at the overlay's next show,
-    // and another window's Reload all send this event.
+    // edit the watcher saw, a change seen at the overlay's next show and
+    // another window's Reload all send this event.
     subscribe: () => {
       if (get().subscribed) return;
       set({ subscribed: true });
@@ -84,9 +82,8 @@ const useResolvedOverlayThemeStore = create<ResolvedOverlayThemeState>(
  * The overlay theme as persisted, read at call time rather than captured, so
  * two edits in flight compose instead of clobbering each other.
  *
- * `resolved.theme` is the theme file's own tokens, clamped, which is what the
- * next write starts from. Before the first payload arrives nothing is
- * committed and everything inherits.
+ * `resolved.theme` is the theme file's own tokens, clamped: what the next
+ * write starts from. Before the first payload, everything inherits.
  */
 export function persistedOverlayTheme(): OverlayTheme {
   return useResolvedOverlayThemeStore.getState().resolved?.theme ?? INHERIT_ALL;
@@ -98,11 +95,10 @@ export function commitOverlayTheme(theme: OverlayTheme): Promise<void> {
 }
 
 /**
- * The resolved overlay theme for the Appearance tab: the theme file's tokens
+ * The resolved overlay theme for the Appearance tab: the file's tokens
  * clamped, the Material rendered, whether Glass is available, and the file's
- * own state, meaning where it is, whether Handy writes it, and what the reader
- * had to ignore. The overlay paints from this same payload, so preview and
- * overlay cannot disagree.
+ * state, where it is, whether Handy writes it, what the reader ignored. The
+ * overlay paints from it too, so preview and overlay cannot disagree.
  */
 export function useResolvedOverlayTheme() {
   const { resolved, isReloading, isCommitting, load, subscribe } =

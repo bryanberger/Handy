@@ -3,20 +3,20 @@
 //! `overlay_theme.json` is the overlay theme, so editing it in a text editor,
 //! or a theming tool rewriting it, has to look like editing the Appearance
 //! tab. One background thread watches the file's *directory*, not the file,
-//! which is what makes creation, deletion and the temp-file-plus-rename that
-//! every careful writer (Handy included) performs all visible.
+//! which makes creation, deletion and the temp-file-plus-rename every careful
+//! writer (Handy included) performs all visible.
 //!
 //! Three things keep it quiet and honest:
 //!
 //!  - **Debounced.** `notify`'s debouncer collapses the burst an editor's save
 //!    produces into one batch, so one save is one re-read.
-//!  - **Idempotent.** The re-read is delivered through
+//!  - **Idempotent.** The re-read goes through
 //!    [`crate::overlay_theme::deliver_if_changed`], so Handy seeing its own
 //!    write come back repaints nothing.
 //!  - **Optional.** Every failure to start is a `watching: false` in the
-//!    resolved theme, which is what puts the Appearance tab's Reload button
-//!    back. Launch and every overlay show still re-read the file, so a missed
-//!    event self-heals at the next dictation either way.
+//!    resolved theme, which puts the Appearance tab's Reload button back.
+//!    Launch and every overlay show still re-read the file, so a missed event
+//!    self-heals at the next dictation either way.
 
 use crate::overlay_theme;
 use crate::overlay_theme_file;
@@ -36,7 +36,7 @@ const DEBOUNCE: Duration = Duration::from_millis(150);
 
 /// How often the loop wakes with nothing to do, to re-resolve the theme file:
 /// the folder it wants may have been created, and the file in effect may have
-/// moved to a location that outranks the one being watched.
+/// moved to a location outranking the one being watched.
 const RETARGET_TICK: Duration = Duration::from_secs(5);
 
 /// Whether a watcher is running, so the resolved theme can say so and the
@@ -50,9 +50,8 @@ pub fn is_watching() -> bool {
 
 /// Start watching the theme file, on a thread of its own.
 ///
-/// Called once at setup, after the first read. Returns immediately; whether
-/// the watch actually came up is reported through [`is_watching`], never a
-/// panic and never a blocked launch.
+/// Called once at setup, after the first read. Returns at once; whether it
+/// came up is reported by [`is_watching`], never a panic or a blocked launch.
 pub fn start(app: &tauri::AppHandle) {
     let app = app.clone();
     std::thread::Builder::new()
@@ -84,10 +83,10 @@ fn run(app: tauri::AppHandle) {
     WATCHING.store(true, Ordering::Relaxed);
 
     while let Some(batch) = session.next_batch(RETARGET_TICK) {
-        // Asked on every wake, because neither the file in effect nor the
-        // folder it sits in is settled for the life of the app. A file
-        // appearing at a higher-priority location moves the target, and the
-        // watched folder can be deleted out from under the watch.
+        // Asked on every wake: neither the file in effect nor the folder it
+        // sits in is settled for the app's life. A file appearing at a
+        // higher-priority location moves the target, and the watched folder
+        // can be deleted out from under the watch.
         let moved = session.follow(overlay_theme_file::effective_target(&app));
         if batch == Batch::Touched || moved {
             // Off the main thread already, which is what `resolve_reloading`
@@ -101,9 +100,9 @@ fn run(app: tauri::AppHandle) {
 
     WATCHING.store(false, Ordering::Relaxed);
     warn!("The overlay theme watcher stopped; Reload is the way to apply a hand edit now");
-    // `watching` is what hides the Appearance tab's Reload button, so a tab
-    // already open has to hear that it is needed again. Unconditional: only
-    // that flag changed, and `deliver_if_changed` is about the theme.
+    // `watching` hides the Appearance tab's Reload button, so a tab already
+    // open has to hear that it is needed again. Unconditional: only that flag
+    // changed, and `deliver_if_changed` is about the theme.
     let resolved = overlay_theme::resolve_reloading(&app);
     overlay_theme::deliver(&app, &resolved);
 }
@@ -120,12 +119,12 @@ enum Batch {
 /// A live watch on the theme file's directory.
 ///
 /// The directory, because a file that does not exist yet cannot be watched and
-/// because the atomic rename every careful writer performs replaces the inode
-/// a file watch would be holding. Non-recursive: one directory, and only the
-/// events naming `overlay_theme.json` count.
+/// the atomic rename every careful writer performs replaces the inode a file
+/// watch would hold. Non-recursive: one directory, and only the events naming
+/// `overlay_theme.json` count.
 struct Session {
-    /// Held only to be dropped: dropping the debouncer stops the watch, which
-    /// is how [`Session::follow`] moves it.
+    /// Held only to be dropped: dropping it stops the watch, which is how
+    /// [`Session::follow`] moves it.
     _debouncer: Debouncer<notify::RecommendedWatcher>,
     events: Receiver<DebounceEventResult>,
     /// The theme file itself, for the log line and the name test.
@@ -134,19 +133,18 @@ struct Session {
     /// the nearest ancestor that exists while that parent does not.
     watched: PathBuf,
     /// Set when an event names the watched directory itself, which is how a
-    /// platform reports that directory being deleted or replaced. The watch is
-    /// then holding something nobody writes to, so it is re-opened.
+    /// platform reports it being deleted or replaced. The watch is then
+    /// holding something nobody writes to, so it is re-opened.
     stale: bool,
 }
 
 impl Session {
     /// Watch the directory holding `target`.
     ///
-    /// The parent is canonicalized, so a symlinked config directory is watched
-    /// where the writes actually land rather than at the link, which reports
-    /// nothing. A parent that does not exist yet falls back to the nearest
-    /// ancestor that does, and [`Session::follow`] moves the watch onto the
-    /// real parent as soon as it appears.
+    /// Canonicalized, so a symlinked config directory is watched where the
+    /// writes land, not at the link, which reports nothing. A parent that does
+    /// not exist yet falls back to the nearest ancestor that does, and
+    /// [`Session::follow`] moves onto the real parent as soon as it appears.
     fn open(target: &Path) -> Result<Session, String> {
         let watched = watch_location(target)
             .ok_or_else(|| format!("no existing folder above {}", target.display()))?;
@@ -175,13 +173,12 @@ impl Session {
 
     /// Wait for one debounced batch, up to `timeout`.
     ///
-    /// A timeout is not a failure: it is the loop's chance to re-resolve the
+    /// A timeout is not a failure but the loop's chance to re-resolve the
     /// theme file and move the watch, which is why the caller runs
     /// [`Session::follow`] on every wake, quiet or not.
     ///
-    /// `None` says the debouncer has stopped sending, which ends the watch. It
-    /// takes the debouncer's own thread dying, since this session owns the
-    /// sender for as long as it lives.
+    /// `None` says the debouncer stopped sending, which ends the watch: its
+    /// own thread must die, since this session owns the sender for life.
     fn next_batch(&mut self, timeout: Duration) -> Option<Batch> {
         match self.events.recv_timeout(timeout) {
             Ok(Ok(events)) => {
@@ -206,11 +203,10 @@ impl Session {
 
     /// Whether an event path is the theme file.
     ///
-    /// By file name, not by full path. The watch is on one directory, so every
+    /// By file name, not full path. The watch is on one directory, so every
     /// event is in it, and the path a platform reports can differ from the one
     /// Handy asked for (macOS resolves `/tmp` to `/private/tmp`). An editor's
-    /// own `overlay_theme.json~` or `.swp` has a different name and is
-    /// correctly ignored.
+    /// `overlay_theme.json~` or `.swp` has a different name and is ignored.
     fn concerns_target(&self, path: &Path) -> bool {
         path.file_name() == self.target.file_name()
     }
@@ -218,12 +214,11 @@ impl Session {
     /// Point the watch at the theme file in effect now, and re-open one that
     /// has gone blind. Returns whether anything moved.
     ///
-    /// Three things make a watch wrong, and none of them announces itself:
-    /// `~/.config/handy/` finally being created under a watch standing in at
-    /// an ancestor, a file appearing at a higher-priority location so that the
-    /// theme file is a different file, and the watched directory being deleted
-    /// or replaced. A move counts as a touch, because the file may have
-    /// arrived with the directory.
+    /// Three things make a watch wrong, and none announces itself: a watch
+    /// standing in at an ancestor when `~/.config/handy/` is finally created,
+    /// a file appearing at a higher-priority location so the theme file is a
+    /// different file, and the watched directory being deleted or replaced. A
+    /// move counts as a touch: the file may have arrived with the directory.
     ///
     /// `target` is the freshly resolved path, or `None` when there is nowhere
     /// to write one; the watch then stays where it is rather than going deaf.
@@ -239,9 +234,9 @@ impl Session {
         }
 
         // Re-opened rather than re-watched in place, because the watch may
-        // have to leave and re-enter the same path, and `unwatch` after
-        // `watch` would then undo the new one. Dropping the old session stops
-        // the old watch; a failure keeps it, and the next wake tries again.
+        // have to leave and re-enter the same path, where `unwatch` after
+        // `watch` would undo the new one. Dropping the old session stops the
+        // old watch; a failure keeps it, and the next wake tries again.
         match Session::open(&target) {
             Ok(session) => {
                 debug!(
@@ -266,7 +261,7 @@ impl Session {
 ///
 /// Canonical, because notify's non-recursive filter compares an event's parent
 /// against the path it was handed, and on macOS a temp or home path is usually
-/// a symlink away from the one FSEvents reports.
+/// a symlink away from what FSEvents reports.
 fn watch_location(target: &Path) -> Option<PathBuf> {
     let parent =
         overlay_theme_file::containing_directory(target).unwrap_or_else(|| PathBuf::from("."));
@@ -362,8 +357,7 @@ mod tests {
 
     /// `~/.config/handy/` usually does not exist yet, and a watch that refused
     /// to start there would leave the tab on Reload forever. The stand-in is
-    /// an ancestor, and the watch moves onto the real directory once it is
-    /// created.
+    /// an ancestor, and the watch moves onto the real one when it appears.
     #[test]
     fn a_missing_directory_is_watched_from_the_nearest_ancestor() {
         let directory = tempfile::tempdir().expect("a temp dir");
@@ -390,8 +384,8 @@ mod tests {
     /// The watch is on a directory, so it sees Handy's own commits as well as
     /// everyone else's. One write has to arrive as one batch: the hidden temp
     /// file it goes through is not the theme file, so only the rename counts,
-    /// and nothing follows it. (What makes the one batch cost no repaint is
-    /// `overlay_theme::deliver_if_changed`, tested with the resolver.)
+    /// and nothing follows it. (`overlay_theme::deliver_if_changed` is what
+    /// makes that one batch cost no repaint, tested with the resolver.)
     #[test]
     fn handys_own_write_arrives_once_and_is_then_quiet() {
         // The write asks whether an absent path is Handy's, which reads

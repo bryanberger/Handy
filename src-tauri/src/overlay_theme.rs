@@ -941,8 +941,7 @@ pub struct ThemeFileState {
     /// The overlay theme this document holds, which is the overlay theme.
     pub tokens: OverlayTheme,
     /// The keys the document actually sets, in contract order. What the tab's
-    /// "sets N of M values" line counts; the rest of the document's tokens
-    /// inherit.
+    /// "sets N of M values" line counts; its other tokens inherit.
     pub owned_keys: Vec<String>,
     /// Whether Handy writes this path, and why not when it does not. A managed
     /// file locks every token row in the Appearance tab.
@@ -1077,9 +1076,8 @@ pub fn resolve_reloading(app: &AppHandle) -> ResolvedOverlayTheme {
 /// grow towards the anchored screen edge.
 ///
 /// `theme` is normally `file.tokens`, the file being the theme; a draft passes
-/// its own tokens instead and the file rides along as metadata. `edge_room` is
-/// the gap the card already has to the usable edge, which only the placement
-/// knows; everything else is here.
+/// its own, the file riding along as metadata. `edge_room` is the gap the card
+/// has to the usable edge, which only the placement knows; the rest is here.
 ///
 /// Pure, so the clamping, the Glass downgrade and the shadow's anchored-side
 /// slack are testable together without an `AppHandle`.
@@ -1149,19 +1147,16 @@ pub fn deliver(app: &AppHandle, resolved: &ResolvedOverlayTheme) {
     deliver_native(app, resolved);
 }
 
-/// The last theme [`deliver`] sent, so a re-read that resolves to it again can
-/// stay quiet.
+/// The last theme [`deliver`] sent, so a re-read resolving to it stays quiet.
 ///
-/// The file watcher sees Handy's own writes as well as everyone else's. A
-/// commit writes the file, re-reads it and delivers; the watcher's event lands
-/// a moment later on the identical document, and this is what makes that
-/// second pass a no-op instead of a second repaint and window resize.
+/// The watcher sees Handy's own writes too. A commit writes, re-reads and
+/// delivers; the watcher's event lands a moment later on the same document,
+/// and this makes that pass a no-op, not a second repaint and window resize.
 static LAST_DELIVERED: std::sync::Mutex<Option<ResolvedOverlayTheme>> = std::sync::Mutex::new(None);
 
 /// Deliver only when this is not the theme already on screen.
 ///
-/// What the watcher calls. Returns whether anything went out, which its log
-/// line reports.
+/// What the watcher calls. Returns whether anything went out, which it logs.
 pub fn deliver_if_changed(app: &AppHandle, resolved: &ResolvedOverlayTheme) -> bool {
     if !is_new_delivery(resolved) {
         return false;

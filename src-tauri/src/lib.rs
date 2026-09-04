@@ -993,29 +993,28 @@ pub fn run(cli_args: CliArgs) {
             let mut settings = get_settings(app.handle());
 
             // Warm the theme-file cache before anything reads the overlay
-            // theme. The file is the overlay theme, and the overlay window is
-            // created further down with the resolved size scale, so it has to
-            // be known here or the first show would resize a window built for
-            // the wrong scale. Also logs the file's diagnostics at startup,
-            // where a user asking "why is my theme ignored" will find them.
+            // theme. The file is the theme, and the window is created further
+            // down with the resolved size scale, so the scale must be known
+            // here or the first show would resize a window built for the wrong
+            // one. Also logs the file's diagnostics at startup, where a user
+            // asking "why is my theme ignored" will find them.
             overlay_theme_file::read(app.handle());
 
             // The one-time move of a theme stored before the file was the
-            // theme. It needs the settings, which are loaded above, and it has
-            // to finish before anything shows the overlay, so the first frame
-            // is already drawn from the file. It asks the filesystem itself
-            // whether a file is there, rather than taking the read above as
-            // the answer: a document that would not parse is still somebody's
-            // file. Re-read after a write, so the cache and the watcher start
-            // from the document on disk.
+            // theme. It needs the settings loaded above and must finish before
+            // anything shows the overlay, so the first frame is drawn from the
+            // file. It asks the filesystem whether a file is there rather than
+            // trusting the read above: a document that will not parse is still
+            // somebody's. Re-read after a write, so the cache and the watcher
+            // start from the document on disk.
             if overlay_theme_write::migrate_once(app.handle()).is_some() {
                 overlay_theme_file::read(app.handle());
             }
 
-            // From here a hand edit or a theming tool's write reaches the
-            // overlay and the Appearance tab on its own. Failing to start is
-            // not fatal: the tab keeps its Reload button and every overlay
-            // show still re-reads the file.
+            // From here a hand edit or a tool's write reaches the overlay and
+            // the Appearance tab on its own. Failing to start is not fatal:
+            // the tab keeps its Reload button and every show re-reads the
+            // file.
             overlay_theme_watch::start(app.handle());
 
             // Apply the persisted appearance theme to the native title bar before

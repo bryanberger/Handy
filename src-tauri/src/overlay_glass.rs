@@ -140,14 +140,14 @@ pub fn glass_action(material: Material, request: GlassRequest) -> GlassAction {
 /// the window is deliberately larger than the card and transparent around it,
 /// so that shadow would trace a rectangle nobody can see, floating away from
 /// the card's corners. Flat draws its own shadow in CSS instead, inside the
-/// window, where a strength and an offset can actually exist.
+/// window, where a strength and an offset can exist.
 ///
 /// `shadow_strength` is the switch. `NSWindow` exposes `hasShadow`,
 /// `setHasShadow:` and `invalidateShadow` and nothing else: no strength, no
-/// radius, no offset, no colour. So under Glass the token can only turn macOS's
-/// shadow on or off, which is still new capability, since a Glass user could
-/// never turn it off before. Its Glass inherit is 1, so leaving the token unset
-/// is the Glass overlay that has always shipped.
+/// radius, no offset, no colour. So under Glass the token only turns macOS's
+/// shadow on or off, still new capability: a Glass user could never turn it off
+/// before. Its Glass inherit is 1, so unset is the Glass overlay that always
+/// shipped.
 ///
 /// Pure, so "Flat stays shadowless" is a test rather than a call-site reading.
 pub fn window_shadow(material: Material, shadow_strength: f64) -> bool {

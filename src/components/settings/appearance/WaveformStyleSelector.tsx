@@ -16,15 +16,13 @@ export interface WaveformStyleSelectorProps {
 /**
  * How the waveform is drawn, as a dropdown of the six styles.
  *
- * Labels only, no subtitles. A one-line description of a look explains less
- * than the overlay does: the preview is already on screen while this row is
- * edited, and picking a style repaints it at once. A live thumbnail per option
- * was weighed and dropped for the same reason it would cost six more canvases
- * and six more animation loops in the settings window to say what the real
- * card is already saying.
+ * Labels only, no subtitles: a one-line description of a look explains less
+ * than the overlay does; the preview is on screen as this row is edited and
+ * repaints the moment a style is picked. A live thumbnail per option was
+ * weighed and dropped for the same reason: six more canvases and six more
+ * animation loops in the settings window to say what the card already says.
  *
- * A dropdown rather than the Glass style's segmented control, which suits two
- * options and not six.
+ * A dropdown; the Glass style's segmented control suits two, not six.
  */
 const WaveformStyleSelectorInner: React.FC<WaveformStyleSelectorProps> = ({
   value,

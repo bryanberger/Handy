@@ -37,18 +37,18 @@ export interface OverlayCardProps {
   position: "top" | "bottom";
   /**
    * The `show_waveform` token. False empties the control row's centre column
-   * and puts `nowave` on the two resting shapes, which then shrink to the row
-   * that is left (`--ov-bare-w`). The working pill and the open panel keep
-   * their tuned widths, so every morph stays a grow.
+   * and puts `nowave` on the two resting shapes, which shrink to the row left
+   * (`--ov-bare-w`). The working pill and the open panel keep their tuned
+   * widths, so every morph stays a grow.
    */
   showWaveform?: boolean;
   /**
    * The `show_cancel` token. False drops the button from every row; the
    * keyboard shortcut and `--cancel` still cancel. It also puts `nocancel` on
-   * the two resting shapes, which lose the row's right column with the button
-   * rather than keep an empty one, and the apply layer takes the 22 px side
-   * floor and one of the row's two element gaps away with it. With the
-   * waveform gone too the pill is a square, that dot centred in it.
+   * the two resting shapes, which lose the right column with the button rather
+   * than keep it empty, and the apply layer drops the 22 px side floor and one
+   * of the row's two element gaps with it. With the waveform gone too the pill
+   * is a square, the dot centred in it.
    */
   showCancel?: boolean;
   /**
@@ -70,7 +70,7 @@ export interface OverlayCardProps {
    * Called once when the browser gives no 2D context. The overlay owns that
    * fact, not the card: it decides which style is drawn and, with it, whether
    * the bars' level state still has to flow. A card rendered without the
-   * handler keeps the empty canvas, which no caller does.
+   * handler keeps the empty canvas; no caller does.
    */
   onCanvasUnavailable?: () => void;
   /** Bumped to remount the card fresh (replays the pop-in). */
@@ -203,11 +203,10 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
   );
 
   // The classes a resting shape takes from the two visibility tokens. Either
-  // one shrinks the pill to the row it is left with; together they square it
-  // around the dot that is then alone on that row. Neither ever reaches the
-  // working pill or the open panel, both tuned to their content, so every
-  // morph out of a shrunken shape stays a grow, and the open panel keeps the
-  // right column its timer sits in.
+  // shrinks the pill to the row left; together they square it around the dot
+  // then alone on the row. Neither reaches the working pill or the open panel,
+  // both tuned to their content, so every morph out of a shrunken shape stays a
+  // grow, and the open panel keeps the right column its timer sits in.
   const restingClasses = [
     showWaveform ? null : "nowave",
     showCancel ? null : "nocancel",
@@ -218,10 +217,10 @@ const OverlayCard: React.FC<OverlayCardProps> = ({
   // dot (left) | waveform (center) | timer + cancel (right), same structure
   // for pill & panel, so the Live morph is a pure width change.
   // The markup keeps its three children whatever is hidden, so the waveform and
-  // the working label stay centred and the dot stays at the left of its track.
-  // On a resting shape without the cancel button the stylesheet hides the right
-  // column and lays the row out in two tracks; once the dot is alone on it, it
-  // centres the dot instead.
+  // the working label stay centred and the dot at the left of its track. On a
+  // resting shape without the cancel button the stylesheet hides the right
+  // column and lays the row out in two tracks; once the dot is alone there, it
+  // centres it instead.
   const listeningRow = (showTimer: boolean) => (
     <div className="sbase">
       <div className="sbase-l">

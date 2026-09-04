@@ -13,7 +13,7 @@ import type { CanvasWaveformStyle } from "./waveformStyles";
  *
  * Why a canvas rather than SVG or more DOM: an organic style would rewrite the
  * document every frame in the webview issue #1279 is about, while this is one
- * element, one context and no DOM writes at all once mounted.
+ * element, one context and no DOM writes once mounted.
  *
  * What it owns, so no style has to:
  *  - the backing store, recomputed only when the lane's CSS box or the device
@@ -22,13 +22,12 @@ import type { CanvasWaveformStyle } from "./waveformStyles";
  *    frame costs no React render (fewer than the bars, which set state);
  *  - the two colours, resolved off probes once per repaint because the
  *    overlay's `--s-*` properties are `color-mix()` values `fillStyle` rejects;
- *  - the two waveform lengths after the size scale, measured off a third probe
- *    for the same reason;
- *  - `prefers-reduced-motion`, which every style then honours by ignoring the
- *    clock it is handed.
+ *  - the two waveform lengths after the size scale, measured off a third
+ *    probe for the same reason;
+ *  - `prefers-reduced-motion`, honoured by every style ignoring its clock.
  *
- * The frame itself is in `waveformFrame.ts`, so what decides whether a frame
- * is drawn is readable, and testable, without a browser.
+ * The frame itself is in `waveformFrame.ts`, so what decides whether a frame is
+ * drawn is readable and testable without a browser.
  */
 
 export interface WaveformCanvasProps {
@@ -44,7 +43,7 @@ export interface WaveformCanvasProps {
   themeRevision: number;
   /** Called once when the browser gives no 2D context. The overlay owns that
    *  fact, since the fallback bars need the level state a canvas style skips;
-   *  a card rendered without a handler simply keeps the empty canvas. */
+   *  a card without a handler keeps the empty canvas. */
   onUnavailable?: () => void;
 }
 
@@ -59,10 +58,10 @@ const WaveformCanvasInner: React.FC<WaveformCanvasProps> = ({
   const accentRef = useRef<HTMLSpanElement>(null);
   const mutedRef = useRef<HTMLSpanElement>(null);
   const metricRef = useRef<HTMLSpanElement>(null);
-  // Built on the first render alone, not rebuilt and thrown away on every one:
-  // the loop mutates this object in place, and a fresh one each render would
-  // cost the measurements it is drawing from. `useRef`'s argument is evaluated
-  // whatever the ref already holds, so the state is created behind the check.
+  // Built on the first render alone: the loop mutates this object in place, and
+  // a fresh one each render would cost the measurements it draws from.
+  // `useRef`'s argument is evaluated whatever the ref holds, so the state is
+  // created behind the check.
   const stateRef = useRef<WaveformCanvasState | null>(null);
   const state = (stateRef.current ??= initialWaveformState(style));
 
@@ -73,8 +72,8 @@ const WaveformCanvasInner: React.FC<WaveformCanvasProps> = ({
     state.style = style;
   });
 
-  // Before paint, so the first frame is already the right colour and the right
-  // size. A repaint of the theme and a change of style both land here.
+  // Before paint, so the first frame is already the right colour and size. A
+  // repaint of the theme and a change of style both land here.
   useLayoutEffect(() => {
     const accent = accentRef.current;
     const muted = mutedRef.current;
@@ -121,9 +120,9 @@ const WaveformCanvasInner: React.FC<WaveformCanvasProps> = ({
     motionQuery.addEventListener("change", onMotionChange);
     schemeQuery.addEventListener("change", remeasureColors);
 
-    // The lane's box changes with the size scale and the two waveform
-    // lengths, never with the style. Observed rather than measured per frame,
-    // which would force layout thirty times a second.
+    // The lane's box changes with the size scale and the two waveform lengths,
+    // never with the style. Observed, not measured per frame, which would force
+    // layout thirty times a second.
     const observer = new ResizeObserver((entries) => {
       const box = entries[0]?.contentRect;
       if (!box) return;
@@ -173,9 +172,9 @@ const WaveformCanvasInner: React.FC<WaveformCanvasProps> = ({
   return (
     <>
       <canvas ref={canvasRef} className="swave-canvas" aria-hidden="true" />
-      {/* The measuring devices. Out of flow and zero-sized, so the lane is
-          still the canvas alone: two colours resolved off `color`, and the two
-          waveform lengths off a box the stylesheet sizes. */}
+      {/* The probes, out of flow and zero-sized, so the lane is still the
+          canvas alone: two colours resolved off `color`, and the two waveform
+          lengths off a box the stylesheet sizes. */}
       <span className="swave-probes" aria-hidden="true">
         <span ref={accentRef} style={{ color: "var(--s-accent)" }} />
         <span ref={mutedRef} style={{ color: "var(--s-muted)" }} />

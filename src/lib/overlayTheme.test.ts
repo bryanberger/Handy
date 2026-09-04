@@ -203,8 +203,8 @@ describe("inherit", () => {
   });
 
   // The second token whose inherit depends on the Material, and the only one
-  // whose two inherits are the ends of its own range. Flat's card has never
-  // cast a shadow; Glass's window has always cast macOS's.
+  // whose two inherits are its range's ends. Flat's card has never cast a
+  // shadow; Glass's window has always cast macOS's.
   test("the shadow inherits none under Flat and macOS's under Glass", () => {
     expect(SHADOW_STRENGTH_INHERIT).toEqual({ flat: 0, glass: 1 });
     for (const glassStyle of ["regular", "clear"] as const) {
@@ -385,7 +385,7 @@ describe("derivations", () => {
       glass_tint: { min: 0.0, max: 1.0, step: 0.01 },
       border_opacity: { min: 0.0, max: 1.0, step: 0.01 },
       // The shadow reaches zero on both Materials: that is Flat's inherit, and
-      // under Glass it is how macOS's own shadow is turned off.
+      // under Glass it turns macOS's own shadow off.
       shadow_strength: { min: 0.0, max: 1.0, step: 0.01 },
       shadow_offset_y: { min: 0, max: 16, step: 1 },
       size_scale: { min: 0.8, max: 1.5, step: 0.05 },
@@ -703,8 +703,8 @@ describe("the worked example", () => {
   // downgraded rendering (Glass percentages are covered above) and why
   // `--s-surface` carries the 92% Flat opacity, not the 45% tint.
   // `glass_material` and `glass_style` write no CSS, each setting a native
-  // view property, and `waveform_style` writes none either, being a renderer
-  // the card picks rather than a value it paints. The neutrals mix from `var(--s-text)`, resolving to the
+  // view property, and `waveform_style` writes none, a renderer the card picks,
+  // not a value painted. Neutrals mix from `var(--s-text)`, resolving to the
   // `--s-text` beside them, while a set `border` replaces it for the edge.
   test("resolves to exactly the twenty-one properties listed", () => {
     expect(resolveOverlayThemeVars(resolved(FULL_THEME))).toEqual({
@@ -763,7 +763,7 @@ describe("the shadow", () => {
         "--ov-shadow-y": "4px",
         "--ov-shadow-slack": "24px",
         // …and the anchored screen edge gets the 15 points the fixture's
-        // resolved payload says the card has above the Dock.
+        // payload says the card has above the Dock.
         "--ov-shadow-edge-slack": "15px",
       },
     );
@@ -824,8 +824,8 @@ describe("the shadow", () => {
   test("the anchored edge takes the number Rust derived, never its own", () => {
     // The one number this module cannot work out: only Rust knows the gap the
     // card has to the Dock, the taskbar or the menu bar, and the native window
-    // was sized and placed from the very same integer. Getting it wrong here
-    // moves the card the moment a shadow is switched on.
+    // was sized and placed from that same integer. Getting it wrong moves the
+    // card the moment a shadow is switched on.
     const withRoom = (room: number) => {
       const payload = resolved({ shadow_strength: 0.5 });
       return resolveOverlayThemeVars({ ...payload, shadow_edge_slack: room })[
@@ -843,7 +843,7 @@ describe("the shadow", () => {
     expect(withRoom(400)).toBe("24px");
     expect(withRoom(-8)).toBe("0px");
     // A mirror written before this field existed falls back to the full slack,
-    // which is what the other three sides take (rule 2).
+    // as the other three sides do (rule 2).
     const payload = resolved({ shadow_strength: 0.5 });
     delete (payload as { shadow_edge_slack?: number }).shadow_edge_slack;
     expect(resolveOverlayThemeVars(payload)["--ov-shadow-edge-slack"]).toBe(
@@ -852,9 +852,9 @@ describe("the shadow", () => {
   });
 
   test("a Glass theme downgraded to Flat draws Flat's shadow", () => {
-    // `effective_material` decides, as it does for every other property. A
-    // Mac that cannot render Glass shows the Flat card, so it shows the CSS
-    // shadow the theme asked for.
+    // `effective_material` decides, as for every other property. A Mac that
+    // cannot render Glass shows the Flat card, so it shows the CSS shadow the
+    // theme asked for.
     expect(
       resolveOverlayThemeVars(
         resolved({ material: "glass", shadow_strength: 0.6 }, "flat"),
@@ -882,9 +882,8 @@ describe("the row's own tokens", () => {
       "--ov-side-min": "0px",
       "--ov-row-gaps": "1",
     });
-    // Shown, whether by inherit or by an explicit true, is the stylesheet's
-    // own 22px and its own two gaps, so nothing is written and the CSS is not
-    // duplicated here.
+    // Shown, whether by inherit or an explicit true, is the stylesheet's own
+    // 22px and two gaps, so nothing is written and no CSS is duplicated here.
     expect(resolveOverlayThemeVars(resolved({ show_cancel: true }))).toEqual(
       {},
     );

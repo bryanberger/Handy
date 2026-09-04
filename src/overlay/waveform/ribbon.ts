@@ -9,8 +9,8 @@ import {
  * Ribbon: one continuous filled band mirrored about the lane's centre line.
  *
  * Its thickness follows the levels and a slow drift carries it sideways, so
- * quiet speech still flows rather than sitting still. `waveform_width` is the
- * thickness at silence, which is what the band collapses to.
+ * quiet speech flows rather than sits still. `waveform_width` is the thickness
+ * at silence, what the band collapses to.
  */
 
 /** Points along the lane. More than the sixteen buckets, so the outline reads
@@ -32,8 +32,8 @@ const IDLE_LEVEL = 0.16;
 const IDLE_SWING = 0.1;
 
 /** The frame's own numbers, allocated once and refilled per frame, so the
- *  thickness below is one argument rather than six and a frame still allocates
- *  nothing. */
+ *  thickness below takes one argument rather than six and a frame still
+ *  allocates nothing. */
 const band = {
   levels: new Float32Array(0),
   seconds: 0,
@@ -46,9 +46,9 @@ const band = {
 /**
  * Half the band's thickness at one sample, in device pixels.
  *
- * Written as a function of the sample index so both edges walk the same curve,
- * the top left to right and the bottom back again. At module scope rather than
- * inside the draw, so no closure is built thirty times a second.
+ * A function of the sample index so both edges walk the same curve, the top
+ * left to right and the bottom back again. At module scope rather than inside
+ * the draw, so no closure is built thirty times a second.
  */
 function halfThicknessAt(sample: number): number {
   const across = sample / SAMPLES;

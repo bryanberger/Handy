@@ -91,10 +91,10 @@ const BREATH_PEAK: f32 = 0.62;
 /// microphone that stopped, and every style needs something to draw.
 const QUIET_FLOOR: f32 = 0.02;
 
-/// Where the burst starts and ends in the cycle, and how much of it each of
-/// its two ramps takes. The plateau between them is 0.24 of the cycle, 29
-/// frames, which is longer than the travelling wave's own 25-frame sweep, so
-/// the burst always contains a frame where a bar reaches the top.
+/// Where the burst starts and ends in the cycle, and how much of it each of its
+/// two ramps takes. The plateau between them is 0.24 of the cycle, 29 frames,
+/// longer than the travelling wave's own 25-frame sweep, so the burst always
+/// contains a frame where a bar reaches the top.
 const BURST_START: f32 = 0.55;
 const BURST_END: f32 = 0.95;
 const BURST_EDGE: f32 = 0.08;
@@ -733,8 +733,8 @@ fn settle(app: &AppHandle) -> bool {
 
 /// 16 synthetic microphone buckets for one frame, each in `0.0..=1.0`. A
 /// travelling wave under a fixed per-bar envelope, scaled by
-/// [`synthetic_loudness`]. It reads as speech rather than as a test pattern,
-/// and every bar moves, so the accent is easy to judge.
+/// [`synthetic_loudness`]. It reads as speech, not a test pattern, and every
+/// bar moves, so the accent is easy to judge.
 fn synthetic_levels(frame: u32) -> Vec<f32> {
     let loudness = synthetic_loudness(frame);
     (0..16)

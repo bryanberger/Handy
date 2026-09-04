@@ -47,8 +47,8 @@ const NO_GLASS: GlassSupport = {
 
 // A switch is one value, not the tail of a drag, so it commits straight
 // through, as the Material and the Glass style do. One handler per switch,
-// declared here rather than in the component, so every switch row keeps the
-// same `onChange` for the tab's life and stays memoised through a slider drag.
+// declared outside the component so every switch row keeps one `onChange` for
+// the tab's life and stays memoised through a slider drag.
 const TOGGLE_HANDLERS: Record<OverlayBooleanKey, (next: boolean) => void> = {
   show_waveform: (next) => {
     void setOverlayThemeToken("show_waveform", next);
@@ -58,9 +58,8 @@ const TOGGLE_HANDLERS: Record<OverlayBooleanKey, (next: boolean) => void> = {
   },
 };
 
-// Under Glass the shadow is macOS's own and `NSWindow` offers no strength, so
-// the switch writes the two ends of the token's range rather than a boolean
-// the contract has no room for.
+// Under Glass macOS owns the shadow and `NSWindow` offers no strength, so the
+// switch writes both range ends, not a boolean the contract lacks.
 const handleGlassShadow = (next: boolean) => {
   void setOverlayThemeToken("shadow_strength", next ? 1 : 0);
 };
@@ -75,8 +74,8 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
  * The Appearance tab. App theme picker, overlay style/position (both reused
  * unchanged from About/Advanced), on-screen preview, overlay-theme tokens as
  * Color / Material / Elements / Size & Spacing / Waveform, and the Theme File
- * group. Groups 4 on read `OVERLAY_TOKEN_FIELDS` rather than hardcoded rows,
- * so that table alone declares a token's shape.
+ * group. Groups 4 on read `OVERLAY_TOKEN_FIELDS`, not hardcoded rows, so that
+ * table alone declares a token's shape.
  */
 export const AppearanceSettings: React.FC = () => (
   <ErrorBoundary context="Appearance tab">
@@ -121,8 +120,8 @@ const AppearanceSettingsInner: React.FC = () => {
   const currentGlassStyle = vars.effectiveValue("glass_style") ?? "regular";
   const currentWaveformStyle =
     vars.effectiveValue("waveform_style") ?? WAVEFORM_STYLE_INHERIT;
-  // The whole Waveform group goes with the waveform. None of its rows could
-  // change anything while the card draws no waveform at all.
+  // The whole Waveform group goes with the waveform: none of its rows could
+  // change anything while the card draws none.
   const showsWaveform =
     vars.effectiveValue("show_waveform") ?? BOOLEAN_INHERIT.show_waveform;
   const handleSelectMaterial = useCallback(
@@ -159,11 +158,11 @@ const AppearanceSettingsInner: React.FC = () => {
     const locked = vars.isLocked(field.key);
 
     switch (field.kind) {
-      // The three enum tokens with a row get their own selectors, not one
-      // generic dropdown. Material handles the Glass gating and the
-      // unavailable note, the Glass style its engine gating, and the waveform
-      // style its six labels. All three still live in the descriptor table, so
-      // their groups are driven like Color and Size & Spacing.
+      // The three enum tokens with a row get their own selectors, not a generic
+      // dropdown. Material owns the Glass gating and the unavailable note, the
+      // Glass style its engine gating, the waveform style its six labels. All
+      // three live in the descriptor table, so their groups run like Color and
+      // Size & Spacing.
       case "material":
         return (
           <MaterialSelector
@@ -307,8 +306,8 @@ const AppearanceSettingsInner: React.FC = () => {
         <>
           {/* Each group shows the rows its Material has: under Flat the surface
               opacity, under Glass the tint strength in its place. Only the
-              Waveform group takes the style, the two lengths there being the
-              only rows a style can hide. */}
+              Waveform group takes the style, its two lengths being the only
+              rows a style can hide. */}
           <SettingsGroup title={t("settings.appearance.groups.color")}>
             {overlayTokenFieldsFor("color", vars.effectiveMaterial).map(
               renderField,

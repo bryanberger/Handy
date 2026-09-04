@@ -21,22 +21,21 @@ import {
 } from "./waveformStyles";
 
 /**
- * The waveform styles, driven off the token's own value list so a style added
- * in Rust cannot slip through with no renderer, no label or no declared
- * lengths, and drawn against a recording stub so what each one asks of a
- * canvas is a fact in a test rather than a promise in a comment.
+ * The waveform styles, driven off the token's value list so a style added in
+ * Rust cannot slip through with no renderer, label or declared lengths, and
+ * drawn against a recording stub so what each asks of a canvas is a fact in a
+ * test, not a promise in a comment.
  *
- * No DOM here. The stub is the whole point: a style may only reach for the
- * handful of operations below, and `drawWaveformFrame` is separate from the
- * component so the "is this frame worth drawing" rules are testable too.
+ * No DOM here. The stub is the point: a style may only reach for the handful
+ * of operations below, and `drawWaveformFrame` is separate from the component
+ * so the "is this frame worth drawing" rules are testable too.
  */
 
 /**
- * What each style is allowed to touch on a context, one list per style rather
- * than one union: a style is a shape, and the operations it reaches for are
- * that shape's own vocabulary. A curve appearing in the histogram, or a
- * transform in a style with no cached brush, is a redesign and should read as
- * one here.
+ * What each style may touch on a context, one list per style rather than one
+ * union: a style is a shape, and the operations it reaches for are that shape's
+ * own vocabulary. A curve in the histogram, or a transform in a style with no
+ * cached brush, is a redesign and should read as one here.
  *
  * Anything outside these lists is also a missing method on the stub, so the
  * test fails rather than passing blind.
@@ -81,9 +80,8 @@ const WHITELIST: Record<CanvasWaveformStyle, readonly string[]> = {
 /** A context that records what was asked of it, and can do nothing else.
  *
  *  `calls` is the operation log, `painted` every colour that reached the
- *  canvas: a style with soft edges hands `fillStyle` a cached gradient rather
- *  than a colour string, so its accent is a stop rather than a fill and both
- *  have to count. */
+ *  canvas: a soft-edged style hands `fillStyle` a cached gradient, not a colour
+ *  string, so its accent is a stop, not a fill, and both have to count. */
 function stubContext(): {
   ctx: CanvasRenderingContext2D;
   calls: string[];
@@ -191,8 +189,8 @@ describe("the six styles as a table", () => {
 describe("what a style asks of a canvas", () => {
   test("only its own operations, and each style draws something", () => {
     for (const style of canvasStyles) {
-      // Both states, since a style's arming idle is a different drawing and
-      // must stay inside the same vocabulary.
+      // Both states: a style's arming idle is a different drawing and must
+      // stay inside the same vocabulary.
       for (const ready of [true, false]) {
         const { ctx, calls, ops, painted } = stubContext();
         const levels = ready ? speech() : silence();
@@ -208,8 +206,7 @@ describe("what a style asks of a canvas", () => {
         for (const op of new Set(ops())) {
           expect(WHITELIST[style]).toContain(op);
         }
-        // Every style ends in pixels, and every style paints the accent while
-        // audio is flowing.
+        // Every style ends in pixels and paints the accent while audio flows.
         expect(ops()).toContain("fill");
         if (ready) expect(painted).toContain(COLORS.accent);
       }
@@ -217,11 +214,10 @@ describe("what a style asks of a canvas", () => {
   });
 
   test("different levels draw a different picture", () => {
-    // What a meter is for. Every rule above holds just as well for a style
-    // that drew the same shape whatever it was handed, so the levels have to
-    // be shown reaching the pixels. Drawn under reduced motion, where a frame
-    // is a pure function of the levels, so the levels are the only thing that
-    // differs between the two.
+    // What a meter is for. Every rule above would hold for a style that drew
+    // one shape whatever it was handed, so the levels must be shown reaching
+    // the pixels. Drawn under reduced motion, where a frame is a pure function
+    // of the levels, so they are the only difference between the two.
     const frozen = flags({ reduceMotion: true });
     for (const style of canvasStyles) {
       const quiet = stubContext();
@@ -260,7 +256,7 @@ describe("what a style asks of a canvas", () => {
         flags({ ready: false }),
       );
       // Silent and not yet capturing: the style still draws its own idle,
-      // which is what says the shortcut was heard.
+      // which says the shortcut was heard.
       expect(ops()).toContain("fill");
       expect(painted).toContain(COLORS.muted);
       expect(painted).not.toContain(COLORS.accent);
@@ -304,9 +300,9 @@ describe("what a style asks of a canvas", () => {
 
   test("nothing is drawn outside the lane's own box", () => {
     // The lane is a slot the card's geometry is built from, so a style whose
-    // outline reached past it would be clipped rather than resized. The motes
-    // are the exception on purpose: they drift up out of the lane and fade,
-    // and an `arc` is not an outline this walks.
+    // outline reached past it would be clipped, not resized. The motes are the
+    // exception on purpose: they drift up out of the lane and fade, and an
+    // `arc` is not an outline this walks.
     const within = (value: number, limit: number) =>
       value >= -0.51 && value <= limit + 0.51;
     for (const style of canvasStyles) {
@@ -324,8 +320,8 @@ describe("what a style asks of a canvas", () => {
         const numbers = rest.replace(")", "").split(",").map(Number);
         expect(within(numbers[0], GEOM.width)).toBe(true);
         // `rect` is x, y, width, height; the vertical extent is the sum. A
-        // quadratic is a control point and then an end point, both of which
-        // bound the curve, so both are checked.
+        // quadratic is a control point then an end point, both bounding the
+        // curve, so both are checked.
         const right = op === "rect" ? numbers[0] + numbers[2] : numbers[2];
         const bottom = op === "rect" ? numbers[1] + numbers[3] : numbers[3];
         expect(within(numbers[1], GEOM.height)).toBe(true);
@@ -454,9 +450,9 @@ describe("bloom", () => {
   };
 
   test("a crisp silhouette, an inner highlight and a whisper of glow", () => {
-    // Three passes and no more. A stack of nested fills was the first
-    // attempt, and it accumulates into a smear that is brightest wherever
-    // the outline bulges: the blob read as lopsided even on even buckets.
+    // Three passes and no more. The first attempt, a stack of nested fills,
+    // accumulates into a smear brightest wherever the outline bulges: the blob
+    // read as lopsided even on even buckets.
     const { ctx, calls } = stubContext();
     WAVEFORM_RENDERERS.bloom(ctx, speech(), 400, GEOM, COLORS, flags());
     const alphas = fillAlphas(calls);

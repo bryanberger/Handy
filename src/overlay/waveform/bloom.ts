@@ -10,23 +10,19 @@ import {
 } from "./waveformLane";
 
 /**
- * Bloom: one closed blob whose surface deforms per bucket and breathes with
- * the overall level. A living thing rather than a graph, so it reads even at
- * the lane's eighteen points of height.
+ * Bloom: one closed blob whose surface deforms per bucket and breathes with the
+ * overall level. A living thing rather than a graph, so it reads at the lane's
+ * eighteen points of height.
  *
  * The outline is a smooth closed curve through one control point per bucket,
- * each quadratic meeting the next at their shared midpoint so the surface has
- * no corners at any level. It is painted in three passes and no more: a thin
- * outer glow, the silhouette itself at nearly full accent, and one smaller
- * copy of the same outline lifted towards the light. A crisp edge is what
- * makes the deformation legible; a stack of nested fills, which was the first
- * attempt, accumulates into a smear that is brightest wherever the outline
- * bulges and faint in its recesses, so the blob reads as lopsided even when
- * the buckets are even.
+ * quadratics meeting at their shared midpoints, so no corners at any level.
+ * Three passes and no more: a thin outer glow, the silhouette at nearly full
+ * accent, and a smaller copy of the outline lifted to the light. A crisp edge
+ * makes deformation legible; nested fills, the first attempt, smeared bright at
+ * bulges and faint in recesses, so it read lopsided on even buckets.
  *
- * The silhouette is re-centred on its own middle every frame, so a loud bucket
- * grows the surface where it points instead of dragging the whole blob off to
- * one side of the lane.
+ * The silhouette re-centres on its middle each frame, so a loud bucket grows
+ * the surface where it points instead of dragging the blob across the lane.
  *
  * The only style that reads neither waveform length: it is sized by the lane.
  */
@@ -39,49 +35,45 @@ const TAU = Math.PI * 2;
  *  The glow goes past it, into the room this leaves. */
 const BODY_REACH = 0.86;
 
-/** The three passes: how far outside the silhouette the glow reaches, in
- *  device pixels, and what each pass carries of the accent.
+/** The three passes: how far outside the silhouette the glow reaches, in device
+ *  pixels, and what each carries of the accent.
  *
- *  The body is a hair under solid so the highlight has somewhere to go: the
- *  accent at full is the brightest thing available, so an inner highlight can
- *  only exist if the surface around it is not already there. */
+ *  The body is a hair under solid so the highlight shows: the accent at full is
+ *  the brightest available, so nothing reads over a body already there. */
 const GLOW_PIXELS = 1.5;
 const GLOW_ALPHA = 0.22;
 const BODY_ALPHA = 0.85;
 const HIGHLIGHT_ALPHA = 1;
 
-/** The inner highlight: a copy of the same outline this much of the way in,
- *  lifted by this share of the blob's own height. The lift is what keeps it
- *  from reading as a pupil in an eye, which a concentric copy does. */
+/** The inner highlight: a copy of the outline this far in, lifted by this share
+ *  of the blob's height. The lift keeps it from reading as a pupil in an eye,
+ *  which a concentric copy does. */
 const HIGHLIGHT_SCALE = 0.55;
 const HIGHLIGHT_LIFT = 0.26;
 
 /** How wide the blob may be for its height. The lane is nearly three times as
- *  wide as it is tall, and a blob that filled it would be a lens; this keeps
- *  the shape a body with room around it at every level. */
+ *  wide as tall, and a blob filling it would be a lens; this keeps a body with
+ *  room around it at every level. */
 const ASPECT = 2.55;
 
-/** The share of its reach the blob takes at silence, how much of the rest the
- *  overall level swells it by, and how hard that level is driven. The gain is
- *  what the mean of sixteen buckets needs: speech peaks in a bucket or two and
- *  averages far below the level it sounds like. */
+/** The blob's share of its reach at silence, how much of the rest the overall
+ *  level swells it by, and the gain on it: the mean of sixteen buckets sits far
+ *  below how loud speech sounds, which peaks in a bucket or two. */
 const RESTING = 0.32;
 const BREATH = 0.68;
 const LEVEL_GAIN = 2.6;
 
-/** How far a bucket pushes its own control point, either way, as a share of
- *  the blob's radius.
+/** How far a bucket pushes its control point either way, as a share of radius.
  *
- *  Measured against the quietest and loudest bucket of the frame rather than
- *  against an absolute level: sixteen smoothed buckets span a tenth of the
- *  range at a conversational level, and a fixed gain over that difference left
- *  the surface an ellipse whatever was said. */
+ *  Against the frame's quietest and loudest bucket, not an absolute level:
+ *  sixteen smoothed buckets span a tenth of the range in conversation, and a
+ *  fixed gain over that left the surface an ellipse whatever was said. */
 const PUSH_SWING = 0.32;
 
 /** The spread of buckets that earns the whole swing, and the smallest spread
- *  the normalisation will divide by. Under the first the surface hands over to
- *  its own slow undulation, so a quiet lane is a calm living blob rather than
- *  a shape amplifying the last of the noise. */
+ *  the normalisation divides by. Under the first the surface hands over to its
+ *  slow undulation, so a quiet lane is a calm blob rather than one amplifying
+ *  the last of the noise. */
 const SPREAD_FULL = 0.1;
 const SPREAD_FLOOR = 1e-4;
 
@@ -90,8 +82,8 @@ const SPREAD_FLOOR = 1e-4;
 const QUIET_LOBE = 0.55;
 
 /** How long a control point takes to reach its bucket. Without it the surface
- *  jitters with every frame; much more than this and a bucket's own movement
- *  is averaged away and the blob is a smooth ellipse again. */
+ *  jitters every frame; much more and a bucket's own movement is averaged away
+ *  into a smooth ellipse again. */
 const EASE_SECONDS = 0.055;
 
 /** How fast the deformation rolls around the outline, in buckets a second. */
@@ -106,10 +98,10 @@ const IDLE_PERIOD_SECONDS = 3;
 const IDLE_LOBES = 2;
 const IDLE_ROLL_RADIANS_PER_SECOND = 1.2;
 
-/** The unit circle the control points sit on, and everything the blob keeps
- *  between frames: each point's eased push, that push rounded off against its
- *  neighbours, its offset from the centre, and the clock the easing is
- *  integrated over. Allocated once, so a frame allocates nothing. */
+/** The unit circle the control points sit on and what the blob keeps between
+ *  frames: each point's eased push, that push rounded against its neighbours,
+ *  its offset from the centre, and the clock the easing integrates over.
+ *  Allocated once, so a frame allocates nothing. */
 const cosine = new Float32Array(POINTS);
 const sine = new Float32Array(POINTS);
 for (let point = 0; point < POINTS; point += 1) {
@@ -123,17 +115,14 @@ const offsetY = new Float32Array(POINTS);
 const clock = newFrameClock();
 
 /**
- * The outline, as one closed path of quadratics, around a centre and scaled
- * per axis.
+ * The outline, one closed path of quadratics around a centre, scaled per axis.
  *
- * Each control point is a curve's control, and the on-curve points are the
- * midpoints between neighbours, which is what makes consecutive quadratics
- * share a tangent: a closed curve with no corners, from as few points as the
- * buckets themselves.
+ * Each control point is a curve's control and the on-curve points are the
+ * midpoints between neighbours, so consecutive quadratics share a tangent: a
+ * closed curve with no corners, from as few points as the buckets.
  *
  * The two scales are separate so the glow can stand off the silhouette by the
- * same number of pixels all the way round a shape that is wider than it is
- * tall.
+ * same pixels all the way round a shape wider than it is tall.
  */
 function trace(
   ctx: CanvasRenderingContext2D,
@@ -173,8 +162,8 @@ export const drawBloom: WaveformDraw = (
   const centreY = height / 2;
   const seconds = animationSeconds(elapsedMs, flags);
   const step = frameSeconds(clock, elapsedMs, flags);
-  // A frozen clock snaps the surface to the levels, which is what makes a
-  // reduced-motion frame a pure function of them.
+  // A frozen clock snaps the surface to the levels, so a reduced-motion frame
+  // is a pure function of them.
   const ease = step > 0 ? 1 - Math.exp(-step / EASE_SECONDS) : 1;
 
   const breath = 0.5 + 0.5 * Math.sin((seconds / IDLE_PERIOD_SECONDS) * TAU);
@@ -216,12 +205,10 @@ export const drawBloom: WaveformDraw = (
     push[point] += (1 + 2 * PUSH_SWING * shape - push[point]) * ease;
   }
 
-  // Round the surface off against itself: a 1-4-1 pass around the ring, which
-  // leaves a swell spanning several buckets almost untouched and takes a
-  // third of a bucket-to-bucket spike. Without it a single loud bucket pulls
-  // a point out of the outline and the blob reads as a comma; with the 1-2-1
-  // that was tried first, nothing but the broadest lobe survived and the blob
-  // was an ellipse again.
+  // Round the surface off: a 1-4-1 pass around the ring leaves a swell over
+  // several buckets almost untouched and takes a third of a bucket-to-bucket
+  // spike. Without it one loud bucket pulls a point out and the blob reads as a
+  // comma; the 1-2-1 tried first left only the broadest lobe, an ellipse again.
   for (let point = 0; point < POINTS; point += 1) {
     const before = push[(point + POINTS - 1) % POINTS];
     const after = push[(point + 1) % POINTS];
@@ -230,10 +217,10 @@ export const drawBloom: WaveformDraw = (
     offsetY[point] = rounded[point] * sine[point];
   }
 
-  // Re-centre on the outline's own middle, so the deformation grows the
-  // surface rather than sliding the blob across the lane, and then measure
-  // what the shape now reaches: a push past the unit circle only shrinks the
-  // blob to fit, which is what keeps every level inside the lane.
+  // Re-centre on the outline's own middle, so the deformation grows the surface
+  // rather than sliding the blob across the lane, then measure what the shape
+  // reaches: a push past the unit circle only shrinks the blob to fit, keeping
+  // every level inside the lane.
   let middleX = 0;
   let middleY = 0;
   for (let point = 0; point < POINTS; point += 1) {
@@ -251,9 +238,8 @@ export const drawBloom: WaveformDraw = (
     reachY = Math.max(reachY, Math.abs(offsetY[point]));
   }
 
-  // Normalising by the furthest point, rather than clamping it, puts the
-  // extreme of the surface exactly on the reach at every level: the blob
-  // touches the same bound whether it is a smooth ellipse or a spiky one.
+  // Normalising by the furthest point, not clamping it, puts the surface's
+  // extreme exactly on the reach at every level, ellipse or spike alike.
   const fit = 1 / Math.max(reachX, reachY);
   const radiusY = centreY * BODY_REACH * swell * fit;
   const radiusX = Math.min(centreX * BODY_REACH * fit, radiusY * ASPECT);
@@ -262,9 +248,8 @@ export const drawBloom: WaveformDraw = (
     offsetY[point] *= radiusY;
   }
 
-  // What the silhouette actually reaches, and so how much room is left for
-  // the glow to stand off it in: a fixed number of pixels all the way round,
-  // and never past the lane.
+  // What the silhouette reaches, and so the room left for the glow to stand off
+  // in: a fixed number of pixels all the way round, never past the lane.
   const spanX = reachX * radiusX;
   const spanY = reachY * radiusY;
   const glow = Math.max(

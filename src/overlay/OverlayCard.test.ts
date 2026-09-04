@@ -13,10 +13,10 @@ import {
  * What the two visibility tokens and the waveform style do to the card's
  * markup.
  *
- * Rendered to static markup rather than into a DOM, which this repository has
- * no test renderer for. The card's own effects (the live-text scroll pin) do
- * not run, and nothing here depends on them: the question is which elements
- * and which class names the row is built from.
+ * Rendered to static markup, not into a DOM, which this repository has no test
+ * renderer for. The card's own effects (the live-text scroll pin) do not run,
+ * and nothing here depends on them: the question is which elements and class
+ * names the row is built from.
  */
 
 // Without an instance `useTranslation` warns on every render. The labels are
@@ -102,10 +102,9 @@ describe("the resting Minimal pill", () => {
     expect(html).not.toContain("swave");
     expect(html).not.toContain('class="sx"');
     expect(html).toContain('class="sdot ready"');
-    // The pair is what makes the pill a square as wide as the row is tall,
-    // with the dot centred in it. Without `nocancel` the row keeps its three
-    // tracks and the dot sits one padding in, with the whole empty right
-    // column beside it.
+    // The pair makes the pill a square as wide as the row is tall, the dot
+    // centred in it. Without `nocancel` the row keeps its three tracks and the
+    // dot sits one padding in, the whole empty right column beside it.
     expect(cardClasses(html)).toEqual([
       "scard",
       "compact",
@@ -116,7 +115,7 @@ describe("the resting Minimal pill", () => {
   });
 
   test("never carries the timer, whatever is hidden", () => {
-    // What a resting pill shrinks to is the dot and the cancel button, the row
+    // A resting pill shrinks to the dot and the cancel button, the row
     // `--ov-bare-w` and `overlay_geometry.rs` both add up. A timer on that row
     // would be width neither of them knows about.
     for (const showWaveform of [true, false]) {
@@ -181,10 +180,10 @@ describe("the waveform style", () => {
   });
 
   test("a browser with no 2D context falls back to the bars, levels and all", () => {
-    // What the overlay passes down once the card has reported the failure.
-    // The bars are DOM elements fed from React state, and that state is
-    // skipped while a canvas is drawing, so the fallback has to leave the
-    // canvas path entirely or the bars sit frozen at zero.
+    // What the overlay passes down once the card has reported the failure. The
+    // bars are DOM elements fed from React state, and that state is skipped
+    // while a canvas draws, so the fallback has to leave the canvas path
+    // entirely or the bars sit frozen at zero.
     const drawn = drawnWaveformStyle("motes", true);
     expect(drawn).toBe("bars");
     expect(isCanvasWaveformStyle(drawn)).toBe(false);
@@ -258,10 +257,9 @@ describe("the Live card", () => {
       showCancel: false,
     };
     const html = render(open);
-    // Open, so neither resting class: the panel is tuned to the transcript,
-    // and every morph out of the shrunken pill has to stay a grow. Without
-    // `nocancel` the stylesheet leaves the right column alone, which is where
-    // the timer is.
+    // Open, so neither resting class: the panel is tuned to the transcript, and
+    // every morph out of the shrunken pill stays a grow. Without `nocancel` the
+    // stylesheet leaves the right column alone, where the timer is.
     expect(cardClasses(html)).toEqual(["scard", "open"]);
     expect(html).toContain('class="sbase-r"');
     expect(html).toContain('class="stimer"');

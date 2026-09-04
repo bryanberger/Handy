@@ -114,11 +114,11 @@ const RecordingOverlay: React.FC = () => {
   // Whether the waveform is on a canvas, read by the microphone listener,
   // which is registered once and cannot see the state above.
   const canvasWaveformRef = useRef(false);
-  // The browser gave no 2D context, so every style falls back to the bars.
-  // Kept here rather than in the card, because the bars are fed from the level
-  // state above and a canvas style skips it: a card that fell back on its own
-  // would draw bars frozen at zero for the rest of the session. Cleared when
-  // the style changes, so one failure is not carried across a later choice.
+  // The browser gave no 2D context, so every style falls back to the bars. Kept
+  // here, not in the card: the bars are fed from the level state above, which a
+  // canvas style skips, so a card falling back on its own would draw bars
+  // frozen at zero for the rest of the session. Cleared when the style changes,
+  // so one failure is not carried into a later choice.
   const [canvasUnavailable, setCanvasUnavailable] = useState(false);
   const canvasUnavailableRef = useRef(false);
   const paintedStyleRef = useRef<WaveformStyle>(WAVEFORM_STYLE_INHERIT);

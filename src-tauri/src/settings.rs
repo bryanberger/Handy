@@ -1250,13 +1250,12 @@ pub fn get_overlay_theme(app: &AppHandle) -> crate::overlay_theme::OverlayTheme 
 /// Just the stored `overlay_position`, without deserializing the rest of
 /// `AppSettings`.
 ///
-/// The same shortcut as [`get_overlay_theme`] and for the same caller: the
-/// overlay theme resolves per animation frame while a token is dragged, and it
-/// now derives the shadow's anchored-side slack, which depends on which screen
-/// edge the overlay sits at. Skipping the migration pass is safe here too, the
-/// one migration that ever touched `overlay_position` (the retired `"none"`)
-/// having run at startup before any window existed, and its own alias still
-/// covering a store that skipped it.
+/// The same shortcut as [`get_overlay_theme`], for the same caller: the overlay
+/// theme resolves per animation frame while a token is dragged, and now derives
+/// the shadow's anchored-side slack, which depends on the overlay position.
+/// Skipping the migration pass is safe here too: the one migration that ever
+/// touched `overlay_position` (the retired `"none"`) ran at startup before any
+/// window existed, and its own alias still covers a store that skipped it.
 pub fn get_overlay_position(app: &AppHandle) -> OverlayPosition {
     let store = app
         .store(crate::portable::store_path(SETTINGS_STORE_PATH))
@@ -1450,9 +1449,9 @@ mod tests {
     }
 
     /// The same, for the position. Same reasoning: the resolved overlay theme
-    /// derives its shadow's anchored-side slack from which screen edge the card
-    /// sits at, so a shortcut that disagreed with the full read would size the
-    /// window for one edge and place it at the other.
+    /// derives its shadow's anchored-side slack from the overlay position, so a
+    /// shortcut that disagreed with the full read would size the window for one
+    /// edge and place it at the other.
     #[test]
     fn the_overlay_position_shortcut_answers_what_the_full_read_would() {
         fn the_long_way(stored: &serde_json::Value) -> OverlayPosition {

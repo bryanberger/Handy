@@ -82,8 +82,8 @@
   --ov-radius: 24px; /* radius: the card's corner radius */
   --ov-border-w: 1px; /* border_width: the card's stroke, one per edge. The card is content-box,
                          so overlay_geometry.rs adds two to every footprint. With --ov-scale,
-                         --ov-pad and --ov-elem-gap, one of the four tokens that change the
-                         native window's size whatever the material. */
+                         --ov-pad and --ov-elem-gap, one of four tokens that size the native
+                         window under either material. */
   --ov-pad: 10px; /* padding: the card's inner padding, all four sides. The control row is
                      --ov-row-core-h plus one above and below, the Live transcript's inset
                      follows it, and overlay_geometry.rs reads it into every card footprint. */
@@ -99,44 +99,40 @@
   --ov-shadow-blur: 20px; /* the shadow's blur radius. Fixed: strength and offset are the
                              two controls, and the reach (blur + offset) is the window's slack. */
   --ov-shadow-slack: 0px; /* the room .ov-stage leaves around the card for its shadow.
-                             Written by the apply layer ALREADY SCALED and rounded up, one of the
-                             two pre-scaled properties in this file, because CSS cannot ceil and
-                             the native window must inset the card by the very same integer. */
-  --ov-shadow-edge-slack: 0px; /* the same room on the screen edge the overlay is anchored to,
-                                  where the window could only grow as far as the gap the card
-                                  already had to the Dock or the menu bar. Rust derives it and
-                                  ships it on the resolved theme, because only Rust knows that
-                                  gap; the window is placed from the very same number, which is
-                                  what keeps the card still when a shadow is switched on. */
+                             The apply layer writes it ALREADY SCALED and ceiled, one of
+                             this file's two pre-scaled properties: CSS cannot ceil, and
+                             the native window insets the card by the same integer. */
+  --ov-shadow-edge-slack: 0px; /* the same room on the anchored screen edge, where the window can
+                                  grow only as far as the card's existing gap to the Dock or the
+                                  menu bar. Rust derives and ships it on the resolved theme,
+                                  because only Rust knows that gap; the window is placed from the
+                                  same number, so switching a shadow on never moves the card. */
   --ov-side-min: 22px; /* the control row's side columns' floor: what the cancel button needs.
                           The apply layer drops it to 0 when show_cancel takes that button away.
-                          A length at size scale 1 like every other token here, so .sbase scales
-                          it where it uses it. */
+                          A length at size scale 1 like every token here, so .sbase scales it. */
   --ov-dot-w: 7px; /* the recording dot itself: .sdot's width and height */
-  --ov-dot-inset: 5px; /* .sbase-l's left inset. A row with a waveform on it keeps the inset; a
-                          row without one drops it, so the dot sits one padding from the card's
-                          left edge just as the cancel button does from the right. */
-  --ov-dot-col-w: 12px; /* the left column's own content while the waveform is on the row:
-                           --ov-dot-w plus --ov-dot-inset, written out as a number because
-                           overlay_geometry.rs reads these declarations as numbers. */
+  --ov-dot-inset: 5px; /* .sbase-l's left inset. A row with a waveform keeps it; a row without
+                          one drops it, so the dot sits one padding from the card's left edge,
+                          as the cancel button does from the right. */
+  --ov-dot-col-w: 12px; /* the left column's content while the waveform is on the row: --ov-dot-w
+                           plus --ov-dot-inset, written as a number because overlay_geometry.rs
+                           reads these declarations as numbers. */
   --ov-wave-pad-r: 8px; /* .swave's right padding, the last part of the centre column */
   --ov-wave-slot-w: calc(
     9 * var(--ov-wave-w) + 8 * var(--ov-wave-gap)
-  ); /* the waveform lane:
-                       nine bars and eight gaps, 60px at the inherit values, exactly what the
-                       nine flex children measure. */
-  --ov-row-gaps: 2; /* how many element gaps the row with a waveform on it carries: one on
-                       each side of the waveform. The apply layer drops it to 1 when
-                       show_cancel takes the right column and the gap beside it away. A
-                       count, not a length, so --ov-elem-gap stays the only gap value. */
+  ); /* the waveform lane: nine bars and eight gaps, 60px at the inherit
+                       values, exactly what the nine flex children measure. */
+  --ov-row-gaps: 2; /* how many element gaps a row with a waveform carries: one per side. The
+                       apply layer drops it to 1 when show_cancel takes the right column and
+                       its gap away. A count, not a length, so --ov-elem-gap stays the only
+                       gap value. */
   /* The control row's own width, with an empty centre column and with the
-     waveform in it. The resting shapes take the larger of their tuned width and
-     --ov-row-w, so a roomy padding, bar or gap widens the pill instead of being
-     clipped by .scard's overflow. overlay_geometry.rs mirrors both sums.
-     They differ in the left column, not only in the waveform: the row that
-     carries a waveform keeps the dot's inset, the bare row drops it, and the
-     bare row always has three columns to fall between, so it counts two gaps
-     where --ov-row-w counts --ov-row-gaps. */
+     waveform in it. The resting shapes take the larger of their tuned width
+     and --ov-row-w, so a roomy padding, bar or gap widens the pill instead of
+     being clipped by .scard's overflow. overlay_geometry.rs mirrors both sums.
+     They also differ in the left column: the waveform row keeps the dot's
+     inset, the bare row drops it and always has three columns to fall between,
+     so it counts two gaps where --ov-row-w counts --ov-row-gaps. */
   --ov-bare-w: calc(
     2 * var(--ov-pad) + 2 * var(--ov-elem-gap) +
       max(var(--ov-side-min), var(--ov-dot-w)) + var(--ov-side-min)
@@ -198,12 +194,12 @@
   justify-content: center; /* horizontal centering, kept for both forms */
   align-items: flex-end; /* bottom placement: flush to the bottom edge */
   font-family: var(--s-font);
-  /* Room for the card's own shadow. Both values are taken raw: the apply layer
+  /* Room for the card's own shadow. Both values are raw: the apply layer
      writes them already scaled and ceiled, and the native window grew by
-     exactly these, so the card lands where it sits with no shadow at all.
-     The full slack on the three sides away from the anchored screen edge, and
-     on the anchored side only the room the card already had to the Dock or the
-     menu bar, which is where the shadow's tail is clipped. */
+     exactly these, so the card lands where it sits with no shadow at all. Full
+     slack on the three sides away from the anchored screen edge; on the
+     anchored side only the room the card already had to the Dock or the menu
+     bar, where the shadow's tail is clipped. */
   padding: var(--ov-shadow-slack);
   padding-bottom: var(--ov-shadow-edge-slack);
 }
@@ -280,16 +276,15 @@
   /* The stroke scales with everything else, so the card's footprint is its
      base size times the scale, border included. */
   border: calc(var(--ov-border-w) * var(--ov-scale)) solid var(--s-border);
-  /* The card's drop shadow, off at the inherit strength of 0 and so invisible
-     until a theme asks for one. Two layers, the ambient/key pair: a soft one at
-     the offset, and a tight contact shadow. It follows the border box, so it
-     morphs and fades with the card, and .ov-stage's padding is the room it
-     falls into. Glass draws none; there the shadow is macOS's own window
-     shadow, outside the window this card fills.
+  /* The card's drop shadow, off at the inherit strength of 0 until a theme
+     asks for one. Two layers, the ambient/key pair: a soft one at the offset,
+     a tight contact shadow. On the border box, so it morphs and fades with the
+     card; .ov-stage's padding is the room it falls into. Glass draws none;
+     there macOS draws its own window shadow outside the window this card fills.
      Strength is the alpha of both, so 1.00 is a shadow a white card casts
-     plainly onto a light desktop and half of it is still read at a glance.
-     The blur is fixed at --ov-shadow-blur whatever the alpha, because the blur
-     plus the offset is the window's shadow slack. */
+     plainly onto a light desktop, half of it still read at a glance. The blur
+     stays --ov-shadow-blur whatever the alpha, because blur plus offset is the
+     window's shadow slack. */
   box-shadow:
     0 calc(var(--ov-shadow-y) * var(--ov-scale))
       calc(var(--ov-shadow-blur) * var(--ov-scale))
@@ -342,11 +337,11 @@
 .scard.compact.cworking {
   width: calc((var(--ov-work-w) + 2 * var(--ov-elem-gap)) * var(--ov-scale));
 }
-/* show_waveform off, on the two shapes that rest: the pill shrinks to the row
-   that is left rather than holding a width tuned around a waveform. OverlayCard
-   only ever puts this class on those two, so it can never meet .open or
-   .working, and the morph out of it is still a grow. What the class does to the
-   row itself, and what .nocancel adds to it, is with .sbase below. */
+/* show_waveform off, on the two resting shapes: the pill shrinks to the row
+   that is left rather than to a width tuned around a waveform. OverlayCard puts
+   the class on those two alone, so it never meets .open or .working and the
+   morph out of it is still a grow. What it does to the row itself, and what
+   .nocancel adds, is with .sbase below. */
 .scard.nowave {
   width: calc(var(--ov-bare-w) * var(--ov-scale));
 }
@@ -449,15 +444,14 @@
   padding: calc(var(--ov-pad) * var(--ov-scale));
   display: grid;
   /* Equal side columns (floor --ov-side-min, the room the cancel button needs)
-     keep the center item, waveform or label, centered whether the pill is at
-     min width or content-sized. The floor carries the scale because every width
-     around it does: the card is a size-scale-1 sum times --ov-scale, so a floor
-     left at 22px is wider than the row it sits in below scale 1 and pushes the
-     cancel button through the card's edge. With that button hidden the floor is
-     0 and the two tracks still take equal free space, so the centring survives
-     wherever three columns are still drawn: the working pill and the open Live
-     panel. The two .nocancel rules below replace this on the resting shapes,
-     which drop the right column with the button. */
+     keep the center item, waveform or label, centered at min or content width.
+     The floor scales like every width around it: the card is a size-scale-1 sum
+     times --ov-scale, so a floor left at 22px outgrows the row below scale 1
+     and pushes the cancel button past the card's edge. With the button hidden
+     the floor is 0 and the two tracks still take equal free space, so the
+     centring survives wherever three columns are drawn: the working pill and
+     the open Live panel. The two .nocancel rules below replace this on the
+     resting shapes, which drop the right column with the button. */
   grid-template-columns:
     minmax(calc(var(--ov-side-min) * var(--ov-scale)), 1fr)
     auto
@@ -482,25 +476,23 @@
   justify-self: end;
 }
 /* No waveform, so nothing pads the row between the dot and the cancel button.
-   The dot drops its inset and sits one padding from the left edge, where the
-   button already sits one padding from the right. --ov-bare-w adds up the same
-   row. */
+   The dot drops its inset and sits one padding from the left edge, as the
+   button already does from the right. --ov-bare-w adds up the same row. */
 .scard.nowave .sbase-l {
   padding-left: 0;
 }
 /* No cancel button, so the row's right column goes with it and the grid is two
-   tracks with one gap between them, exactly what --ov-row-w now adds up. The
-   left track floors at the dot column rather than at --ov-side-min, which the
-   button took to 0, so the dot keeps its room at any size scale; the card being
-   the row makes that floor exactly the free space beside the waveform. */
+   tracks with one gap, exactly what --ov-row-w now adds up. The left track
+   floors at the dot column rather than at --ov-side-min, which the button took
+   to 0, so the dot keeps its room at any size scale; the card being the row
+   makes that floor exactly the free space beside the waveform. */
 .scard.nocancel .sbase {
   grid-template-columns:
     minmax(calc(var(--ov-dot-col-w) * var(--ov-scale)), 1fr)
     auto;
 }
-/* The right column itself. Emptied rather than unmounted, because the open Live
-   panel still puts its timer in one and only the resting shapes carry
-   .nocancel. */
+/* The right column itself. Emptied, not unmounted: the open Live panel still
+   puts its timer in one and only the resting shapes carry .nocancel. */
 .scard.nocancel .sbase-r {
   display: none;
 }
@@ -567,11 +559,11 @@
   color: var(--s-faint);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  /* Only the open Live panel shows the elapsed time. Hidden with display rather
-     than opacity, so no closed pill can ever carry the timer's width: what a
-     resting pill shrinks to is the dot and the cancel button, the row
-     --ov-bare-w and overlay_geometry.rs both add up. OverlayCard renders it on
-     the open panel alone, so this is the guarantee, not the switch. */
+  /* Only the open Live panel shows the elapsed time. Hidden with display, not
+     opacity, so no closed pill can carry the timer's width: a resting pill
+     shrinks to the dot and the cancel button, the row --ov-bare-w and
+     overlay_geometry.rs both add up. OverlayCard renders it on the open panel
+     alone, so this is the guarantee, not the switch. */
   display: none;
 }
 .scard.open .stimer {
@@ -664,15 +656,15 @@
   height: calc(var(--ov-wave-gap) * var(--ov-scale));
 }
 
-/* Reduced motion. Only decoration stops: the card's pop-in, the arming pulse
-   that travels along the bars, and the halo around the recording dot. Nothing
-   that carries information goes, so the bars still follow the levels and the
-   spinner still turns. The canvas styles read the same media query themselves
-   and drop their drift, travel and idle animation for the identical reason. */
+/* Reduced motion. Only decoration stops: the card's pop-in, the bars'
+   travelling arming pulse, and the halo around the recording dot. Nothing that
+   carries information goes, so the bars still follow the levels and the spinner
+   still turns. The canvas styles read the same media query themselves and drop
+   their drift, travel and idle animation for the same reason. */
 @media (prefers-reduced-motion: reduce) {
-  /* scard-pop scales the card in from 0.92, which is motion and nothing else:
-     the card simply appears instead. The width and radius morph is a
-     transition, not this animation, and stays. */
+  /* scard-pop scales the card in from 0.92, motion and nothing else, so the
+     card simply appears instead. The width and radius morph is a transition,
+     not this animation, and stays. */
   .scard {
     animation: none;
   }

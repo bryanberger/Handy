@@ -9,10 +9,10 @@ import type { WaveformDraw } from "./waveformLane";
 /**
  * The one table of renderers: every canvas style, in the contract's order.
  *
- * `Record<CanvasWaveformStyle, …>` is what makes a style added in Rust a
- * compile error here rather than an empty lane: the generated `WaveformStyle`
- * gains a value, `CanvasWaveformStyle` gains it too, and this table stops
- * type-checking until it has a renderer.
+ * `Record<CanvasWaveformStyle, …>` makes a style added in Rust a compile
+ * error here rather than an empty lane: the generated `WaveformStyle` gains a
+ * value, `CanvasWaveformStyle` gains it too, and this table stops type-checking
+ * until it has a renderer.
  */
 export const WAVEFORM_RENDERERS: Record<CanvasWaveformStyle, WaveformDraw> = {
   ribbon: drawRibbon,

@@ -53,15 +53,14 @@ export type OverlayNumericKey =
 export type OverlayBooleanKey = "show_waveform" | "show_cancel";
 
 /**
- * The six waveform styles, in the contract's order, which is the order the
- * Appearance tab's dropdown lists them and `WaveformStyle::ALL` declares them
- * in `src-tauri/src/overlay_theme.rs`.
+ * The six waveform styles in the contract's order, the order the Appearance
+ * tab's dropdown lists them and `WaveformStyle::ALL` declares them in
+ * `src-tauri/src/overlay_theme.rs`.
  *
- * Here rather than beside the renderers, because it is the token's value list:
- * the same fact as [`OVERLAY_TOKEN_BOUNDS`] for a number, and the list the
- * re-validation below checks against. Which of them draws on a canvas, and
- * which lengths each reads, is renderer knowledge and lives in
- * `src/overlay/waveform/waveformStyles.ts`.
+ * Here rather than beside the renderers because it is the token's value list,
+ * the same fact as [`OVERLAY_TOKEN_BOUNDS`] for a number, and what the
+ * re-validation below checks. Which draw on a canvas, and which lengths each
+ * reads, is renderer knowledge in `src/overlay/waveform/waveformStyles.ts`.
  */
 export const WAVEFORM_STYLES: readonly WaveformStyle[] = [
   "bars",
@@ -242,11 +241,10 @@ export const BORDER_OPACITY_INHERIT_CLEAR = 0.35;
  *
  * Flat has never cast a shadow: its window is larger than its card and
  * transparent around it, so a window shadow would trace a rectangle nobody can
- * see, and no CSS shadow was ever drawn. Glass has always cast macOS's own,
- * because there the window is the card exactly. So both Materials inherit what
- * they already looked like, and the token adds a shadow to one and takes one
- * away from the other. `shadow_strength_inherit` in
- * `src-tauri/src/overlay_theme.rs` is the same pair.
+ * see, and no CSS shadow was drawn. Glass has always cast macOS's own, its
+ * window being the card exactly. So each Material inherits its existing look,
+ * the token adding a shadow to one and taking one away from the other.
+ * `shadow_strength_inherit` in `src-tauri/src/overlay_theme.rs` is this pair.
  */
 export const SHADOW_STRENGTH_INHERIT: Record<Material, number> = {
   flat: 0,
@@ -254,16 +252,16 @@ export const SHADOW_STRENGTH_INHERIT: Record<Material, number> = {
 };
 
 /**
- * The blur radius of the Flat card's drop shadow, px at size scale 1, and the
+ * The Flat card's drop-shadow blur radius, px at size scale 1, and the
  * `--ov-shadow-blur` the stylesheet paints with.
  *
- * Derived, not a token: `shadow_strength` and `shadow_offset_y` are the two
- * controls the shadow gets, a third for the blur would make it a project, and a
- * shadow that is not black is a tint, which the border tokens already cover.
+ * Derived, not a token: `shadow_strength` and `shadow_offset_y` are the
+ * shadow's two controls, a third for the blur would make it a project, and a
+ * non-black shadow is a tint the border tokens already cover.
  *
- * With the offset it is how far the shadow reaches from the card's edge, which
- * is exactly the window's shadow slack. `overlay_geometry.rs` holds the same
- * number as `CARD_SHADOW_BLUR` and pins both against this one, since the two
+ * With the offset it is how far the shadow reaches from the card's edge,
+ * exactly the window's shadow slack. `overlay_geometry.rs` holds the same
+ * number as `CARD_SHADOW_BLUR` and pins both against this one, since both
  * sides must round the same product to the same integer.
  */
 export const SHADOW_BLUR_PX = 20;
@@ -334,19 +332,19 @@ export function inheritedTokenValue(
   return STATIC_NUMERIC_INHERIT[key];
 }
 
-/** What a switch resolves to while unset: both elements are on the row, which
- *  is today's card. No per-Material split, so this is a constant rather than a
- *  function of the Material like the two above. */
+/** What a switch resolves to while unset: both elements on the row, today's
+ *  card. No per-Material split, so a constant rather than a function of the
+ *  Material like the two above. */
 export const BOOLEAN_INHERIT: Record<OverlayBooleanKey, boolean> = {
   show_waveform: true,
   show_cancel: true,
 };
 
 /**
- * A switch token, re-validated like the numbers and the colours are: anything
- * that is not a boolean is treated as unset and inherits (rule 2). The overlay
- * reads its switches out of the localStorage mirror at boot, which bypasses
- * Rust, so a hand-edited `"true"` or `1` must not reach the card's markup.
+ * A switch token, re-validated like the numbers and colours: a non-boolean is
+ * unset and inherits (rule 2). The overlay reads its switches from the
+ * localStorage mirror at boot, bypassing Rust, so a hand-edited `"true"` or `1`
+ * must not reach the card's markup.
  */
 export function switchToken(
   theme: OverlayTheme,
@@ -361,11 +359,10 @@ export function switchToken(
 export const WAVEFORM_STYLE_INHERIT: WaveformStyle = "bars";
 
 /**
- * The waveform style, re-validated like the switches, the numbers and the
- * colours are: anything outside [`WAVEFORM_STYLES`] inherits (rule 2). The
- * overlay reads it out of the localStorage mirror at boot, which bypasses
- * Rust, so a hand-edited value must not reach a renderer table that has no
- * entry for it.
+ * The waveform style, re-validated like the switches, numbers and colours:
+ * anything outside [`WAVEFORM_STYLES`] inherits (rule 2). The overlay reads it
+ * from the localStorage mirror at boot, bypassing Rust, so a hand-edited value
+ * must not reach a renderer table with no entry for it.
  */
 export function waveformStyleToken(theme: OverlayTheme): WaveformStyle {
   const value = theme.waveform_style;
@@ -527,12 +524,11 @@ function effectiveMaterialOf(resolved: ResolvedOverlayTheme): Material {
  * How far the card is inset from the screen edge the overlay is anchored to,
  * in points, re-validated (rule 2).
  *
- * Derived by Rust and carried on the resolved theme, because only Rust knows
- * the gap the card already has to the Dock, the taskbar or the menu bar on this
- * platform, and the native window was sized and placed from this same number.
- * There is no platform table here on purpose. A mirror written before the field
- * existed, or a hand-edited one, falls back to the full slack, which is what
- * the three other sides take.
+ * Derived by Rust, carried on the resolved theme: only Rust knows the gap the
+ * card already has to the Dock, the taskbar or the menu bar on this platform,
+ * and the native window was sized and placed from that same number. No platform
+ * table here, on purpose. A mirror written before the field existed, or a
+ * hand-edited one, falls back to the full slack, as the three other sides do.
  */
 function edgeSlack(resolved: ResolvedOverlayTheme, slack: number): number {
   const carried = resolved.shadow_edge_slack;
@@ -659,22 +655,21 @@ export function resolveOverlayThemeVars(
 
   // The side columns' floor exists to hold the cancel button, so it goes with
   // it, and so do the row's right column and the element gap beside it: the row
-  // is then the dot column, one gap and the waveform lane. Written only for the
-  // values that are not the stylesheet's, which keeps the 22 and the 2 out of
-  // this file: the CSS declares both, and this says "there is no button any
-  // more".
+  // is then the dot column, one gap and the waveform lane. Written only for
+  // values that are not the stylesheet's, keeping the 22 and the 2 out of this
+  // file: the CSS declares both, and this says "there is no button any more".
   if (theme.show_cancel === false) {
     vars["--ov-side-min"] = "0px";
     vars["--ov-row-gaps"] = "1";
   }
 
   // The shadow, Flat's only. Under Glass it is macOS's own, drawn outside a
-  // window this card fills exactly, and `shadow_strength` merely switches it
-  // (`overlay_glass::window_shadow`), so no property is written there.
+  // window the card fills exactly, and `shadow_strength` just switches it
+  // (`overlay_glass::window_shadow`), so nothing is written there.
   //
-  // The two slacks are the only pre-scaled properties in the file. CSS cannot
-  // round, and the native window inset the card by these very integers; a
-  // fractional disagreement would drift the card off its screen offset, so each
+  // The two slacks are the only pre-scaled properties here: CSS cannot round,
+  // and the native window inset the card by these very integers, so a
+  // fractional disagreement would drift the card off its screen offset. Each
   // is computed once and written whole.
   const strength =
     validToken(theme, "shadow_strength") ?? SHADOW_STRENGTH_INHERIT[material];

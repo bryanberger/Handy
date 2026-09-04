@@ -1,15 +1,13 @@
 /**
- * What a waveform style is handed, and the arithmetic more than one of them
- * needs.
+ * What a waveform style is handed, and the arithmetic more than one needs.
  *
  * The lane is the fixed slot the waveform draws into, `.swave` in
- * `RecordingOverlay.css`. Its width is a function of the two waveform lengths
- * and never of the style, so switching styles cannot move the card or the
- * native window.
+ * `RecordingOverlay.css`. Its width follows the two waveform lengths and never
+ * the style, so switching styles cannot move the card or the native window.
  *
  * Hard constraint, inherited from the apply layer: this module and every style
  * beside it load in the overlay webview (#1279). No React, no i18next, no
- * store. Pure functions and constants, and nothing allocated per frame.
+ * store. Pure functions and constants, nothing allocated per frame.
  */
 
 /** The lane a style draws into, in device pixels (the canvas backing store). */
@@ -29,8 +27,7 @@ export interface WaveformGeometry {
 }
 
 /**
- * The two colours a style paints with, already resolved to something
- * `fillStyle` accepts.
+ * The two colours a style paints with, in a form `fillStyle` accepts.
  *
  * Resolved off a probe once per theme change, never per frame: the overlay's
  * `--s-*` properties are `color-mix()` values, which `fillStyle` rejects.
@@ -58,8 +55,8 @@ export interface WaveformFlags {
  * Called on a cleared context, once per animation frame. `levels` is the
  * shared, preallocated read of the 16 smoothed microphone buckets, so a style
  * must not keep it. `elapsedMs` is the time since the canvas mounted and must
- * be ignored entirely while `flags.reduceMotion`, which is what makes two
- * timestamps at the same levels draw the same frame.
+ * be ignored while `flags.reduceMotion`, so two timestamps at the same levels
+ * draw the same frame.
  */
 export type WaveformDraw = (
   ctx: CanvasRenderingContext2D,
@@ -71,24 +68,23 @@ export type WaveformDraw = (
 ) => void;
 
 /** How many smoothed microphone buckets a frame carries. The backend emits 16
- *  FFT buckets and the overlay smooths all of them; how many of those a style
- *  reads is its own business. Declared once, so the ref, the frame's copy and
- *  the styles cannot disagree about the length. */
+ *  FFT buckets and the overlay smooths all of them; how many a style reads is
+ *  its own business. Declared once, so the ref, the frame's copy and the styles
+ *  agree on the length. */
 export const LEVEL_BUCKETS = 16;
 
 /**
  * How faint an arming idle drawn as one flat shape is, the muted waveform's
  * own 0.35.
  *
- * Not every style's: `matrix` lights one small dot on a bare lane, and a dot
- * that small vanishes at 0.35, so it carries its own alpha and says so.
+ * Not every style's: `matrix` lights one small dot on a bare lane, which
+ * vanishes at 0.35, so it carries its own alpha and says so.
  */
 export const ARMING_ALPHA = 0.35;
 
 /**
- * One level, sampled between buckets and wrapped, so a style can walk the
- * lane at whatever resolution suits it and can drift along the buckets
- * without falling off either end.
+ * One level, sampled between buckets and wrapped, so a style can walk the lane
+ * at any resolution and drift along the buckets without falling off either end.
  */
 export function sampleLevel(levels: Float32Array, position: number): number {
   const count = levels.length;
@@ -119,8 +115,8 @@ export function animationSeconds(
 }
 
 /** The colour a style paints with: the accent once samples are flowing, the
- *  muted neutral while arming. Split from the alpha below, because a style
- *  that layers passes picks its own alphas and still wants this one colour. */
+ *  muted neutral while arming. Split from the alpha below, so a style that
+ *  layers passes can pick its own alphas and still take this one colour. */
 export function paintColor(
   colors: WaveformColors,
   flags: WaveformFlags,
@@ -157,8 +153,7 @@ const MAX_STEP_SECONDS = 0.1;
  * One style's own clock, for the styles that integrate rather than compute:
  * an eased radius, a falling peak, a rising particle.
  *
- * Allocated once per module and mutated in place, so a frame allocates
- * nothing.
+ * Allocated once per module and mutated in place, so a frame allocates nothing.
  */
 export interface FrameClock {
   /** The previous frame's `elapsedMs`, or -1 before the first frame. */
@@ -173,9 +168,9 @@ export function newFrameClock(): FrameClock {
  * Seconds since the last frame: 0 on the first frame, after the canvas
  * remounts and its clock restarts, and always under reduced motion.
  *
- * That zero is what freezes every integration into a pure function of the
- * levels, which is both the contract's rule and what makes two timestamps at
- * the same levels draw the same picture.
+ * That zero freezes every integration into a pure function of the levels, both
+ * the contract's rule and what makes two timestamps at the same levels draw the
+ * same picture.
  */
 export function frameSeconds(
   clock: FrameClock,
@@ -191,10 +186,10 @@ export function frameSeconds(
 /**
  * A style's cached soft-edged brush.
  *
- * A canvas gradient belongs to the context that made it, and building one is
- * an allocation, so each style that paints with one keeps a slot and rebuilds
- * only when the context or the colour changes: on a theme repaint, or when
- * arming hands over to the accent.
+ * A canvas gradient belongs to the context that made it, and building one
+ * allocates, so a style painting with one keeps a slot and rebuilds only when
+ * the context or the colour changes: a theme repaint, or arming handing over to
+ * the accent.
  */
 export interface SoftGradient {
   ctx: CanvasRenderingContext2D | null;
@@ -211,16 +206,15 @@ export function newSoftGradient(): SoftGradient {
  * A radial gradient in unit space: solid `color` out to `core`, fading to
  * nothing at radius 1.
  *
- * Unit space because the shape it fills changes size every frame. Paint with
- * it by setting the transform to the shape's own extent
- * (`setTransform(rx, 0, 0, ry, centreX, centreY)`) just before the fill: a
- * path already built is in canvas space and does not move, while the gradient
- * is resolved through the transform in force when it is painted.
+ * Unit space because the shape it fills changes size every frame. Paint with it
+ * by setting the transform to the shape's own extent
+ * (`setTransform(rx, 0, 0, ry, centreX, centreY)`) just before the fill: a path
+ * already built is in canvas space and does not move, while the gradient
+ * resolves through the transform in force when it is painted.
  *
- * The outer stop is `transparent` rather than a faded colour because a canvas
- * interpolates its stops with the alpha premultiplied, so the fade keeps the
- * hue instead of running through black, and no colour string has to be picked
- * apart to give it an alpha.
+ * The outer stop is `transparent`, not a faded colour: a canvas premultiplies
+ * alpha as it interpolates stops, so the fade keeps the hue instead of running
+ * through black, and no colour string is picked apart to give it an alpha.
  */
 export function softGradient(
   cache: SoftGradient,

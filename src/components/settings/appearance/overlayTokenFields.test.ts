@@ -177,8 +177,8 @@ describe("overlayTokenFieldsFor", () => {
     ]);
   });
 
-  /** The two waveform lengths are the only rows a style can take away, and
-   *  the style row itself is never one of them. */
+  /** The two waveform lengths are the only rows a style can take away, never
+   *  the style row itself. */
   test("the Waveform group shows only the lengths the style reads", () => {
     expect(keysOf(overlayTokenFieldsFor("waveform", "flat", "bars"))).toEqual([
       "waveform_style",
@@ -281,9 +281,9 @@ describe("overlayTokenFieldsFor", () => {
       "waveform_gap",
       "waveform_width",
     ]);
-    // Twenty rows under Flat, nineteen under Glass: `glass_material` never
-    // has one, the two alphas share a slot, the shadow's two rows share one,
-    // and Glass has no shadow offset to show.
+    // Twenty rows under Flat, nineteen under Glass: `glass_material` never has
+    // one, the two alphas share a slot, the shadow's two rows share one, and
+    // Glass has no shadow offset.
     expect(shown("flat").length).toBe(20);
     expect(shown("glass").length).toBe(19);
   });

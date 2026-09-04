@@ -8,30 +8,28 @@ import {
 } from "./waveformLane";
 
 /**
- * Matrix: a dot-matrix VU. Every column is a stack of square dots lit from the
- * centre row outward in quantised steps, with a peak dot that hangs above the
- * column and falls back into it. Only lit dots are drawn: the unlit panel an
- * LED meter shows was tried and taken out, so the card stays clean.
+ * Matrix: a dot-matrix VU. Each column is a stack of square dots lit from the
+ * centre row outward in quantised steps, under a peak dot that hangs above it
+ * and falls back in. Only lit dots are drawn: the unlit panel an LED meter
+ * shows was tried and taken out, to keep the card clean.
  *
- * The grid comes from the lane, not from the tokens: the row pitch is the lane
- * divided by an odd row count, so one row is always the centre and the panel
- * is exactly symmetric about it. `waveform_width` caps a dot and `waveform_gap`
- * closes the space between them, both to whole device pixels, because a
- * half-pixel dot is a smear rather than an LED.
+ * The grid comes from the lane, not the tokens: the row pitch is the lane over
+ * an odd row count, so one row is the centre and the panel symmetric about it.
+ * `waveform_width` caps a dot and `waveform_gap` closes the space between them,
+ * both to whole device pixels: a half-pixel dot is a smear, not an LED.
  *
- * Two fills a frame whatever the grid measures: the glow under what is lit,
- * and what is lit.
+ * Two fills a frame whatever the grid measures: the glow, then the lit dots.
  */
 
-/** Rows in the panel. Seven when the lane is tall enough for a dot that still
- *  reads as a dot, five otherwise. Odd either way, so one row is the centre
- *  and the lit steps are symmetric about it. */
+/** Rows in the panel: seven when the lane is tall enough for a dot to read as
+ *  one, five otherwise. Odd either way, so one row is the centre and the lit
+ *  steps are symmetric about it. */
 const ROWS_TALL = 7;
 const ROWS_SHORT = 5;
 
-/** The shortest row pitch a seven-row panel is allowed, in device pixels.
- *  Below it the dots are too small to read as lit lamps and the panel becomes
- *  a texture, so the lane takes five taller rows instead. */
+/** The shortest row pitch a seven-row panel is allowed, in device pixels. Below
+ *  it the dots read as a texture rather than lit lamps, so the lane takes five
+ *  taller rows instead. */
 const TALL_MIN_PITCH = 9;
 
 /** The smallest dot that still reads as one. */
@@ -41,8 +39,8 @@ const MIN_DOT = 2;
  *  token is capped rather than obeyed to the point of erasing the dot. */
 const GAP_SHARE = 0.32;
 
-/** The widest panel worth drawing, which is also the length of the two
- *  per-column stores. */
+/** The widest panel worth drawing, and the length of the two per-column
+ *  stores. */
 const MAX_COLUMNS = 96;
 
 /** The glow under a lit dot: one extra pass, this many device pixels wider on
@@ -53,11 +51,11 @@ const GLOW_ALPHA = 0.3;
 /** How long a column's peak takes to fall from full scale to nothing. */
 const PEAK_FALL_SECONDS = 0.6;
 
-/** The arming idle: one dot walking the centre row, this many columns a
- *  second, and how lit it is.
+/** The arming idle: one dot walking the centre row, this many columns a second,
+ *  and how lit it is.
  *
  *  Not the lane's shared `ARMING_ALPHA`: a single small dot on a bare lane
- *  disappears at 0.35, so it is drawn brighter to read as a lamp at all. */
+ *  disappears at 0.35, so it is drawn brighter to read as a lamp. */
 const WALK_COLUMNS_PER_SECOND = 14;
 const ARMING_LIT = 0.75;
 
@@ -69,8 +67,8 @@ const peak = new Float32Array(MAX_COLUMNS);
 const clock = newFrameClock();
 
 /** The frame's own grid, allocated once and refilled per frame, so the two
- *  tracing helpers below take what they draw rather than eight measurements
- *  each and a frame still builds no closure. */
+ *  tracing helpers take what they draw rather than eight measurements each, and
+ *  a frame still builds no closure. */
 const panel = {
   firstX: 0,
   centreY: 0,
@@ -102,9 +100,9 @@ function traceDot(
   );
 }
 
-/** What is lit: each column's stack out from the centre row, mirrored above
- *  and below, plus the held peak where it hangs clear of the stack. Traced
- *  twice a frame, once grown for the glow and once for the dots themselves. */
+/** What is lit: each column's stack out from the centre row, mirrored above and
+ *  below, plus the held peak where it hangs clear of the stack. Traced twice a
+ *  frame, once grown for the glow and once for the dots. */
 function traceLit(ctx: CanvasRenderingContext2D, grow: number): void {
   ctx.beginPath();
   for (let column = 0; column < panel.columns; column += 1) {
@@ -167,15 +165,14 @@ export const drawMatrix: WaveformDraw = (
       peakStep[column] = -1;
       continue;
     }
-    // Evenly across the lane, the first column on the first bucket and the
-    // last on the last, so a quiet end of the spectrum cannot bunch the meter
-    // to one side.
+    // Evenly across the lane, first column on the first bucket and last on the
+    // last, so a quiet end of the spectrum cannot bunch the meter to one side.
     const level = Math.min(
       1,
       Math.max(0, sampleLevel(levels, (column / span) * (levels.length - 1))),
     );
-    // A frozen clock holds no peak, which is what keeps a reduced-motion frame
-    // a pure function of the levels.
+    // A frozen clock holds no peak, so a reduced-motion frame is a pure
+    // function of the levels.
     peak[column] =
       step > 0
         ? Math.max(level, peak[column] - step / PEAK_FALL_SECONDS)

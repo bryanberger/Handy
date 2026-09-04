@@ -11,18 +11,17 @@ import {
  * One animation frame of the waveform canvas: size the backing store if it
  * moved, copy the levels in, and hand the style a cleared context.
  *
- * Apart from `WaveformCanvas`, which owns the DOM and the loop this runs in,
- * so the rules that decide whether a frame is drawn at all can be read, and
- * tested, without a browser.
+ * Apart from `WaveformCanvas`, which owns the DOM and the loop this runs in, so
+ * the decision to draw a frame can be read, and tested, without a browser.
  */
 
 /** The cap on the backing store's density. Past 2 the lane costs pixels
  *  nobody can see: a 60x18 lane at 2 is already under 5 000 of them. */
 export const MAX_DPR = 2;
 
-/** How far a bucket must move to be worth a frame. Only consulted under
- *  reduced motion, where a style has no idle motion of its own and would
- *  repaint the same picture. */
+/** How far a bucket must move to be worth a frame. Only consulted under reduced
+ *  motion, where a style has no idle motion and would repaint the same
+ *  picture. */
 export const LEVEL_EPSILON = 0.002;
 
 /** What a frame writes its pixels into. The two fields of a canvas this
@@ -53,8 +52,8 @@ export interface WaveformCanvasState {
   style: CanvasWaveformStyle;
 }
 
-/** A state with nothing measured yet, which draws nothing until the lane's
- *  box and the theme's colours have been read. */
+/** A state with nothing measured yet: draws nothing until the lane's box and
+ *  the theme's colours have been read. */
 export function initialWaveformState(
   style: CanvasWaveformStyle,
 ): WaveformCanvasState {
@@ -87,16 +86,16 @@ export function drawWaveformFrame(
   const width = Math.round(state.cssWidth * dpr);
   const height = Math.round(state.cssHeight * dpr);
   if (width <= 0 || height <= 0) return;
-  // Assigning either dimension clears the canvas, so it is written only when
-  // the lane's box or the display's density actually moved.
+  // Assigning either field clears the canvas, so it is written only when the
+  // lane's box or the display's density actually moved.
   if (canvas.width !== width || canvas.height !== height) {
     canvas.width = width;
     canvas.height = height;
     state.moved = true;
   }
   // Synced whatever that branch did. A fresh canvas already measures its
-  // intrinsic 300x150, so a lane that happens to want exactly that leaves the
-  // assignment untaken, and the geometry every style reads would stay at zero.
+  // intrinsic 300x150, so a lane wanting exactly that leaves the assignment
+  // untaken and the geometry every style reads would stay at zero.
   state.geom.width = width;
   state.geom.height = height;
   if (state.geom.dpr !== dpr) {
@@ -128,8 +127,8 @@ export function drawWaveformFrame(
     state.colors,
     state.flags,
   );
-  // The one restore. A style sets `globalAlpha` as often as it has passes, and
-  // the next frame starts with a clear rather than a fill, so putting it back
-  // here is both cheaper and the only place it can be forgotten.
+  // The one restore. A style sets `globalAlpha` once per pass, and the next
+  // frame starts with a clear rather than a fill, so putting it back here is
+  // both cheaper and the only place it can be forgotten.
   ctx.globalAlpha = 1;
 }

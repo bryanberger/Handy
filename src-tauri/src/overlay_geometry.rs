@@ -2,8 +2,7 @@
 //!
 //! Everything the overlay window's size and its blur's corner radius are a
 //! function of lives here: the card's shapes, the transparent slack around
-//! them, the room a Flat card's drop shadow needs, and the theme tokens that
-//! change how much room the card needs.
+//! them, the room a Flat card's drop shadow needs, and the tokens that size it.
 //! It is pure code, with no `AppHandle`, no platform `cfg` and no AppKit, so
 //! the arithmetic deciding whether a card fits its window is tested on its
 //! own, not through the window creation, monitor queries and show/hide
@@ -21,9 +20,9 @@ use serde::{Deserialize, Serialize};
 /// `(content + card_border(width)) × scale`.
 ///
 /// A function, not a constant, because `border_width` is a token (0-4 px,
-/// inherit 1). With `size_scale`, `padding` and `element_gap` it is one of the
-/// four tokens that change how much room the card needs on either Material.
-/// At the inherit width it is 2.0, today's hairline on both edges.
+/// inherit 1). With `size_scale`, `padding` and `element_gap` it is one of
+/// the four tokens sizing the card on either Material. At the inherit width
+/// it is 2.0, today's hairline on both edges.
 const fn card_border(border_width: u16) -> f64 {
     2.0 * border_width as f64
 }
@@ -55,20 +54,19 @@ const CARD_CAP_MAX_H: f64 = 64.0;
 /// padding token; at the inherit padding of 10 it is today's 12 px.
 const CARD_CAP_PAD_FACTOR: f64 = 1.2;
 /// The control row's side-column floor at size_scale 1 while the cancel button
-/// is on the row: `--ov-side-min` 22. It exists to hold that button, so it
-/// drops to 0 with it and the row shrinks to what is left. `.sbase` scales it
-/// where it uses it, like every other length here, so the floors and the card
-/// they sit in shrink together.
+/// is on the row: `--ov-side-min` 22. It holds that button, so it drops to 0
+/// with it and the row shrinks to what is left. `.sbase` scales it like every
+/// other length here, so the floors and the card shrink together.
 const CARD_SIDE_MIN_W: f64 = 22.0;
 /// The left column's own content at size_scale 1 while the waveform is on the
 /// row: `--ov-dot-col-w` 12, the recording dot plus `.sbase-l`'s 5 px inset.
-/// Wider than nothing and narrower than the side floor, so it decides the left
+/// Wider than 0 and narrower than the side floor, so it decides the left
 /// column only once the cancel button is gone.
 const CARD_DOT_COL_W: f64 = 12.0;
 /// The recording dot itself at size_scale 1: `--ov-dot-w` 7. A row with no
-/// waveform on it drops the inset above, so the dot sits one padding from the
-/// card's left edge as the cancel button does from the right, and this is what
-/// the left column measures there.
+/// waveform drops the inset above, so the dot sits one padding from the card's
+/// left edge as the cancel button does from the right, and is the left column
+/// there.
 const CARD_DOT_W: f64 = 7.0;
 /// The number of waveform bars: `WAVE_BARS` in `RecordingOverlay.tsx`, and the
 /// `9` in `--ov-wave-slot-w`.
@@ -79,8 +77,7 @@ const CARD_WAVE_PAD_R: f64 = 8.0;
 /// The blur radius of Flat's drop shadow at size_scale 1: `--ov-shadow-blur`
 /// 20. Derived, not a token: `shadow_strength` and `shadow_offset_y` are the
 /// two controls, and a third for the blur would make the shadow a project.
-/// With the offset it is how far the shadow reaches, which is the window's
-/// shadow slack.
+/// With the offset it is how far the shadow reaches, the window's shadow slack.
 const CARD_SHADOW_BLUR: f64 = 20.0;
 
 /// The card's morph between two shapes, in milliseconds: `--ov-morph-ms`,
@@ -166,11 +163,10 @@ impl Card {
     /// token and the width the element gap, as well as the border. The caller
     /// applies the scale, so every number returned is at size_scale 1.
     ///
-    /// The widest card is always a working or open shape, never a resting one,
-    /// so the resting shapes' own `max()` against the row (see
-    /// [`CardMetrics::resting_content_width`]) cannot reach here: the row fits
-    /// the working pill at every combination of tokens, which
-    /// `the_waveform_never_outgrows_the_working_pill` pins.
+    /// The widest card is always a working or open shape, so the resting
+    /// shapes' `max()` against the row ([`CardMetrics::resting_content_width`])
+    /// cannot reach here: the row fits the working pill at every combination of
+    /// tokens, which `the_waveform_never_outgrows_the_working_pill` pins.
     fn widest_footprint(self, metrics: &CardMetrics) -> (f64, f64) {
         let border = card_border(metrics.border_width);
         let gaps = metrics.gap_width();
@@ -284,10 +280,10 @@ impl OverlayCardShape {
         let row = metrics.row_height();
         let gaps = metrics.gap_width();
         let (content_width, content_height) = match self {
-            // The two resting shapes are the only ones sized to their contents:
-            // they shrink when the waveform is hidden and grow when the row
-            // outgrows their tuned width. The other three are tuned to
-            // translated labels and to the transcript and stay put.
+            // Only the two resting shapes are sized to their contents: they
+            // shrink when the waveform is hidden and grow when the row outgrows
+            // their tuned width. The other three stay put, tuned to translated
+            // labels and to the transcript.
             Self::CompactRest => (
                 metrics.resting_content_width(CARD_COMPACT_REST_CONTENT_W),
                 row,
@@ -343,13 +339,12 @@ impl OverlayCardShape {
 /// card by two gaps, the two switches and the waveform's own two lengths
 /// decide how wide the row's contents make a resting pill, and the radius
 /// rounds the corners the blur matches. So `from_theme` builds them once and
-/// callers ask the result for a window size or a corner radius, rather than
-/// passing them one at a time to functions that must remember what was
-/// clamped.
+/// callers ask it for a window size or a corner radius, rather than passing
+/// them one at a time to functions that must remember the clamps.
 ///
 /// The constructor clamps, so no caller has to and the geometry never trusts
 /// an unclamped number. Same bounds as the accessors on [`OverlayTheme`], so
-/// window and card cannot disagree about how far a token was allowed to go.
+/// window and card cannot disagree about a token's limit.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct CardMetrics {
     scale: f64,
@@ -365,12 +360,11 @@ pub(crate) struct CardMetrics {
 
 /// The room a Flat card's drop shadow needs around it, clamped once.
 ///
-/// Beside [`CardMetrics`] rather than inside it, because these two do not
-/// describe the card's rectangle at all: they describe the space around it.
-/// The window grows into that space on all four sides, by the full slack
-/// everywhere except the anchored screen edge, where it takes only the room
-/// the card already had. So the card does not move, and the window still stops
-/// short of the usable edge.
+/// Beside [`CardMetrics`] rather than inside it, because these two describe
+/// the space around the card's rectangle, not the rectangle. The window grows
+/// into that space on all four sides, by the full slack everywhere except the
+/// anchored screen edge, where it takes only the room the card already had. So
+/// the card does not move, and the window still stops short of the usable edge.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ShadowMetrics {
     /// 0.00 to 1.00, resolved against the Material's own inherit. Under Flat
@@ -398,9 +392,8 @@ impl ShadowMetrics {
         self.strength > 0.0
     }
 
-    /// How far the shadow reaches from the card's edge at size_scale 1: the
-    /// fixed blur radius plus the offset, which is the worst case on the side
-    /// the shadow falls towards.
+    /// The shadow's reach from the card's edge at size_scale 1: the fixed blur
+    /// radius plus the offset, the worst case on the side it falls towards.
     fn reach(&self) -> f64 {
         CARD_SHADOW_BLUR + f64::from(self.offset_y)
     }
@@ -452,12 +445,11 @@ impl CardMetrics {
     /// The shadow's own slack goes on last. It is the full slack on the two
     /// horizontal sides and on the side away from the screen edge the overlay
     /// is anchored to; on the anchored side it is `edge_slack`, only the room
-    /// that already exists between the card and the usable edge. The card
-    /// therefore keeps the screen position it has with no shadow at all, the
-    /// window still never reaches past the usable edge, and the shadow's faint
-    /// tail is clipped there rather than covering the Dock or the menu bar. At
-    /// the Flat inherit strength of 0 both are 0 and every window is the one
-    /// this overlay has always used.
+    /// already between the card and the usable edge. So the card keeps the
+    /// screen position it has with no shadow, the window never reaches past the
+    /// usable edge, and the shadow's faint tail is clipped there rather than
+    /// covering the Dock or the menu bar. At the Flat inherit strength of 0
+    /// both are 0 and every window is today's.
     pub(crate) fn window_size(
         &self,
         shape: OverlayCardShape,
@@ -487,15 +479,14 @@ impl CardMetrics {
     /// whole logical points.
     ///
     /// Zero under Glass, where the window is the card and macOS draws the
-    /// shadow outside it, and zero at strength 0, so a theme that asks for no
-    /// shadow gets today's window byte for byte. Scaled and rounded up here
-    /// because CSS cannot round: `--ov-shadow-slack` is one of the two custom
-    /// properties the apply layer writes already scaled, so `.ov-stage`'s
-    /// padding and this number are the same integer and the card cannot land on
-    /// a fraction of a point.
+    /// shadow outside it, and zero at strength 0, so a theme with no shadow
+    /// gets today's window byte for byte. Scaled and ceiled here because CSS
+    /// cannot round: `--ov-shadow-slack` is one of the two custom properties
+    /// the apply layer writes scaled, so `.ov-stage`'s padding and this number
+    /// are the same integer, never a fraction of a point.
     ///
-    /// This is what the three sides away from the anchored screen edge take.
-    /// The anchored side takes [`shadow_edge_slack`] instead.
+    /// The three sides away from the anchored screen edge take this; the
+    /// anchored side takes [`shadow_edge_slack`] instead.
     pub(crate) fn shadow_slack(&self, material: Material, shadow: ShadowMetrics) -> f64 {
         if material == Material::Glass || !shadow.casts() {
             return 0.0;
@@ -519,11 +510,11 @@ impl CardMetrics {
 
     /// What the row's two element gaps add to a card's own width at
     /// size_scale 1. Both sides of every `max()` below carry it, so the gap
-    /// widens a card without ever changing which of the two won.
+    /// widens a card without changing which won.
     ///
-    /// Every card tuned to its contents pays for two, because its row keeps
-    /// all three columns. [`Self::row_gap_width`] is what the row itself
-    /// measures, which is not the same thing once a column is gone.
+    /// Every card tuned to its contents pays for two, because its row keeps all
+    /// three columns. [`Self::row_gap_width`] is what the row itself measures,
+    /// which differs once a column is gone.
     fn gap_width(&self) -> f64 {
         2.0 * f64::from(self.element_gap)
     }
@@ -539,7 +530,7 @@ impl CardMetrics {
 
     /// The row's side-column floor at size_scale 1 (`--ov-side-min`): 22 px
     /// while the cancel button is on the row, 0 without it, since holding that
-    /// button is the only reason the floor exists.
+    /// button is the floor's only reason.
     fn side_min(&self) -> f64 {
         if self.show_cancel {
             CARD_SIDE_MIN_W
@@ -548,18 +539,17 @@ impl CardMetrics {
         }
     }
 
-    /// The control row's own width at size_scale 1 with an empty centre
-    /// column: the padding, the two element gaps, the left column (the bare
-    /// dot, or the side floor once that is wider) and the right column. This is
-    /// `--ov-bare-w`, what a resting pill shrinks to with no waveform, and 64
-    /// at every inherit value.
+    /// The control row's own width at size_scale 1 with an empty centre column:
+    /// the padding, the two element gaps, the left column (the bare dot, or the
+    /// side floor if wider) and the right column. This is `--ov-bare-w`, what a
+    /// resting pill shrinks to with no waveform, 64 at every inherit value.
     ///
     /// The dot is bare here, not [`CARD_DOT_COL_W`]: with no waveform to pad
     /// the row, `.scard.nowave .sbase-l` drops the dot's inset so the dot and
     /// the cancel button sit one padding from their own card edges. With the
     /// button gone too the pill is a square, as wide as the row is tall, with
     /// the dot centred by `.scard.nowave.nocancel .sbase`; the element gaps
-    /// have nothing left to fall between and do not widen it.
+    /// have nothing to fall between and do not widen it.
     fn bare_row_width(&self) -> f64 {
         if !self.show_cancel {
             return self.row_height();
@@ -582,8 +572,7 @@ impl CardMetrics {
     ///
     /// Written out rather than added to [`Self::bare_row_width`], because a row
     /// with a waveform on it keeps the dot's inset: the two sums differ in
-    /// their left column as well as in the centre one, and in how many element
-    /// gaps they count.
+    /// their left and centre columns and in how many element gaps they count.
     ///
     /// Without the cancel button the sum collapses to the padding, the dot
     /// column, one gap and the waveform lane, since the side floor is 0 there
@@ -601,16 +590,15 @@ impl CardMetrics {
     /// the element gaps, but never narrower than the row it has to hold, and
     /// the row alone once either element is hidden.
     ///
-    /// The tuned width is what the pill is roomy enough for, and it is only
-    /// worth holding while every element is on the row. Take the cancel button
-    /// away and the tuned width would keep an empty column where it was, so
-    /// the pill becomes exactly the row instead; take the waveform away too
-    /// and the row is the bare one.
+    /// The tuned width is the room the pill was designed for, worth holding
+    /// only while every element is on the row. Without the cancel button it
+    /// would keep an empty column where the button was, so the pill becomes
+    /// exactly the row; without the waveform too, the bare row.
     ///
-    /// The `max()` is the fix for a clipping this overlay always had. At the
-    /// maximum padding, waveform width and waveform gap the row measures 186,
-    /// past the 172 the resting pill was tuned to, and `overflow: hidden` cut
-    /// the waveform off. `.scard.compact`'s own `max()` mirrors this exactly.
+    /// The `max()` fixes a clipping this overlay always had. At the maximum
+    /// padding, waveform width and waveform gap the row measures 186, past the
+    /// 172 the resting pill was tuned to, and `overflow: hidden` cut the
+    /// waveform off. `.scard.compact`'s own `max()` mirrors this exactly.
     fn resting_content_width(&self, tuned: f64) -> f64 {
         if !self.show_waveform {
             return self.bare_row_width();
@@ -633,19 +621,17 @@ impl CardMetrics {
 /// How far the overlay window may grow past the card on the screen edge it is
 /// anchored to, in whole logical points.
 ///
-/// The whole placement rule in one line: the window takes the full
-/// [`CardMetrics::shadow_slack`] on the three sides away from that edge, and
-/// here only `room`, the gap the card already has to the usable edge (the
-/// bottom offset above the Dock, or the top offset below the menu bar). So the
-/// card keeps the screen position it has with no shadow, the window stops at
-/// the usable edge instead of covering the Dock or the menu bar, and the
-/// shadow's faint tail is clipped by the window boundary there.
+/// The placement rule: the window takes the full [`CardMetrics::shadow_slack`]
+/// on the three sides away from that edge, and here only `room`, the gap the
+/// card already has to the usable edge (the bottom offset above the Dock, or
+/// the top offset below the menu bar). So the card keeps the screen position it
+/// has with no shadow, the window stops at the usable edge, and the shadow's
+/// faint tail is clipped by the window boundary there.
 ///
-/// Its result travels to the overlay page on the resolved theme, so the page's
-/// `.ov-stage` insets the card by the very same number and the two cannot
-/// disagree about where the card lands. `room` is the one thing the geometry
-/// cannot work out for itself: it comes from `overlay::anchored_edge_room`,
-/// which owns the per-platform offsets.
+/// Its result travels to the overlay page on the resolved theme, so `.ov-stage`
+/// insets the card by the same number and the two cannot disagree about where
+/// the card lands. `room` is the one thing the geometry cannot know: it comes
+/// from `overlay::anchored_edge_room`, which owns the per-platform offsets.
 pub(crate) fn shadow_edge_slack(theme: &OverlayTheme, material: Material, room: f64) -> f64 {
     CardMetrics::from_theme(theme)
         .shadow_slack(material, ShadowMetrics::from_theme(theme, material))
@@ -675,9 +661,8 @@ pub(crate) struct OverlayWindowState {
     shadow: ShadowMetrics,
     /// The anchored screen edge's share of the shadow slack, resolved once by
     /// [`shadow_edge_slack`] and carried so the window and the overlay page
-    /// inset the card by the same number. A field rather than something this
-    /// state recomputes, because the room it is capped by belongs to the
-    /// screen, not to the theme.
+    /// inset the card by the same number. A field rather than recomputed here,
+    /// because the room it is capped by belongs to the screen, not the theme.
     edge_slack: f64,
 }
 
@@ -721,9 +706,8 @@ impl OverlayWindowState {
             .window_size(self.shape, self.material, self.shadow, self.edge_slack)
     }
 
-    /// How far this window reaches past the card towards the anchored screen
-    /// edge. The placement subtracts it, so the card lands where it would with
-    /// no shadow at all.
+    /// This window's reach past the card towards the anchored screen edge. The
+    /// placement subtracts it, so the card lands where it would with no shadow.
     pub(crate) fn edge_slack(&self) -> f64 {
         self.edge_slack
             .clamp(0.0, self.metrics.shadow_slack(self.material, self.shadow))
@@ -795,8 +779,7 @@ mod tests {
         window_at(shape, scale, material, BORDER_WIDTH_INHERIT)
     }
 
-    /// The metrics a theme built from `tokens` asks for, everything else
-    /// inherited.
+    /// The metrics a theme built from `tokens` asks for; the rest inherited.
     fn metrics_of(tokens: OverlayTheme) -> CardMetrics {
         CardMetrics::from_theme(&tokens)
     }
@@ -971,9 +954,8 @@ mod tests {
                 show_cancel: !show_cancel,
                 ..base.metrics
             }),
-            // The shadow does not change the card at all; it changes the window
-            // around it, on both axes and in its placement, so both halves have
-            // to reach the native side.
+            // The shadow changes the window, not the card: on both axes and in
+            // its placement, so both halves must reach the native side.
             shadow_variant(ShadowMetrics {
                 strength: strength + 0.5,
                 ..base.shadow
@@ -1036,9 +1018,8 @@ mod tests {
         assert!(native_update_needed(None, &window_state()));
     }
 
-    /// A window state answers every native question itself, from the shape it
-    /// carries, which is why it holds [`CardMetrics`] and [`ShadowMetrics`] not
-    /// a handful of loose numbers.
+    /// A window state answers every native question itself, from its shape, so
+    /// it holds [`CardMetrics`] and [`ShadowMetrics`] not loose numbers.
     #[test]
     fn a_window_state_sizes_and_rounds_its_own_card() {
         let state = window_state();
@@ -1403,20 +1384,19 @@ mod tests {
     /// maximum the control row still fits the *working* pill, so no spacing
     /// token can force that window wider whatever else changes.
     ///
-    /// It never fitted the *resting* pill. At those three maxima the row
-    /// measures 186 against the 172 the resting pill was tuned to, and
-    /// `overflow: hidden` clipped the waveform. The resting pill now takes the
-    /// row when the row is wider, so the second assertion is that the two
-    /// numbers this test computes are exactly what the metrics produce, rather
-    /// than that the row fits.
+    /// It never fitted the *resting* pill: at those three maxima the row
+    /// measures 186 against the 172 it was tuned to, and `overflow: hidden`
+    /// clipped the waveform. The resting pill now takes the row when the row is
+    /// wider, so the second assertion is that the metrics produce exactly the
+    /// two numbers this test computes, not that the row fits.
     ///
     /// Both halves are gap-invariant: the element gap adds two gaps to the row
     /// and to every card, so it cancels.
     #[test]
     fn the_waveform_never_outgrows_the_working_pill() {
-        // The frontend-owned inputs, read from the frontend: the bar count from
-        // the component that renders them, and the row's own lengths from the
-        // CSS the card is painted with.
+        // The frontend-owned inputs: the bar count from the component that
+        // renders them, and the row's own lengths from the CSS the card is
+        // painted with.
         let bars = tsx_const(OVERLAY_TSX, "const WAVE_BARS = ");
         let wave_padding_right = css_px(OVERLAY_CSS, "--ov-wave-pad-r");
         let side_column = css_px(OVERLAY_CSS, "--ov-side-min");
@@ -1528,11 +1508,10 @@ mod tests {
             assert_eq!(window(shape, 1.0, Material::Glass), expected, "{shape:?}");
         }
 
-        // And setting each new token to its own inherit value by hand is the
-        // same window as leaving it unset. `shadow_strength` is the one whose
+        // Setting each new token to its own inherit value by hand is the same
+        // window as leaving it unset. `shadow_strength` is the one whose
         // inherit splits per Material, so the by-hand theme carries that
-        // Material's own value and the shadow is read from that theme, not
-        // from the unset one.
+        // Material's value and supplies the shadow, not the unset theme.
         for material in [Material::Flat, Material::Glass] {
             let theme = OverlayTheme {
                 shadow_strength: Some(match material {
@@ -1762,8 +1741,8 @@ mod tests {
     /// Stated here on the size alone, one shape at a time: the window gains the
     /// full slack on the side away from the anchored screen edge and the edge
     /// slack on the anchored side, and `.ov-stage` insets the card by those
-    /// very numbers, so the card's height and its distance from both window
-    /// edges are what they were. `overlay.rs`'s
+    /// numbers, so the card's height and its distance from both window edges
+    /// are what they were. `overlay.rs`'s
     /// `the_card_keeps_its_screen_position_when_a_shadow_is_added` completes it
     /// by placing that window on a screen.
     #[test]
@@ -1913,9 +1892,8 @@ mod tests {
     }
 
     /// Hiding the waveform shrinks the two resting shapes to the row that is
-    /// left and nothing else. The working pill and the open panel are tuned to
-    /// translated labels and to the transcript, so they keep their widths and
-    /// every morph stays a grow.
+    /// left. The working pill and the open panel are tuned to translated labels
+    /// and the transcript, so their widths hold and every morph stays a grow.
     #[test]
     fn hiding_the_waveform_shrinks_only_the_resting_shapes() {
         let hidden = metrics_of(OverlayTheme {
@@ -2097,8 +2075,7 @@ mod tests {
     }
 
     /// Under Flat the window covers the widest card its family can reach, and
-    /// neither switch changes that card, so a Flat window never moves for
-    /// either of them.
+    /// neither switch changes that card, so a Flat window never moves.
     #[test]
     fn flat_windows_ignore_the_visibility_tokens() {
         for show_waveform in [true, false] {
@@ -2370,9 +2347,8 @@ mod tests {
             css_px(OVERLAY_CSS, "--ov-elem-gap"),
             f64::from(ELEMENT_GAP_INHERIT)
         );
-        // How many of those gaps the row with a waveform on it counts, which
-        // `row_gap_width` mirrors and the apply layer drops to 1 with the
-        // cancel button.
+        // How many element gaps the row with a waveform counts; `row_gap_width`
+        // mirrors it and the apply layer drops it to 1 with the cancel button.
         assert_eq!(css_number(OVERLAY_CSS, "--ov-row-gaps"), 2.0);
         assert_eq!(inherit_metrics().row_gap_width(), 0.0);
         assert_eq!(
@@ -2492,9 +2468,8 @@ mod tests {
         assert_eq!(css_px(OVERLAY_CSS, "--ov-shadow-edge-slack"), 0.0);
         // The card's own shadow: two layers, both scaled, both at an alpha the
         // strength multiplies, so strength 0 is fully transparent and Flat is
-        // pixel-identical to what it always was. Only the alphas answer to the
-        // strength; the blur is the constant above, because it is half of the
-        // window's shadow slack.
+        // pixel-identical to what it was. Only the alphas follow the strength;
+        // the blur is the constant above: half the window's shadow slack.
         assert_eq!(
             collapsed(css_declaration(css_rule(OVERLAY_CSS, "\n.scard {"), "box-shadow")),
             collapsed(

@@ -10,7 +10,7 @@ import {
   STYLES_USING_WAVEFORM_WIDTH,
 } from "@/overlay/waveform/waveformStyles";
 
-/** The five groups the tab renders token rows in, in display order. Listed
+/** The five groups of token rows the tab renders, in display order. Listed
  *  once so anything walking every row on screen, like the theme file's
  *  "sets N of M values" line, cannot miss a group. */
 export const OVERLAY_TOKEN_GROUPS = [
@@ -36,9 +36,9 @@ interface OverlayTokenFieldBase {
   onlyUnder?: Material;
   /**
    * The waveform styles this row means anything under; absent means every
-   * style. The two waveform lengths are the only rows that have one, since a
-   * style that draws no bar has no bar width to set. Derived from the
-   * renderers' own table, so the tab cannot claim a row a style ignores.
+   * style. Only the two waveform lengths have one, since a style that draws no
+   * bar has no bar width. From the renderers' own table, so the tab cannot
+   * claim a row a style ignores.
    */
   onlyForStyles?: readonly WaveformStyle[];
 }
@@ -46,15 +46,14 @@ interface OverlayTokenFieldBase {
 /**
  * The overlay-theme token contract as data for the Appearance tab, one entry
  * per token. Instead of a hand-written row each, `AppearanceSettings` renders
- * the Overlay Color / Overlay Material / Overlay Elements / Overlay Size &
- * Spacing / Waveform groups as
+ * the Overlay Color / Material / Elements / Size & Spacing / Waveform groups as
  * `fields.filter(f => f.group === …).map(renderField)`.
  *
  * A discriminated union on `kind`, so `key` narrows with it. A color field's
  * key is one of the four color tokens, a length/factor field's one of the
- * twelve numeric ones, a toggle's one of the two switches, and the three enum
- * fields carry their own kind, so `renderField` reads `effectiveValue(field.key)`
- * at the right type per branch, not a cast.
+ * twelve numeric ones, a toggle's one of the two switches, and each enum field
+ * its own kind, so `renderField` reads `effectiveValue(field.key)` at the
+ * right type per branch, not a cast.
  *
  * Numeric bounds come from `OVERLAY_TOKEN_BOUNDS` (the apply layer's
  * re-validation table, `src/lib/overlayTheme.ts`) rather than a copy here, so
@@ -75,8 +74,8 @@ export type OverlayTokenField =
   | (OverlayTokenFieldBase & {
       kind: "glassShadow";
       key: "shadow_strength";
-      /** The note under the switch: macOS draws the Glass shadow, so the
-       *  strength is on or off and the offset does nothing. */
+      /** The switch's note: macOS draws the Glass shadow, so the strength is
+       *  on or off and the offset does nothing. */
       noteKey: string;
     })
   | (OverlayTokenFieldBase & { kind: "material"; key: "material" })
@@ -96,15 +95,14 @@ const WAVEFORM_STYLE = "settings.appearance.waveformStyle";
  *  border, border_opacity, material, glass_material, glass_style,
  *  shadow_strength, shadow_offset_y, show_waveform, show_cancel, size_scale,
  *  radius, border_width, padding, element_gap, waveform_style, waveform_gap,
- *  waveform_width.
- *  That is also the display order, since every group's rows are contiguous in
- *  it. `glass_material` is the only token with no row, since it drives the
- *  pre-macOS-26 fallback engine alone and is set from the theme file.
+ *  waveform_width. Also the display order: every group's rows are contiguous.
+ *  `glass_material` alone has no row, driving only the pre-macOS-26 fallback
+ *  engine and set from the theme file.
  *
- *  `shadow_strength` has two rows, one per Material, the shape the two card
- *  alphas already use. Under Flat it is a slider over a CSS shadow this
- *  stylesheet draws; under Glass the shadow is macOS's own and `NSWindow`
- *  offers no strength at all, so the only honest control is a switch. */
+ *  `shadow_strength` has two rows, one per Material, as the two card alphas
+ *  do. Under Flat it is a slider over a CSS shadow this stylesheet draws;
+ *  under Glass the shadow is macOS's own and `NSWindow` offers no strength,
+ *  so the only honest control is a switch. */
 export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
   {
     key: "accent",
@@ -183,8 +181,7 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
     descriptionKey: `${GLASS_STYLE}.description`,
   },
   // The shadow, after the Glass style: how the card sits against the desktop
-  // is the Material group's subject, and the shadow's behaviour is the clearest
-  // per-Material difference there is.
+  // is the Material group's subject, and the shadow differs most per Material.
   {
     key: "shadow_strength",
     group: "material",
@@ -203,8 +200,8 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
     descriptionKey: `${TOKENS}.shadowStrength.glassDescription`,
     noteKey: `${TOKENS}.shadowStrength.glassNote`,
   },
-  // Flat only: macOS places its own window shadow and takes no offset, so the
-  // row would be inert under Glass rather than merely unused.
+  // Flat only: macOS places its own window shadow and takes no offset, so under
+  // Glass the row would be inert, not merely unused.
   {
     key: "shadow_offset_y",
     group: "material",
@@ -298,17 +295,15 @@ export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
 ] as const;
 
 /**
- * The rows a group shows under one Material and one waveform style, in
- * contract order.
+ * A group's rows under one Material and one waveform style, in contract order.
  *
  * Keyed on the effective Material, what is painted, not what was asked for.
  * Where Glass cannot render, the Flat card is on screen, so Flat's opacity is
  * the live control. The apply layer picks its alpha the same way.
  *
- * `style` is optional, and omitting it keeps every style's rows. That is what
- * the theme file's "sets N of M values" total asks for: the denominator is the
- * rows this tab has under the Material, not the rows the style in effect
- * happens to show, or it would move as the user picks a style.
+ * `style` is optional; omitting it keeps every style's rows. The theme file's
+ * "sets N of M values" total needs that: a denominator of this tab's rows under
+ * the Material, not the current style's, which would move with the user's pick.
  *
  * Pure, and the only place the "never both alphas", "one shadow control per
  * Material", "no shadow offset under Glass" and "no bar width without bars"

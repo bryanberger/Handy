@@ -5,8 +5,9 @@
 //! creates is `~/.config/handy/`, behind the Appearance tab's Open button,
 //! never a path [`THEME_FILE_ENV_VAR`] named. Only typed tokens come out:
 //! canonical `#rrggbb` colours, `flat | glass`, the eight macOS
-//! `glass_material`, two `glass_style` and six `waveform_style` values, and
-//! numbers rounded and clamped to the token contract's bounds. No CSS, stylesheet, script, font,
+//! `glass_material`, two `glass_style` and six `waveform_style` values,
+//! and numbers rounded and clamped to the token contract's bounds.
+//! No CSS, stylesheet, script, font,
 //! path, URL or command is read, so a hostile file at worst costs one
 //! session's styling.
 //!
@@ -108,7 +109,7 @@ const fn token(
     TokenSpec { key, parser }
 }
 
-/// The twenty-two tokens in the token contract's order, which the Appearance tab,
+/// The twenty-two tokens in token-contract order, which the Appearance tab,
 /// [`ThemeFileState::owned_keys`] and the per-key diagnostics all follow, so
 /// the payload does not depend on `serde_json`'s key order.
 ///
@@ -1025,9 +1026,9 @@ fn parse_material(
 }
 
 /// One value of a closed enum (`glass_material`, `glass_style`,
-/// `waveform_style`), matched case-insensitively and ignoring everything that
-/// is not a letter or a digit, so `"HUD Window"`, `"hud-window"` and
-/// `"hud_window"` all land on one value. Hand-written and tool-written alike.
+/// `waveform_style`), matched case-insensitively and ignoring all but letters
+/// and digits, so `"HUD Window"`, `"hud-window"` and `"hud_window"` all land on
+/// one value. Hand-written and tool-written alike.
 ///
 /// One reader for the three, since only the value list and the key differ.
 /// `material` keeps its own, its two values having no separator to be lenient
@@ -1118,10 +1119,9 @@ fn parse_px(
 /// A switch token (`show_waveform`, `show_cancel`), read as a JSON boolean.
 ///
 /// The contract's first boolean, and deliberately the strictest reader in the
-/// file: `true` and `false` only. There is nothing to be lenient about, since
-/// no spelling question arises, and `"true"`, `1` and `"yes"` are all a
-/// theming tool emitting the wrong JSON type, which is exactly what
-/// `WrongType` is for.
+/// file: `true` and `false` only. Nothing to be lenient about, since no
+/// spelling question arises, and `"true"`, `1` and `"yes"` are all a theming
+/// tool emitting the wrong JSON type, exactly what `WrongType` is for.
 fn parse_switch(
     key: &str,
     value: &Value,

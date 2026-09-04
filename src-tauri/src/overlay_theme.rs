@@ -396,17 +396,16 @@ pub const WAVEFORM_WIDTH_MIN: u16 = 2;
 /// `padding` changes the height. Pinned by
 /// `overlay::tests::the_waveform_never_outgrows_the_working_pill`.
 pub const WAVEFORM_WIDTH_MAX: u16 = 6;
-/// Lowest accepted `shadow_strength`. Zero is legitimate, and is what Flat
-/// inherits: today's card casts no shadow at all.
+/// Lowest accepted `shadow_strength`. Zero is legitimate: what Flat inherits,
+/// today's card casting no shadow.
 pub const SHADOW_STRENGTH_MIN: f64 = 0.00;
 /// Highest accepted `shadow_strength`.
 pub const SHADOW_STRENGTH_MAX: f64 = 1.00;
 /// Highest accepted `shadow_offset_y`, in px at scale 1. Past 16 the card
 /// stops reading as something sitting above the desktop.
 pub const SHADOW_OFFSET_Y_MAX: u16 = 16;
-/// Highest accepted `element_gap`, in px at scale 1. At the bound the row's
-/// two gaps add 80 px to every card, which is a deliberately airy pill rather
-/// than a broken one.
+/// Highest accepted `element_gap`, in px at scale 1. At the bound the row's two
+/// gaps add 80 px to every card: an airy pill by design, not a broken one.
 pub const ELEMENT_GAP_MAX: u16 = 40;
 
 /// The `border_width` an unset token inherits, in px at scale 1: today's
@@ -431,13 +430,13 @@ pub const SHADOW_OFFSET_Y_INHERIT: u16 = 4;
 /// (`--ov-elem-gap: 0px`, `RecordingOverlay.css`): today's row.
 pub const ELEMENT_GAP_INHERIT: u16 = 0;
 
-/// The `shadow_strength` an unset token inherits, which is the one token whose
-/// inherit differs per Material.
+/// The `shadow_strength` an unset token inherits, the one token whose inherit
+/// differs per Material.
 ///
 /// Flat inherits 0, today's shadowless card. Glass inherits 1, macOS's own
 /// window shadow, which a Glass overlay has always cast. So the token adds a
-/// shadow to Flat and takes one away from Glass, and unset reproduces both.
-/// Must match `SHADOW_STRENGTH_INHERIT` in `src/lib/overlayTheme.ts`.
+/// shadow to Flat and takes one from Glass, and unset reproduces both. Must
+/// match `SHADOW_STRENGTH_INHERIT` in `src/lib/overlayTheme.ts`.
 pub const fn shadow_strength_inherit(material: Material) -> f64 {
     match material {
         Material::Flat => 0.0,
@@ -678,9 +677,8 @@ impl OverlayTheme {
     /// The `shadow_strength` under `material`: unset ⇒
     /// [`shadow_strength_inherit`], otherwise clamped to `0.00..=1.00`.
     ///
-    /// The Material is a parameter because this is the one token whose inherit
-    /// depends on it. Asking for it unconditionally keeps callers from having
-    /// to know that.
+    /// The Material is a parameter: this is the one token whose inherit depends
+    /// on it. Asking unconditionally keeps callers from having to know it.
     pub fn shadow_strength(&self, material: Material) -> f64 {
         match self.shadow_strength {
             Some(value) if value.is_finite() => {
@@ -1622,8 +1620,8 @@ mod tests {
         );
         // Unset is today's card, so the default has to be the DOM bars.
         assert_eq!(WaveformStyle::default(), WaveformStyle::Bars);
-        // No accessor beside the other tokens': this is the one token nothing
-        // native reads, so the frontend resolves the inherit itself
+        // No accessor beside the other tokens': the one token nothing native
+        // reads, so the frontend resolves the inherit itself
         // (`waveformStyleToken` in `src/lib/overlayTheme.ts`) and Rust only
         // carries and clamps it.
         assert_eq!(OverlayTheme::default().waveform_style, None);
@@ -1631,9 +1629,9 @@ mod tests {
 
     /// The six styles are declared three times: this enum, the apply layer's
     /// value list (which re-validates a hand-edited localStorage mirror), and
-    /// the renderers' token table (which says which lengths each style reads
-    /// and so which rows the tab shows). A value added here alone would paint
-    /// an empty lane, so all three are pinned to each other.
+    /// the renderers' token table (which lengths each style reads, and so which
+    /// rows the tab shows). A value added here alone would paint an empty lane,
+    /// so all three are pinned to each other.
     #[test]
     fn the_waveform_styles_match_the_frontends() {
         let list = {
@@ -1813,8 +1811,7 @@ mod tests {
     }
 
     /// The resolved theme carries the one number the overlay page cannot work
-    /// out for itself: how far its window reaches past the card towards the
-    /// screen edge it is anchored to.
+    /// out: how far its window reaches past the card towards the anchored edge.
     ///
     /// Derived here, beside the effective Material, because the same resolve is
     /// what the window is sized and placed from and what the page paints, and
@@ -1848,8 +1845,8 @@ mod tests {
             );
         }
 
-        // Nothing is taken with no shadow to make room for, which is what keeps
-        // an untouched overlay's window byte-identical…
+        // Nothing is taken with no shadow to make room for, keeping an
+        // untouched overlay's window byte-identical…
         assert_eq!(
             resolve_from(OverlayTheme::default(), file.clone(), flat, 40.0).shadow_edge_slack,
             0.0
@@ -1915,9 +1912,8 @@ mod tests {
     }
 
     /// The shadow's strength is the second token with a per-Material inherit,
-    /// after the border's alpha, and the only one whose two inherits are the
-    /// ends of its own range: Flat has never had a shadow, Glass has always
-    /// had macOS's.
+    /// after the border's alpha, and the only one whose two inherits are its
+    /// range's ends: Flat has never had a shadow, Glass has always had macOS's.
     #[test]
     fn the_shadow_strength_inherits_per_material_and_clamps() {
         let strength = |value: Option<f64>, material: Material| {
@@ -2126,9 +2122,8 @@ mod tests {
         );
 
         // The shadow's strength cannot sit in that table: its inherit differs
-        // per Material, like the border's alpha. Its two numbers are pinned to
-        // the apply layer's own record instead, which is what the tab shows and
-        // what the card is painted with.
+        // per Material, like the border's alpha. Its two numbers pin instead to
+        // the apply layer's own record: what the tab shows and paints the card.
         let shadow_inherit = ts_declaration_block(APPLY_LAYER_TS, "SHADOW_STRENGTH_INHERIT");
         for material in [Material::Flat, Material::Glass] {
             let key = match material {

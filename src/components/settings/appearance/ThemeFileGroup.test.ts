@@ -37,14 +37,14 @@ describe("lockedTokenCounts", () => {
     expect(lockedTokenCounts([], "glass", true).total).toBe(19);
 
     // The two shadow rows are one token, so the table has one entry more than
-    // the tokens it covers. The two waveform lengths count whatever style is
-    // in effect, so the total does not move when the user picks one.
+    // the tokens it covers. The two waveform lengths count under every style,
+    // so the total does not move as the user picks one.
     expect(OVERLAY_TOKEN_FIELDS.length).toBe(22);
   });
 
   test("a hidden waveform takes its whole group out of the total", () => {
-    // The tab drops the Waveform group with the waveform itself, so its three
-    // rows (the style and the two lengths) are not there to be locked.
+    // The tab drops the Waveform group with the waveform, so its three rows
+    // (the style and the two lengths) are not there to be locked.
     expect(lockedTokenCounts([], "flat", false).total).toBe(17);
     expect(lockedTokenCounts([], "glass", false).total).toBe(16);
     // A file owning one of them counts nothing while the group is gone.
@@ -89,8 +89,8 @@ describe("lockedTokenCounts", () => {
   });
 
   test("the shadow offset counts only where it has a row", () => {
-    // The token still applies under Glass; it just has nothing to lock there,
-    // so counting it would promise a row the user cannot find.
+    // The token still applies under Glass, with nothing to lock there, so
+    // counting it would promise a row the user cannot find.
     expect(lockedTokenCounts(["shadow_offset_y"], "flat", true).count).toBe(1);
     expect(lockedTokenCounts(["shadow_offset_y"], "glass", true).count).toBe(0);
     // The strength has a row on both, a slider or a switch.

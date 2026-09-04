@@ -38,11 +38,10 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
 
 /** The tokens with a row in the Appearance tab under one Material. It asks
  *  for rows exactly as the groups render them, so a token that gains, loses
- *  or shares a row needs no second edit. Never on screen: `glass_material`,
- *  which only drives the pre-macOS-26 fallback engine and is set from the
- *  theme file, the other Material's alpha, under Glass the shadow offset macOS
- *  gives no say over, and with the waveform hidden the whole Waveform group,
- *  which the tab drops with it. */
+ *  or shares a row needs no second edit. Never shown: `glass_material`, which
+ *  drives only the pre-macOS-26 fallback engine and is set from the theme file,
+ *  the other Material's alpha, under Glass the shadow offset macOS owns, and
+ *  with the waveform hidden the whole Waveform group the tab drops with it. */
 function keysWithARow(
   material: Material,
   showWaveform: boolean,
@@ -62,11 +61,11 @@ function keysWithARow(
  * tab can show as locked right now, on the Material being painted.
  *
  * Otherwise a file setting a row-less token would count as owning a value
- * with no control, and the total would promise rows that are not there. So the
- * total moves with what is on screen: twenty of the twenty-two under Flat,
- * nineteen under Glass, which has no shadow offset, and three fewer either way
- * with the waveform hidden, which takes its whole group off the tab. The
- * tokens still apply; this rule counts one sentence, not the file.
+ * with no control, promising rows that are not there. So the total follows what
+ * is on screen: twenty of the twenty-two under Flat, nineteen under Glass, with
+ * no shadow offset, and three fewer either way with the waveform hidden, whose
+ * group leaves the tab. The tokens still apply; this rule counts one sentence,
+ * not the file.
  */
 export function lockedTokenCounts(
   ownedKeys: readonly string[],

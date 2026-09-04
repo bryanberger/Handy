@@ -21,11 +21,11 @@ export interface OverlaySwitchRowProps {
  * `NSWindow` exposes no strength to slide.
  *
  * A switch commits straight through `setOverlayThemeToken`, as the Material and
- * the Glass style do. There is nothing to settle: a click is one value, not the
- * tail of a drag, so the draft path the sliders need would only add a delay.
+ * the Glass style do. Nothing to settle: a click is one value, not the tail of
+ * a drag, so the sliders' draft path would only add a delay.
  *
- * Memoised for the same reason [`OverlayTokenRow`] is. The tab re-renders on
- * every frame of a slider drag, which cannot have moved a switch.
+ * Memoised for the same reason [`OverlayTokenRow`] is: the tab re-renders every
+ * frame of a slider drag, which cannot have moved a switch.
  */
 const OverlaySwitchRowInner: React.FC<OverlaySwitchRowProps> = ({
   labelKey,

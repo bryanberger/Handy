@@ -15,15 +15,14 @@ import {
  * lights more of them and throws them further, so speech reads as sparks.
  * `waveform_width` is a mote's diameter.
  *
- * A bounded pool, filled once and reused: a mote is spawned at a column drawn
- * from the buckets themselves, so the field follows the spectrum without ever
- * bunching into one, rises with a little sideways drift, and shrinks and fades
- * over its own life. Every random number comes from one seeded sequence, so
- * the field is identical on every machine and every run.
+ * A bounded pool, filled once and reused: a mote spawns at a column drawn from
+ * the buckets, so the field follows the spectrum without bunching into one,
+ * rises with a little sideways drift, and shrinks and fades over its life. One
+ * seeded sequence supplies every random number, so the field is identical on
+ * every machine and run.
  *
- * Under reduced motion the pool is not simulated at all: it is seeded into a
- * still field that follows the levels and nothing else, which is what makes
- * two timestamps at the same levels draw the same picture.
+ * Under reduced motion the pool is not simulated but seeded into a still field
+ * following the levels alone, so the picture depends on them, not on the clock.
  */
 
 const TAU = Math.PI * 2;
@@ -49,10 +48,9 @@ const SPREAD_FLOOR = 0.35;
  *  baseline. */
 const BASE_BAND = 0.14;
 
-/** How fast a mote rises, in lanes a second, at silence and at full voice,
- *  and how far it wanders sideways. Fast enough that a loud field reaches the
- *  top of the lane inside one life, which is what makes loudness read as
- *  throw rather than as count alone. */
+/** How fast a mote rises, in lanes a second, at silence and at full voice, and
+ *  how far it wanders sideways. Fast enough that a loud field reaches the top
+ *  of the lane inside one life, so loudness reads as throw, not count alone. */
 const RISE_MIN = 0.62;
 const RISE_SPAN = 1.6;
 const DRIFT = 0.35;
@@ -67,14 +65,14 @@ const SIZE_MIN = 0.36;
 const SIZE_SPAN = 0.3;
 const SHRINK = 0.4;
 
-/** How quickly a mote lights, and how quickly it goes out, both as a multiple
- *  of its own life. Between the two it burns at full: a mote that dimmed from
- *  the moment it appeared spent its whole rise as a smudge. */
+/** How quickly a mote lights and how quickly it goes out, both as a multiple of
+ *  its own life. Between the two it burns at full: a mote dimming from the
+ *  moment it appeared spent its whole rise as a smudge. */
 const ATTACK = 7;
 const DECAY = 3;
 
-/** Where a mote's gradient stops being solid colour: a bright centre in a
- *  soft falloff, which is what gives it no edge at all. */
+/** Where a mote's gradient stops being solid colour: a bright centre in a soft
+ *  falloff, so it has no edge at all. */
 const CORE_STOP = 0.42;
 
 /** The loudness the arming idle pretends to hear, so a few motes drift while
@@ -123,9 +121,8 @@ function pickBucket(levels: Float32Array): number {
 }
 
 /**
- * Fill one slot with a new mote, already `travelled` of the way through its
- * own life, so the same function both spawns one at the baseline and seeds a
- * still field of motes caught mid-rise.
+ * Fill one slot with a new mote already `travelled` through its life, so one
+ * function both spawns at the baseline and seeds a still field caught mid-rise.
  */
 function spawn(
   mote: number,
@@ -148,8 +145,8 @@ function spawn(
 }
 
 /** The still field a frozen clock draws: the sequence restarted and the pool
- *  refilled from the levels alone, so the same levels always give the same
- *  field however long the overlay has been up. */
+ *  refilled from the levels alone, so the same levels give the same field
+ *  however long the overlay has been up. */
 function freeze(
   levels: Float32Array,
   geom: WaveformGeometry,

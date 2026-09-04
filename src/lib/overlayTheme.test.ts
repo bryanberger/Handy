@@ -33,6 +33,12 @@ import {
  * worked example and the Glass neutrals, never read off the implementation.
  */
 
+// A stand-in for `effective_edge_margin`, the one inherit the apply layer does
+// not own. Rust resolves it per platform and per anchored edge and ships it on
+// the resolved theme; here any number will do, and a distinctive one makes a
+// leak into another token's answer obvious.
+const EDGE_MARGIN_SAMPLE = 37;
+
 /** A resolved payload with the given tokens; the rest inherit. */
 function resolved(
   theme: Partial<OverlayTheme>,
@@ -58,6 +64,9 @@ function resolved(
       diagnostics_total: 0,
       stale: false,
     },
+    // Native only: no custom property is written from it, so every apply-layer
+    // expectation below is unchanged by whatever it holds.
+    effective_edge_margin: EDGE_MARGIN_SAMPLE,
   };
 }
 
@@ -166,6 +175,7 @@ describe("inherit", () => {
           key as keyof typeof OVERLAY_TOKEN_BOUNDS,
           "flat",
           "regular",
+          EDGE_MARGIN_SAMPLE,
         ),
       ).toBe(expected);
       // A length is one number on both Materials and Glass styles.
@@ -174,39 +184,83 @@ describe("inherit", () => {
           key as keyof typeof OVERLAY_TOKEN_BOUNDS,
           "glass",
           "clear",
+          EDGE_MARGIN_SAMPLE,
         ),
       ).toBe(expected);
     }
 
-    expect(inheritedTokenValue("surface_opacity", "flat", "regular")).toBe(
-      SURFACE_OPACITY_INHERIT,
-    );
-    expect(inheritedTokenValue("glass_tint", "glass", "regular")).toBe(
-      GLASS_TINT_INHERIT,
-    );
+    expect(
+      inheritedTokenValue(
+        "surface_opacity",
+        "flat",
+        "regular",
+        EDGE_MARGIN_SAMPLE,
+      ),
+    ).toBe(SURFACE_OPACITY_INHERIT);
+    expect(
+      inheritedTokenValue("glass_tint", "glass", "regular", EDGE_MARGIN_SAMPLE),
+    ).toBe(GLASS_TINT_INHERIT);
     // One tint for both Glass styles. Measured against Spotlight; see its doc.
-    expect(inheritedTokenValue("glass_tint", "glass", "clear")).toBe(
-      GLASS_TINT_INHERIT,
-    );
+    expect(
+      inheritedTokenValue("glass_tint", "glass", "clear", EDGE_MARGIN_SAMPLE),
+    ).toBe(GLASS_TINT_INHERIT);
   });
 
   // The one token whose inherit is not a single number. The card's edge is
   // stronger over glass and stronger again over Clear, so asking per Material
   // and Glass style keeps that rule out of every caller.
   test("the border alpha inherits per Material and Glass style", () => {
-    expect(inheritedTokenValue("border_opacity", "flat", "regular")).toBe(
-      BORDER_OPACITY_INHERIT.flat,
-    );
-    expect(inheritedTokenValue("border_opacity", "glass", "regular")).toBe(
-      BORDER_OPACITY_INHERIT.glass,
-    );
-    expect(inheritedTokenValue("border_opacity", "glass", "clear")).toBe(
-      BORDER_OPACITY_INHERIT_CLEAR,
-    );
+    expect(
+      inheritedTokenValue(
+        "border_opacity",
+        "flat",
+        "regular",
+        EDGE_MARGIN_SAMPLE,
+      ),
+    ).toBe(BORDER_OPACITY_INHERIT.flat);
+    expect(
+      inheritedTokenValue(
+        "border_opacity",
+        "glass",
+        "regular",
+        EDGE_MARGIN_SAMPLE,
+      ),
+    ).toBe(BORDER_OPACITY_INHERIT.glass);
+    expect(
+      inheritedTokenValue(
+        "border_opacity",
+        "glass",
+        "clear",
+        EDGE_MARGIN_SAMPLE,
+      ),
+    ).toBe(BORDER_OPACITY_INHERIT_CLEAR);
     // The Glass style never reaches Flat's edge.
-    expect(inheritedTokenValue("border_opacity", "flat", "clear")).toBe(
-      BORDER_OPACITY_INHERIT.flat,
-    );
+    expect(
+      inheritedTokenValue(
+        "border_opacity",
+        "flat",
+        "clear",
+        EDGE_MARGIN_SAMPLE,
+      ),
+    ).toBe(BORDER_OPACITY_INHERIT.flat);
+  });
+
+  // The other inherit this module does not own. There is no per-platform table
+  // here on purpose: Rust places the window from `effective_edge_margin`, so
+  // the slider showing anything else would be showing a gap the overlay does
+  // not have.
+  test("the edge margin inherits whatever the backend resolved", () => {
+    for (const margin of [0, 4, 15, 21, 40, 200]) {
+      expect(
+        inheritedTokenValue("edge_margin", "flat", "regular", margin),
+      ).toBe(margin);
+      expect(inheritedTokenValue("edge_margin", "glass", "clear", margin)).toBe(
+        margin,
+      );
+    }
+    // ...and it is not a card length, so nothing about it moves with the size
+    // scale. The token's own inherit is unrelated to `size_scale`'s.
+    expect(inheritedTokenValue("size_scale", "flat", "regular", 200)).toBe(1);
   });
 
   // Spotlight's capsule carries a bright rim in both appearances. Clear is our
@@ -240,7 +294,12 @@ describe("inherit", () => {
       const { min, max } = OVERLAY_TOKEN_BOUNDS[key];
       for (const material of ["flat", "glass"] as const) {
         for (const glassStyle of ["regular", "clear"] as const) {
-          const value = inheritedTokenValue(key, material, glassStyle);
+          const value = inheritedTokenValue(
+            key,
+            material,
+            glassStyle,
+            EDGE_MARGIN_SAMPLE,
+          );
           expect(value).toBeGreaterThanOrEqual(min);
           expect(value).toBeLessThanOrEqual(max);
         }
@@ -355,6 +414,9 @@ describe("derivations", () => {
       padding: { min: 0, max: 20, step: 1 },
       waveform_gap: { min: 0, max: 5, step: 1 },
       waveform_width: { min: 2, max: 6, step: 1 },
+      // Points from the usable screen edge, not a card length, so the size
+      // scale never multiplies it. 200 is already a fifth of a laptop screen.
+      edge_margin: { min: 0, max: 200, step: 1 },
     });
   });
 
@@ -525,9 +587,14 @@ describe("Glass", () => {
     for (const { material, glassStyle, color, opacity, painted } of edges) {
       // What the tab shows on both controls while the tokens are unset.
       expect(inheritedBorder(material, glassStyle)).toEqual({ color, opacity });
-      expect(inheritedTokenValue("border_opacity", material, glassStyle)).toBe(
-        opacity,
-      );
+      expect(
+        inheritedTokenValue(
+          "border_opacity",
+          material,
+          glassStyle,
+          EDGE_MARGIN_SAMPLE,
+        ),
+      ).toBe(opacity);
       // And what the card paints. Flat writes no edge with all tokens unset
       // (removal rule), so the alpha is handed back to show both halves.
       expect(
@@ -630,7 +697,7 @@ describe("the two alphas", () => {
 });
 
 describe("the worked example", () => {
-  /** The README's "A full theme", all sixteen tokens set. */
+  /** The README's "A full theme", all seventeen tokens set. */
   const FULL_THEME: Partial<OverlayTheme> = {
     accent: "#7aa2f7",
     surface: "#1a1b26",
@@ -648,6 +715,7 @@ describe("the worked example", () => {
     padding: 14,
     waveform_gap: 2,
     waveform_width: 4,
+    edge_margin: 24,
   };
 
   // The README's full theme file and the CSS it resolves to. Its

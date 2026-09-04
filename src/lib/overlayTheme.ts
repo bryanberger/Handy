@@ -33,7 +33,7 @@ export type OverlayThemeKey = keyof OverlayTheme;
 /** The four tokens whose value is a colour. */
 export type OverlayColorKey = "accent" | "surface" | "text" | "border";
 
-/** The nine tokens whose value is a number. */
+/** The ten tokens whose value is a number. */
 export type OverlayNumericKey =
   | "surface_opacity"
   | "glass_tint"
@@ -43,7 +43,8 @@ export type OverlayNumericKey =
   | "border_width"
   | "padding"
   | "waveform_gap"
-  | "waveform_width";
+  | "waveform_width"
+  | "edge_margin";
 
 /**
  * The numeric tokens' bounds, the same numbers Rust clamps to. Read by the
@@ -64,6 +65,7 @@ export const OVERLAY_TOKEN_BOUNDS: Record<
   padding: { min: 0, max: 20, step: 1 },
   waveform_gap: { min: 0, max: 5, step: 1 },
   waveform_width: { min: 2, max: 6, step: 1 },
+  edge_margin: { min: 0, max: 200, step: 1 },
 };
 
 /** The theme that inherits every token, Handy's overlay as it ships. */
@@ -84,6 +86,7 @@ export const INHERIT_ALL: OverlayTheme = {
   padding: null,
   waveform_gap: null,
   waveform_width: null,
+  edge_margin: null,
 };
 
 /**
@@ -220,9 +223,16 @@ export function inheritedBorder(
     : { color: BORDER_INHERIT, opacity: BORDER_OPACITY_INHERIT[material] };
 }
 
-/** Each numeric token's single-number inherit, from `RecordingOverlay.css`. */
+/**
+ * Each numeric token's single-number inherit, from `RecordingOverlay.css`.
+ *
+ * Two tokens are missing, the two whose inherit is not a single number:
+ * `border_opacity`, which follows the Material and the Glass style, and
+ * `edge_margin`, which follows the platform and the anchored screen edge and
+ * is therefore resolved in Rust and carried on the resolved theme.
+ */
 const STATIC_NUMERIC_INHERIT: Record<
-  Exclude<OverlayNumericKey, "border_opacity">,
+  Exclude<OverlayNumericKey, "border_opacity" | "edge_margin">,
   number
 > = {
   surface_opacity: SURFACE_OPACITY_INHERIT, // --s-surface's own 98%
@@ -237,10 +247,15 @@ const STATIC_NUMERIC_INHERIT: Record<
 
 /**
  * What a numeric token resolves to while unset, the number a control shows and
- * the number the card is painted with. The Material is a parameter because one
- * token's inherit depends on it, the card's edge being stronger over glass;
- * asking for it unconditionally keeps callers from having to know which token
- * that is.
+ * the number the card is painted with. The Material and the Glass style are
+ * parameters because one token's inherit depends on them, the card's edge being
+ * stronger over glass; `edgeMargin` is one because another's depends on the
+ * platform and the anchored screen edge, which only Rust knows. Asking for all
+ * three unconditionally keeps callers from having to know which token is which.
+ *
+ * `edgeMargin` is `effective_edge_margin` off the resolved theme, the same
+ * number the native window is placed from, so the slider cannot show a gap the
+ * overlay does not have. Passing anything else here is a lie about the screen.
  *
  * The numbers live here beside the two alphas above, not in the Appearance
  * tab, so one module answers "what does an unset token inherit".
@@ -256,10 +271,12 @@ export function inheritedTokenValue(
   key: OverlayNumericKey,
   material: Material,
   glassStyle: GlassStyle,
+  edgeMargin: number,
 ): number {
-  return key === "border_opacity"
-    ? inheritedBorder(material, glassStyle).opacity
-    : STATIC_NUMERIC_INHERIT[key];
+  if (key === "border_opacity")
+    return inheritedBorder(material, glassStyle).opacity;
+  if (key === "edge_margin") return edgeMargin;
+  return STATIC_NUMERIC_INHERIT[key];
 }
 
 /**

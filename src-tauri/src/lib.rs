@@ -1037,6 +1037,11 @@ pub fn run(cli_args: CliArgs) {
                 settings.overlay_style != settings::OverlayStyle::None,
             );
 
+            // Same bargain for the anchored edge, which the overlay theme's
+            // draft path reads once per animation frame while the Appearance
+            // tab's edge-margin slider is dragged.
+            overlay::update_overlay_position_cache(settings.overlay_position);
+
             // Pre-warm GPU/accelerator enumeration on a background thread. The first
             // get_available_accelerators call enumerates ORT execution providers and
             // transcribe-cpp compute devices, which can take a moment; without this

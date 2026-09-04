@@ -318,6 +318,10 @@
         "resetLabel": "Rétablir la valeur par défaut"
       },
       "tokens": {
+        "edgeMargin": {
+          "title": "Edge Margin",
+          "description": "How far the overlay sits from the screen edge it is anchored to. 0 is flush against the usable edge — below the menu bar and above the Dock on macOS, inside the work area on Windows, inside the area panels leave on Linux. Unaffected by the size scale."
+        },
         "accent": {
           "title": "Accentuation",
           "description": "La couleur de mise en évidence : la forme d'onde, le point d'enregistrement, le curseur et l'indicateur d'activité."

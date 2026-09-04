@@ -313,6 +313,10 @@ pub const RADIUS_MAX: u16 = 32;
 pub const PADDING_MAX: u16 = 20;
 /// Highest accepted `waveform_gap`, in px at scale 1.
 pub const WAVEFORM_GAP_MAX: u16 = 5;
+/// Highest accepted `edge_margin`, in points. Two hundred points is already a
+/// fifth of a laptop screen's height; past that the overlay reads as floating
+/// in the middle rather than sitting at an edge.
+pub const EDGE_MARGIN_MAX: u16 = 200;
 /// Lowest accepted `border_opacity`. Zero is legitimate. It is how a theme
 /// asks for a card with no visible edge without giving up the width.
 pub const BORDER_OPACITY_MIN: f64 = 0.00;
@@ -378,11 +382,11 @@ where
     }
 }
 
-/// The sixteen overlay-theme tokens. `None` means inherit.
+/// The seventeen overlay-theme tokens. `None` means inherit.
 ///
 /// Field names are the theme-file keys, and every field deserializes
 /// leniently: a wrong type or shape degrades to `None` with a `warn!`, so one
-/// bad token never costs the other fifteen, as `salvage_settings` does one
+/// bad token never costs the other sixteen, as `salvage_settings` does one
 /// level up. The store salvages silently (log only); the theme file applies
 /// the same rules but reports diagnostics, so it runs its own per-key pass
 /// instead of deserializing an `OverlayTheme`.
@@ -461,6 +465,17 @@ pub struct OverlayTheme {
     /// Width of each waveform bar at scale 1, 2 to 6 px.
     #[serde(default, deserialize_with = "inherit_on_error")]
     pub waveform_width: Option<u16>,
+    /// The gap between the usable screen edge and the card, in points, 0 to
+    /// 200. Zero sits the card flush against that edge.
+    ///
+    /// The one token measured against the screen rather than the card, so it
+    /// is *not* multiplied by `size_scale`: the screen does not zoom, and the
+    /// card's distance from the edge stays what the user chose at every scale.
+    /// Which edge it is measured from follows the `overlay_position` setting,
+    /// so an unset value inherits per platform *and* per position; see
+    /// [`Self::edge_margin`].
+    #[serde(default, deserialize_with = "inherit_on_error")]
+    pub edge_margin: Option<u16>,
 }
 
 impl OverlayTheme {
@@ -516,6 +531,24 @@ impl OverlayTheme {
         self.padding.unwrap_or(PADDING_INHERIT).min(PADDING_MAX)
     }
 
+    /// The gap to the usable screen edge in points, for the edge `position`
+    /// anchors to: unset ⇒ the per-platform, per-position value that puts the
+    /// card where it sits today ([`crate::overlay_geometry::inherit_edge_margin`]),
+    /// otherwise clamped to `0..=EDGE_MARGIN_MAX`.
+    ///
+    /// The single clamp, like [`Self::padding`]. The inherit table lives in
+    /// the geometry module with the placement formulas it belongs to, so the
+    /// six platform/position pairs are asserted on any host.
+    pub fn edge_margin(&self, position: crate::settings::OverlayPosition) -> u16 {
+        match self.edge_margin {
+            Some(margin) => margin.min(EDGE_MARGIN_MAX),
+            None => crate::overlay_geometry::inherit_edge_margin(
+                crate::overlay_geometry::Platform::current(),
+                position,
+            ),
+        }
+    }
+
     /// A copy with every token clamped to this module's bounds.
     ///
     /// Applied before persisting and again after merging, so no out-of-range
@@ -562,6 +595,7 @@ impl OverlayTheme {
             waveform_width: self
                 .waveform_width
                 .map(|value| value.clamp(WAVEFORM_WIDTH_MIN, WAVEFORM_WIDTH_MAX)),
+            edge_margin: self.edge_margin.map(|value| value.min(EDGE_MARGIN_MAX)),
         }
     }
 }
@@ -721,6 +755,16 @@ pub struct ResolvedOverlayTheme {
     /// the Appearance tab instead of a TypeScript platform check, so the two
     /// sides cannot disagree.
     pub glass_support: GlassSupport,
+    /// The gap to the usable screen edge actually in effect, in points: the
+    /// `edge_margin` token, or the per-platform, per-position value an unset
+    /// one inherits. Concrete, never `None`.
+    ///
+    /// Carried for the same reason as `glass_support`: the number depends on
+    /// the platform and on the anchored edge, and the Appearance tab's slider
+    /// has to show it while the token is unset. Shipping the answer keeps a
+    /// six-cell platform table out of TypeScript, where it could disagree with
+    /// the one the window is placed from.
+    pub effective_edge_margin: u16,
     /// What the theme file contributed, including which tokens it owns and what
     /// the reader had to ignore.
     pub file: ThemeFileState,
@@ -753,6 +797,7 @@ pub fn merge(file: &OverlayTheme, settings: &OverlayTheme) -> OverlayTheme {
         padding: file.padding.or(settings.padding),
         waveform_gap: file.waveform_gap.or(settings.waveform_gap),
         waveform_width: file.waveform_width.or(settings.waveform_width),
+        edge_margin: file.edge_margin.or(settings.edge_margin),
     }
 }
 
@@ -767,6 +812,7 @@ pub fn resolve(app: &AppHandle) -> ResolvedOverlayTheme {
         settings_theme(app),
         crate::overlay_theme_file::cached(app),
         glass_support(app),
+        crate::overlay::current_overlay_position(),
     )
 }
 
@@ -779,6 +825,7 @@ pub fn resolve_with(app: &AppHandle, settings_theme: OverlayTheme) -> ResolvedOv
         settings_theme,
         crate::overlay_theme_file::cached(app),
         glass_support(app),
+        crate::overlay::current_overlay_position(),
     )
 }
 
@@ -805,6 +852,7 @@ pub fn resolve_reloading_for(
         settings_theme,
         crate::overlay_theme_file::read(app),
         glass_support(app),
+        crate::overlay::current_overlay_position(),
     )
 }
 
@@ -814,23 +862,27 @@ fn settings_theme(app: &AppHandle) -> OverlayTheme {
 }
 
 /// The whole resolution rule with nothing to look up: merge the file over the
-/// settings, clamp once, and decide the Material actually rendered.
+/// settings, clamp once, decide the Material actually rendered, and resolve
+/// the edge margin against the edge the overlay is anchored to.
 ///
-/// Pure, so the merge order, the clamping and the Glass downgrade are testable
-/// together without an `AppHandle`.
+/// Pure, so the merge order, the clamping, the Glass downgrade and the
+/// margin's per-position inherit are testable together without an `AppHandle`.
 pub fn resolve_from(
     settings_theme: OverlayTheme,
     file: ThemeFileState,
     support: GlassSupport,
+    position: crate::settings::OverlayPosition,
 ) -> ResolvedOverlayTheme {
     let theme = merge(&file.tokens, &settings_theme).normalized();
     let effective_material = effective_material(theme.material(), support);
+    let effective_edge_margin = theme.edge_margin(position);
 
     ResolvedOverlayTheme {
         theme,
         effective_material,
         glass_support: support,
         file,
+        effective_edge_margin,
     }
 }
 
@@ -862,9 +914,10 @@ pub fn deliver(app: &AppHandle, resolved: &ResolvedOverlayTheme) {
     // The two values the native steps below consume, logged before they are
     // applied so "the overlay is the wrong size" can be read out of the log.
     debug!(
-        "Delivering overlay theme: material={:?}, size_scale={}",
+        "Delivering overlay theme: material={:?}, size_scale={}, edge_margin={}",
         resolved.effective_material,
-        resolved.theme.size_scale()
+        resolved.theme.size_scale(),
+        resolved.effective_edge_margin
     );
 
     if let Err(error) = resolved.emit(app) {
@@ -909,6 +962,8 @@ mod tests {
         css_color, css_number, css_px, ts_declaration_block, ts_entry_block, ts_number_field,
         tsx_const, APPLY_LAYER_TS, OVERLAY_CSS, THEME_CSS,
     };
+    use crate::overlay_geometry::{inherit_edge_margin, Platform};
+    use crate::settings::OverlayPosition;
     use serde_json::json;
 
     fn hex(raw: &str) -> Option<HexColor> {
@@ -949,6 +1004,7 @@ mod tests {
         assert_eq!(theme.padding, None);
         assert_eq!(theme.waveform_gap, None);
         assert_eq!(theme.waveform_width, None);
+        assert_eq!(theme.edge_margin, None);
 
         // The accessors' inherit values.
         assert_eq!(theme.size_scale(), 1.0);
@@ -956,6 +1012,14 @@ mod tests {
         assert_eq!(theme.glass_material(), GlassMaterial::HudWindow);
         assert_eq!(theme.glass_style(), GlassStyle::Regular);
         assert_eq!(theme.border_width(), 1);
+        // The one accessor whose inherit is not a constant: it follows the
+        // platform and the edge the overlay is anchored to.
+        for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+            assert_eq!(
+                theme.edge_margin(position),
+                inherit_edge_margin(Platform::current(), position)
+            );
+        }
 
         // A store written before this field existed, and an explicit
         // all-null document, are the same thing.
@@ -1204,6 +1268,7 @@ mod tests {
             padding: Some(99),
             waveform_gap: Some(99),
             waveform_width: Some(99),
+            edge_margin: Some(9999),
         }
         .normalized();
 
@@ -1216,6 +1281,7 @@ mod tests {
         assert_eq!(over.padding, Some(20));
         assert_eq!(over.waveform_gap, Some(5));
         assert_eq!(over.waveform_width, Some(6));
+        assert_eq!(over.edge_margin, Some(EDGE_MARGIN_MAX));
         // Colours and the enum are already canonical; clamping leaves them be.
         assert_eq!(over.accent, hex("#7aa2f7"));
         assert_eq!(over.surface, hex("#1a1b26"));
@@ -1419,7 +1485,12 @@ mod tests {
             available: false,
             engine: GlassEngine::VisualEffect,
         };
-        let resolved = resolve_from(settings_theme.clone(), file.clone(), unavailable);
+        let resolved = resolve_from(
+            settings_theme.clone(),
+            file.clone(),
+            unavailable,
+            OverlayPosition::Bottom,
+        );
 
         // The file's out-of-range value wins the key and is then clamped.
         assert_eq!(resolved.theme.size_scale, Some(1.50));
@@ -1446,7 +1517,12 @@ mod tests {
             available: true,
             engine: GlassEngine::Liquid,
         };
-        let rendered = resolve_from(settings_theme, ThemeFileState::absent_at(""), available);
+        let rendered = resolve_from(
+            settings_theme,
+            ThemeFileState::absent_at(""),
+            available,
+            OverlayPosition::Bottom,
+        );
         assert_eq!(rendered.effective_material, Material::Glass);
         // With no file, the settings' own scale survives.
         assert_eq!(rendered.theme.size_scale, Some(1.0));
@@ -1495,6 +1571,99 @@ mod tests {
         );
     }
 
+    /// The margin token's own rules: it clamps like the other lengths, and an
+    /// unset one is *not* one number — it follows the platform and the edge
+    /// the overlay is anchored to, so flipping Top/Bottom while nothing is set
+    /// keeps today's look on both.
+    #[test]
+    fn the_edge_margin_clamps_and_inherits_per_position() {
+        let unset = OverlayTheme::default();
+        assert_eq!(
+            unset.edge_margin(OverlayPosition::Top),
+            inherit_edge_margin(Platform::current(), OverlayPosition::Top)
+        );
+        assert_eq!(
+            unset.edge_margin(OverlayPosition::Bottom),
+            inherit_edge_margin(Platform::current(), OverlayPosition::Bottom)
+        );
+
+        // A set value is the same on either edge, and out of range is clamped
+        // by the accessor as well as by `normalized`, so nothing downstream
+        // has to trust that the store was written through the clamp.
+        let set = OverlayTheme {
+            edge_margin: Some(64),
+            ..Default::default()
+        };
+        assert_eq!(set.edge_margin(OverlayPosition::Top), 64);
+        assert_eq!(set.edge_margin(OverlayPosition::Bottom), 64);
+
+        let over = OverlayTheme {
+            edge_margin: Some(9999),
+            ..Default::default()
+        };
+        assert_eq!(over.edge_margin(OverlayPosition::Top), EDGE_MARGIN_MAX);
+        assert_eq!(over.normalized().edge_margin, Some(EDGE_MARGIN_MAX));
+
+        // Zero is a value, not "unset": flush against the usable edge.
+        let flush = OverlayTheme {
+            edge_margin: Some(0),
+            ..Default::default()
+        };
+        assert_eq!(flush.edge_margin(OverlayPosition::Top), 0);
+    }
+
+    /// The number the Appearance tab's slider shows while the token is unset
+    /// is the number the window is placed from, because both come out of one
+    /// resolve. Without this the tab would need its own platform table.
+    #[test]
+    fn the_resolved_theme_carries_the_margin_actually_in_effect() {
+        let support = GlassSupport {
+            supported: false,
+            available: false,
+            engine: GlassEngine::None,
+        };
+
+        for position in [OverlayPosition::Top, OverlayPosition::Bottom] {
+            let inherited = resolve_from(
+                OverlayTheme::default(),
+                ThemeFileState::absent_at(""),
+                support,
+                position,
+            );
+            assert_eq!(
+                inherited.effective_edge_margin,
+                inherit_edge_margin(Platform::current(), position)
+            );
+
+            // A set token wins on both edges, and the file wins over settings
+            // like every other token.
+            let set = resolve_from(
+                OverlayTheme {
+                    edge_margin: Some(72),
+                    ..Default::default()
+                },
+                ThemeFileState::absent_at(""),
+                support,
+                position,
+            );
+            assert_eq!(set.effective_edge_margin, 72);
+
+            let mut file = ThemeFileState::absent_at("");
+            file.tokens.edge_margin = Some(8);
+            let from_file = resolve_from(
+                OverlayTheme {
+                    edge_margin: Some(72),
+                    ..Default::default()
+                },
+                file,
+                support,
+                position,
+            );
+            assert_eq!(from_file.theme.edge_margin, Some(8));
+            assert_eq!(from_file.effective_edge_margin, 8);
+        }
+    }
+
     /// The token contract's bounds are written twice: here, where Rust clamps
     /// the store, the theme file and the native geometry, and in
     /// `OVERLAY_TOKEN_BOUNDS` (`src/lib/overlayTheme.ts`), where TypeScript
@@ -1528,12 +1697,14 @@ mod tests {
         assert_eq!(max("waveform_gap"), f64::from(WAVEFORM_GAP_MAX));
         assert_eq!(min("waveform_width"), f64::from(WAVEFORM_WIDTH_MIN));
         assert_eq!(max("waveform_width"), f64::from(WAVEFORM_WIDTH_MAX));
+        assert_eq!(min("edge_margin"), 0.0);
+        assert_eq!(max("edge_margin"), f64::from(EDGE_MARGIN_MAX));
 
-        // ...and neither table has a token the other lacks. The nine
+        // ...and neither table has a token the other lacks. The ten
         // asserted above are every numeric token there is, on both sides.
         assert_eq!(
             bounds.matches("step:").count(),
-            9,
+            10,
             "a numeric token gained or lost a bound in the apply layer"
         );
     }

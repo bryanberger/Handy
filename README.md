@@ -76,7 +76,7 @@ The app data directory is `~/Library/Application Support/com.pais.handy/` on mac
 
 The Appearance tab shows the path in effect, or `~/.config/handy/overlay_theme.json` when there is no file anywhere, with a button that opens its folder, creating `~/.config/handy/` first if it does not exist. Under `HANDY_OVERLAY_THEME_FILE` nothing is created, and the button opens the nearest folder along that path that already exists.
 
-**What the file may contain.** A JSON object with an optional `version` plus any of the sixteen overlay-theme tokens:
+**What the file may contain.** A JSON object with an optional `version` plus any of the seventeen overlay-theme tokens:
 
 | Key               | Type       | Range                                                                                                                           |
 | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
@@ -97,10 +97,13 @@ The Appearance tab shows the path in effect, or `~/.config/handy/overlay_theme.j
 | `padding`         | integer px | 0 to 20                                                                                                                         |
 | `waveform_gap`    | integer px | 0 to 5                                                                                                                          |
 | `waveform_width`  | integer px | 2 to 6                                                                                                                          |
+| `edge_margin`     | integer px | 0 to 200                                                                                                                        |
 
 `surface_opacity` and `glass_tint` are the card's two alphas, one per material. `surface_opacity` is how opaque the Flat card is, and `glass_tint` is how much of the same `surface` colour covers the glass. Each is ignored under the other material, so one theme can hold an opaque Flat card and see-through Glass, and picking Glass shows glass straight away. The Appearance tab shows whichever applies to the material in effect. `glass_style` picks which Liquid Glass draws the Glass surface on macOS 26 and later, and is the one the Appearance tab shows; `glass_material` picks the `NSVisualEffectMaterial` blur on older macOS. `glass_material` is **theme-file only**. It drives the fallback engine, has no row in the Appearance tab, and Handy reads it from this file and nowhere else. Each is read by one engine and ignored by the other, so a file can carry both, and both do nothing while `material` is `"flat"` or off macOS. `border`, `border_opacity` and `border_width` are the card's edge. An unset edge is a foreground hairline everywhere except Clear glass, where it is white at 35 %, the highlight Spotlight's own capsule carries. Clear is the one surface dark enough in both app themes for it to read. Under Glass the overlay window also casts macOS's own drop shadow, because there the window is the card exactly; Flat has none. `padding` insets the card on all four sides, so it makes the card taller as well as roomier. With `size_scale` and `border_width` it is one of the three tokens that change how much room the overlay needs on screen.
 
-**Inherit.** Every token is optional, and an absent key does exactly what an explicit `null` does. Both inherit Handy's own theme-aware value for that token. The merge is per key, `file, else settings window, else built-in`, so a file that sets only `surface` leaves the other fifteen tokens under the Appearance tab's control. Tokens the file sets are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are valid documents that change nothing, and deleting the file stops the override.
+`edge_margin` is how far the overlay sits from the screen edge it is anchored to, in points, `0` meaning flush with the **usable** edge: below the menu bar and above the Dock on macOS, inside the work area on Windows, and inside the area panels leave free on Wayland under layer shell. It is the one token measured against the screen rather than the card, so `size_scale` does not multiply it — the gap you set is the gap you get at every size. Which edge it applies to follows Overlay Position; leaving it unset keeps Handy's own gap on both edges, which differs per platform. One exception to "flush with the usable edge": on X11, or on Wayland with `HANDY_NO_GTK_LAYER_SHELL=1` or a compositor without `zwlr_layer_shell_v1`, the desktop may report no work area, and the margin is then measured from the raw screen edge, so `0` can put the overlay behind a panel. That is what Handy already does there today.
+
+**Inherit.** Every token is optional, and an absent key does exactly what an explicit `null` does. Both inherit Handy's own theme-aware value for that token. The merge is per key, `file, else settings window, else built-in`, so a file that sets only `surface` leaves the other sixteen tokens under the Appearance tab's control. Tokens the file sets are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are valid documents that change nothing, and deleting the file stops the override.
 
 **A full theme:**
 
@@ -122,7 +125,8 @@ The Appearance tab shows the path in effect, or `~/.config/handy/overlay_theme.j
   "border_width": 1,
   "padding": 14,
   "waveform_gap": 2,
-  "waveform_width": 4
+  "waveform_width": 4,
+  "edge_margin": 24
 }
 ```
 

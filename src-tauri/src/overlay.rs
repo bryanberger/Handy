@@ -1,6 +1,7 @@
 use crate::input;
 use crate::overlay_geometry::{
-    native_update_needed, CardMetrics, OverlayCardShape, OverlayWindowState, CARD_FADE_MS,
+    native_update_needed, CardMetrics, MonitorBounds, OverlayCardShape, OverlayWindowState,
+    CARD_FADE_MS,
 };
 use crate::overlay_theme::Material;
 use crate::settings;
@@ -79,31 +80,69 @@ fn initial_overlay_dimensions(app_handle: &AppHandle) -> (f64, f64) {
 static LAST_MIC_LEVEL_EMIT: AtomicU64 = AtomicU64::new(0);
 const EMIT_THROTTLE_MS: u64 = 33; // ~30 FPS
 
-#[cfg(target_os = "macos")]
-const OVERLAY_TOP_OFFSET: f64 = 46.0;
-#[cfg(any(target_os = "windows", target_os = "linux"))]
-const OVERLAY_TOP_OFFSET: f64 = 4.0;
+/// The screen edge the overlay is anchored to, cached from the
+/// `overlay_position` setting.
+///
+/// Read on the theme-draft path, which runs once per animation frame while the
+/// Appearance tab's sliders are dragged, so it cannot afford the full settings
+/// deserialize `settings::get_settings` costs. Same bargain as
+/// [`OVERLAY_ENABLED`], which the audio callback reads at ~24 Hz.
+///
+/// Seeded from the store in `lib.rs`'s setup, kept honest by
+/// `shortcut::change_overlay_position_setting` and refreshed on every
+/// placement, so a value that ever went stale corrects itself at the next show.
+static OVERLAY_POSITION: AtomicU8 = AtomicU8::new(OverlayPosition::Bottom as u8);
 
-#[cfg(target_os = "macos")]
-const OVERLAY_BOTTOM_OFFSET: f64 = 15.0;
+/// The edge the overlay is anchored to right now.
+pub fn current_overlay_position() -> OverlayPosition {
+    // Only the two discriminants below are ever stored.
+    if OVERLAY_POSITION.load(Ordering::Relaxed) == OverlayPosition::Top as u8 {
+        OverlayPosition::Top
+    } else {
+        OverlayPosition::Bottom
+    }
+}
 
-#[cfg(any(target_os = "windows", target_os = "linux"))]
-const OVERLAY_BOTTOM_OFFSET: f64 = 40.0;
+/// Update the cached anchored edge. Called from `lib.rs` at startup after the
+/// settings load, from `change_overlay_position_setting`, and from the two
+/// paths that place the window and have just read the setting anyway.
+pub fn update_overlay_position_cache(position: OverlayPosition) {
+    OVERLAY_POSITION.store(position as u8, Ordering::Relaxed);
+}
 
-/// Configures the edge and offset of a GTK layer surface. gtk-layer-shell
+/// The gtk-layer-shell edge a screen edge names.
+#[cfg(target_os = "linux")]
+fn layer_shell_edge(edge: crate::overlay_geometry::ScreenEdge) -> Edge {
+    match edge {
+        crate::overlay_geometry::ScreenEdge::Top => Edge::Top,
+        crate::overlay_geometry::ScreenEdge::Bottom => Edge::Bottom,
+    }
+}
+
+/// Configures the edge and margin of a GTK layer surface. gtk-layer-shell
 /// commits anchor and margin changes itself, including while the surface is
 /// mapped, so changing position does not require a manual hide/show cycle.
+///
+/// The compositor measures the anchored margin from the area other clients'
+/// exclusive zones leave free, so `margin` is a distance from the *usable*
+/// edge here without Handy subtracting anything. That holds only while Handy's
+/// own exclusive zone stays 0 (`init_gtk_layer_shell`) and the automatic zone
+/// is never enabled; either would have the compositor count the margin twice
+/// and push every other window on the desktop by it.
 #[cfg(target_os = "linux")]
-fn configure_layer_shell_position(gtk_window: &gtk::ApplicationWindow, position: OverlayPosition) {
-    let (edge, opposite_edge, margin) = match position {
-        OverlayPosition::Top => (Edge::Top, Edge::Bottom, OVERLAY_TOP_OFFSET),
-        OverlayPosition::Bottom => (Edge::Bottom, Edge::Top, OVERLAY_BOTTOM_OFFSET),
-    };
+fn configure_layer_shell_position(
+    gtk_window: &gtk::ApplicationWindow,
+    position: OverlayPosition,
+    margin: u16,
+) {
+    let placement = crate::overlay_geometry::layer_shell_placement(position, margin);
+    let edge = layer_shell_edge(placement.anchor);
+    let opposite_edge = layer_shell_edge(placement.anchor.opposite());
 
     gtk_window.set_anchor(edge, true);
     gtk_window.set_anchor(opposite_edge, false);
-    gtk_window.set_layer_shell_margin(edge, margin.round() as i32);
-    gtk_window.set_layer_shell_margin(opposite_edge, 0);
+    gtk_window.set_layer_shell_margin(edge, placement.margin);
+    gtk_window.set_layer_shell_margin(opposite_edge, placement.opposite_margin);
 }
 
 /// Configures a GTK layer surface's size, edge and offset.
@@ -117,12 +156,13 @@ fn configure_layer_shell_position(gtk_window: &gtk::ApplicationWindow, position:
 fn configure_layer_shell_surface(
     gtk_window: &gtk::ApplicationWindow,
     position: OverlayPosition,
+    margin: u16,
     width: f64,
     height: f64,
 ) {
     use gtk::prelude::{GtkWindowExt, WidgetExt};
 
-    configure_layer_shell_position(gtk_window, position);
+    configure_layer_shell_position(gtk_window, position, margin);
 
     gtk_window.set_size_request(
         width.round().max(1.0) as i32,
@@ -153,8 +193,16 @@ fn init_gtk_layer_shell(overlay_window: &tauri::webview::WebviewWindow) -> bool 
 
         let app_handle = overlay_window.app_handle();
         let overlay_position = settings::get_settings(app_handle).overlay_position;
+        update_overlay_position_cache(overlay_position);
+        let resolved = crate::overlay_theme::resolve(app_handle);
         let (width, height) = initial_overlay_dimensions(app_handle);
-        configure_layer_shell_surface(&gtk_window, overlay_position, width, height);
+        configure_layer_shell_surface(
+            &gtk_window,
+            overlay_position,
+            resolved.effective_edge_margin,
+            width,
+            height,
+        );
 
         let initialized = gtk_window.is_layer_window();
         LAYER_SHELL_ACTIVE.store(initialized, Ordering::SeqCst);
@@ -248,79 +296,56 @@ fn is_mouse_within_monitor(
         && mouse_y < (monitor_y + monitor_height as i32)
 }
 
+/// The monitor the overlay is placed on: the one under the cursor, else the
+/// primary, as both rectangles the placement needs.
+///
+/// `work_area()` is the usable rectangle: `NSScreen.visibleFrame` on macOS
+/// (below the menu bar, above the Dock), `MONITORINFO.rcWork` on Windows
+/// (outside the taskbar and any registered app bar), `gdk_monitor_get_workarea`
+/// on Linux. It shares `position()`'s global coordinate space, so no monitor
+/// offset is added. Handy has been placing the macOS Bottom anchor from it
+/// since tauri 2.11's `work_area.position.y` fix (#14655), the bug that led
+/// PR #969 to abandon it for full monitor bounds; this is the same call for
+/// every edge.
+///
+/// Where a platform reports no work area — GDK on Wayland never overrides
+/// `get_workarea`, so it hands back the monitor geometry — the usable edges
+/// are the raw ones, which is what the fallback path already does today. That
+/// only reaches the screen without layer shell; under layer shell the
+/// compositor does the subtraction and this is never called.
+fn overlay_monitor_bounds(app_handle: &AppHandle) -> Option<MonitorBounds> {
+    let monitor = get_monitor_with_cursor(app_handle)?;
+    let work_area = monitor.work_area();
+
+    Some(MonitorBounds {
+        position: *monitor.position(),
+        size: *monitor.size(),
+        work_top: work_area.position.y,
+        work_bottom: work_area.position.y + work_area.size.height as i32,
+        scale: monitor.scale_factor(),
+    })
+}
+
 /// Returns overlay position in logical coordinates (points on macOS).
 ///
-/// The Bottom anchor uses the macOS work area (visibleFrame) so the overlay
-/// tracks the Dock — above it when shown, at the screen edge when hidden.
-/// This relies on tauri 2.11's work_area.position.y fix (#14655), the same
-/// bug that led PR #969 to abandon work_area for full monitor bounds. Top and
-/// the other platforms keep full monitor bounds plus the fixed offsets
-/// (work_area is unreliable on Wayland; Windows' offset clears the taskbar).
-///
-/// We must use LogicalPosition (not PhysicalPosition) because Tauri/tao
-/// converts PhysicalPosition using the scale factor of the monitor the window
-/// is *currently* on, which is wrong when moving cross-monitor. Windows uses
+/// LogicalPosition, not PhysicalPosition, because Tauri/tao converts a
+/// physical position using the scale factor of the monitor the window is
+/// *currently* on, which is wrong when moving cross-monitor. Windows uses
 /// `place_windows_overlay` instead (no single logical space across mixed DPI).
+///
+/// The arithmetic itself is `overlay_geometry::overlay_logical_origin`; this
+/// only supplies the monitor.
 fn calculate_overlay_position(
     app_handle: &AppHandle,
     width: f64,
     height: f64,
+    position: OverlayPosition,
+    margin: u16,
 ) -> Option<(f64, f64)> {
-    let monitor = get_monitor_with_cursor(app_handle)?;
-    let scale = monitor.scale_factor();
-    let monitor_x = monitor.position().x as f64 / scale;
-    let monitor_y = monitor.position().y as f64 / scale;
-    let monitor_width = monitor.size().width as f64 / scale;
-
-    let settings = settings::get_settings(app_handle);
-
-    let x = monitor_x + (monitor_width - width) / 2.0;
-    let y = match settings.overlay_position {
-        OverlayPosition::Top => monitor_y + OVERLAY_TOP_OFFSET,
-        OverlayPosition::Bottom => {
-            // work_area.position shares monitor.position's global coordinate
-            // space, so no monitor offset is added.
-            #[cfg(target_os = "macos")]
-            let bottom = {
-                let wa = monitor.work_area();
-                (wa.position.y as f64 + wa.size.height as f64) / scale
-            };
-            #[cfg(not(target_os = "macos"))]
-            let bottom = monitor_y + monitor.size().height as f64 / scale;
-
-            bottom - height - OVERLAY_BOTTOM_OFFSET
-        }
-    };
-
-    Some((x, y))
-}
-
-/// Overlay rectangle in the destination monitor's physical pixels, so nothing
-/// is converted through the window's previous-monitor DPI.
-#[cfg(target_os = "windows")]
-fn windows_overlay_bounds(
-    monitor_position: PhysicalPosition<i32>,
-    monitor_size: PhysicalSize<u32>,
-    scale: f64,
-    logical_width: f64,
-    logical_height: f64,
-    overlay_position: OverlayPosition,
-) -> (i32, i32, i32, i32) {
-    let width = (logical_width * scale).round().max(1.0) as i32;
-    let height = (logical_height * scale).round().max(1.0) as i32;
-    let x = (monitor_position.x as f64 + (monitor_size.width as f64 - width as f64) / 2.0).round()
-        as i32;
-    let y = match overlay_position {
-        OverlayPosition::Top => {
-            (monitor_position.y as f64 + OVERLAY_TOP_OFFSET * scale).round() as i32
-        }
-        OverlayPosition::Bottom => (monitor_position.y as f64 + monitor_size.height as f64
-            - height as f64
-            - OVERLAY_BOTTOM_OFFSET * scale)
-            .round() as i32,
-    };
-
-    (x, y, width, height)
+    let monitor = overlay_monitor_bounds(app_handle)?;
+    Some(crate::overlay_geometry::overlay_logical_origin(
+        &monitor, width, height, position, margin,
+    ))
 }
 
 /// Moves and sizes the overlay in one native SetWindowPos, bypassing tao's
@@ -331,18 +356,20 @@ fn place_windows_overlay(
     overlay_window: &tauri::webview::WebviewWindow,
     logical_width: f64,
     logical_height: f64,
+    position: OverlayPosition,
+    margin: u16,
 ) -> Result<(), String> {
     use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
 
-    let monitor = get_monitor_with_cursor(app_handle)
+    let monitor = overlay_monitor_bounds(app_handle)
         .ok_or_else(|| "failed to determine the monitor containing the cursor".to_string())?;
-    let (x, y, width, height) = windows_overlay_bounds(
-        *monitor.position(),
-        *monitor.size(),
-        monitor.scale_factor(),
+    let scale = monitor.scale;
+    let (x, y, width, height) = crate::overlay_geometry::windows_overlay_bounds(
+        &monitor,
         logical_width,
         logical_height,
-        settings::get_settings(app_handle).overlay_position,
+        position,
+        margin,
     );
     let hwnd = overlay_window
         .hwnd()
@@ -367,7 +394,7 @@ fn place_windows_overlay(
         y,
         width,
         height,
-        monitor.scale_factor()
+        scale
     );
     Ok(())
 }
@@ -385,7 +412,10 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     // for Layer Shell as we use anchors. On other platforms, we require a monitor.
     #[cfg(not(target_os = "linux"))]
     {
-        let position = calculate_overlay_position(app_handle, width, height);
+        let anchor = settings::get_settings(app_handle).overlay_position;
+        update_overlay_position_cache(anchor);
+        let margin = crate::overlay_theme::resolve(app_handle).effective_edge_margin;
+        let position = calculate_overlay_position(app_handle, width, height, anchor, margin);
         if position.is_none() {
             debug!("Failed to determine overlay position, not creating overlay window");
             return;
@@ -454,7 +484,11 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
     // the panel anyway; starting at the right size saves the first show one.
     let (width, height) = initial_overlay_dimensions(app_handle);
 
-    if let Some((x, y)) = calculate_overlay_position(app_handle, width, height) {
+    let anchor = settings::get_settings(app_handle).overlay_position;
+    update_overlay_position_cache(anchor);
+    let margin = crate::overlay_theme::resolve(app_handle).effective_edge_margin;
+
+    if let Some((x, y)) = calculate_overlay_position(app_handle, width, height, anchor, margin) {
         // PanelBuilder creates a Tauri window then converts it to NSPanel.
         // The window remains registered, so get_webview_window() still works.
         match PanelBuilder::<_, RecordingOverlayPanel>::new(app_handle, "recording_overlay")
@@ -502,6 +536,11 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
     if settings.overlay_style == OverlayStyle::None {
         return;
     }
+    // Refreshed from the store on every show, so the edge the theme paths
+    // resolve `edge_margin` against cannot drift from the setting for longer
+    // than one recording.
+    let anchor = settings.overlay_position;
+    update_overlay_position_cache(anchor);
 
     // How much room the card needs and which Material to render it in both come
     // from the resolved overlay theme. Resolving re-reads the theme file, so it
@@ -522,13 +561,14 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
     let handle = app_handle.clone();
     let state = state.to_string();
     let _ = app_handle
-        .run_on_main_thread(move || show_overlay_state_on_main(&handle, &state, resolved));
+        .run_on_main_thread(move || show_overlay_state_on_main(&handle, &state, resolved, anchor));
 }
 
 fn show_overlay_state_on_main(
     app_handle: &AppHandle,
     state: &str,
     resolved: crate::overlay_theme::ResolvedOverlayTheme,
+    anchor: OverlayPosition,
 ) {
     let material = resolved.effective_material;
 
@@ -548,9 +588,10 @@ fn show_overlay_state_on_main(
 
     // A show configures the window from the same inputs a reposition does, so it
     // keeps the same record, or the session's first theme edit repeats its work.
-    let window = OverlayWindowState::new(shape, &resolved);
+    let window = OverlayWindowState::new(shape, &resolved, anchor);
     let (width, height) = window.window_size();
     let radius = window.corner_radius();
+    let margin = window.edge_margin();
     record_window_state(window);
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
         // Invalidate any delayed hide still in flight from a previous session
@@ -560,10 +601,9 @@ fn show_overlay_state_on_main(
 
         #[cfg(target_os = "linux")]
         let shown_with_layer_shell = if LAYER_SHELL_ACTIVE.load(Ordering::SeqCst) {
-            let position = settings::get_settings(app_handle).overlay_position;
             match overlay_window.gtk_window() {
                 Ok(gtk_window) => {
-                    configure_layer_shell_surface(&gtk_window, position, width, height)
+                    configure_layer_shell_surface(&gtk_window, anchor, margin, width, height)
                 }
                 Err(error) => log::error!("Failed to access GTK overlay window: {error}"),
             }
@@ -584,21 +624,27 @@ fn show_overlay_state_on_main(
 
             let pos_started = std::time::Instant::now();
             #[cfg(not(target_os = "windows"))]
-            let set_pos_elapsed =
-                if let Some((x, y)) = calculate_overlay_position(app_handle, width, height) {
-                    let set_pos_started = std::time::Instant::now();
-                    let _ = overlay_window
-                        .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
-                    set_pos_started.elapsed()
-                } else {
-                    std::time::Duration::ZERO
-                };
+            let set_pos_elapsed = if let Some((x, y)) =
+                calculate_overlay_position(app_handle, width, height, anchor, margin)
+            {
+                let set_pos_started = std::time::Instant::now();
+                let _ = overlay_window
+                    .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
+                set_pos_started.elapsed()
+            } else {
+                std::time::Duration::ZERO
+            };
             #[cfg(target_os = "windows")]
             let set_pos_elapsed = {
                 let set_pos_started = std::time::Instant::now();
-                if let Err(error) =
-                    place_windows_overlay(app_handle, &overlay_window, width, height)
-                {
+                if let Err(error) = place_windows_overlay(
+                    app_handle,
+                    &overlay_window,
+                    width,
+                    height,
+                    anchor,
+                    margin,
+                ) {
                     log::error!("Failed to place recording overlay: {error}");
                 }
                 set_pos_started.elapsed()
@@ -866,11 +912,15 @@ fn forget_window_state() {
 /// the window is already configured exactly that way. The skip is the point.
 /// An accent or a padding edit changes nothing the native window is built from,
 /// and the overlay theme is now delivered on every frame of a slider drag.
+///
+/// An `edge_margin` edit does move the window, which is why the margin and the
+/// anchored edge are part of [`OverlayWindowState`]: without them the skip
+/// would swallow every frame of that drag.
 pub fn update_overlay_position_for_theme(
     app_handle: &AppHandle,
     resolved: &crate::overlay_theme::ResolvedOverlayTheme,
 ) {
-    let next = OverlayWindowState::new(current_card_shape(), resolved);
+    let next = OverlayWindowState::new(current_card_shape(), resolved, current_overlay_position());
     let unchanged = LAST_WINDOW_STATE
         .lock()
         .is_ok_and(|last| !native_update_needed(last.as_ref(), &next));
@@ -916,9 +966,12 @@ fn update_overlay_position_on_main(
         // size scale rather than reading the window's size back from the OS, so
         // a scale change resizes a visible window too. Without that the card
         // would repaint larger inside the old window and be clipped.
-        let window = OverlayWindowState::new(current_card_shape(), &resolved);
+        let anchor = settings::get_settings(app_handle).overlay_position;
+        update_overlay_position_cache(anchor);
+        let window = OverlayWindowState::new(current_card_shape(), &resolved, anchor);
         let (width, height) = window.window_size();
         let radius = window.corner_radius();
+        let margin = window.edge_margin();
 
         // Recorded before the placement, so the one platform branch that returns
         // early (layer shell) is covered too. A failed placement is only logged
@@ -927,12 +980,13 @@ fn update_overlay_position_on_main(
 
         #[cfg(target_os = "linux")]
         if LAYER_SHELL_ACTIVE.load(Ordering::SeqCst) {
-            let position = settings::get_settings(app_handle).overlay_position;
             match overlay_window.gtk_window() {
                 // Layer surfaces size themselves from GTK's size request, so the
-                // full configure (size request + anchors) applies a new size.
+                // full configure (size request + anchors) applies a new size,
+                // and forces the repaint gtk-layer-shell will not commit for a
+                // margin change on its own.
                 Ok(gtk_window) => {
-                    configure_layer_shell_surface(&gtk_window, position, width, height)
+                    configure_layer_shell_surface(&gtk_window, anchor, margin, width, height)
                 }
                 Err(error) => log::error!("Failed to access GTK overlay window: {error}"),
             }
@@ -940,7 +994,9 @@ fn update_overlay_position_on_main(
         }
 
         #[cfg(target_os = "windows")]
-        if let Err(error) = place_windows_overlay(app_handle, &overlay_window, width, height) {
+        if let Err(error) =
+            place_windows_overlay(app_handle, &overlay_window, width, height, anchor, margin)
+        {
             log::error!("Failed to update recording overlay position: {error}");
         }
 
@@ -948,7 +1004,9 @@ fn update_overlay_position_on_main(
         {
             let _ =
                 overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
-            if let Some((x, y)) = calculate_overlay_position(app_handle, width, height) {
+            if let Some((x, y)) =
+                calculate_overlay_position(app_handle, width, height, anchor, margin)
+            {
                 let _ = overlay_window
                     .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
             }
@@ -1000,7 +1058,7 @@ pub fn set_card_shape(app_handle: &AppHandle, shape: OverlayCardShape, duration_
     let _ = app_handle.run_on_main_thread(move || {
         let resolved = crate::overlay_theme::resolve(&handle);
         let material = resolved.effective_material;
-        let window = OverlayWindowState::new(shape, &resolved);
+        let window = OverlayWindowState::new(shape, &resolved, current_overlay_position());
         let size = window.window_size();
         let radius = window.corner_radius();
 
@@ -1126,12 +1184,6 @@ pub fn emit_levels(app_handle: &AppHandle, levels: &[f32]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    /// Today's four windows at size_scale 1, so the Windows placement tests
-    /// below keep exercising the sizes this overlay has always used.
-    #[cfg(target_os = "windows")]
-    use crate::overlay_geometry::{
-        OVERLAY_HEIGHT, OVERLAY_STREAM_HEIGHT, OVERLAY_STREAM_WIDTH, OVERLAY_WIDTH,
-    };
 
     #[test]
     fn monitor_hit_test_uses_half_open_physical_bounds() {
@@ -1199,70 +1251,5 @@ mod tests {
             &logical_position,
             &logical_size
         ));
-    }
-
-    #[cfg(target_os = "windows")]
-    #[test]
-    fn windows_overlay_bounds_use_destination_monitor_scale() {
-        let monitor_position = PhysicalPosition::new(1920, 0);
-        let monitor_size = PhysicalSize::new(3840, 2160);
-
-        assert_eq!(
-            windows_overlay_bounds(
-                monitor_position,
-                monitor_size,
-                1.5,
-                OVERLAY_WIDTH,
-                OVERLAY_HEIGHT,
-                OverlayPosition::Bottom,
-            ),
-            (3648, 2031, 384, 69)
-        );
-        assert_eq!(
-            windows_overlay_bounds(
-                monitor_position,
-                monitor_size,
-                1.5,
-                OVERLAY_WIDTH,
-                OVERLAY_HEIGHT,
-                OverlayPosition::Top,
-            ),
-            (3648, 6, 384, 69)
-        );
-
-        // A scaled window converts to physical pixels the same way and still
-        // lands on the bottom offset: 2160 - 269 - 40 * 1.5 = 1831.
-        let (width, height) = CardMetrics::from_theme(&crate::overlay_theme::OverlayTheme {
-            size_scale: Some(1.5),
-            ..Default::default()
-        })
-        .window_size(OverlayCardShape::LiveOpen, Material::Flat);
-        assert_eq!(
-            windows_overlay_bounds(
-                monitor_position,
-                monitor_size,
-                1.5,
-                width,
-                height,
-                OverlayPosition::Bottom,
-            ),
-            (3392, 1831, 896, 269)
-        );
-    }
-
-    #[cfg(target_os = "windows")]
-    #[test]
-    fn windows_overlay_bounds_support_negative_monitor_origins() {
-        assert_eq!(
-            windows_overlay_bounds(
-                PhysicalPosition::new(-2560, -200),
-                PhysicalSize::new(2560, 1440),
-                1.25,
-                OVERLAY_STREAM_WIDTH,
-                OVERLAY_STREAM_HEIGHT,
-                OverlayPosition::Bottom,
-            ),
-            (-1530, 1040, 500, 150)
-        );
     }
 }

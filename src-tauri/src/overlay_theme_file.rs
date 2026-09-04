@@ -31,9 +31,9 @@
 use crate::overlay_theme::{
     GlassMaterial, GlassStyle, HexColor, Material, OverlayTheme, ThemeFileDiagnostic,
     ThemeFileDiagnosticCode, ThemeFileState, BORDER_OPACITY_MAX, BORDER_OPACITY_MIN,
-    BORDER_WIDTH_MAX, GLASS_TINT_MAX, GLASS_TINT_MIN, PADDING_MAX, RADIUS_MAX, SIZE_SCALE_MAX,
-    SIZE_SCALE_MIN, SURFACE_OPACITY_MAX, SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX, WAVEFORM_WIDTH_MAX,
-    WAVEFORM_WIDTH_MIN,
+    BORDER_WIDTH_MAX, EDGE_MARGIN_MAX, GLASS_TINT_MAX, GLASS_TINT_MIN, PADDING_MAX, RADIUS_MAX,
+    SIZE_SCALE_MAX, SIZE_SCALE_MIN, SURFACE_OPACITY_MAX, SURFACE_OPACITY_MIN, WAVEFORM_GAP_MAX,
+    WAVEFORM_WIDTH_MAX, WAVEFORM_WIDTH_MIN,
 };
 use log::{debug, warn};
 use serde_json::Value;
@@ -71,7 +71,7 @@ const CONFIG_SUBDIR: &str = "handy";
 /// lookup. Per XDG, empty is unset and a relative value invalid.
 const CONFIG_HOME_ENV_VAR: &str = "XDG_CONFIG_HOME";
 
-/// Anything larger than this is not a sixteen-key document; refused unread.
+/// Anything larger than this is not a seventeen-key document; refused unread.
 const MAX_THEME_FILE_BYTES: u64 = 64 * 1024;
 
 /// Diagnostics carried in [`ThemeFileState`]. All reach the log; this bounds
@@ -107,13 +107,13 @@ const fn token(
     TokenSpec { key, parser }
 }
 
-/// The sixteen tokens in the token contract's order, which the Appearance tab,
+/// The seventeen tokens in the token contract's order, which the Appearance tab,
 /// [`ThemeFileState::owned_keys`] and the per-key diagnostics all follow, so
 /// the payload does not depend on `serde_json`'s key order.
 ///
 /// One table, not a key list beside a match on it. Key, parser and bounds are
 /// one fact; splitting them made a mismatch a runtime debug assertion.
-const TOKENS: [TokenSpec; 16] = [
+const TOKENS: [TokenSpec; 17] = [
     token("accent", |key, value, tokens, diagnostics| {
         tokens.accent = parse_color(key, value, diagnostics);
         tokens.accent.is_some()
@@ -195,6 +195,10 @@ const TOKENS: [TokenSpec; 16] = [
             diagnostics,
         );
         tokens.waveform_width.is_some()
+    }),
+    token("edge_margin", |key, value, tokens, diagnostics| {
+        tokens.edge_margin = parse_px(key, value, 0, EDGE_MARGIN_MAX, diagnostics);
+        tokens.edge_margin.is_some()
     }),
 ];
 
@@ -1255,7 +1259,8 @@ mod tests {
   "border_width": 1,
   "padding": 14,
   "waveform_gap": 2,
-  "waveform_width": 4
+  "waveform_width": 4,
+  "edge_margin": 24
 }"##;
 
     /// The contract's theming-tool document: every leniency, a comment key,
@@ -1791,9 +1796,10 @@ mod tests {
                 padding: Some(14),
                 waveform_gap: Some(2),
                 waveform_width: Some(4),
+                edge_margin: Some(24),
             }
         );
-        // Every key is owned, so the tab locks all sixteen.
+        // Every key is owned, so the tab locks all seventeen.
         assert_eq!(
             parsed.owned_keys,
             TOKENS.iter().map(|token| token.key).collect::<Vec<_>>()

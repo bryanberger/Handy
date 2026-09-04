@@ -5,10 +5,18 @@ import {
   type OverlayNumericKey,
 } from "@/lib/overlayTheme";
 
-/** The three groups the tab renders token rows in, in display order. Listed
+/** The four groups the tab renders token rows in, in display order. Listed
  *  once so anything walking every row on screen, like the theme file's
- *  "sets N of M values" line, cannot miss a group. */
-export const OVERLAY_TOKEN_GROUPS = ["color", "material", "size"] as const;
+ *  "sets N of M values" line, cannot miss a group. `position` is the odd one:
+ *  its single row sits in the Overlay group beside the style and position
+ *  dropdowns, not in a group of its own, because that is the question it
+ *  answers. */
+export const OVERLAY_TOKEN_GROUPS = [
+  "position",
+  "color",
+  "material",
+  "size",
+] as const;
 
 export type OverlayTokenGroup = (typeof OVERLAY_TOKEN_GROUPS)[number];
 
@@ -32,7 +40,7 @@ interface OverlayTokenFieldBase {
  * `fields.filter(f => f.group === …).map(renderField)`.
  *
  * A discriminated union on `kind`, so `key` narrows with it. A color field's
- * key is one of the four color tokens, a length/factor field's one of the nine
+ * key is one of the four color tokens, a length/factor field's one of the ten
  * numeric ones, and the two enum fields carry their own kind, so `renderField`
  * reads `effectiveValue(field.key)` at the right type per branch, not a cast.
  *
@@ -61,10 +69,23 @@ const GLASS_STYLE = "settings.appearance.glassStyle";
 /** Token order matches the contract's table, the same order the theme file's
  *  `TOKENS` table lists: accent, surface, surface_opacity, glass_tint, text,
  *  border, border_opacity, material, glass_material, glass_style, size_scale,
- *  radius, border_width, padding, waveform_gap, waveform_width.
- *  `glass_material` is the only token with no row, since it drives the
- *  pre-macOS-26 fallback engine alone and is set from the theme file. */
+ *  radius, border_width, padding, waveform_gap, waveform_width, edge_margin.
+ *  `edge_margin` leads the table because its row is the first one on screen,
+ *  under Overlay Position. `glass_material` is the only token with no row,
+ *  since it drives the pre-macOS-26 fallback engine alone and is set from the
+ *  theme file. */
 export const OVERLAY_TOKEN_FIELDS: readonly OverlayTokenField[] = [
+  // The one token measured against the screen instead of the card, so it sits
+  // with Overlay Position rather than with the card's sizes, and its px are
+  // never multiplied by the size scale.
+  {
+    key: "edge_margin",
+    group: "position",
+    kind: "length",
+    ...OVERLAY_TOKEN_BOUNDS.edge_margin,
+    labelKey: `${TOKENS}.edgeMargin.title`,
+    descriptionKey: `${TOKENS}.edgeMargin.description`,
+  },
   {
     key: "accent",
     group: "color",

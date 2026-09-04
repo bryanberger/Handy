@@ -193,6 +193,7 @@ describe("sameStringMap", () => {
       effective_material: "flat",
       glass_support: { supported: true, available: true, engine: "liquid" },
       file: EMPTY_FILE_STATE,
+      effective_edge_margin: 15,
     });
     const first = resolveOverlayThemeVars(withScale(0.85));
     const second = resolveOverlayThemeVars(withScale(0.85));

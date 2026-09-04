@@ -26,12 +26,13 @@ describe("moreDiagnosticsCount", () => {
 
 describe("lockedTokenCounts", () => {
   test("the total is the rows on screen, not every token there is", () => {
-    // Two short of the contract's sixteen on either Material. `glass_material`
-    // drives the pre-macOS-26 fallback engine and has no row; the two alphas
-    // share one slot, Flat's surface opacity or Glass's tint, never both.
+    // Two short of the contract's seventeen on either Material.
+    // `glass_material` drives the pre-macOS-26 fallback engine and has no row;
+    // the two alphas share one slot, Flat's surface opacity or Glass's tint,
+    // never both.
     for (const material of ["flat", "glass"] as const) {
       const { total } = lockedTokenCounts([], material);
-      expect(total).toBe(14);
+      expect(total).toBe(15);
       expect(total).toBe(OVERLAY_TOKEN_FIELDS.length - 1);
       expect(total).toBe(Object.keys(INHERIT_ALL).length - 2);
     }
@@ -56,11 +57,11 @@ describe("lockedTokenCounts", () => {
     const bothAlphas = ["surface_opacity", "glass_tint"];
     expect(lockedTokenCounts(bothAlphas, "flat")).toEqual({
       count: 1,
-      total: 14,
+      total: 15,
     });
     expect(lockedTokenCounts(bothAlphas, "glass")).toEqual({
       count: 1,
-      total: 14,
+      total: 15,
     });
     expect(lockedTokenCounts(["glass_tint"], "flat").count).toBe(0);
     expect(lockedTokenCounts(["surface_opacity"], "glass").count).toBe(0);

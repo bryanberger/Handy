@@ -291,7 +291,6 @@
         "button": "Réinitialiser le thème de l'overlay",
         "title": "Réinitialiser le thème de l'overlay ?",
         "description": "Cela rétablit toutes les couleurs, tailles et espacements de l'overlay aux valeurs par défaut de Handy. Le style et la position de l'overlay ne changent pas.",
-        "descriptionWithThemeFile": "Cela rétablit aux valeurs par défaut de Handy toutes les couleurs, tailles et espacements de l'overlay qui ne sont pas définis par le fichier de thème. Le style et la position de l'overlay ne changent pas, et les valeurs définies par le fichier de thème restent actives.",
         "confirm": "Réinitialiser",
         "cancel": "Annuler"
       },
@@ -409,13 +408,19 @@
       },
       "themeFile": {
         "title": "Fichier de thème",
-        "description": "Un fichier JSON facultatif qui remplace les valeurs du thème de l'overlay, afin que des outils de personnalisation externes puissent piloter l'overlay.",
-        "notFound": "Aucun fichier de thème. Créez-en un à cet emplacement pour remplacer les valeurs du thème de l'overlay.",
-        "active": "Actif — ce fichier définit {{count}} valeurs sur {{total}}.",
+        "description": "Le fichier JSON où vit le thème de l'overlay. Handy l'écrit dès que vous modifiez quelque chose ici, et une modification faite dans un éditeur de texte ou un outil de personnalisation s'applique dès qu'elle est enregistrée.",
+        "notFound": "Pas encore de fichier de thème. Handy en crée un ici la première fois que vous modifiez quelque chose ci-dessus.",
+        "owned": "Ce fichier est le thème ; c'est Handy qui l'écrit. Il définit {{count}} valeurs sur {{total}}.",
+        "managed": {
+          "symlink": "Géré en externe : ce fichier est un lien symbolique vers {{target}}. Handy le lit et ne l'écrit jamais.",
+          "readOnly": "Géré en externe : ce fichier est en lecture seule, Handy le lit donc et ne l'écrit jamais.",
+          "notCreatable": "Géré en externe : HANDY_OVERLAY_THEME_FILE désigne {{target}}, et Handy n'y crée pas de fichiers. Créez-le vous-même ou supprimez la variable.",
+          "unknown": "Géré en externe : Handy ne peut pas écrire ce fichier, il se contente donc de le lire."
+        },
+        "lockedDescription": "Le fichier de thème est géré par autre chose que Handy : ces valeurs sont donc en lecture seule.",
         "reload": "Recharger",
         "copy": "Copier le thème en JSON",
         "copied": "Copié",
-        "lockedDescription": "Défini par le fichier de thème. Modifiez overlay_theme.json ou supprimez cette clé pour la changer ici.",
         "problemsTitle": "Problèmes dans le fichier de thème :",
         "moreDiagnostics": "…et {{count}} de plus.",
         "newerVersion": "Ce fichier de thème a été écrit par une version plus récente de Handy. Les valeurs que cette version ne comprend pas ont été ignorées.",

@@ -23,26 +23,30 @@ export const EMPTY_FILE_STATE: ResolvedOverlayTheme["file"] = {
   version: null,
   tokens: INHERIT_ALL,
   owned_keys: [],
+  // Assumed writable, so the rows are live from the first frame. A managed
+  // file locks them when the payload lands, and Rust refuses the write anyway.
+  ownership: { writable: true, reason: null, target: null },
   diagnostics: [],
   diagnostics_total: 0,
   stale: false,
 };
 
 /**
- * Merge a draft over a resolved theme, per key, skipping keys the theme file
- * owns. A settings-level edit must never outrank a file-owned token. Those
- * controls are disabled, so no draft can exist for them; this holds anyway.
+ * Merge a draft over a resolved theme, per key.
+ *
+ * A managed file changes nothing here. It locks every token row, so usually
+ * there is no draft, but the preview still runs on drafts while the file is
+ * somebody else's: the base is always the file's tokens, a draft only paints
+ * over them. Dropping them here would freeze the preview, not the file.
  *
  * Exported for the unit tests; nothing outside this file imports it.
  */
 export function mergeDraft(
   theme: OverlayTheme,
   draft: Partial<OverlayTheme>,
-  ownedKeys: readonly string[],
 ): OverlayTheme {
   const merged: OverlayTheme = { ...theme };
   (Object.keys(draft) as OverlayThemeKey[]).forEach((key) => {
-    if (ownedKeys.includes(key)) return;
     const value = draft[key];
     if (value === undefined) return;
     // `draft` is built one key at a time from the same union `OverlayTheme`
@@ -143,9 +147,11 @@ export interface UseOverlayThemeVarsResult {
   /** The probed, theme-aware default per color token, shown by a ColorField
    *  (muted, italic) while unset. `null` until the first measurement. */
   resolvedDefaults: Record<OverlayColorKey, string | null>;
-  isLocked: (key: OverlayThemeKey) => boolean;
-  /** The value a control shows: the file's value when locked, else the draft,
-   *  else the persisted (resolved, pre-draft) value. */
+  /** Whether every token row is read-only, because the theme file is managed
+   *  by something other than Handy. */
+  locked: boolean;
+  /** The value a control shows: the draft in flight, else the theme file's
+   *  value. A locked tab's rows are disabled, so all show the file's value. */
   effectiveValue: <K extends OverlayThemeKey>(
     key: K,
   ) => NonNullable<OverlayTheme[K]> | null;
@@ -174,10 +180,10 @@ export function useOverlayThemeVars(
     return resolved
       ? {
           ...resolved,
-          theme: mergeDraft(resolved.theme, draft, resolved.file.owned_keys),
+          theme: mergeDraft(resolved.theme, draft),
         }
       : {
-          theme: mergeDraft(INHERIT_ALL, draft, []),
+          theme: mergeDraft(INHERIT_ALL, draft),
           effective_material: "flat" as const,
           // No resolved theme means no window, so the shadow has no screen edge
           // to keep clear of.
@@ -188,6 +194,7 @@ export function useOverlayThemeVars(
             engine: "none" as const,
           },
           file: EMPTY_FILE_STATE,
+          watching: false,
         };
   }, [resolved, draft]);
 
@@ -264,24 +271,21 @@ export function useOverlayThemeVars(
     // for the component's lifetime and need no listing.
   }, [colorVars, mergedTheme.effective_material, remeasureSignal]);
 
-  const ownedKeys = useMemo(() => resolved?.file.owned_keys ?? [], [resolved]);
-  const isLocked = useCallback(
-    (key: OverlayThemeKey) => ownedKeys.includes(key),
-    [ownedKeys],
-  );
+  // Every row locks together or none does. The file is the theme, so "the file
+  // sets this token" no longer locks a control: the control put it there. What
+  // locks the tab is a file Handy reads and does not write, all at once.
+  const locked = resolved ? !resolved.file.ownership.writable : false;
 
   const effectiveValue = useCallback(
     <K extends OverlayThemeKey>(
       key: K,
     ): NonNullable<OverlayTheme[K]> | null => {
-      if (isLocked(key))
-        return (baseTheme[key] ?? null) as NonNullable<OverlayTheme[K]> | null;
       const draftValue = draft[key];
       if (draftValue !== undefined)
         return (draftValue ?? null) as NonNullable<OverlayTheme[K]> | null;
       return (baseTheme[key] ?? null) as NonNullable<OverlayTheme[K]> | null;
     },
-    [baseTheme, draft, isLocked],
+    [baseTheme, draft],
   );
 
   return {
@@ -294,7 +298,7 @@ export function useOverlayThemeVars(
     ),
     effectiveMaterial: mergedTheme.effective_material,
     resolvedDefaults,
-    isLocked,
+    locked,
     effectiveValue,
   };
 }

@@ -15,6 +15,7 @@ import {
 } from "./overlayTokenFields";
 import { commands } from "@/bindings";
 import type {
+  ManagedReason,
   Material,
   OverlayTheme,
   ResolvedOverlayTheme,
@@ -39,9 +40,9 @@ export function themeAsJsonDocument(theme: OverlayTheme): string {
 /** The tokens with a row in the Appearance tab under one Material. It asks
  *  for rows exactly as the groups render them, so a token that gains, loses
  *  or shares a row needs no second edit. Never shown: `glass_material`, which
- *  drives only the pre-macOS-26 fallback engine and is set from the theme file,
- *  the other Material's alpha, under Glass the shadow offset macOS owns, and
- *  with the waveform hidden the whole Waveform group the tab drops with it. */
+ *  drives only the pre-macOS-26 fallback engine and has no control, the other
+ *  Material's alpha, under Glass the shadow offset macOS owns, and with the
+ *  waveform hidden the whole Waveform group the tab drops with it. */
 function keysWithARow(
   material: Material,
   showWaveform: boolean,
@@ -57,17 +58,17 @@ function keysWithARow(
 }
 
 /**
- * What the "this file sets N of M values" line counts. Only the tokens the
- * tab can show as locked right now, on the Material being painted.
+ * What the "this file sets N of M values" line counts. Only the tokens with a
+ * row on screen right now, on the Material being painted.
  *
- * Otherwise a file setting a row-less token would count as owning a value
- * with no control, promising rows that are not there. So the total follows what
- * is on screen: twenty of the twenty-two under Flat, nineteen under Glass, with
- * no shadow offset, and three fewer either way with the waveform hidden, whose
+ * Otherwise a file setting a row-less token would count as a value with no
+ * control, promising rows that are not there. So the total follows what is on
+ * screen: twenty of the twenty-two under Flat, nineteen under Glass, with no
+ * shadow offset, and three fewer either way with the waveform hidden, whose
  * group leaves the tab. The tokens still apply; this rule counts one sentence,
  * not the file.
  */
-export function lockedTokenCounts(
+export function setTokenCounts(
   ownedKeys: readonly string[],
   material: Material,
   showWaveform: boolean,
@@ -106,31 +107,74 @@ export function moreDiagnosticsCount(total: number, shown: number): number {
   return Math.max(0, total - shown);
 }
 
+const MANAGED_I18N_KEYS: Record<ManagedReason, string> = {
+  symlink: "settings.appearance.themeFile.managed.symlink",
+  read_only: "settings.appearance.themeFile.managed.readOnly",
+  not_creatable: "settings.appearance.themeFile.managed.notCreatable",
+  unknown: "settings.appearance.themeFile.managed.unknown",
+};
+
+/** One line of copy: the i18n key to show, and what to interpolate into it. */
+export interface ThemeFileStatus {
+  key: string;
+  params: Record<string, string | number>;
+}
+
+/**
+ * Which of the group's three states the theme file is in.
+ *
+ * Managed first: it alone changes what the tab can do. A symlinked or
+ * read-only file is somebody else's, Handy reads it and locks every token
+ * row. Otherwise it is Handy's; the only question is whether it exists yet.
+ *
+ * Pure, so the three states are a unit test rather than a screenshot.
+ */
+export function themeFileStatus(
+  file: ResolvedOverlayTheme["file"],
+  counts: { count: number; total: number },
+): ThemeFileStatus {
+  const { writable, reason, target } = file.ownership;
+  if (!writable) {
+    return {
+      key: MANAGED_I18N_KEYS[reason ?? "unknown"],
+      params: { target: target ?? file.path },
+    };
+  }
+
+  return file.present
+    ? { key: "settings.appearance.themeFile.owned", params: counts }
+    : { key: "settings.appearance.themeFile.notFound", params: {} };
+}
+
 const MAX_SHOWN_DIAGNOSTICS = 5;
 
 export interface ThemeFileGroupProps {
   file: ResolvedOverlayTheme["file"];
   /** The effective Material, which sets how many rows are on screen for the
-   *  "sets N of M values" line. See [`lockedTokenCounts`]. */
+   *  "sets N of M values" line. See [`setTokenCounts`]. */
   material: Material;
   /** `show_waveform`, which takes the Waveform group off the tab with it, so
    *  its three rows leave the same count. */
   showWaveform: boolean;
+  /** Whether the file watcher is running. It is, on nearly every machine, and
+   *  then a hand edit arrives on its own and Reload has nothing to do. */
+  watching: boolean;
   onReload: () => void;
   isReloading: boolean;
   grouped?: boolean;
 }
 
 /**
- * The Theme File group: where the effective `overlay_theme.json` is, a Reload
- * button, and a capped list of what the reader ignored or clamped. Each
- * token's lock note lives on its own control (ColorField / Slider /
- * MaterialSelector), not here.
+ * The Theme File group: where `overlay_theme.json` is, a button to open it,
+ * which of its three states it is in, and a capped list of what the reader
+ * ignored or clamped. Reload shows only where the watcher could not start;
+ * elsewhere a hand edit is already live.
  */
 export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
   file,
   material,
   showWaveform,
+  watching,
   onReload,
   isReloading,
   grouped = true,
@@ -166,7 +210,10 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
 
   const shown = file.diagnostics.slice(0, MAX_SHOWN_DIAGNOSTICS);
   const more = moreDiagnosticsCount(file.diagnostics_total, shown.length);
-  const owned = lockedTokenCounts(file.owned_keys, material, showWaveform);
+  const status = themeFileStatus(
+    file,
+    setTokenCounts(file.owned_keys, material, showWaveform),
+  );
 
   return (
     <>
@@ -184,23 +231,20 @@ export const ThemeFileGroup: React.FC<ThemeFileGroupProps> = ({
               disabled={!file.path}
             />
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            className={PATH_ACTION_BUTTON_CLASS}
-            onClick={onReload}
-            disabled={isReloading}
-          >
-            {t("settings.appearance.themeFile.reload")}
-          </Button>
+          {!watching && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className={PATH_ACTION_BUTTON_CLASS}
+              onClick={onReload}
+              disabled={isReloading}
+            >
+              {t("settings.appearance.themeFile.reload")}
+            </Button>
+          )}
         </div>
         <p className="mt-2 text-xs text-mid-gray">
-          {file.present
-            ? t("settings.appearance.themeFile.active", {
-                count: owned.count,
-                total: owned.total,
-              })
-            : t("settings.appearance.themeFile.notFound")}
+          {t(status.key, status.params)}
         </p>
       </SettingContainer>
       {shown.length > 0 && (

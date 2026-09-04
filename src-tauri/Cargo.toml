@@ -82,6 +82,11 @@ transcribe-cpp = { version = "0.2.0", default-features = false }
 handy-keys = "0.3.4"
 ferrous-opencc = "0.2.3"
 clap = { version = "4", features = ["derive"] }
+# The overlay theme file's watcher (overlay_theme_watch.rs). The debouncer
+# re-exports `notify`; the pairing is worth naming: mini 0.7 is built against
+# notify 8, and one debounced batch per save is what the watcher wants.
+notify = "8.2"
+notify-debouncer-mini = "0.7"
 specta = "=2.0.0-rc.22"
 specta-typescript = "0.0.9"
 tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }

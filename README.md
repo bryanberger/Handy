@@ -59,7 +59,7 @@ Control Handy from [Raycast](https://www.raycast.com) — start/stop recording, 
 
 ## Overlay Theme File
 
-The recording overlay can be styled from the Appearance tab, or from a file on disk so external theming tools (Omarchy and the like) can drive it without opening Handy's settings window. Handy only ever **reads** this file. It never creates, rewrites or deletes it.
+`overlay_theme.json` **is** the overlay theme. The Appearance tab is an editor for it, and a text editor or an external theming tool (Omarchy and the like) edits the same document; whichever writes it, the change is live at once. There is no second copy in Handy's settings, so the tab and the file cannot disagree.
 
 **Where Handy looks.** The file is always named `overlay_theme.json`. The first candidate that resolves to a readable file wins, and that document is the only one used. Locations are never merged.
 
@@ -70,11 +70,17 @@ The recording overlay can be styled from the Appearance tab, or from a file on d
 | 3        | `~/.config/handy/`, on every platform, or `$XDG_CONFIG_HOME/handy/` when that variable is set. |
 | 4        | Handy's app data directory (the path the About tab prints).                                    |
 
-`~/.config/handy/overlay_theme.json` is where to put a new file, on macOS and Windows as much as on Linux; on Windows that is `%USERPROFILE%\.config\handy\overlay_theme.json`. Priority 4 is a fallback. A file in the app data directory, where earlier builds pointed, still loads as before, and Handy neither moves nor migrates it.
+`~/.config/handy/overlay_theme.json` is where to put a new file, on macOS and Windows as much as on Linux; on Windows that is `%USERPROFILE%\.config\handy\overlay_theme.json`. Priority 4 is a fallback. A file in the app data directory, where earlier builds pointed, still loads as before and is written in place; Handy never moves it.
 
 The app data directory is `~/Library/Application Support/com.pais.handy/` on macOS, `%APPDATA%\com.pais.handy\` on Windows, and `$XDG_DATA_HOME/com.pais.handy/` (default `~/.local/share/com.pais.handy/`) on Linux.
 
 The Appearance tab shows the path in effect, or `~/.config/handy/overlay_theme.json` when there is no file anywhere, with a button that opens its folder, creating `~/.config/handy/` first if it does not exist. Under `HANDY_OVERLAY_THEME_FILE` nothing is created, and the button opens the nearest folder along that path that already exists.
+
+**When Handy writes it.** Every change committed in the Appearance tab writes the file in effect: dragging a slider writes once when you let go, not once per pixel, and resetting a token removes its key. The write is atomic (a temp file, then a rename), so nothing ever reads a half-written document, and Handy re-reads what it wrote before applying it, so a document it could not load never becomes the theme. `version` and keys Handy does not recognise are kept, and the tokens are written in this page's table order, two-space indented with a trailing newline. `~/.config/handy/` is created on the first write.
+
+**When it will not.** Handy writes the file only when it owns it: when nothing is there yet in one of Handy's own locations, or when it is a regular, writable file. A **symlinked** or read-only `overlay_theme.json` belongs to whoever made it, which is exactly how a dotfile manager or a theming tool claims the document. Handy then reads it, never writes it, and the Appearance tab says so and turns every token row read-only; "Copy theme as JSON" still works, and the on-screen preview still previews. A path named by `HANDY_OVERLAY_THEME_FILE` is written like any other once it is a regular writable file, since you chose it; Handy will not create one there.
+
+**Upgrading.** A theme set in the Appearance tab before this file became the theme is copied into `~/.config/handy/overlay_theme.json` once, at the first launch that finds no theme file anywhere, and logged. A file already in place wins and nothing is migrated.
 
 **What the file may contain.** A JSON object with an optional `version` plus any of the twenty-two overlay-theme tokens:
 
@@ -112,7 +118,7 @@ The Appearance tab shows the path in effect, or `~/.config/handy/overlay_theme.j
 
 `padding` insets the card on all four sides, so it makes the card taller as well as roomier. `element_gap` puts extra space between the row's elements, once on each side of the row's middle, so the card is twice the gap wider; a resting pill that lost the cancel button has one boundary left and pays for one. Unset it is 0. With `size_scale` and `border_width` those two are the four tokens that change how much room the overlay needs on screen under either material. Under Flat the two shadow tokens add to them, because the window grows on every side to hold the shadow. Under Glass, where the window is the card exactly, `waveform_gap`, `waveform_width`, `show_waveform` and `show_cancel` do instead, because they decide how wide a resting pill is.
 
-**Inherit.** Every token is optional, and an absent key does exactly what an explicit `null` does. Both inherit Handy's own theme-aware value for that token. The merge is per key, `file, else settings window, else built-in`, so a file that sets only `surface` leaves the other twenty tokens under the Appearance tab's control. Tokens the file sets are shown there read-only, marked as coming from the theme file. `{ "version": 1 }` and `{}` are valid documents that change nothing, and deleting the file stops the override.
+**Inherit.** Every token is optional, and an absent key does exactly what an explicit `null` does. Both inherit Handy's own theme-aware value for that token, so a file that sets only `surface` leaves the other twenty-one looking exactly as they do today. `{ "version": 1 }` and `{}` are valid documents that change nothing, and deleting the file puts the overlay back to its built-in look. Handy writes inherit as an absent key rather than a `null`, so resetting a token shortens the document.
 
 **A full theme:**
 
@@ -159,11 +165,11 @@ The Appearance tab shows the path in effect, or `~/.config/handy/overlay_theme.j
 }
 ```
 
-That resolves to accent `#8aadf4`, surface `#24273a`, text `#ccaadd`, surface opacity 1.0 and material Flat; `app_theme` is ignored with a warning, and the sixteen unmentioned tokens inherit.
+That resolves to accent `#8aadf4`, surface `#24273a`, text `#ccaadd`, surface opacity 1.0 and material Flat; `app_theme` is ignored with a warning, and the seventeen unmentioned tokens inherit. Both unknown keys survive the next write from the Appearance tab, so an annotation stays where its author put it.
 
-**When it is re-read.** At launch, every time the overlay is shown, when the Appearance tab is opened, and from the tab's Reload button. There is no file watcher, so a theme switch takes effect on the next dictation rather than instantly. No restart is needed.
+**When it is re-read.** A file watcher on its folder applies a hand edit or a tool's write as it happens, to the overlay and to an open Appearance tab, with no restart and no button. It is debounced, so one save is one update, and a write Handy made itself changes nothing twice. Handy also re-reads at launch, every time the overlay is shown, and when the Appearance tab is opened, so a missed event heals itself by the next dictation. Where the watcher cannot start, the tab shows a Reload button; where it can, there is nothing for it to do and it is not shown.
 
-**When something is wrong.** A malformed or unreadable document keeps the last one that parsed, so a file caught half-written never blanks the overlay. A single bad key costs only that key, which inherits, and Handy clamps a number outside its range. Everything is logged, and the Appearance tab lists the problems.
+**When something is wrong.** A malformed or unreadable document keeps the last one that parsed, so a file caught half-written never blanks the overlay. A single bad key costs only that key, which inherits, and Handy clamps a number outside its range. Everything is logged, and the Appearance tab lists the problems. Changing a value in the tab while the file is broken replaces it with the values on screen, which is the point of changing it.
 
 **Forward compatibility.** Color values are `"#RRGGBB"` strings today. A future schema version may also accept `{ "light": "#RRGGBB", "dark": "#RRGGBB" }` for the same keys. The key names will not change, writers that emit a single string stay valid, and readers should tolerate either shape.
 

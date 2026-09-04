@@ -291,7 +291,6 @@
         "button": "Reimposta il tema dell'overlay",
         "title": "Reimpostare il tema dell'overlay?",
         "description": "Riporta tutti i colori, le dimensioni e le spaziature dell'overlay ai valori predefiniti di Handy. Lo stile e la posizione dell'overlay non cambiano.",
-        "descriptionWithThemeFile": "Riporta ai valori predefiniti di Handy tutti i colori, le dimensioni e le spaziature dell'overlay non impostati dal file del tema. Lo stile e la posizione dell'overlay non cambiano e i valori impostati dal file del tema restano attivi.",
         "confirm": "Reimposta",
         "cancel": "Annulla"
       },
@@ -409,13 +408,19 @@
       },
       "themeFile": {
         "title": "File del tema",
-        "description": "Un file JSON facoltativo che sostituisce i valori del tema dell'overlay, così strumenti di personalizzazione esterni possono pilotare l'overlay.",
-        "notFound": "Nessun file del tema. Creane uno in questo percorso per sostituire i valori del tema dell'overlay.",
-        "active": "Attivo — questo file imposta {{count}} valori su {{total}}.",
+        "description": "Il file JSON in cui vive il tema dell'overlay. Handy lo scrive ogni volta che cambi qualcosa qui, e una modifica fatta da un editor di testo o da uno strumento di personalizzazione si applica appena viene salvata.",
+        "notFound": "Non c'è ancora un file del tema. Handy ne crea uno qui la prima volta che cambi qualcosa qui sopra.",
+        "owned": "Questo file è il tema; lo scrive Handy. Imposta {{count}} valori su {{total}}.",
+        "managed": {
+          "symlink": "Gestito dall'esterno: questo file è un collegamento simbolico a {{target}}. Handy lo legge e non lo scrive mai.",
+          "readOnly": "Gestito dall'esterno: questo file è di sola lettura, quindi Handy lo legge e non lo scrive mai.",
+          "notCreatable": "Gestito dall'esterno: HANDY_OVERLAY_THEME_FILE indica {{target}} e Handy non crea file lì. Crealo tu oppure rimuovi la variabile.",
+          "unknown": "Gestito dall'esterno: Handy non può scrivere questo file, quindi si limita a leggerlo."
+        },
+        "lockedDescription": "Il file del tema è gestito da qualcosa che non è Handy, quindi questi valori sono di sola lettura.",
         "reload": "Ricarica",
         "copy": "Copia il tema come JSON",
         "copied": "Copiato",
-        "lockedDescription": "Impostato dal file del tema. Modifica overlay_theme.json o rimuovi questa chiave per cambiarlo qui.",
         "problemsTitle": "Problemi nel file del tema:",
         "moreDiagnostics": "…e altri {{count}}.",
         "newerVersion": "Questo file del tema è stato scritto da una versione più recente di Handy. I valori che questa versione non riconosce sono stati ignorati.",

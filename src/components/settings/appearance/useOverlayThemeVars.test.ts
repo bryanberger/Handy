@@ -9,59 +9,53 @@ import {
 } from "./useOverlayThemeVars";
 
 /**
- * Unit tests for `mergeDraft`, the file-owned locking rule:
- * `owned_keys.includes(key) ? resolved.theme[key] : (draft[key] ??
- * resolved.theme[key])`. A settings draft never outranks a file-owned token.
+ * Unit tests for `mergeDraft`, the rule a token row is painted by: `draft[key]
+ * ?? resolved.theme[key]`. The file is the theme, so a draft is a value on its
+ * way into it, shown by the preview before it arrives, managed file or not.
  */
 
 describe("mergeDraft", () => {
-  test("an unowned key takes the draft value", () => {
+  test("a draft overrides the persisted value", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, radius: 24 };
-    const merged = mergeDraft(theme, { radius: 8 }, []);
+    const merged = mergeDraft(theme, { radius: 8 });
     expect(merged.radius).toBe(8);
   });
 
-  test("a file-owned key ignores the draft entirely", () => {
-    const theme: OverlayTheme = { ...INHERIT_ALL, accent: "#7aa2f7" };
-    const merged = mergeDraft(theme, { accent: "#ff0000" }, ["accent"]);
-    expect(merged.accent).toBe("#7aa2f7");
-  });
-
-  test("keys absent from the draft keep the resolved value, owned or not", () => {
+  test("keys absent from the draft keep the resolved value", () => {
     const theme: OverlayTheme = {
       ...INHERIT_ALL,
       surface: "#111111",
       text: "#eeeeee",
     };
-    const merged = mergeDraft(theme, { radius: 12 }, ["surface"]);
+    const merged = mergeDraft(theme, { radius: 12 });
     expect(merged.surface).toBe("#111111");
     expect(merged.text).toBe("#eeeeee");
     expect(merged.radius).toBe(12);
   });
 
-  test("a draft value of null (an in-progress reset) still overrides an unowned key", () => {
+  test("a draft value of null (an in-progress reset) still overrides", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, padding: 14 };
-    const merged = mergeDraft(theme, { padding: null }, []);
+    const merged = mergeDraft(theme, { padding: null });
     expect(merged.padding).toBeNull();
   });
 
-  test("locking is per key: other tokens in the same draft still apply", () => {
+  test("a managed file locks the rows, not the preview", () => {
+    // Contract point 4: Handy never writes this file, and the preview still
+    // paints what the user is dragging. Nothing here knows about ownership.
     const theme: OverlayTheme = {
       ...INHERIT_ALL,
       accent: "#7aa2f7",
       radius: 24,
     };
-    const merged = mergeDraft(theme, { accent: "#ff0000", radius: 4 }, [
-      "accent",
-    ]);
-    expect(merged.accent).toBe("#7aa2f7"); // locked: draft ignored
-    expect(merged.radius).toBe(4); // not locked: draft applies
+    const merged = mergeDraft(theme, { accent: "#ff0000", radius: 4 });
+    expect(merged.accent).toBe("#ff0000");
+    expect(merged.radius).toBe(4);
   });
 
   test("does not mutate its inputs", () => {
     const theme: OverlayTheme = { ...INHERIT_ALL, radius: 24 };
     const draft = { radius: 8 };
-    mergeDraft(theme, draft, []);
+    mergeDraft(theme, draft);
     expect(theme.radius).toBe(24);
     expect(draft.radius).toBe(8);
   });
@@ -194,6 +188,7 @@ describe("sameStringMap", () => {
       shadow_edge_slack: 15,
       glass_support: { supported: true, available: true, engine: "liquid" },
       file: EMPTY_FILE_STATE,
+      watching: true,
     });
     const first = resolveOverlayThemeVars(withScale(0.85));
     const second = resolveOverlayThemeVars(withScale(0.85));

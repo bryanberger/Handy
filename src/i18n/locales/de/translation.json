@@ -291,7 +291,6 @@
         "button": "Overlay-Design zurücksetzen",
         "title": "Overlay-Design zurücksetzen?",
         "description": "Das setzt alle Farben, Größen und Abstände des Overlays auf die Standardwerte von Handy zurück. Overlay-Stil und -Position bleiben unverändert.",
-        "descriptionWithThemeFile": "Das setzt alle Farben, Größen und Abstände des Overlays, die nicht von der Designdatei gesetzt werden, auf die Standardwerte von Handy zurück. Overlay-Stil und -Position bleiben unverändert, und Werte aus der Designdatei bleiben wirksam.",
         "confirm": "Zurücksetzen",
         "cancel": "Abbrechen"
       },
@@ -409,13 +408,19 @@
       },
       "themeFile": {
         "title": "Designdatei",
-        "description": "Eine optionale JSON-Datei, die Werte des Overlay-Designs überschreibt, damit externe Theming-Tools das Overlay steuern können.",
-        "notFound": "Keine Designdatei. Lege unter diesem Pfad eine an, um Werte des Overlay-Designs zu überschreiben.",
-        "active": "Aktiv — diese Datei setzt {{count}} von {{total}} Werten.",
+        "description": "Die JSON-Datei, in der dein Overlay-Design liegt. Handy schreibt sie, sobald du hier etwas änderst, und eine Änderung aus einem Texteditor oder einem Theming-Tool wirkt, sobald sie gespeichert ist.",
+        "notFound": "Noch keine Designdatei. Handy legt hier eine an, sobald du oben etwas änderst.",
+        "owned": "Diese Datei ist das Design; Handy schreibt sie. Sie setzt {{count}} von {{total}} Werten.",
+        "managed": {
+          "symlink": "Extern verwaltet: Diese Datei ist ein symbolischer Link auf {{target}}. Handy liest sie und schreibt sie nie.",
+          "readOnly": "Extern verwaltet: Diese Datei ist schreibgeschützt, deshalb liest Handy sie nur und schreibt sie nie.",
+          "notCreatable": "Extern verwaltet: HANDY_OVERLAY_THEME_FILE nennt {{target}}, und Handy legt dort keine Dateien an. Lege sie selbst an oder entferne die Variable.",
+          "unknown": "Extern verwaltet: Handy kann diese Datei nicht schreiben und liest sie deshalb nur."
+        },
+        "lockedDescription": "Die Designdatei wird nicht von Handy verwaltet, deshalb sind diese Werte schreibgeschützt.",
         "reload": "Neu laden",
         "copy": "Design als JSON kopieren",
         "copied": "Kopiert",
-        "lockedDescription": "Von der Designdatei gesetzt. Bearbeite overlay_theme.json oder entferne diesen Schlüssel, um ihn hier zu ändern.",
         "problemsTitle": "Probleme in der Designdatei:",
         "moreDiagnostics": "…und {{count}} weitere.",
         "newerVersion": "Diese Designdatei wurde von einer neueren Version von Handy geschrieben. Werte, die diese Version nicht kennt, wurden ignoriert.",

@@ -291,7 +291,6 @@
         "button": "Ekran katmanı temasını sıfırla",
         "title": "Ekran katmanı teması sıfırlansın mı?",
         "description": "Bu işlem ekran katmanının tüm renklerini, boyutlarını ve boşluklarını Handy'nin varsayılan değerlerine döndürür. Ekran katmanı stiliniz ve konumunuz değişmez.",
-        "descriptionWithThemeFile": "Bu işlem, ekran katmanının tema dosyası tarafından ayarlanmayan tüm renklerini, boyutlarını ve boşluklarını Handy'nin varsayılan değerlerine döndürür. Ekran katmanı stiliniz ve konumunuz değişmez, tema dosyasındaki değerler geçerli kalır.",
         "confirm": "Sıfırla",
         "cancel": "İptal"
       },
@@ -409,13 +408,19 @@
       },
       "themeFile": {
         "title": "Tema dosyası",
-        "description": "Ekran katmanı temasının değerlerini geçersiz kılan isteğe bağlı bir JSON dosyası; böylece harici tema araçları ekran katmanını yönetebilir.",
-        "notFound": "Tema dosyası yok. Ekran katmanı teması değerlerini geçersiz kılmak için bu yolda bir dosya oluşturun.",
-        "active": "Etkin — bu dosya {{total}} değerden {{count}} tanesini ayarlıyor.",
+        "description": "Ekran katmanı temanızın durduğu JSON dosyası. Burada bir şeyi her değiştirdiğinizde Handy bu dosyaya yazar; bir metin düzenleyicide ya da tema aracında yapılan düzenleme de kaydedilir kaydedilmez uygulanır.",
+        "notFound": "Henüz tema dosyası yok. Yukarıda bir şeyi ilk değiştirdiğinizde Handy burada bir tane oluşturur.",
+        "owned": "Bu dosya temanın kendisidir; onu Handy yazar. {{total}} değerden {{count}} tanesini ayarlıyor.",
+        "managed": {
+          "symlink": "Dışarıdan yönetiliyor: bu dosya {{target}} yolunu gösteren sembolik bir bağlantı. Handy onu okur, asla yazmaz.",
+          "readOnly": "Dışarıdan yönetiliyor: bu dosya salt okunur, bu yüzden Handy onu yalnızca okur, asla yazmaz.",
+          "notCreatable": "Dışarıdan yönetiliyor: HANDY_OVERLAY_THEME_FILE {{target}} yolunu belirtiyor ve Handy orada dosya oluşturmaz. Dosyayı kendiniz oluşturun veya değişkeni kaldırın.",
+          "unknown": "Dışarıdan yönetiliyor: Handy bu dosyaya yazamıyor, bu yüzden onu yalnızca okuyor."
+        },
+        "lockedDescription": "Tema dosyası Handy dışında bir şey tarafından yönetiliyor, bu yüzden bu değerler salt okunur.",
         "reload": "Yeniden yükle",
         "copy": "Temayı JSON olarak kopyala",
         "copied": "Kopyalandı",
-        "lockedDescription": "Tema dosyası tarafından ayarlandı. Burada değiştirmek için overlay_theme.json dosyasını düzenleyin veya bu anahtarı kaldırın.",
         "problemsTitle": "Tema dosyasındaki sorunlar:",
         "moreDiagnostics": "…ve {{count}} tane daha.",
         "newerVersion": "Bu tema dosyası Handy'nin daha yeni bir sürümü tarafından yazılmış. Bu sürümün anlamadığı değerler yok sayıldı.",

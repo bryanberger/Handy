@@ -291,7 +291,6 @@
         "button": "Nulstil overlaytemaet",
         "title": "Nulstil overlaytemaet?",
         "description": "Dette sætter alle overlayets farver, størrelser og afstande tilbage til Handys standardværdier. Din overlaystil og -placering ændres ikke.",
-        "descriptionWithThemeFile": "Dette sætter alle overlayets farver, størrelser og afstande, der ikke er angivet af temafilen, tilbage til Handys standardværdier. Din overlaystil og -placering ændres ikke, og værdier fra temafilen gælder fortsat.",
         "confirm": "Nulstil",
         "cancel": "Annuller"
       },
@@ -409,13 +408,19 @@
       },
       "themeFile": {
         "title": "Temafil",
-        "description": "En valgfri JSON-fil, der tilsidesætter værdier i overlaytemaet, så eksterne temaværktøjer kan styre overlayet.",
-        "notFound": "Ingen temafil. Opret en på denne sti for at tilsidesætte værdier i overlaytemaet.",
-        "active": "Aktiv — denne fil angiver {{count}} af {{total}} værdier.",
+        "description": "JSON-filen, som dit overlaytema ligger i. Handy skriver den, hver gang du ændrer noget her, og en redigering fra en teksteditor eller et temaværktøj træder i kraft, så snart den gemmes.",
+        "notFound": "Ingen temafil endnu. Handy opretter en her, første gang du ændrer noget ovenfor.",
+        "owned": "Denne fil er temaet; Handy skriver den. Den angiver {{count}} af {{total}} værdier.",
+        "managed": {
+          "symlink": "Styret udefra: denne fil er et symbolsk link til {{target}}. Handy læser den og skriver aldrig til den.",
+          "readOnly": "Styret udefra: denne fil er skrivebeskyttet, så Handy læser den og skriver aldrig til den.",
+          "notCreatable": "Styret udefra: HANDY_OVERLAY_THEME_FILE peger på {{target}}, og Handy opretter ikke filer der. Opret den selv, eller fjern variablen.",
+          "unknown": "Styret udefra: Handy kan ikke skrive til denne fil og læser den derfor kun."
+        },
+        "lockedDescription": "Temafilen styres af noget andet end Handy, så disse værdier er skrivebeskyttede.",
         "reload": "Genindlæs",
         "copy": "Kopiér temaet som JSON",
         "copied": "Kopieret",
-        "lockedDescription": "Angivet af temafilen. Rediger overlay_theme.json, eller fjern denne nøgle for at ændre den her.",
         "problemsTitle": "Problemer i temafilen:",
         "moreDiagnostics": "…og {{count}} mere.",
         "newerVersion": "Denne temafil er skrevet af en nyere version af Handy. Værdier, som denne version ikke forstår, blev ignoreret.",

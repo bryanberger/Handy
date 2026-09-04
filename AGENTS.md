@@ -79,12 +79,14 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
 - `settings.rs` - Application settings management
 - `overlay.rs` - Recording overlay window (platform-specific): window creation, monitors, positioning, show and hide, the Glass reveal, mic levels
 - `overlay_geometry.rs` - Card geometry, pure and platform-free: card shapes, card metrics (size scale, border width, radius), the window size and corner radius they produce, and the overlay window state the native window is configured from
-- `overlay_theme.rs` - Overlay theme tokens, the file/settings/inherit resolver, delivery
-- `overlay_theme_file.rs` - Reads `overlay_theme.json` (see the README's Overlay Theme File section)
+- `overlay_theme.rs` - Overlay theme tokens, the resolver (the file's tokens, clamped, unset ones inheriting), delivery and the "already delivered" gate the watcher leans on
+- `overlay_theme_file.rs` - Reads `overlay_theme.json` and decides whether Handy owns it (see the README's Overlay Theme File section)
+- `overlay_theme_write.rs` - Writes `overlay_theme.json`: atomic, verified by reading it back through the same parser, plus the one-time migration of the store's old `overlay_theme`
+- `overlay_theme_watch.rs` - Watches the theme file's folder so a hand edit or a tool's write is live; `watching: false` in the resolved theme puts the tab's Reload button back
 - `overlay_glass.rs` - The macOS Glass material. One native view under the webview, `NSGlassEffectView` (Liquid Glass) on macOS 26 and later and `NSVisualEffectView` before it, plus the native frame morph. `glass_support.engine` reports which engine drew; `glass_style` and `glass_material` are its live setters, one per engine
 - `overlay_preview.rs` - Preview mode. Drives the real overlay from synthetic audio, cycling or pinned to one state, until the Appearance tab stops it. It also backs `--preview-overlay`, which stops itself, and owns the cancel funnel every cancel path goes through
 - `frontend_source.rs` - Test-only readers for the overlay's stylesheet and TypeScript, so Rust tests pin their constants to the values the frontend paints
-- `commands/overlay_theme.rs` - Persist, read and reload the overlay theme
+- `commands/overlay_theme.rs` - Write, read and reload the overlay theme file
 - `commands/overlay_preview.rs` - Thin adapters onto `overlay_preview.rs`: start, set state, stop
 - `commands/overlay_card.rs` - Receives the overlay page's card-shape reports
 - `signal_handle.rs` - `send_transcription_input()` reusable function
@@ -102,7 +104,7 @@ Handy is a cross-platform desktop speech-to-text application built with Tauri 2.
   - `update-checker/` - App update notifications
   - `shared/`, `ui/`, `icons/`, `footer/` - Shared components
 - `hooks/useSettings.ts` - Settings state management hook
-- `hooks/useResolvedOverlayTheme.ts` - Subscribes the settings window to the resolved overlay theme
+- `hooks/useResolvedOverlayTheme.ts` - Subscribes the settings window to the resolved overlay theme, and where the Appearance tab's committed changes go (they write the theme file, not the settings store)
 - `stores/settingsStore.ts` - Zustand store for settings
 - `bindings.ts` - Auto-generated Tauri type bindings (via tauri-specta)
 - `overlay/` - Recording overlay window entry point
@@ -226,7 +228,7 @@ Access debug features: `Cmd+Shift+D` (macOS) or `Ctrl+Shift+D` (Windows/Linux)
 - **Linux**: OpenBLAS + Vulkan, limited Wayland support, overlay uses GTK layer shell (disable with `HANDY_NO_GTK_LAYER_SHELL=1`)
 - **Nix/NixOS**: the Nix package sets `HANDY_DISABLE_UPDATER=1` to force-disable the self-updater at runtime without touching the persisted setting (self-update can't work against an immutable `/nix/store`)
 - **macOS Glass**: the overlay window snaps between card shapes, because the native frame animation leads WebKit's repaint and briefly shows a bare blurred rim. `HANDY_GLASS_MORPH=1` opts the animation back in on real hardware; macOS "Reduce motion" snaps either way. On macOS 26 and later the blur is `NSGlassEffectView` (Liquid Glass) and the `glass_style` token picks Regular or Clear; before that it is `NSVisualEffectView` and the file-only `glass_material` token picks the `NSVisualEffectMaterial`. Both are tokens, not environment variables, so there is one source of truth, and `glass_material` is file-only because it has no row in the Appearance tab. Under Liquid Glass the surface tint is painted twice on purpose, natively as the glass's `tintColor` composed from `surface` and `glass_tint` so the glass lenses it, and again by the card as `--s-surface`. `glass_tint` sets the tint strength. `surface_opacity` is Flat's and Glass ignores it, so a card set opaque under Flat is still glass the moment Glass is picked. Measured on macOS 26, `tintColor` alone left the card dark under a Light app theme, the glass ignoring the tint's hue and not following the app appearance, with the transcript at 1.9:1; the card's own tint makes the same case 6.5:1. Dropping the CSS half is a one-branch change if real hardware honours both. Under Glass the panel also turns macOS's own window shadow back on (`overlay_glass::window_shadow`); Flat keeps it off because there the window is larger than the card and transparent around it. Clear's unset edge is a white highlight rather than a foreground hairline. A show can only seed the card shape from its state, and every Live state seeds the pill, so anything that rounds the blur after a show re-reads the shape on screen instead of carrying the seeded radius — the delayed fallback reveal included, since a reveal writes the radius even when the view is already visible
-- **Overlay theme file**: `HANDY_OVERLAY_THEME_FILE=<path>` names the `overlay_theme.json` Handy reads. It takes a path, not a flag, and it is exclusive. When set, no other location is tried and a missing target is a warning, not a silent fallback
+- **Overlay theme file**: `overlay_theme.json` is the overlay theme. The Appearance tab writes it, a watcher applies anyone else's write, and a symlinked or read-only file is managed: read, never written, every token row locked. `HANDY_OVERLAY_THEME_FILE=<path>` names the file Handy uses. It takes a path, not a flag, and it is exclusive. When set, no other location is tried and a missing target is a warning, not a silent fallback; Handy never creates a file there either, so a missing target reads as managed until somebody makes it
 
 ## Troubleshooting
 

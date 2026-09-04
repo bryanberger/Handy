@@ -2,7 +2,10 @@ import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
-import { useResolvedOverlayTheme } from "@/hooks/useResolvedOverlayTheme";
+import {
+  commitOverlayTheme,
+  useResolvedOverlayTheme,
+} from "@/hooks/useResolvedOverlayTheme";
 import { useSettings } from "@/hooks/useSettings";
 import {
   BOOLEAN_INHERIT,
@@ -76,6 +79,9 @@ function isOverlayThemeDefault(theme: OverlayTheme): boolean {
  * Color / Material / Elements / Size & Spacing / Waveform, and the Theme File
  * group. Groups 4 on read `OVERLAY_TOKEN_FIELDS`, not hardcoded rows, so that
  * table alone declares a token's shape.
+ *
+ * Every token row writes `overlay_theme.json`, the one place a theme lives.
+ * Rows go read-only together when Handy reads that file and does not write it.
  */
 export const AppearanceSettings: React.FC = () => (
   <ErrorBoundary context="Appearance tab">
@@ -85,8 +91,9 @@ export const AppearanceSettings: React.FC = () => (
 
 const AppearanceSettingsInner: React.FC = () => {
   const { t } = useTranslation();
-  const { settings, isUpdating, resetSetting } = useSettings();
-  const { resolved, isReloading, reload } = useResolvedOverlayTheme();
+  const { settings } = useSettings();
+  const { resolved, isReloading, isCommitting, reload } =
+    useResolvedOverlayTheme();
   // Whether the overlay is this tab's to repaint live. The preview card owns
   // it, the only thing that knows; else a drag sends a refused draft per frame.
   const [overlayIsOurs, setOverlayIsOurs] = useState(false);
@@ -146,17 +153,16 @@ const AppearanceSettingsInner: React.FC = () => {
     void setOverlayThemeToken("waveform_style", next);
   }, []);
 
-  const overlayTheme = settings?.overlay_theme ?? INHERIT_ALL;
-  const resettingWhole = isUpdating("overlay_theme");
-  const resetDisabled = isOverlayThemeDefault(overlayTheme) || resettingWhole;
-  const hasThemeFileOwnership = (resolved?.file.owned_keys.length ?? 0) > 0;
+  // The theme file is the overlay theme, so the persisted tokens are its own.
+  const overlayTheme = resolved?.theme ?? INHERIT_ALL;
+  const locked = vars.locked;
+  const resetDisabled =
+    isOverlayThemeDefault(overlayTheme) || isCommitting || locked;
   const lockedDescription = t(
     "settings.appearance.themeFile.lockedDescription",
   );
 
   const renderField = (field: OverlayTokenField) => {
-    const locked = vars.isLocked(field.key);
-
     switch (field.kind) {
       // The three enum tokens with a row get their own selectors, not a generic
       // dropdown. Material owns the Glass gating and the unavailable note, the
@@ -240,7 +246,7 @@ const AppearanceSettingsInner: React.FC = () => {
             resolvedDefault={vars.resolvedDefaults[field.key]}
             locked={locked}
             lockedDescription={lockedDescription}
-            isResetting={resettingWhole}
+            isResetting={isCommitting}
             onDraft={setDraft}
             onFlush={handleFlush}
             onReset={reset}
@@ -263,7 +269,7 @@ const AppearanceSettingsInner: React.FC = () => {
             }
             locked={locked}
             lockedDescription={lockedDescription}
-            isResetting={resettingWhole}
+            isResetting={isCommitting}
             onDraft={setDraft}
             onFlush={handleFlush}
             onReset={reset}
@@ -287,8 +293,7 @@ const AppearanceSettingsInner: React.FC = () => {
           style={style}
           settingsTheme={overlayTheme}
           resetDisabled={resetDisabled}
-          hasThemeFileOwnership={hasThemeFileOwnership}
-          onResetConfirm={() => void resetSetting("overlay_theme")}
+          onResetConfirm={() => void commitOverlayTheme(INHERIT_ALL)}
           onFlushDrafts={flushAll}
           lastSurfaceChange={lastSurfaceChange}
           glassAvailable={glassSupport.available}
@@ -347,6 +352,7 @@ const AppearanceSettingsInner: React.FC = () => {
               file={resolved?.file ?? EMPTY_FILE_STATE}
               material={vars.effectiveMaterial}
               showWaveform={showsWaveform}
+              watching={resolved?.watching ?? false}
               onReload={() => void reload()}
               isReloading={isReloading}
             />

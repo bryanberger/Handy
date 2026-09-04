@@ -291,7 +291,6 @@
         "button": "重置悬浮窗主题",
         "title": "重置悬浮窗主题？",
         "description": "这会将悬浮窗的所有颜色、尺寸和间距恢复为 Handy 的默认值。悬浮窗样式和位置不会改变。",
-        "descriptionWithThemeFile": "这会将悬浮窗中未由主题文件设置的所有颜色、尺寸和间距恢复为 Handy 的默认值。悬浮窗样式和位置不会改变，主题文件设置的值仍然有效。",
         "confirm": "重置",
         "cancel": "取消"
       },
@@ -409,13 +408,19 @@
       },
       "themeFile": {
         "title": "主题文件",
-        "description": "一个可选的 JSON 文件，用于覆盖悬浮窗主题的值，让外部主题工具可以控制悬浮窗。",
-        "notFound": "没有主题文件。在此路径创建一个即可覆盖悬浮窗主题的值。",
-        "active": "已启用——此文件设置了 {{total}} 个值中的 {{count}} 个。",
+        "description": "存放悬浮窗主题的 JSON 文件。您每次在这里做出更改，Handy 都会写入该文件；用文本编辑器或主题工具所做的修改，一保存即生效。",
+        "notFound": "还没有主题文件。首次修改上面的设置时，Handy 会在此处创建一个。",
+        "owned": "此文件就是主题，由 Handy 写入。它设置了 {{total}} 个值中的 {{count}} 个。",
+        "managed": {
+          "symlink": "由外部管理：此文件是指向 {{target}} 的符号链接。Handy 只读取，绝不写入。",
+          "readOnly": "由外部管理：此文件为只读，因此 Handy 只读取，绝不写入。",
+          "notCreatable": "由外部管理：HANDY_OVERLAY_THEME_FILE 指定了 {{target}}，而 Handy 不会在那里创建文件。请自行创建，或取消设置该变量。",
+          "unknown": "由外部管理：Handy 无法写入此文件，因此只会读取。"
+        },
+        "lockedDescription": "主题文件由 Handy 以外的程序管理，因此这些值为只读。",
         "reload": "重新加载",
         "copy": "以 JSON 复制主题",
         "copied": "已复制",
-        "lockedDescription": "由主题文件设置。若要在此处修改，请编辑 overlay_theme.json 或删除该键。",
         "problemsTitle": "主题文件中的问题：",
         "moreDiagnostics": "…还有 {{count}} 项。",
         "newerVersion": "此主题文件由更新版本的 Handy 写入。当前版本无法识别的值已被忽略。",

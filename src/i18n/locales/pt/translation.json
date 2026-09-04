@@ -291,7 +291,6 @@
         "button": "Redefinir o tema da sobreposição",
         "title": "Redefinir o tema da sobreposição?",
         "description": "Isso restaura todas as cores, tamanhos e espaçamentos da sobreposição para os padrões do Handy. Seu estilo e posição de sobreposição não são alterados.",
-        "descriptionWithThemeFile": "Isso restaura para os padrões do Handy todas as cores, tamanhos e espaçamentos da sobreposição que não forem definidos pelo arquivo de tema. Seu estilo e posição de sobreposição não são alterados, e os valores definidos pelo arquivo de tema continuam valendo.",
         "confirm": "Redefinir",
         "cancel": "Cancelar"
       },
@@ -409,13 +408,19 @@
       },
       "themeFile": {
         "title": "Arquivo de tema",
-        "description": "Um arquivo JSON opcional que substitui os valores do tema da sobreposição, para que ferramentas externas de personalização possam controlá-la.",
-        "notFound": "Nenhum arquivo de tema. Crie um neste caminho para substituir os valores do tema da sobreposição.",
-        "active": "Ativo — este arquivo define {{count}} de {{total}} valores.",
+        "description": "O arquivo JSON onde vive o tema da sobreposição. O Handy o escreve sempre que você muda algo aqui, e uma edição feita em um editor de texto ou em uma ferramenta de personalização é aplicada assim que é salva.",
+        "notFound": "Ainda não há arquivo de tema. O Handy cria um aqui na primeira vez que você mudar algo acima.",
+        "owned": "Este arquivo é o tema; quem o escreve é o Handy. Ele define {{count}} de {{total}} valores.",
+        "managed": {
+          "symlink": "Gerenciado externamente: este arquivo é um link simbólico para {{target}}. O Handy o lê e nunca o escreve.",
+          "readOnly": "Gerenciado externamente: este arquivo é somente leitura, então o Handy o lê e nunca o escreve.",
+          "notCreatable": "Gerenciado externamente: HANDY_OVERLAY_THEME_FILE indica {{target}}, e o Handy não cria arquivos ali. Crie-o você mesmo ou remova a variável.",
+          "unknown": "Gerenciado externamente: o Handy não consegue escrever este arquivo, então apenas o lê."
+        },
+        "lockedDescription": "O arquivo de tema é gerenciado por algo que não é o Handy, então estes valores são somente leitura.",
         "reload": "Recarregar",
         "copy": "Copiar o tema como JSON",
         "copied": "Copiado",
-        "lockedDescription": "Definido pelo arquivo de tema. Edite overlay_theme.json ou remova esta chave para alterá-la aqui.",
         "problemsTitle": "Problemas no arquivo de tema:",
         "moreDiagnostics": "…e mais {{count}}.",
         "newerVersion": "Este arquivo de tema foi escrito por uma versão mais recente do Handy. Os valores que esta versão não entende foram ignorados.",

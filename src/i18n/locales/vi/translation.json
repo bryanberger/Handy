@@ -291,7 +291,6 @@
         "button": "Đặt lại giao diện lớp phủ",
         "title": "Đặt lại giao diện lớp phủ?",
         "description": "Thao tác này khôi phục mọi màu sắc, kích thước và khoảng cách của lớp phủ về mặc định của Handy. Kiểu và vị trí lớp phủ của bạn không thay đổi.",
-        "descriptionWithThemeFile": "Thao tác này khôi phục về mặc định của Handy mọi màu sắc, kích thước và khoảng cách của lớp phủ không do tệp giao diện đặt. Kiểu và vị trí lớp phủ của bạn không thay đổi, và các giá trị do tệp giao diện đặt vẫn có hiệu lực.",
         "confirm": "Đặt lại",
         "cancel": "Hủy"
       },
@@ -409,13 +408,19 @@
       },
       "themeFile": {
         "title": "Tệp giao diện",
-        "description": "Một tệp JSON tùy chọn ghi đè các giá trị giao diện lớp phủ, để các công cụ tạo giao diện bên ngoài có thể điều khiển lớp phủ.",
-        "notFound": "Không có tệp giao diện. Hãy tạo một tệp tại đường dẫn này để ghi đè các giá trị giao diện lớp phủ.",
-        "active": "Đang hoạt động — tệp này đặt {{count}} trong {{total}} giá trị.",
+        "description": "Tệp JSON chứa giao diện lớp phủ của bạn. Handy ghi tệp này mỗi khi bạn thay đổi thứ gì đó ở đây, và một chỉnh sửa từ trình soạn thảo văn bản hay công cụ tạo giao diện sẽ có hiệu lực ngay khi được lưu.",
+        "notFound": "Chưa có tệp giao diện. Handy sẽ tạo một tệp ở đây trong lần đầu bạn thay đổi thứ gì đó ở trên.",
+        "owned": "Tệp này chính là giao diện; Handy ghi tệp này. Nó đặt {{count}} trong {{total}} giá trị.",
+        "managed": {
+          "symlink": "Do bên ngoài quản lý: tệp này là liên kết tượng trưng tới {{target}}. Handy chỉ đọc và không bao giờ ghi.",
+          "readOnly": "Do bên ngoài quản lý: tệp này ở chế độ chỉ đọc, nên Handy chỉ đọc và không bao giờ ghi.",
+          "notCreatable": "Do bên ngoài quản lý: HANDY_OVERLAY_THEME_FILE trỏ tới {{target}}, và Handy không tạo tệp ở đó. Hãy tự tạo tệp, hoặc bỏ đặt biến này.",
+          "unknown": "Do bên ngoài quản lý: Handy không thể ghi tệp này nên chỉ đọc."
+        },
+        "lockedDescription": "Tệp giao diện do thứ khác ngoài Handy quản lý, nên các giá trị này ở chế độ chỉ đọc.",
         "reload": "Tải lại",
         "copy": "Sao chép giao diện dạng JSON",
         "copied": "Đã sao chép",
-        "lockedDescription": "Được đặt bởi tệp giao diện. Hãy sửa overlay_theme.json hoặc xóa khóa này để thay đổi tại đây.",
         "problemsTitle": "Sự cố trong tệp giao diện:",
         "moreDiagnostics": "…và {{count}} mục nữa.",
         "newerVersion": "Tệp giao diện này được ghi bởi một phiên bản Handy mới hơn. Các giá trị mà phiên bản này không hiểu đã bị bỏ qua.",

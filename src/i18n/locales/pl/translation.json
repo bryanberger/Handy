@@ -291,7 +291,6 @@
         "button": "Zresetuj motyw nakładki",
         "title": "Zresetować motyw nakładki?",
         "description": "Przywraca wszystkie kolory, rozmiary i odstępy nakładki do wartości domyślnych Handy. Styl i pozycja nakładki nie zmieniają się.",
-        "descriptionWithThemeFile": "Przywraca do wartości domyślnych Handy wszystkie kolory, rozmiary i odstępy nakładki, które nie są ustawione przez plik motywu. Styl i pozycja nakładki nie zmieniają się, a wartości z pliku motywu nadal obowiązują.",
         "confirm": "Zresetuj",
         "cancel": "Anuluj"
       },
@@ -409,13 +408,19 @@
       },
       "themeFile": {
         "title": "Plik motywu",
-        "description": "Opcjonalny plik JSON, który nadpisuje wartości motywu nakładki, dzięki czemu zewnętrzne narzędzia do motywów mogą sterować nakładką.",
-        "notFound": "Brak pliku motywu. Utwórz go w tej lokalizacji, aby nadpisać wartości motywu nakładki.",
-        "active": "Aktywny — ten plik ustawia {{count}} z {{total}} wartości.",
+        "description": "Plik JSON, w którym mieści się motyw nakładki. Handy zapisuje go za każdym razem, gdy coś tutaj zmienisz, a zmiana wprowadzona w edytorze tekstu lub w narzędziu do motywów zaczyna działać zaraz po zapisaniu.",
+        "notFound": "Nie ma jeszcze pliku motywu. Handy utworzy go tutaj przy pierwszej zmianie powyżej.",
+        "owned": "Ten plik jest motywem; zapisuje go Handy. Ustawia {{count}} z {{total}} wartości.",
+        "managed": {
+          "symlink": "Zarządzany z zewnątrz: ten plik to dowiązanie symboliczne do {{target}}. Handy go odczytuje i nigdy nie zapisuje.",
+          "readOnly": "Zarządzany z zewnątrz: ten plik jest tylko do odczytu, więc Handy go odczytuje i nigdy nie zapisuje.",
+          "notCreatable": "Zarządzany z zewnątrz: HANDY_OVERLAY_THEME_FILE wskazuje {{target}}, a Handy nie tworzy tam plików. Utwórz go samodzielnie lub usuń tę zmienną.",
+          "unknown": "Zarządzany z zewnątrz: Handy nie może zapisać tego pliku, więc tylko go odczytuje."
+        },
+        "lockedDescription": "Plikiem motywu zarządza coś innego niż Handy, więc te wartości są tylko do odczytu.",
         "reload": "Wczytaj ponownie",
         "copy": "Kopiuj motyw jako JSON",
         "copied": "Skopiowano",
-        "lockedDescription": "Ustawione przez plik motywu. Edytuj overlay_theme.json lub usuń ten klucz, aby zmienić wartość tutaj.",
         "problemsTitle": "Problemy w pliku motywu:",
         "moreDiagnostics": "…i {{count}} więcej.",
         "newerVersion": "Ten plik motywu został zapisany przez nowszą wersję Handy. Wartości, których ta wersja nie rozpoznaje, zostały zignorowane.",

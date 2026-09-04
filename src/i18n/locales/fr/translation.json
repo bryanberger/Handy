@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Décalage de l'ombre",
-          "description": "À quelle distance sous la carte son ombre tombe. L'overlay réserve de la place pour l'ombre : avec un décalage plus grand, la carte se place un peu plus loin du bord de l'écran."
+          "description": "À quelle distance sous la carte son ombre tombe. La carte elle-même ne bouge jamais : la fenêtre de l'overlay s'agrandit autour d'elle, et l'ombre est rognée là où elle atteindrait le bord de l'écran."
         },
         "showWaveform": {
           "title": "Afficher la forme d'onde",

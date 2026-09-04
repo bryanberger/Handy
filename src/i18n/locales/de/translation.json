@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Schattenversatz",
-          "description": "Wie weit unterhalb der Karte ihr Schatten fällt. Das Overlay lässt Platz für den Schatten, daher sitzt die Karte bei größerem Versatz etwas weiter vom Bildschirmrand entfernt."
+          "description": "Wie weit unterhalb der Karte ihr Schatten fällt. Die Karte selbst bewegt sich nie; das Overlay-Fenster wächst um sie herum, und der Schatten wird dort beschnitten, wo er den Bildschirmrand erreichen würde."
         },
         "showWaveform": {
           "title": "Wellenform anzeigen",

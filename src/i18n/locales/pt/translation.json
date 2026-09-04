@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Deslocamento da sombra",
-          "description": "O quanto a sombra do cartão cai abaixo dele. A sobreposição reserva espaço para a sombra, então com um deslocamento maior o cartão fica um pouco mais longe da borda da tela."
+          "description": "O quanto a sombra do cartão cai abaixo dele. O cartão em si nunca se move; a janela da sobreposição cresce ao redor dele, e a sombra é cortada onde alcançaria a borda da tela."
         },
         "showWaveform": {
           "title": "Mostrar a forma de onda",

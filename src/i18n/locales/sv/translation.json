@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Skuggförskjutning",
-          "description": "Hur långt nedanför kortet dess skugga faller. Overlayen gör plats för skuggan, så vid en större förskjutning ligger kortet lite längre från skärmkanten."
+          "description": "Hur långt nedanför kortet dess skugga faller. Själva kortet flyttar sig aldrig; overlayfönstret växer runt det, och skuggan beskärs där den skulle nå skärmkanten."
         },
         "showWaveform": {
           "title": "Visa vågform",

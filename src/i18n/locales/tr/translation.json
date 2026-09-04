@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Gölge Kayması",
-          "description": "Kartın gölgesinin kartın ne kadar altına düştüğü. Ekran katmanı gölge için yer ayırır, bu yüzden kayma arttıkça kart ekran kenarından biraz daha uzakta durur."
+          "description": "Kartın gölgesinin kartın ne kadar altına düştüğü. Kartın kendisi hiç yer değiştirmez; ekran katmanı penceresi kartın çevresinde büyür ve gölge, ekran kenarına ulaşacağı yerde kırpılır."
         },
         "showWaveform": {
           "title": "Dalga Formunu Göster",

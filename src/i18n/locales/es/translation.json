@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Desplazamiento de la sombra",
-          "description": "Cuánto cae la sombra por debajo de la tarjeta. La superposición reserva espacio para la sombra, así que con un desplazamiento mayor la tarjeta queda un poco más lejos del borde de la pantalla."
+          "description": "Cuánto cae la sombra por debajo de la tarjeta. La tarjeta en sí nunca se mueve; la ventana de la superposición crece a su alrededor, y la sombra se recorta donde llegaría al borde de la pantalla."
         },
         "showWaveform": {
           "title": "Mostrar la forma de onda",

@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Skyggeforskydning",
-          "description": "Hvor langt nede under kortet skyggen falder. Overlayet gør plads til skyggen, så kortet ved en større forskydning ligger lidt længere fra skærmkanten."
+          "description": "Hvor langt nede under kortet skyggen falder. Selve kortet flytter sig aldrig; overlayvinduet vokser omkring det, og skyggen beskæres, hvor den ville nå skærmkanten."
         },
         "showWaveform": {
           "title": "Vis bølgeform",

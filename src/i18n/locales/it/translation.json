@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Scostamento dell'ombra",
-          "description": "Quanto in basso cade l'ombra sotto la scheda. L'overlay lascia spazio all'ombra, così con uno scostamento maggiore la scheda resta un po' più lontana dal bordo dello schermo."
+          "description": "Quanto in basso cade l'ombra sotto la scheda. La scheda stessa non si sposta mai: la finestra dell'overlay cresce attorno a essa e l'ombra viene tagliata dove arriverebbe al bordo dello schermo."
         },
         "showWaveform": {
           "title": "Mostra la forma d'onda",

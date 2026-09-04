@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Độ lệch bóng",
-          "description": "Bóng của thẻ đổ xuống thấp bao nhiêu. Lớp phủ chừa chỗ cho bóng, nên độ lệch càng lớn thì thẻ càng nằm xa mép màn hình hơn một chút."
+          "description": "Bóng của thẻ đổ xuống thấp bao nhiêu. Bản thân thẻ không hề dịch chuyển; cửa sổ lớp phủ to ra quanh thẻ, và bóng bị cắt ở chỗ nó chạm tới mép màn hình."
         },
         "showWaveform": {
           "title": "Hiện dạng sóng",

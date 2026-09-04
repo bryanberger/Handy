@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Posun stínu",
-          "description": "Jak nízko pod kartu její stín dopadá. Překryv si na stín vyhradí místo, takže při větším posunu je karta o kousek dál od okraje obrazovky."
+          "description": "Jak nízko pod kartu její stín dopadá. Samotná karta se nikdy neposune; okno překryvu se zvětšuje kolem ní a stín se ořízne tam, kde by dosáhl na okraj obrazovky."
         },
         "showWaveform": {
           "title": "Zobrazit zvukovou křivku",

@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Schaduwverschuiving",
-          "description": "Hoe ver onder de kaart de schaduw valt. De overlay maakt ruimte voor de schaduw, dus bij een grotere verschuiving ligt de kaart iets verder van de schermrand."
+          "description": "Hoe ver onder de kaart de schaduw valt. De kaart zelf verschuift nooit; het overlayvenster groeit eromheen, en de schaduw wordt afgesneden waar die de schermrand zou raken."
         },
         "showWaveform": {
           "title": "Golfvorm tonen",

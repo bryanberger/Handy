@@ -368,7 +368,7 @@
         },
         "shadowOffsetY": {
           "title": "Przesunięcie cienia",
-          "description": "Jak nisko pod kartą pada jej cień. Nakładka rezerwuje miejsce na cień, więc przy większym przesunięciu karta znajduje się nieco dalej od krawędzi ekranu."
+          "description": "Jak nisko pod kartą pada jej cień. Sama karta nigdy się nie przesuwa; okno nakładki powiększa się wokół niej, a cień zostaje przycięty tam, gdzie sięgnąłby krawędzi ekranu."
         },
         "showWaveform": {
           "title": "Pokaż falę dźwiękową",

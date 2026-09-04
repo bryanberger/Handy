@@ -285,13 +285,17 @@
      the offset, and a tight contact shadow. It follows the border box, so it
      morphs and fades with the card, and .ov-stage's padding is the room it
      falls into. Glass draws none; there the shadow is macOS's own window
-     shadow, outside the window this card fills. */
+     shadow, outside the window this card fills.
+     Strength is the alpha of both, so 1.00 is a shadow a white card casts
+     plainly onto a light desktop and half of it is still read at a glance.
+     The blur is fixed at --ov-shadow-blur whatever the alpha, because the blur
+     plus the offset is the window's shadow slack. */
   box-shadow:
     0 calc(var(--ov-shadow-y) * var(--ov-scale))
       calc(var(--ov-shadow-blur) * var(--ov-scale))
-      rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.4)),
+      rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.45)),
     0 calc(1px * var(--ov-scale)) calc(2px * var(--ov-scale))
-      rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.16));
+      rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.25));
   /* No backdrop blur/saturate (was a glassy gradient look). */
   /* pop-in plays on mount; morph (width/radius) is a transition */
   animation: scard-pop var(--ov-morph-ms) cubic-bezier(0.22, 1, 0.36, 1);

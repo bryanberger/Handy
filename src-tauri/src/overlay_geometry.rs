@@ -2492,11 +2492,13 @@ mod tests {
         assert_eq!(css_px(OVERLAY_CSS, "--ov-shadow-edge-slack"), 0.0);
         // The card's own shadow: two layers, both scaled, both at an alpha the
         // strength multiplies, so strength 0 is fully transparent and Flat is
-        // pixel-identical to what it always was.
+        // pixel-identical to what it always was. Only the alphas answer to the
+        // strength; the blur is the constant above, because it is half of the
+        // window's shadow slack.
         assert_eq!(
             collapsed(css_declaration(css_rule(OVERLAY_CSS, "\n.scard {"), "box-shadow")),
             collapsed(
-                "0 calc(var(--ov-shadow-y) * var(--ov-scale))                  calc(var(--ov-shadow-blur) * var(--ov-scale))                  rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.4)),                  0 calc(1px * var(--ov-scale)) calc(2px * var(--ov-scale))                  rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.16))"
+                "0 calc(var(--ov-shadow-y) * var(--ov-scale))                  calc(var(--ov-shadow-blur) * var(--ov-scale))                  rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.45)),                  0 calc(1px * var(--ov-scale)) calc(2px * var(--ov-scale))                  rgb(0 0 0 / calc(var(--ov-shadow-strength) * 0.25))"
             )
         );
         // Under Glass the shadow is macOS's own, outside the window, so the
